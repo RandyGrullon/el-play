@@ -6,6 +6,7 @@ import { Card } from '../components/ui/Card';
 import { Scoreboard } from '../components/game/Scoreboard';
 import { BaseballDiamond } from '../components/game/BaseballDiamond';
 import { LineScore } from '../components/game/LineScore';
+import { StrikeZone } from '../components/game/StrikeZone';
 
 export const Game = () => {
     const { gamePk } = useParams();
@@ -43,7 +44,9 @@ export const Game = () => {
         count: { balls: 0, strikes: 0, outs: 0 },
         runners: { first: false, second: false, third: false },
         matchup: { pitcher: "N/A", batter: "N/A" },
+        matchup: { pitcher: "N/A", batter: "N/A" },
         lastPlay: "N/A",
+        pitchData: null,
         innings: []
     };
 
@@ -134,13 +137,19 @@ export const Game = () => {
                         </div>
                     </div>
 
-                    {/* Right: Last Play (Order 3 on Mobile) */}
-                    <div className="order-3 md:order-3">
-                        <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Última Jugada</h3>
-                        <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-4 backdrop-blur-sm">
-                            <p className="text-sm text-zinc-300 leading-relaxed font-medium">
-                                {displayData.lastPlay}
-                            </p>
+                    {/* Right: Last Play & Strike Zone (Order 3 on Mobile) */}
+                    <div className="order-3 md:order-3 space-y-6">
+                        <div>
+                            <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Última Jugada</h3>
+                            <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-4 backdrop-blur-sm">
+                                <p className="text-sm text-zinc-300 leading-relaxed font-medium">
+                                    {displayData.lastPlay}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-center">
+                            <StrikeZone pitchData={displayData.pitchData} />
                         </div>
                     </div>
 

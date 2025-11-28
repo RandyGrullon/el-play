@@ -27,6 +27,31 @@ const transformGameData = (data) => {
         home: inn.home.runs
     })) : [];
 
+    const currentPlay = plays.currentPlay;
+    let pitchData = null;
+
+    if (currentPlay && currentPlay.playEvents && currentPlay.playEvents.length > 0) {
+        // Find the last event that is a pitch
+        const pitchEvents = currentPlay.playEvents.filter(e => e.isPitch);
+        if (pitchEvents.length > 0) {
+            const lastPitch = pitchEvents[pitchEvents.length - 1];
+            if (lastPitch.pitchData) {
+                pitchData = {
+                    coordinates: {
+                        pX: lastPitch.pitchData.coordinates.pX,
+                        pZ: lastPitch.pitchData.coordinates.pZ
+                    },
+                    strikeZoneTop: lastPitch.pitchData.strikeZoneTop,
+                    strikeZoneBottom: lastPitch.pitchData.strikeZoneBottom,
+                    call: lastPitch.details.description,
+                    code: lastPitch.details.code, // B, S, X, etc.
+                    speed: lastPitch.pitchData.startSpeed,
+                    type: lastPitch.details.type ? lastPitch.details.type.code : null
+                };
+            }
+        }
+    }
+
     return {
         status: gameStatus,
         inning: `${linescore.isTopInning ? 'Top' : 'Bot'} ${linescore.currentInningOrdinal || ''}`,
@@ -47,6 +72,7 @@ const transformGameData = (data) => {
             batter: linescore.offense?.batter ? linescore.offense.batter.fullName : 'Unknown'
         },
         lastPlay: plays.currentPlay ? plays.currentPlay.result.description : 'No plays yet',
+        pitchData,
         innings
     };
 };
