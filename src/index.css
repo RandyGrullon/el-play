@@ -4,8 +4,13 @@
 @tailwind components;
 @tailwind utilities;
 
+html,
 body {
     @apply bg-zinc-950 text-white antialiased;
+    overscroll-behavior-x: none;
+    /* Prevent swipe back/forward */
+    touch-action: pan-x pan-y;
+    /* Improve touch handling */
 }
 
 /* Custom Scrollbar */
