@@ -9,6 +9,7 @@ export interface Team {
     errors: number;
     isWinner?: boolean;
     players?: Player[];
+    teamStats?: TeamStats;
 }
 
 export interface Player {
@@ -80,6 +81,42 @@ export interface GameData {
     playHistory: Play[];
     currentPitches: Pitch[];
     innings: Inning[];
+    decisions?: {
+        winner?: { name: string; record: string; era: string };
+        loser?: { name: string; record: string; era: string };
+        save?: { name: string; record: string; era: string };
+    };
+    topPerformers?: {
+        id: number;
+        name: string;
+        teamLogo: string;
+        stats: string;
+        type: string;
+    }[];
+}
+
+export interface TeamStats {
+    batting: {
+        runs?: number;
+        hits?: number;
+        homeRuns?: number;
+        rbi?: number;
+        baseOnBalls?: number;
+        strikeOuts?: number;
+        leftOnBase?: number;
+        avg?: string;
+        ops?: string;
+    };
+    pitching: {
+        runs?: number;
+        hits?: number;
+        baseOnBalls?: number;
+        strikeOuts?: number;
+        era?: string;
+    };
+    fielding: {
+        errors?: number;
+    };
 }
 
 export interface ScheduleItem {

@@ -11,7 +11,7 @@ const transformGameData = (data) => {
         console.error('Validation Error:', JSON.stringify(validation.error.format(), null, 2));
         // In production, we might want to throw or return a partial object.
         // For now, let's throw to be caught by the global error handler.
-        throw new Error('Invalid Game Data received from MLB API');
+        throw new Error(`Invalid Game Data received from MLB API: ${JSON.stringify(validation.error.format(), null, 2)}`);
     }
 
     const { gameData, liveData } = validation.data;
@@ -156,13 +156,78 @@ const transformGameData = (data) => {
         time: play.about.startTime
     })) : [];
 
+    const decisions = liveData.decisions || {};
+
+    // Helper to get top performers
+    const getTopPerformers = () => {
+        const performers = [];
+
+        // 1. Winning Pitcher (or best pitcher if no decision)
+        if (decisions.winner) {
+            const winnerId = decisions.winner.id;
+            // Find stats for winner
+            const homePlayers = Object.values(boxscore.teams.home.players);
+            const awayPlayers = Object.values(boxscore.teams.away.players);
+            const allPlayers = [...homePlayers, ...awayPlayers];
+            const winner = allPlayers.find(p => p.person.id === winnerId);
+
+            if (winner) {
+                performers.push({
+                    id: winner.person.id,
+                    name: winner.person.fullName,
+                    teamLogo: `https://www.mlbstatic.com/team-logos/${winner.parentTeamId || (homePlayers.includes(winner) ? boxscore.teams.home.team.id : boxscore.teams.away.team.id)}.svg`,
+                    stats: `${winner.stats.pitching.inningsPitche || 0} IP, ${winner.stats.pitching.strikeOuts || 0} K, ${winner.stats.pitching.runs || 0} C`,
+                    type: 'Pitcher'
+                });
+            }
+        }
+
+        // 2. Best Batter from Winning Team
+        const winningTeamType = linescore.teams.home.runs > linescore.teams.away.runs ? 'home' : 'away';
+        const winningTeamPlayers = Object.values(boxscore.teams[winningTeamType].players).filter(p => p.stats.batting);
+        const bestBatterWinner = winningTeamPlayers.sort((a, b) => (b.stats.batting.rbi || 0) - (a.stats.batting.rbi || 0) || (b.stats.batting.homeRuns || 0) - (a.stats.batting.homeRuns || 0))[0];
+
+        if (bestBatterWinner) {
+            performers.push({
+                id: bestBatterWinner.person.id,
+                name: bestBatterWinner.person.fullName,
+                teamLogo: `https://www.mlbstatic.com/team-logos/${boxscore.teams[winningTeamType].team.id}.svg`,
+                stats: `${bestBatterWinner.stats.batting.hits}-${bestBatterWinner.stats.batting.atBats}, ${bestBatterWinner.stats.batting.homeRuns > 0 ? bestBatterWinner.stats.batting.homeRuns + ' HR, ' : ''}${bestBatterWinner.stats.batting.rbi || 0} CI`,
+                type: 'Batter'
+            });
+        }
+
+        // 3. Best Batter from Losing Team
+        const losingTeamType = winningTeamType === 'home' ? 'away' : 'home';
+        const losingTeamPlayers = Object.values(boxscore.teams[losingTeamType].players).filter(p => p.stats.batting);
+        const bestBatterLoser = losingTeamPlayers.sort((a, b) => (b.stats.batting.rbi || 0) - (a.stats.batting.rbi || 0) || (b.stats.batting.hits || 0) - (a.stats.batting.hits || 0))[0];
+
+        if (bestBatterLoser) {
+            performers.push({
+                id: bestBatterLoser.person.id,
+                name: bestBatterLoser.person.fullName,
+                teamLogo: `https://www.mlbstatic.com/team-logos/${boxscore.teams[losingTeamType].team.id}.svg`,
+                stats: `${bestBatterLoser.stats.batting.hits}-${bestBatterLoser.stats.batting.atBats}, ${bestBatterLoser.stats.batting.rbi || 0} CI`,
+                type: 'Batter'
+            });
+        }
+
+        return performers;
+    };
+
     return {
         status: gameStatus,
         gameDate: data.gameData.datetime.dateTime,
         isTopInning: linescore.isTopInning,
         inning: `${linescore.isTopInning ? 'Top' : 'Bot'} ${linescore.currentInningOrdinal || ''}`,
-        home: getTeamInfo('home'),
-        away: getTeamInfo('away'),
+        home: {
+            ...getTeamInfo('home'),
+            teamStats: boxscore.teams.home.teamStats
+        },
+        away: {
+            ...getTeamInfo('away'),
+            teamStats: boxscore.teams.away.teamStats
+        },
         count: {
             balls: linescore.balls || 0,
             strikes: linescore.strikes || 0,
@@ -180,7 +245,13 @@ const transformGameData = (data) => {
         lastPlay: plays.currentPlay ? plays.currentPlay.result.description : 'No plays yet',
         playHistory,
         currentPitches,
-        innings
+        innings,
+        decisions: {
+            winner: decisions.winner ? { name: decisions.winner.fullName, record: '1-0', era: '0.00' } : null, // Mock record/era if not in decisions object
+            loser: decisions.loser ? { name: decisions.loser.fullName, record: '0-1', era: '0.00' } : null,
+            save: decisions.save ? { name: decisions.save.fullName, record: '0', era: '0.00' } : null
+        },
+        topPerformers: getTopPerformers()
     };
 };
 
