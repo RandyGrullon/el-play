@@ -13,21 +13,25 @@ export const Home = () => {
     const schedule = useSchedule();
     const [standings, setStandings] = useState([]);
     const [leaders, setLeaders] = useState([]);
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState(() => {
+        return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' });
+    });
 
     useEffect(() => {
         fetchStandings().then(setStandings).catch(console.error);
         fetchLeaders().then(setLeaders).catch(console.error);
     }, []);
 
-    // Generate next 7 days for the date picker
+    // Generate next 7 days for the date picker based on Santo Domingo time
     const dates = useMemo(() => {
         const days = [];
         const today = new Date();
+
         for (let i = 0; i < 7; i++) {
             const date = new Date(today);
             date.setDate(today.getDate() + i);
-            days.push(date.toISOString().split('T')[0]);
+            const dateStr = date.toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' });
+            days.push(dateStr);
         }
         return days;
     }, []);
@@ -35,8 +39,9 @@ export const Home = () => {
     // Filter games for selected date
     const filteredGames = useMemo(() => {
         return schedule.filter(game => {
-            // Compare YYYY-MM-DD parts
-            return game.date.split('T')[0] === selectedDate;
+            // Convert game UTC date to Santo Domingo date string for comparison
+            const gameDateSD = new Date(game.date).toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' });
+            return gameDateSD === selectedDate;
         });
     }, [schedule, selectedDate]);
 
@@ -80,9 +85,14 @@ export const Home = () => {
                 <div className="relative group">
                     <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x">
                         {dates.map((date) => {
-                            const d = new Date(date + 'T12:00:00'); // Force noon to avoid timezone shifts
+                            // Create date object for display, forcing noon to avoid shifts
+                            const d = new Date(date + 'T12:00:00');
                             const isSelected = date === selectedDate;
-                            const hasGames = schedule.some(g => g.date.split('T')[0] === date);
+                            // Check if there are games on this date (converted to SD time)
+                            const hasGames = schedule.some(g => {
+                                const gDate = new Date(g.date).toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' });
+                                return gDate === date;
+                            });
 
                             return (
                                 <button
@@ -97,7 +107,7 @@ export const Home = () => {
                                     `}
                                 >
                                     <span className="text-[10px] font-bold uppercase tracking-wider">
-                                        {d.toLocaleDateString('es-DO', { weekday: 'short' }).replace('.', '')}
+                                        {d.toLocaleDateString('es-DO', { weekday: 'short', timeZone: 'America/Santo_Domingo' }).replace('.', '')}
                                     </span>
                                     <span className={`text-2xl font-black ${isSelected ? 'text-black' : 'text-white'}`}>
                                         {d.getDate()}
@@ -126,7 +136,7 @@ export const Home = () => {
                                             {game.status}
                                         </Badge>
                                         <span className="text-xs text-zinc-500 font-medium">
-                                            {new Date(game.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {new Date(game.date).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Santo_Domingo' })}
                                         </span>
                                     </div>
 
@@ -171,6 +181,56 @@ export const Home = () => {
                                             <span className="text-xl font-black text-white">{game.home.score}</span>
                                         </div>
                                     </div>
+
+                                    {/* Live Game Details */}
+                                    {(game.status === 'Live' || game.status === 'In Progress') && game.liveData && (
+                                        <div className="mt-4 pt-4 border-t border-white/5 flex justify-between items-end">
+                                            {/* Count */}
+                                            <div className="flex gap-4">
+                                                {/* Balls */}
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <span className="text-[10px] font-bold text-zinc-600">B</span>
+                                                    <div className="flex gap-1">
+                                                        {[...Array(3)].map((_, i) => (
+                                                            <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < game.liveData.balls ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-zinc-800'}`} />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                {/* Strikes */}
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <span className="text-[10px] font-bold text-zinc-600">S</span>
+                                                    <div className="flex gap-1">
+                                                        {[...Array(2)].map((_, i) => (
+                                                            <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < game.liveData.strikes ? 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]' : 'bg-zinc-800'}`} />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                {/* Outs */}
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <span className="text-[10px] font-bold text-zinc-600">O</span>
+                                                    <div className="flex gap-1">
+                                                        {[...Array(2)].map((_, i) => (
+                                                            <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < game.liveData.outs ? 'bg-yellow-500 shadow-[0_0_5px_rgba(234,179,8,0.5)]' : 'bg-zinc-800'}`} />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Mini Diamond */}
+                                            <div className="relative w-8 h-8 opacity-80">
+                                                {/* Base Paths */}
+                                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 border border-zinc-600 rotate-45" />
+
+                                                {/* Bases */}
+                                                {/* 2nd Base (Top) */}
+                                                <div className={`absolute top-0.5 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${game.liveData.runners.second ? 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'bg-zinc-700'}`} />
+                                                {/* 3rd Base (Left) */}
+                                                <div className={`absolute top-1/2 left-0.5 -translate-y-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${game.liveData.runners.third ? 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'bg-zinc-700'}`} />
+                                                {/* 1st Base (Right) */}
+                                                <div className={`absolute top-1/2 right-0.5 -translate-y-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${game.liveData.runners.first ? 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'bg-zinc-700'}`} />
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="mt-4 pt-4 border-t border-white/5 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Ver Detalles</span>

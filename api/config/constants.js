@@ -4,8 +4,8 @@ const MLB_API_BASE_V1_1 = 'https://statsapi.mlb.com/api/v1.1';
 
 // Cache TTL (Time To Live) in seconds
 const TTL = {
-    GAME_LIVE: 10,      // 10 seconds for live game data
-    SCHEDULE: 60 * 5,   // 5 minutes for schedule
+    GAME_LIVE: 1,       // 1 second for live game data
+    SCHEDULE: 1,        // 1 second for schedule (immediate updates)
     STANDINGS: 60 * 10, // 10 minutes for standings
     LEADERS: 60 * 30    // 30 minutes for leaders
 };

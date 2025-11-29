@@ -13,7 +13,8 @@ const fetchScheduleData = async (startDate, endDate) => {
             sportId: 17, // Winter Leagues
             leagueId: 131, // LIDOM
             startDate,
-            endDate
+            endDate,
+            hydrate: 'linescore'
         }
     });
 
@@ -29,6 +30,9 @@ const fetchScheduleData = async (startDate, endDate) => {
         .map(game => {
             const homeId = game.teams.home.team.id;
             const awayId = game.teams.away.team.id;
+
+            const linescore = game.linescore || {};
+            const offense = linescore.offense || {};
 
             return {
                 gamePk: game.gamePk,
@@ -49,6 +53,18 @@ const fetchScheduleData = async (startDate, endDate) => {
                     logo: `https://www.mlbstatic.com/team-logos/${homeId}.svg`,
                     score: game.teams.home.score || 0,
                     isWinner: game.teams.home.isWinner
+                },
+                liveData: {
+                    inning: linescore.currentInningOrdinal,
+                    isTopInning: linescore.isTopInning,
+                    balls: linescore.balls || 0,
+                    strikes: linescore.strikes || 0,
+                    outs: linescore.outs || 0,
+                    runners: {
+                        first: !!offense.first,
+                        second: !!offense.second,
+                        third: !!offense.third
+                    }
                 }
             };
         });

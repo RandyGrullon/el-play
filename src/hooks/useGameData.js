@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchGameData, fetchSchedule } from '../services/api';
 
-export const useGameData = (gamePk, pollingInterval = 10000) => {
+export const useGameData = (gamePk, pollingInterval = 2000) => {
   const [gameData, setGameData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,7 +32,7 @@ export const useGameData = (gamePk, pollingInterval = 10000) => {
   return { gameData, loading, error, lastUpdated };
 };
 
-export const useSchedule = (pollingInterval = 10000) => {
+export const useSchedule = (pollingInterval = 2000) => {
   const [schedule, setSchedule] = useState([]);
 
   useEffect(() => {
