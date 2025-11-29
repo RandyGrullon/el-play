@@ -11,6 +11,15 @@ import { Leaders } from '../components/game/Leaders';
 import { GameCardSkeleton } from '../components/game/GameCardSkeleton';
 import { ScheduleItem } from '../types';
 
+const TEAM_COLORS: Record<number, string> = {
+    667: '#FDB927', // Aguilas
+    668: '#FA4616', // Toros
+    670: '#aa1141', // Gigantes
+    671: '#E31837', // Escogido
+    672: '#0069e0', // Licey
+    673: '#00be66'  // Estrellas
+};
+
 export const Home: React.FC = () => {
     const { schedule, loading } = useSchedule() as { schedule: ScheduleItem[], loading: boolean };
     const { favoriteTeamId, toggleFavoriteTeam, notificationsEnabled, toggleNotifications, subscribedGames, toggleGameSubscription } = useFavoriteTeam();
@@ -353,11 +362,41 @@ export const Home: React.FC = () => {
 
                                                 {/* Bases */}
                                                 {/* 2nd Base (Top) */}
-                                                <div className={`absolute top-0.5 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${game.liveData!.runners.second ? 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'bg-zinc-700'}`} />
+                                                <div
+                                                    className={`absolute top-0.5 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${!game.liveData!.runners.second ? 'bg-zinc-700' : ''}`}
+                                                    style={game.liveData!.runners.second ? {
+                                                        backgroundColor: game.liveData.isTopInning
+                                                            ? (game.away.color || TEAM_COLORS[game.away.id] || '#ffffff')
+                                                            : (game.home.color || TEAM_COLORS[game.home.id] || '#ffffff'),
+                                                        boxShadow: `0 0 5px ${game.liveData.isTopInning
+                                                            ? (game.away.color || TEAM_COLORS[game.away.id] || '#ffffff')
+                                                            : (game.home.color || TEAM_COLORS[game.home.id] || '#ffffff')}`
+                                                    } : {}}
+                                                />
                                                 {/* 3rd Base (Left) */}
-                                                <div className={`absolute top-1/2 left-0.5 -translate-y-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${game.liveData!.runners.third ? 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'bg-zinc-700'}`} />
+                                                <div
+                                                    className={`absolute top-1/2 left-0.5 -translate-y-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${!game.liveData!.runners.third ? 'bg-zinc-700' : ''}`}
+                                                    style={game.liveData!.runners.third ? {
+                                                        backgroundColor: game.liveData.isTopInning
+                                                            ? (game.away.color || TEAM_COLORS[game.away.id] || '#ffffff')
+                                                            : (game.home.color || TEAM_COLORS[game.home.id] || '#ffffff'),
+                                                        boxShadow: `0 0 5px ${game.liveData.isTopInning
+                                                            ? (game.away.color || TEAM_COLORS[game.away.id] || '#ffffff')
+                                                            : (game.home.color || TEAM_COLORS[game.home.id] || '#ffffff')}`
+                                                    } : {}}
+                                                />
                                                 {/* 1st Base (Right) */}
-                                                <div className={`absolute top-1/2 right-0.5 -translate-y-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${game.liveData!.runners.first ? 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'bg-zinc-700'}`} />
+                                                <div
+                                                    className={`absolute top-1/2 right-0.5 -translate-y-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${!game.liveData!.runners.first ? 'bg-zinc-700' : ''}`}
+                                                    style={game.liveData!.runners.first ? {
+                                                        backgroundColor: game.liveData.isTopInning
+                                                            ? (game.away.color || TEAM_COLORS[game.away.id] || '#ffffff')
+                                                            : (game.home.color || TEAM_COLORS[game.home.id] || '#ffffff'),
+                                                        boxShadow: `0 0 5px ${game.liveData.isTopInning
+                                                            ? (game.away.color || TEAM_COLORS[game.away.id] || '#ffffff')
+                                                            : (game.home.color || TEAM_COLORS[game.home.id] || '#ffffff')}`
+                                                    } : {}}
+                                                />
                                             </div>
                                         </div>
                                     )}

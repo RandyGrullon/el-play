@@ -128,6 +128,7 @@ export interface ScheduleItem {
         name: string;
         abbrev: string;
         logo: string;
+        color: string;
         score: number;
         isWinner?: boolean;
     };
@@ -136,6 +137,7 @@ export interface ScheduleItem {
         name: string;
         abbrev: string;
         logo: string;
+        color: string;
         score: number;
         isWinner?: boolean;
     };

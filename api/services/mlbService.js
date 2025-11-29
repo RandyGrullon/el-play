@@ -43,6 +43,7 @@ const fetchScheduleData = async (startDate, endDate) => {
                     name: game.teams.away.team.name,
                     abbrev: LIDOM_TEAMS[awayId]?.abbrev || 'UNK',
                     logo: `https://www.mlbstatic.com/team-logos/${awayId}.svg`,
+                    color: LIDOM_TEAMS[awayId]?.color || '#ffffff',
                     score: game.teams.away.score || 0,
                     isWinner: game.teams.away.isWinner
                 },
@@ -51,6 +52,7 @@ const fetchScheduleData = async (startDate, endDate) => {
                     name: game.teams.home.team.name,
                     abbrev: LIDOM_TEAMS[homeId]?.abbrev || 'UNK',
                     logo: `https://www.mlbstatic.com/team-logos/${homeId}.svg`,
+                    color: LIDOM_TEAMS[homeId]?.color || '#ffffff',
                     score: game.teams.home.score || 0,
                     isWinner: game.teams.home.isWinner
                 },
