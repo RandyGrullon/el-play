@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Calendar, ChevronRight, ChevronLeft, Heart, Bell, BellOff } from 'lucide-react';
 import { useSchedule } from '../hooks/useGameData';
+import { useFavoriteTeam } from '../hooks/useFavoriteTeam';
 import { fetchStandings, fetchLeaders } from '../services/api';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -12,6 +13,7 @@ import { ScheduleItem } from '../types';
 
 export const Home: React.FC = () => {
     const { schedule, loading } = useSchedule() as { schedule: ScheduleItem[], loading: boolean };
+    const { favoriteTeamId, toggleFavoriteTeam, notificationsEnabled, toggleNotifications, subscribedGames, toggleGameSubscription } = useFavoriteTeam();
     const [standings, setStandings] = useState<any[]>([]);
     const [leaders, setLeaders] = useState<any[]>([]);
     const [selectedDate, setSelectedDate] = useState<string>(() => {
@@ -59,6 +61,55 @@ export const Home: React.FC = () => {
         });
     }, [schedule, selectedDate]);
 
+    // Sort games to show favorite team first
+    const sortedGames = useMemo(() => {
+        if (!favoriteTeamId) return filteredGames;
+        return [...filteredGames].sort((a, b) => {
+            const aHasFav = a.away.id === favoriteTeamId || a.home.id === favoriteTeamId;
+            const bHasFav = b.away.id === favoriteTeamId || b.home.id === favoriteTeamId;
+            if (aHasFav && !bHasFav) return -1;
+            if (!aHasFav && bHasFav) return 1;
+            return 0;
+        });
+    }, [filteredGames, favoriteTeamId]);
+
+    // Notification Logic
+    useEffect(() => {
+        if ((!favoriteTeamId || !notificationsEnabled) && subscribedGames.length === 0) return;
+
+        const checkGameStart = () => {
+            const now = new Date();
+            schedule.forEach(game => {
+                const isFavoriteTeamGame = favoriteTeamId && (game.away.id === favoriteTeamId || game.home.id === favoriteTeamId);
+                const shouldNotifyFavorite = isFavoriteTeamGame && notificationsEnabled;
+                const isSubscribedGame = subscribedGames.includes(game.gamePk);
+
+                if (shouldNotifyFavorite || isSubscribedGame) {
+                    const gameDate = new Date(game.date);
+                    const timeDiff = gameDate.getTime() - now.getTime();
+                    // Notify if game starts in 15 minutes or less, and hasn't started yet (positive diff)
+                    if (timeDiff > 0 && timeDiff <= 15 * 60 * 1000) {
+                        const notifiedKey = `notified-${game.gamePk}`;
+                        if (!sessionStorage.getItem(notifiedKey)) {
+                            if (Notification.permission === 'granted') {
+                                new Notification('¡El juego va a comenzar!', {
+                                    body: `${game.away.name} vs ${game.home.name} comienza en breve.`,
+                                    icon: '/pwa-192x192.png'
+                                });
+                                sessionStorage.setItem(notifiedKey, 'true');
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        const interval = setInterval(checkGameStart, 60000); // Check every minute
+        checkGameStart(); // Check immediately
+
+        return () => clearInterval(interval);
+    }, [schedule, favoriteTeamId, notificationsEnabled, subscribedGames]);
+
     const handlePrevDay = () => {
         const currentIndex = dates.indexOf(selectedDate);
         if (currentIndex > 0) {
@@ -82,6 +133,15 @@ export const Home: React.FC = () => {
                     <div className="flex items-center gap-2">
                         <Calendar className="w-5 h-5 text-cyan-400" />
                         <h2 className="text-xl font-bold text-white tracking-tight">Calendario</h2>
+                        {favoriteTeamId && (
+                            <button
+                                onClick={toggleNotifications}
+                                className={`ml-4 p-2 rounded-full transition-colors ${notificationsEnabled ? 'bg-cyan-500/20 text-cyan-400' : 'bg-zinc-800 text-zinc-500'}`}
+                                title={notificationsEnabled ? "Notificaciones activadas" : "Activar notificaciones"}
+                            >
+                                {notificationsEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+                            </button>
+                        )}
                     </div>
 
                     {/* Mobile Arrows (visible on small screens if needed, but we use scroll) */}
@@ -147,17 +207,29 @@ export const Home: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-h-[200px]">
                     {loading ? (
                         [...Array(3)].map((_, i) => <GameCardSkeleton key={i} />)
-                    ) : filteredGames.length > 0 ? (
-                        filteredGames.map((game) => (
+                    ) : sortedGames.length > 0 ? (
+                        sortedGames.map((game) => (
                             <Link key={game.gamePk} to={`/game/${game.gamePk}`}>
                                 <Card className="hover:bg-white/5 transition-all duration-300 group cursor-pointer border-l-4 border-l-transparent hover:border-l-cyan-400 h-full">
                                     <div className="flex justify-between items-center mb-4">
                                         <Badge variant={game.status === 'Live' || game.status === 'In Progress' ? 'live' : 'default'}>
                                             {game.status}
                                         </Badge>
-                                        <span className="text-xs text-zinc-500 font-medium">
-                                            {new Date(game.date).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/La_Paz' })}
-                                        </span>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    toggleGameSubscription(game.gamePk);
+                                                }}
+                                                className={`transition-colors ${subscribedGames.includes(game.gamePk) ? 'text-cyan-400' : 'text-zinc-600 hover:text-zinc-400'}`}
+                                                title={subscribedGames.includes(game.gamePk) ? "Desactivar notificación" : "Activar notificación"}
+                                            >
+                                                <Bell className={`w-4 h-4 ${subscribedGames.includes(game.gamePk) ? 'fill-current' : ''}`} />
+                                            </button>
+                                            <span className="text-xs text-zinc-500 font-medium">
+                                                {new Date(game.date).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/La_Paz' })}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-3">
@@ -177,7 +249,20 @@ export const Home: React.FC = () => {
                                                 <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs text-zinc-400 border border-white/5 hidden">
                                                     {game.away.abbrev}
                                                 </div>
-                                                <span className="font-bold text-zinc-200">{game.away.name}</span>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-zinc-200 flex items-center gap-2">
+                                                        {game.away.name}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                toggleFavoriteTeam(game.away.id);
+                                                            }}
+                                                            className={`transition-colors ${favoriteTeamId === game.away.id ? 'text-red-500 fill-current' : 'text-zinc-600 hover:text-zinc-400'}`}
+                                                        >
+                                                            <Heart className={`w-4 h-4 ${favoriteTeamId === game.away.id ? 'fill-current' : ''}`} />
+                                                        </button>
+                                                    </span>
+                                                </div>
                                                 {(game.status === 'Live' || game.status === 'In Progress') && game.liveData?.isTopInning && (
                                                     <svg className="w-4 h-4 text-cyan-400 fill-current" viewBox="0 0 24 24">
                                                         <path d="M19.9 12.6L12.6 19.9L2.1 9.4L9.4 2.1L19.9 12.6ZM21.3 14L14 21.3C13.6 21.7 13 21.7 12.6 21.3L11.9 20.6L20.6 11.9L21.3 12.6C21.7 13 21.7 13.6 21.3 14Z" />
@@ -203,7 +288,20 @@ export const Home: React.FC = () => {
                                                 <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs text-zinc-400 border border-white/5 hidden">
                                                     {game.home.abbrev}
                                                 </div>
-                                                <span className="font-bold text-zinc-200">{game.home.name}</span>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-zinc-200 flex items-center gap-2">
+                                                        {game.home.name}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                toggleFavoriteTeam(game.home.id);
+                                                            }}
+                                                            className={`transition-colors ${favoriteTeamId === game.home.id ? 'text-red-500 fill-current' : 'text-zinc-600 hover:text-zinc-400'}`}
+                                                        >
+                                                            <Heart className={`w-4 h-4 ${favoriteTeamId === game.home.id ? 'fill-current' : ''}`} />
+                                                        </button>
+                                                    </span>
+                                                </div>
                                                 {(game.status === 'Live' || game.status === 'In Progress') && !game.liveData?.isTopInning && (
                                                     <svg className="w-4 h-4 text-cyan-400 fill-current" viewBox="0 0 24 24">
                                                         <path d="M19.9 12.6L12.6 19.9L2.1 9.4L9.4 2.1L19.9 12.6ZM21.3 14L14 21.3C13.6 21.7 13 21.7 12.6 21.3L11.9 20.6L20.6 11.9L21.3 12.6C21.7 13 21.7 13.6 21.3 14Z" />
