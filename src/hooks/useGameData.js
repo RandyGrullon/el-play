@@ -68,23 +68,45 @@ export const useGameData = (gamePk, pollingInterval = 2000) => {
   return { gameData, loading, error, lastUpdated };
 };
 
-export const useSchedule = (pollingInterval = 2000) => {
+export const useSchedule = () => {
   const [schedule, setSchedule] = useState([]);
 
   useEffect(() => {
+    let timeoutId;
+    let isMounted = true;
+
     const loadSchedule = async () => {
       try {
         const data = await fetchSchedule();
-        setSchedule(data);
+        if (isMounted) {
+          setSchedule(data);
+
+          // Check if any game is live
+          const hasLiveGames = data.some(game =>
+            game.status === 'Live' || game.status === 'In Progress'
+          );
+
+          // Adaptive polling: 2s if live games, 60s otherwise
+          const nextPoll = hasLiveGames ? 2000 : 60000;
+
+          timeoutId = setTimeout(loadSchedule, nextPoll);
+        }
       } catch (err) {
         console.error("Schedule error:", err);
+        if (isMounted) {
+          // Retry after 1 minute on error
+          timeoutId = setTimeout(loadSchedule, 60000);
+        }
       }
     };
 
     loadSchedule();
-    const interval = setInterval(loadSchedule, pollingInterval);
-    return () => clearInterval(interval);
-  }, [pollingInterval]);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, []);
 
   return schedule;
 };
