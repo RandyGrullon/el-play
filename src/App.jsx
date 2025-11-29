@@ -4,7 +4,24 @@ import { Activity } from 'lucide-react';
 import { Home } from './pages/Home';
 import { Game } from './pages/Game';
 
+import { SplashLoader } from './components/ui/SplashLoader';
+
 function App() {
+    const [isLoading, setIsLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        // Simulate initial loading (or wait for resources)
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+        }, 2500); // 2.5 seconds splash screen
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (isLoading) {
+        return <SplashLoader />;
+    }
+
     return (
         <Router>
             <div className="min-h-screen bg-zinc-950 text-white font-sans selection:bg-cyan-500/30">

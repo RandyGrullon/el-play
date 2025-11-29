@@ -15,7 +15,7 @@ export const Home: React.FC = () => {
     const [standings, setStandings] = useState<any[]>([]);
     const [leaders, setLeaders] = useState<any[]>([]);
     const [selectedDate, setSelectedDate] = useState<string>(() => {
-        return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' });
+        return new Date().toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
     });
 
     useEffect(() => {
@@ -36,7 +36,7 @@ export const Home: React.FC = () => {
         }
     }, [selectedDate]);
 
-    // Generate next 7 days for the date picker based on Santo Domingo time
+    // Generate next 7 days for the date picker based on La Paz time
     const dates = useMemo(() => {
         const days: string[] = [];
         const today = new Date();
@@ -44,7 +44,7 @@ export const Home: React.FC = () => {
         for (let i = -3; i < 7; i++) {
             const date = new Date(today);
             date.setDate(today.getDate() + i);
-            const dateStr = date.toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' });
+            const dateStr = date.toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
             days.push(dateStr);
         }
         return days;
@@ -53,8 +53,8 @@ export const Home: React.FC = () => {
     // Filter games for selected date
     const filteredGames = useMemo(() => {
         return schedule.filter(game => {
-            // Convert game UTC date to Santo Domingo date string for comparison
-            const gameDateSD = new Date(game.date).toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' });
+            // Convert game UTC date to La Paz date string for comparison
+            const gameDateSD = new Date(game.date).toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
             return gameDateSD === selectedDate;
         });
     }, [schedule, selectedDate]);
@@ -107,7 +107,7 @@ export const Home: React.FC = () => {
                             const isSelected = date === selectedDate;
                             // Check if there are games on this date (converted to SD time)
                             const hasGames = schedule.some(g => {
-                                const gDate = new Date(g.date).toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' });
+                                const gDate = new Date(g.date).toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
                                 return gDate === date;
                             });
 
@@ -125,7 +125,7 @@ export const Home: React.FC = () => {
                                     `}
                                 >
                                     <span className="text-[10px] font-bold uppercase tracking-wider">
-                                        {d.toLocaleDateString('es-DO', { weekday: 'short', timeZone: 'America/Santo_Domingo' }).replace('.', '')}
+                                        {d.toLocaleDateString('es-DO', { weekday: 'short', timeZone: 'America/La_Paz' }).replace('.', '')}
                                     </span>
                                     <span className={`text-2xl font-black ${isSelected ? 'text-black' : 'text-white'}`}>
                                         {d.getDate()}
@@ -156,7 +156,7 @@ export const Home: React.FC = () => {
                                             {game.status}
                                         </Badge>
                                         <span className="text-xs text-zinc-500 font-medium">
-                                            {new Date(game.date).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Santo_Domingo' })}
+                                            {new Date(game.date).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/La_Paz' })}
                                         </span>
                                     </div>
 
