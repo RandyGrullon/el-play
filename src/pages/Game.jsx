@@ -110,6 +110,18 @@ export const Game = () => {
                             {/* Center Column (Desktop) / Top (Mobile) - Strike Zone & Diamond */}
                             <div className="flex flex-col items-center gap-8 order-1 md:order-2">
 
+                                {/* Mobile Batter Indicator */}
+                                <div className="md:hidden w-full bg-zinc-900/50 border border-white/5 rounded-lg p-3 flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold text-xs">B</div>
+                                        <div>
+                                            <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Al Bate</div>
+                                            <div className="text-sm font-bold text-white">{displayData.matchup.batter}</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-zinc-500 font-mono">AVG .---</div>
+                                </div>
+
                                 {/* Strike Zone - Positioned "arriba debajo de la tabla" */}
                                 <div className="w-full max-w-[250px]">
                                     <StrikeZone pitches={displayData.currentPitches} />
