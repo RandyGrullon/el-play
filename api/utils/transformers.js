@@ -1,13 +1,24 @@
 const { LIDOM_TEAMS } = require('../config/constants');
+const { GameDataSchema } = require('../schemas/mlb');
 
 /**
  * Transform raw MLB Game Data into clean app format
  */
 const transformGameData = (data) => {
-    const linescore = data.liveData.linescore;
-    const boxscore = data.liveData.boxscore;
-    const plays = data.liveData.plays;
-    const gameStatus = data.gameData.status.detailedState;
+    // Validate incoming data
+    const validation = GameDataSchema.safeParse(data);
+    if (!validation.success) {
+        console.error('Validation Error:', JSON.stringify(validation.error.format(), null, 2));
+        // In production, we might want to throw or return a partial object.
+        // For now, let's throw to be caught by the global error handler.
+        throw new Error('Invalid Game Data received from MLB API');
+    }
+
+    const { gameData, liveData } = validation.data;
+    const linescore = liveData.linescore;
+    const boxscore = liveData.boxscore;
+    const plays = liveData.plays;
+    const gameStatus = gameData.status.detailedState;
 
     const getTeamInfo = (teamType) => {
         const teamData = boxscore.teams[teamType];

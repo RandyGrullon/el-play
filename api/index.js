@@ -17,14 +17,12 @@ app.use(express.json());
 // Routes
 app.use('/api', routes);
 
+const errorHandler = require('./middleware/errorHandler');
+
+// ... (existing code)
+
 // Global Error Handler
-app.use((err, req, res, next) => {
-    console.error('Unhandled Error:', err.stack);
-    res.status(500).json({
-        error: 'Internal Server Error',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
-    });
-});
+app.use(errorHandler);
 
 // Start Server (Local Development)
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {

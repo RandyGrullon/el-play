@@ -1,6 +1,13 @@
+import React from 'react';
+import { Inning, Team } from '../../types';
 
+interface LineScoreProps {
+    innings: Inning[];
+    home: Team;
+    away: Team;
+}
 
-export const LineScore = ({ innings, home, away }) => {
+export const LineScore: React.FC<LineScoreProps> = ({ innings, home, away }) => {
     // Ensure we always show at least 9 innings
     const totalInnings = Math.max(9, innings ? innings.length : 9);
     const inningColumns = Array.from({ length: totalInnings }, (_, i) => i + 1);

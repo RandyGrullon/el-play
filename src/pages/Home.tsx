@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, ChevronRight, ChevronLeft } from 'lucide-react';
@@ -8,12 +7,14 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Standings } from '../components/game/Standings';
 import { Leaders } from '../components/game/Leaders';
+import { GameCardSkeleton } from '../components/game/GameCardSkeleton';
+import { ScheduleItem } from '../types';
 
-export const Home = () => {
-    const schedule = useSchedule();
-    const [standings, setStandings] = useState([]);
-    const [leaders, setLeaders] = useState([]);
-    const [selectedDate, setSelectedDate] = useState(() => {
+export const Home: React.FC = () => {
+    const { schedule, loading } = useSchedule() as { schedule: ScheduleItem[], loading: boolean };
+    const [standings, setStandings] = useState<any[]>([]);
+    const [leaders, setLeaders] = useState<any[]>([]);
+    const [selectedDate, setSelectedDate] = useState<string>(() => {
         return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' });
     });
 
@@ -22,7 +23,7 @@ export const Home = () => {
         fetchLeaders().then(setLeaders).catch(console.error);
     }, []);
 
-    const scrollRef = useRef(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (scrollRef.current && selectedDate) {
@@ -37,7 +38,7 @@ export const Home = () => {
 
     // Generate next 7 days for the date picker based on Santo Domingo time
     const dates = useMemo(() => {
-        const days = [];
+        const days: string[] = [];
         const today = new Date();
 
         for (let i = -3; i < 7; i++) {
@@ -144,7 +145,9 @@ export const Home = () => {
 
                 {/* Games Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-h-[200px]">
-                    {filteredGames.length > 0 ? (
+                    {loading ? (
+                        [...Array(3)].map((_, i) => <GameCardSkeleton key={i} />)
+                    ) : filteredGames.length > 0 ? (
                         filteredGames.map((game) => (
                             <Link key={game.gamePk} to={`/game/${game.gamePk}`}>
                                 <Card className="hover:bg-white/5 transition-all duration-300 group cursor-pointer border-l-4 border-l-transparent hover:border-l-cyan-400 h-full">
@@ -165,9 +168,10 @@ export const Home = () => {
                                                     alt={game.away.name}
                                                     className="w-10 h-10 object-contain"
                                                     onError={(e) => {
-                                                        e.target.onerror = null;
-                                                        e.target.style.display = 'none';
-                                                        e.target.nextSibling.style.display = 'flex';
+                                                        const target = e.target as HTMLImageElement;
+                                                        target.onerror = null;
+                                                        target.style.display = 'none';
+                                                        if (target.nextSibling) (target.nextSibling as HTMLElement).style.display = 'flex';
                                                     }}
                                                 />
                                                 <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs text-zinc-400 border border-white/5 hidden">
@@ -190,9 +194,10 @@ export const Home = () => {
                                                     alt={game.home.name}
                                                     className="w-10 h-10 object-contain"
                                                     onError={(e) => {
-                                                        e.target.onerror = null;
-                                                        e.target.style.display = 'none';
-                                                        e.target.nextSibling.style.display = 'flex';
+                                                        const target = e.target as HTMLImageElement;
+                                                        target.onerror = null;
+                                                        target.style.display = 'none';
+                                                        if (target.nextSibling) (target.nextSibling as HTMLElement).style.display = 'flex';
                                                     }}
                                                 />
                                                 <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs text-zinc-400 border border-white/5 hidden">
@@ -219,7 +224,7 @@ export const Home = () => {
                                                     <span className="text-[10px] font-bold text-zinc-600">B</span>
                                                     <div className="flex gap-1">
                                                         {[...Array(3)].map((_, i) => (
-                                                            <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < game.liveData.balls ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-zinc-800'}`} />
+                                                            <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < game.liveData!.balls ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-zinc-800'}`} />
                                                         ))}
                                                     </div>
                                                 </div>
@@ -228,7 +233,7 @@ export const Home = () => {
                                                     <span className="text-[10px] font-bold text-zinc-600">S</span>
                                                     <div className="flex gap-1">
                                                         {[...Array(2)].map((_, i) => (
-                                                            <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < game.liveData.strikes ? 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]' : 'bg-zinc-800'}`} />
+                                                            <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < game.liveData!.strikes ? 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]' : 'bg-zinc-800'}`} />
                                                         ))}
                                                     </div>
                                                 </div>
@@ -237,7 +242,7 @@ export const Home = () => {
                                                     <span className="text-[10px] font-bold text-zinc-600">O</span>
                                                     <div className="flex gap-1">
                                                         {[...Array(2)].map((_, i) => (
-                                                            <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < game.liveData.outs ? 'bg-yellow-500 shadow-[0_0_5px_rgba(234,179,8,0.5)]' : 'bg-zinc-800'}`} />
+                                                            <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < game.liveData!.outs ? 'bg-yellow-500 shadow-[0_0_5px_rgba(234,179,8,0.5)]' : 'bg-zinc-800'}`} />
                                                         ))}
                                                     </div>
                                                 </div>
@@ -250,11 +255,11 @@ export const Home = () => {
 
                                                 {/* Bases */}
                                                 {/* 2nd Base (Top) */}
-                                                <div className={`absolute top-0.5 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${game.liveData.runners.second ? 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'bg-zinc-700'}`} />
+                                                <div className={`absolute top-0.5 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${game.liveData!.runners.second ? 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'bg-zinc-700'}`} />
                                                 {/* 3rd Base (Left) */}
-                                                <div className={`absolute top-1/2 left-0.5 -translate-y-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${game.liveData.runners.third ? 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'bg-zinc-700'}`} />
+                                                <div className={`absolute top-1/2 left-0.5 -translate-y-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${game.liveData!.runners.third ? 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'bg-zinc-700'}`} />
                                                 {/* 1st Base (Right) */}
-                                                <div className={`absolute top-1/2 right-0.5 -translate-y-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${game.liveData.runners.first ? 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'bg-zinc-700'}`} />
+                                                <div className={`absolute top-1/2 right-0.5 -translate-y-1/2 w-2 h-2 rotate-45 border border-zinc-900 ${game.liveData!.runners.first ? 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'bg-zinc-700'}`} />
                                             </div>
                                         </div>
                                     )}

@@ -1,113 +1,55 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { fetchGameData, fetchSchedule } from '../services/api';
 
-export const useGameData = (gamePk, pollingInterval = 2000) => {
-  const [gameData, setGameData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [lastUpdated, setLastUpdated] = useState(null);
+export const useGameData = (gamePk) => {
+  const { data: gameData, isLoading, error, dataUpdatedAt } = useQuery({
+    queryKey: ['game', gamePk],
+    queryFn: () => fetchGameData(gamePk),
+    enabled: !!gamePk,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data) return 2000;
 
-  useEffect(() => {
-    if (!gamePk) return;
+      if (data.status === 'Final' || data.status === 'Game Over' || data.status === 'Completed') {
+        return 60000 * 5; // 5 minutes
+      } else if (data.status === 'Live' || data.status === 'In Progress') {
+        return 2000; // 2 seconds
+      } else {
+        // Preview / Scheduled logic
+        const gameTime = new Date(data.gameDate).getTime();
+        const now = new Date().getTime();
+        const diff = gameTime - now;
 
-    let timeoutId;
-    let isMounted = true;
-
-    const loadData = async () => {
-      try {
-        const data = await fetchGameData(gamePk);
-        if (isMounted) {
-          setGameData(data);
-          setLastUpdated(new Date());
-          setError(null);
-          setLoading(false);
-
-          // Calculate next poll interval
-          let nextPoll = pollingInterval; // Default 2s
-
-          if (data.status === 'Final' || data.status === 'Game Over' || data.status === 'Completed') {
-            nextPoll = 60000 * 5; // 5 minutes (effectively stop, but keep checking rarely)
-          } else if (data.status === 'Live' || data.status === 'In Progress') {
-            nextPoll = 2000; // 2 seconds
-          } else {
-            // Preview / Scheduled
-            const gameTime = new Date(data.gameDate).getTime();
-            const now = new Date().getTime();
-            const diff = gameTime - now;
-
-            if (diff > 60 * 60 * 1000) { // > 1 hour
-              nextPoll = 60000 * 10; // 10 minutes
-            } else if (diff > 5 * 60 * 1000) { // > 5 minutes
-              nextPoll = 60000; // 1 minute
-            } else {
-              nextPoll = 10000; // 10 seconds (close to start)
-            }
-          }
-
-          timeoutId = setTimeout(loadData, nextPoll);
-        }
-      } catch (err) {
-        console.error("Fetch error:", err);
-        if (isMounted) {
-          setError('Error connecting to live feed.');
-          setLoading(false);
-          // Retry after 10 seconds on error
-          timeoutId = setTimeout(loadData, 10000);
-        }
+        if (diff > 60 * 60 * 1000) return 60000 * 10; // > 1 hour -> 10 mins
+        if (diff > 5 * 60 * 1000) return 60000; // > 5 mins -> 1 min
+        return 10000; // Close to start -> 10s
       }
-    };
+    }
+  });
 
-    loadData();
-
-    return () => {
-      isMounted = false;
-      clearTimeout(timeoutId);
-    };
-  }, [gamePk]);
-
-  return { gameData, loading, error, lastUpdated };
+  return {
+    gameData,
+    loading: isLoading,
+    error: error ? error.message : null,
+    lastUpdated: dataUpdatedAt ? new Date(dataUpdatedAt) : null
+  };
 };
 
 export const useSchedule = () => {
-  const [schedule, setSchedule] = useState([]);
+  const { data: schedule = [], isLoading } = useQuery({
+    queryKey: ['schedule'],
+    queryFn: fetchSchedule,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data) return 60000;
 
-  useEffect(() => {
-    let timeoutId;
-    let isMounted = true;
+      const hasLiveGames = data.some(game =>
+        game.status === 'Live' || game.status === 'In Progress'
+      );
 
-    const loadSchedule = async () => {
-      try {
-        const data = await fetchSchedule();
-        if (isMounted) {
-          setSchedule(data);
+      return hasLiveGames ? 10000 : 60000;
+    }
+  });
 
-          // Check if any game is live
-          const hasLiveGames = data.some(game =>
-            game.status === 'Live' || game.status === 'In Progress'
-          );
-
-          // Adaptive polling: 2s if live games, 60s otherwise
-          const nextPoll = hasLiveGames ? 2000 : 60000;
-
-          timeoutId = setTimeout(loadSchedule, nextPoll);
-        }
-      } catch (err) {
-        console.error("Schedule error:", err);
-        if (isMounted) {
-          // Retry after 1 minute on error
-          timeoutId = setTimeout(loadSchedule, 60000);
-        }
-      }
-    };
-
-    loadSchedule();
-
-    return () => {
-      isMounted = false;
-      clearTimeout(timeoutId);
-    };
-  }, []);
-
-  return schedule;
+  return { schedule, loading: isLoading };
 };
-

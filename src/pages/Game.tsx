@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Activity, BarChart2 } from 'lucide-react';
+import { ArrowLeft, Activity, BarChart2 } from 'lucide-react';
 import { useGameData } from '../hooks/useGameData';
 import { Card } from '../components/ui/Card';
 import { Scoreboard } from '../components/game/Scoreboard';
@@ -8,19 +8,16 @@ import { BaseballDiamond } from '../components/game/BaseballDiamond';
 import { LineScore } from '../components/game/LineScore';
 import { StrikeZone } from '../components/game/StrikeZone';
 import { BoxScore } from '../components/game/BoxScore';
+import { GameDetailSkeleton } from '../components/game/GameDetailSkeleton';
+import { GameData } from '../types';
 
-export const Game = () => {
-    const { gamePk } = useParams();
-    const { gameData, loading, error } = useGameData(gamePk);
-    const [activeTab, setActiveTab] = useState('game');
+export const Game: React.FC = () => {
+    const { gamePk } = useParams<{ gamePk: string }>();
+    const { gameData, loading, error } = useGameData(gamePk) as { gameData: GameData | null, loading: boolean, error: string | null };
+    const [activeTab, setActiveTab] = useState<'game' | 'stats'>('game');
 
     if (loading && !gameData) {
-        return (
-            <div className="min-h-[50vh] flex flex-col items-center justify-center text-zinc-500 gap-4">
-                <RefreshCw className="w-8 h-8 animate-spin text-cyan-500" />
-                <span className="text-sm font-medium tracking-widest uppercase">Cargando Juego...</span>
-            </div>
-        );
+        return <GameDetailSkeleton />;
     }
 
     if (error) {
@@ -38,11 +35,13 @@ export const Game = () => {
     }
 
     // Fallback data if gameData is null but not loading (shouldn't happen often with the hook logic)
-    const displayData = gameData || {
+    const displayData: GameData = gameData || {
         status: "Unknown",
+        gameDate: "",
+        isTopInning: false,
         inning: "",
-        home: { name: "Home Team", abbreviation: "HOM", runs: 0, hits: 0, errors: 0, players: [] },
-        away: { name: "Away Team", abbreviation: "AWY", runs: 0, hits: 0, errors: 0, players: [] },
+        home: { id: 0, name: "Home Team", abbreviation: "HOM", logo: "", color: "", runs: 0, hits: 0, errors: 0, players: [] },
+        away: { id: 0, name: "Away Team", abbreviation: "AWY", logo: "", color: "", runs: 0, hits: 0, errors: 0, players: [] },
         count: { balls: 0, strikes: 0, outs: 0 },
         runners: { first: false, second: false, third: false },
         matchup: { pitcher: "N/A", batter: "N/A" },

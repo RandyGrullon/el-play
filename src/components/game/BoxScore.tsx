@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
+import { Team } from '../../types';
 
-export const BoxScore = ({ home, away }) => {
-    const [activeTab, setActiveTab] = useState('away'); // Default to away team (usually bats first)
+interface BoxScoreProps {
+    home: Team;
+    away: Team;
+}
+
+export const BoxScore: React.FC<BoxScoreProps> = ({ home, away }) => {
+    const [activeTab, setActiveTab] = useState<'home' | 'away'>('away'); // Default to away team (usually bats first)
 
     const activeTeam = activeTab === 'home' ? home : away;
 
-    const batters = activeTeam.players.filter(p => p.stats.batting && Object.keys(p.stats.batting).length > 0 && p.battingOrder);
-    const pitchers = activeTeam.players.filter(p => p.stats.pitching && Object.keys(p.stats.pitching).length > 0);
+    const batters = activeTeam.players?.filter(p => p.stats.batting && Object.keys(p.stats.batting).length > 0 && p.battingOrder) || [];
+    const pitchers = activeTeam.players?.filter(p => p.stats.pitching && Object.keys(p.stats.pitching).length > 0) || [];
 
     return (
         <div className="space-y-6">
@@ -15,8 +21,8 @@ export const BoxScore = ({ home, away }) => {
                 <button
                     onClick={() => setActiveTab('away')}
                     className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeTab === 'away'
-                            ? 'bg-zinc-800 text-white shadow-lg'
-                            : 'text-zinc-500 hover:text-zinc-300'
+                        ? 'bg-zinc-800 text-white shadow-lg'
+                        : 'text-zinc-500 hover:text-zinc-300'
                         }`}
                 >
                     {away.name}
@@ -24,8 +30,8 @@ export const BoxScore = ({ home, away }) => {
                 <button
                     onClick={() => setActiveTab('home')}
                     className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeTab === 'home'
-                            ? 'bg-zinc-800 text-white shadow-lg'
-                            : 'text-zinc-500 hover:text-zinc-300'
+                        ? 'bg-zinc-800 text-white shadow-lg'
+                        : 'text-zinc-500 hover:text-zinc-300'
                         }`}
                 >
                     {home.name}

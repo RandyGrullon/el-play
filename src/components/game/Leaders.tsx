@@ -1,7 +1,20 @@
 import React from 'react';
 import { Card } from '../ui/Card';
 
-export const Leaders = ({ leaders }) => {
+interface LeaderItem {
+    rank: number;
+    player: string;
+    team: string;
+    teamLogo: string;
+    value: string;
+    statName: string;
+}
+
+interface LeadersProps {
+    leaders: LeaderItem[];
+}
+
+export const Leaders: React.FC<LeadersProps> = ({ leaders }) => {
     if (!leaders) return null;
 
     return (
@@ -19,7 +32,7 @@ export const Leaders = ({ leaders }) => {
                                         src={player.teamLogo}
                                         alt={player.team}
                                         className="w-3 h-3 object-contain"
-                                        onError={(e) => e.target.style.display = 'none'}
+                                        onError={(e) => (e.currentTarget.style.display = 'none')}
                                     />
                                     {player.team}
                                 </div>

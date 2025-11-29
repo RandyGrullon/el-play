@@ -1,8 +1,14 @@
 import React from 'react';
+import { Runners } from '../../types';
 
-export const BaseballDiamond = ({ runners, teamColor = '#fbbf24' }) => {
+interface BaseballDiamondProps {
+    runners: Runners;
+    teamColor?: string;
+}
 
-    const getBaseStyle = (isActive) => {
+export const BaseballDiamond: React.FC<BaseballDiamondProps> = ({ runners, teamColor = '#fbbf24' }) => {
+
+    const getBaseStyle = (isActive: boolean) => {
         if (!isActive) return {};
         return {
             backgroundColor: teamColor,

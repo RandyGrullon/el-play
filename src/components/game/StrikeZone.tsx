@@ -1,6 +1,11 @@
 import React from 'react';
+import { Pitch } from '../../types';
 
-export const StrikeZone = ({ pitches = [] }) => {
+interface StrikeZoneProps {
+    pitches?: Pitch[];
+}
+
+export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches = [] }) => {
     // Constants for scaling (in feet)
     const SCALE = 60; // pixels per foot
     const WIDTH = 200; // SVG width
@@ -26,7 +31,7 @@ export const StrikeZone = ({ pitches = [] }) => {
     const zoneWidth = PLATE_WIDTH * SCALE;
     const zoneHeight = (szTop - szBottom) * SCALE;
 
-    const getPitchColor = (code) => {
+    const getPitchColor = (code: string) => {
         if (['S', 'C', 'W'].includes(code)) { // Strike, Called Strike, Whiff
             return 'fill-red-600';
         } else if (['B'].includes(code)) { // Ball

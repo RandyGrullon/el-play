@@ -1,7 +1,23 @@
 import React from 'react';
 import { Card } from '../ui/Card';
 
-export const Standings = ({ standings }) => {
+interface StandingItem {
+    team: {
+        id: number;
+        name: string;
+        logo: string;
+    };
+    wins: number;
+    losses: number;
+    pct: string;
+    gamesBack: string;
+}
+
+interface StandingsProps {
+    standings: StandingItem[];
+}
+
+export const Standings: React.FC<StandingsProps> = ({ standings }) => {
     if (!standings) return null;
 
     return (
@@ -27,7 +43,7 @@ export const Standings = ({ standings }) => {
                                             src={team.team.logo}
                                             alt={team.team.name}
                                             className="w-6 h-6 object-contain"
-                                            onError={(e) => e.target.style.display = 'none'}
+                                            onError={(e) => (e.currentTarget.style.display = 'none')}
                                         />
                                         <span>{team.team.name}</span>
                                     </div>
