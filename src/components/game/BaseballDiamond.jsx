@@ -1,6 +1,16 @@
 import React from 'react';
 
-export const BaseballDiamond = ({ runners }) => {
+export const BaseballDiamond = ({ runners, teamColor = '#fbbf24' }) => {
+
+    const getBaseStyle = (isActive) => {
+        if (!isActive) return {};
+        return {
+            backgroundColor: teamColor,
+            borderColor: '#ffffff',
+            boxShadow: `0 0 15px ${teamColor}80`
+        };
+    };
+
     return (
         <div className="relative w-48 h-48 mx-auto my-4">
             {/* Field Background - Rotated Square */}
@@ -13,22 +23,22 @@ export const BaseballDiamond = ({ runners }) => {
                     {/* Bases */}
 
                     {/* 2nd Base (Top) */}
-                    <div className={`absolute -top-3 -left-3 w-6 h-6 border-2 transform -rotate-45 transition-all duration-500 ${runners.second
-                            ? 'bg-amber-400 border-amber-200 shadow-[0_0_15px_rgba(251,191,36,0.5)]'
-                            : 'bg-zinc-700 border-zinc-600'
-                        }`} />
+                    <div
+                        className={`absolute -top-3 -left-3 w-6 h-6 border-2 transform -rotate-45 transition-all duration-500 ${!runners.second ? 'bg-zinc-700 border-zinc-600' : ''}`}
+                        style={getBaseStyle(runners.second)}
+                    />
 
                     {/* 1st Base (Right) */}
-                    <div className={`absolute -top-3 -right-3 w-6 h-6 border-2 transform -rotate-45 transition-all duration-500 ${runners.first
-                            ? 'bg-amber-400 border-amber-200 shadow-[0_0_15px_rgba(251,191,36,0.5)]'
-                            : 'bg-zinc-700 border-zinc-600'
-                        }`} />
+                    <div
+                        className={`absolute -top-3 -right-3 w-6 h-6 border-2 transform -rotate-45 transition-all duration-500 ${!runners.first ? 'bg-zinc-700 border-zinc-600' : ''}`}
+                        style={getBaseStyle(runners.first)}
+                    />
 
                     {/* 3rd Base (Left) */}
-                    <div className={`absolute -bottom-3 -left-3 w-6 h-6 border-2 transform -rotate-45 transition-all duration-500 ${runners.third
-                            ? 'bg-amber-400 border-amber-200 shadow-[0_0_15px_rgba(251,191,36,0.5)]'
-                            : 'bg-zinc-700 border-zinc-600'
-                        }`} />
+                    <div
+                        className={`absolute -bottom-3 -left-3 w-6 h-6 border-2 transform -rotate-45 transition-all duration-500 ${!runners.third ? 'bg-zinc-700 border-zinc-600' : ''}`}
+                        style={getBaseStyle(runners.third)}
+                    />
 
                     {/* Home Plate (Bottom) */}
                     <div className="absolute -bottom-3 -right-3 w-6 h-6 bg-zinc-400 border-2 border-zinc-300 transform -rotate-45"

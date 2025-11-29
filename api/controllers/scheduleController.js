@@ -9,7 +9,10 @@ const getSchedule = async (req, res, next) => {
         const formatter = new Intl.DateTimeFormat('en-CA', options); // Returns YYYY-MM-DD
 
         const today = new Date();
-        const startDate = formatter.format(today);
+
+        const pastDate = new Date(today);
+        pastDate.setDate(today.getDate() - 3);
+        const startDate = formatter.format(pastDate);
 
         const nextWeek = new Date(today);
         nextWeek.setDate(today.getDate() + 7);

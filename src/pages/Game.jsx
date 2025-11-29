@@ -52,6 +52,9 @@ export const Game = () => {
         innings: []
     };
 
+    // Determine batting team
+    const battingTeam = displayData.isTopInning ? displayData.away : displayData.home;
+
     return (
         <div className="space-y-6">
             <Link to="/" className="inline-flex items-center gap-2 text-zinc-500 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest">
@@ -113,7 +116,9 @@ export const Game = () => {
                                 {/* Mobile Batter Indicator */}
                                 <div className="md:hidden w-full bg-zinc-900/50 border border-white/5 rounded-lg p-3 flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold text-xs">B</div>
+                                        <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden border border-white/10">
+                                            <img src={battingTeam.logo} alt={battingTeam.name} className="w-8 h-8 object-contain" />
+                                        </div>
                                         <div>
                                             <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Al Bate</div>
                                             <div className="text-sm font-bold text-white">{displayData.matchup.batter}</div>
@@ -129,7 +134,7 @@ export const Game = () => {
 
                                 {/* Diamond - "Poco más pequeño" */}
                                 <div className="transform scale-90 origin-top">
-                                    <BaseballDiamond runners={displayData.runners} />
+                                    <BaseballDiamond runners={displayData.runners} teamColor={battingTeam.color} />
 
                                     {/* Count Indicators */}
                                     <div className="flex justify-center gap-6 mt-4">
@@ -167,7 +172,13 @@ export const Game = () => {
                                     <div className="bg-zinc-900/30 p-4 rounded-xl border border-white/5">
                                         <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Lanzador</h3>
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-500">P</div>
+                                            <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden border border-white/10">
+                                                <img
+                                                    src={displayData.isTopInning ? displayData.home.logo : displayData.away.logo}
+                                                    alt="Pitching Team"
+                                                    className="w-8 h-8 object-contain"
+                                                />
+                                            </div>
                                             <div>
                                                 <div className="font-bold text-zinc-200 text-sm md:text-base">{displayData.matchup.pitcher}</div>
                                                 <div className="text-[10px] md:text-xs text-zinc-500">Lanzando</div>
@@ -177,7 +188,13 @@ export const Game = () => {
                                     <div className="bg-zinc-900/30 p-4 rounded-xl border border-white/5">
                                         <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Bateador</h3>
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-500">B</div>
+                                            <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden border border-white/10">
+                                                <img
+                                                    src={battingTeam.logo}
+                                                    alt="Batting Team"
+                                                    className="w-8 h-8 object-contain"
+                                                />
+                                            </div>
                                             <div>
                                                 <div className="font-bold text-zinc-200 text-sm md:text-base">{displayData.matchup.batter}</div>
                                                 <div className="text-[10px] md:text-xs text-zinc-500">Al Bate</div>

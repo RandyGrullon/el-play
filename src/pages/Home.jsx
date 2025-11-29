@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useSchedule } from '../hooks/useGameData';
@@ -22,12 +22,25 @@ export const Home = () => {
         fetchLeaders().then(setLeaders).catch(console.error);
     }, []);
 
+    const scrollRef = useRef(null);
+
+    useEffect(() => {
+        if (scrollRef.current && selectedDate) {
+            const selectedEl = document.getElementById(`date-${selectedDate}`);
+            if (selectedEl) {
+                const container = scrollRef.current;
+                const scrollLeft = selectedEl.offsetLeft - (container.clientWidth / 2) + (selectedEl.clientWidth / 2);
+                container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+            }
+        }
+    }, [selectedDate]);
+
     // Generate next 7 days for the date picker based on Santo Domingo time
     const dates = useMemo(() => {
         const days = [];
         const today = new Date();
 
-        for (let i = 0; i < 7; i++) {
+        for (let i = -3; i < 7; i++) {
             const date = new Date(today);
             date.setDate(today.getDate() + i);
             const dateStr = date.toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' });
@@ -83,7 +96,10 @@ export const Home = () => {
 
                 {/* Draggable Date Strip */}
                 <div className="relative group">
-                    <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x">
+                    <div
+                        ref={scrollRef}
+                        className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x"
+                    >
                         {dates.map((date) => {
                             // Create date object for display, forcing noon to avoid shifts
                             const d = new Date(date + 'T12:00:00');
@@ -97,6 +113,7 @@ export const Home = () => {
                             return (
                                 <button
                                     key={date}
+                                    id={`date-${date}`}
                                     onClick={() => setSelectedDate(date)}
                                     className={`
                                         flex-shrink-0 snap-start flex flex-col items-center justify-center w-16 h-20 rounded-2xl border transition-all duration-300
@@ -157,6 +174,11 @@ export const Home = () => {
                                                     {game.away.abbrev}
                                                 </div>
                                                 <span className="font-bold text-zinc-200">{game.away.name}</span>
+                                                {(game.status === 'Live' || game.status === 'In Progress') && game.liveData?.isTopInning && (
+                                                    <svg className="w-4 h-4 text-cyan-400 fill-current" viewBox="0 0 24 24">
+                                                        <path d="M19.9 12.6L12.6 19.9L2.1 9.4L9.4 2.1L19.9 12.6ZM21.3 14L14 21.3C13.6 21.7 13 21.7 12.6 21.3L11.9 20.6L20.6 11.9L21.3 12.6C21.7 13 21.7 13.6 21.3 14Z" />
+                                                    </svg>
+                                                )}
                                             </div>
                                             <span className="text-xl font-black text-white">{game.away.score}</span>
                                         </div>
@@ -177,6 +199,11 @@ export const Home = () => {
                                                     {game.home.abbrev}
                                                 </div>
                                                 <span className="font-bold text-zinc-200">{game.home.name}</span>
+                                                {(game.status === 'Live' || game.status === 'In Progress') && !game.liveData?.isTopInning && (
+                                                    <svg className="w-4 h-4 text-cyan-400 fill-current" viewBox="0 0 24 24">
+                                                        <path d="M19.9 12.6L12.6 19.9L2.1 9.4L9.4 2.1L19.9 12.6ZM21.3 14L14 21.3C13.6 21.7 13 21.7 12.6 21.3L11.9 20.6L20.6 11.9L21.3 12.6C21.7 13 21.7 13.6 21.3 14Z" />
+                                                    </svg>
+                                                )}
                                             </div>
                                             <span className="text-xl font-black text-white">{game.home.score}</span>
                                         </div>

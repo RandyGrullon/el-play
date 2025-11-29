@@ -1,3 +1,5 @@
+const { LIDOM_TEAMS } = require('../config/constants');
+
 /**
  * Transform raw MLB Game Data into clean app format
  */
@@ -10,6 +12,7 @@ const transformGameData = (data) => {
     const getTeamInfo = (teamType) => {
         const teamData = boxscore.teams[teamType];
         const teamId = teamData.team.id;
+        const lidomTeam = LIDOM_TEAMS[teamId] || LIDOM_TEAMS[String(teamId)] || {};
 
         // Extract players
         const players = Object.values(teamData.players)
@@ -35,6 +38,7 @@ const transformGameData = (data) => {
             name: teamData.team.name,
             abbreviation: teamData.team.abbreviation,
             logo: `https://www.mlbstatic.com/team-logos/${teamId}.svg`,
+            color: lidomTeam.color || '#000000', // Default to black if not found
             runs: linescore.teams[teamType].runs || 0,
             hits: linescore.teams[teamType].hits || 0,
             errors: linescore.teams[teamType].errors || 0,
@@ -143,6 +147,8 @@ const transformGameData = (data) => {
 
     return {
         status: gameStatus,
+        gameDate: data.gameData.datetime.dateTime,
+        isTopInning: linescore.isTopInning,
         inning: `${linescore.isTopInning ? 'Top' : 'Bot'} ${linescore.currentInningOrdinal || ''}`,
         home: getTeamInfo('home'),
         away: getTeamInfo('away'),
