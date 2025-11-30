@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, ChevronRight, ChevronLeft, Heart, Bell, MapPin } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faBaseballBatBall } from '@fortawesome/free-solid-svg-icons';
 import { useSchedule } from '../hooks/useGameData';
 import { useFavoriteTeam } from '../hooks/useFavoriteTeam';
+import { useAnalytics } from '../hooks/useAnalytics';
 import { fetchStandings, fetchLeaders } from '../services/api';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -23,6 +26,7 @@ const TEAM_COLORS: Record<number, string> = {
 export const Home: React.FC = () => {
     const { schedule, loading } = useSchedule() as { schedule: ScheduleItem[], loading: boolean };
     const { favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription } = useFavoriteTeam();
+    const { trackNotificationSubscribe, trackNotificationUnsubscribe } = useAnalytics();
     const [standings, setStandings] = useState<any[]>([]);
     const [leaders, setLeaders] = useState<any[]>([]);
     const [selectedDate, setSelectedDate] = useState<string>(() => {
@@ -81,6 +85,19 @@ export const Home: React.FC = () => {
             return 0;
         });
     }, [filteredGames, favoriteTeamId]);
+
+    // Wrapper function for game subscription with analytics tracking
+    const handleGameSubscription = async (gamePk: number, teamName: string) => {
+        const wasSubscribed = subscribedGames.includes(gamePk);
+        await toggleGameSubscription(gamePk);
+
+        // Track the action
+        if (wasSubscribed) {
+            trackNotificationUnsubscribe(gamePk.toString());
+        } else {
+            trackNotificationSubscribe(gamePk.toString(), teamName);
+        }
+    };
 
     // Notification Logic
     useEffect(() => {
@@ -144,6 +161,31 @@ export const Home: React.FC = () => {
         if (currentIndex < dates.length - 1) {
             setSelectedDate(dates[currentIndex + 1]);
         }
+    };
+
+    const getGameStatus = (game: ScheduleItem) => {
+        const now = new Date();
+        const gameDate = new Date(game.date);
+        const timeDiff = gameDate.getTime() - now.getTime();
+        const minutesDiff = timeDiff / (1000 * 60);
+
+        if (game.status === 'Final' || game.status === 'Game Over') {
+            return { text: 'Ended', variant: 'default' as const };
+        }
+
+        if (game.status === 'Live' || game.status === 'In Progress') {
+            return { text: 'In Progress', variant: 'live' as const };
+        }
+
+        if (minutesDiff > 0 && minutesDiff <= 10) {
+            return { text: 'Starting', variant: 'live' as const };
+        }
+
+        if (minutesDiff > 0 && minutesDiff <= 30) {
+            return { text: 'Preparing', variant: 'default' as const };
+        }
+
+        return { text: "", variant: 'default' as const };
     };
 
     return (
@@ -225,23 +267,37 @@ export const Home: React.FC = () => {
                             <Link key={game.gamePk} to={`/game/${game.gamePk}`}>
                                 <Card className="hover:bg-white/5 transition-all duration-300 group cursor-pointer border-l-4 border-l-transparent hover:border-l-cyan-400 h-full">
                                     <div className="flex justify-between items-center mb-4">
-                                        <Badge variant={game.status === 'Live' || game.status === 'In Progress' ? 'live' : 'default'}>
-                                            {game.status}
-                                        </Badge>
+                                        {(() => {
+                                            const status = getGameStatus(game);
+                                            return (
+                                                <Badge variant={status.variant}>
+                                                    {status.text}
+                                                </Badge>
+                                            );
+                                        })()}
                                         <div className="flex items-center gap-3">
                                             <button
                                                 onClick={(e) => {
                                                     e.preventDefault();
-                                                    toggleGameSubscription(game.gamePk);
+                                                    handleGameSubscription(game.gamePk, `${game.away.name} vs ${game.home.name}`);
                                                 }}
                                                 className={`transition-colors ${subscribedGames.includes(game.gamePk) ? 'text-cyan-400' : 'text-zinc-600 hover:text-zinc-400'}`}
                                                 title={subscribedGames.includes(game.gamePk) ? "Desactivar notificación" : "Activar notificación"}
                                             >
                                                 <Bell className={`w-4 h-4 ${subscribedGames.includes(game.gamePk) ? 'fill-current' : ''}`} />
                                             </button>
-                                            <span className="text-xs text-zinc-500 font-medium">
-                                                {new Date(game.date).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/La_Paz' })}
-                                            </span>
+                                            {/* Show inning if game is live, otherwise show time if not started */}
+                                            {(game.status === 'Live' || game.status === 'In Progress') && game.liveData?.inning ? (
+                                                <div className="flex items-center gap-1.5 bg-cyan-500/10 border border-cyan-500/20 px-3 py-1.5 rounded-full">
+                                                    <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                                                        {game.liveData.isTopInning ? '▲' : '▼'} {game.liveData.inning}
+                                                    </span>
+                                                </div>
+                                            ) : game.status !== 'Final' && game.status !== 'Game Over' ? (
+                                                <span className="text-xs text-zinc-500 font-medium">
+                                                    {new Date(game.date).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/La_Paz' })}
+                                                </span>
+                                            ) : null}
                                         </div>
                                     </div>
 
@@ -277,9 +333,7 @@ export const Home: React.FC = () => {
                                                     </span>
                                                 </div>
                                                 {(game.status === 'Live' || game.status === 'In Progress') && game.liveData?.isTopInning && (
-                                                    <svg className="w-4 h-4 text-cyan-400 fill-current" viewBox="0 0 24 24">
-                                                        <path d="M19.9 12.6L12.6 19.9L2.1 9.4L9.4 2.1L19.9 12.6ZM21.3 14L14 21.3C13.6 21.7 13 21.7 12.6 21.3L11.9 20.6L20.6 11.9L21.3 12.6C21.7 13 21.7 13.6 21.3 14Z" />
-                                                    </svg>
+                                                    <FontAwesomeIcon icon={faBaseballBatBall} className="w-4 h-4 text-cyan-400" />
                                                 )}
                                             </div>
                                             <span className="text-xl font-black text-white">{game.away.score}</span>
@@ -316,9 +370,7 @@ export const Home: React.FC = () => {
                                                     </span>
                                                 </div>
                                                 {(game.status === 'Live' || game.status === 'In Progress') && !game.liveData?.isTopInning && (
-                                                    <svg className="w-4 h-4 text-cyan-400 fill-current" viewBox="0 0 24 24">
-                                                        <path d="M19.9 12.6L12.6 19.9L2.1 9.4L9.4 2.1L19.9 12.6ZM21.3 14L14 21.3C13.6 21.7 13 21.7 12.6 21.3L11.9 20.6L20.6 11.9L21.3 12.6C21.7 13 21.7 13.6 21.3 14Z" />
-                                                    </svg>
+                                                    <FontAwesomeIcon icon={faBaseballBatBall} className="w-4 h-4 text-cyan-400" />
                                                 )}
                                             </div>
                                             <span className="text-xl font-black text-white">{game.home.score}</span>
