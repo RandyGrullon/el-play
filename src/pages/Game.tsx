@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Activity, BarChart2 } from 'lucide-react';
 import { useGameData } from '../hooks/useGameData';
+import { useAnalytics } from '../hooks/useAnalytics';
 import { Card } from '../components/ui/Card';
 import { Scoreboard } from '../components/game/Scoreboard';
 import { BaseballDiamond } from '../components/game/BaseballDiamond';
@@ -16,6 +17,22 @@ export const Game: React.FC = () => {
     const { gamePk } = useParams<{ gamePk: string }>();
     const { gameData, loading, error } = useGameData(gamePk) as { gameData: GameData | null, loading: boolean, error: string | null };
     const [activeTab, setActiveTab] = useState<'game' | 'stats'>('game');
+    const { trackGameView, trackTabChange } = useAnalytics();
+
+    // Track game view when component mounts and gameData is available
+    useEffect(() => {
+        if (gameData && gamePk) {
+            trackGameView(gamePk, gameData.home.name, gameData.away.name);
+        }
+    }, [gameData, gamePk]);
+
+    // Track tab changes
+    const handleTabChange = (tab: 'game' | 'stats') => {
+        setActiveTab(tab);
+        if (gamePk) {
+            trackTabChange(gamePk, tab);
+        }
+    };
 
     if (loading && !gameData) {
         return <GameDetailSkeleton />;
@@ -81,7 +98,7 @@ export const Game: React.FC = () => {
                 <div className="flex justify-center mt-6 mb-6">
                     <div className="flex bg-zinc-900/50 p-1 rounded-full border border-white/5">
                         <button
-                            onClick={() => setActiveTab('game')}
+                            onClick={() => handleTabChange('game')}
                             className={`flex items-center gap-2 px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'game'
                                 ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]'
                                 : 'text-zinc-500 hover:text-zinc-300'
@@ -91,7 +108,7 @@ export const Game: React.FC = () => {
                             {displayData.status === 'Final' || displayData.status === 'Game Over' ? 'Resumen' : 'En Vivo'}
                         </button>
                         <button
-                            onClick={() => setActiveTab('stats')}
+                            onClick={() => handleTabChange('stats')}
                             className={`flex items-center gap-2 px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'stats'
                                 ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]'
                                 : 'text-zinc-500 hover:text-zinc-300'

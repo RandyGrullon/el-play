@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Activity } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Home } from './pages/Home';
 import { Game } from './pages/Game';
 
@@ -59,6 +61,10 @@ function App() {
                     </main>
 
                 </div>
+
+                {/* Vercel Analytics & Speed Insights */}
+                <Analytics />
+                <SpeedInsights />
             </div>
         </Router>
     );
