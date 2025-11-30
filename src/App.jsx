@@ -8,6 +8,8 @@ import { Game } from './pages/Game';
 
 import { SplashLoader } from './components/ui/SplashLoader';
 
+import { UpdateModal } from './components/common/UpdateModal';
+
 function App() {
     const [isLoading, setIsLoading] = React.useState(true);
 
@@ -27,6 +29,7 @@ function App() {
     return (
         <Router>
             <div className="min-h-screen bg-zinc-950 text-white font-sans selection:bg-cyan-500/30">
+                <UpdateModal />
 
                 {/* Background Gradient Mesh */}
                 <div className="fixed inset-0 pointer-events-none overflow-hidden">

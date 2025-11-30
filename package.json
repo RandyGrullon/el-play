@@ -6,7 +6,7 @@
         "dev": "concurrently \"npm run server\" \"npm run client\"",
         "server": "nodemon api/index.js",
         "client": "vite",
-        "build": "tsc && vite build",
+        "build": "node generate-version.js && tsc && vite build",
         "preview": "vite preview"
     },
     "dependencies": {
