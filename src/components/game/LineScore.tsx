@@ -17,7 +17,7 @@ export const LineScore: React.FC<LineScoreProps> = ({ innings, home, away }) => 
             <table className="w-full text-center border-collapse text-[10px] md:text-sm">
                 <thead>
                     <tr className="border-b border-white/10 text-zinc-500 uppercase">
-                        <th className="py-2 text-left font-bold w-10 md:w-20">Eq</th>
+                        <th className="py-2 text-left font-bold w-16 md:w-24">Eq</th>
                         {inningColumns.map(num => (
                             <th key={num} className="py-2 w-auto md:w-8 font-medium">{num}</th>
                         ))}
@@ -29,8 +29,17 @@ export const LineScore: React.FC<LineScoreProps> = ({ innings, home, away }) => 
                 <tbody className="text-zinc-300 font-medium">
                     {/* Away Team Row */}
                     <tr className="border-b border-white/5">
-                        <td className="py-2 text-left font-bold text-white">
-                            {away.abbreviation}
+                        <td className="py-2 text-left">
+                            <div className="flex items-center gap-2">
+                                <img
+                                    src={away.logo}
+                                    alt={away.name}
+                                    className="w-5 h-5 md:w-6 md:h-6 object-contain"
+                                />
+                                <span className="font-bold text-white text-xs md:text-sm">
+                                    {away.abbreviation}
+                                </span>
+                            </div>
                         </td>
                         {inningColumns.map((num, i) => {
                             const score = innings && innings[i] ? innings[i].away : (i < innings?.length ? 0 : '-');
@@ -47,8 +56,17 @@ export const LineScore: React.FC<LineScoreProps> = ({ innings, home, away }) => 
 
                     {/* Home Team Row */}
                     <tr>
-                        <td className="py-2 text-left font-bold text-white">
-                            {home.abbreviation}
+                        <td className="py-2 text-left">
+                            <div className="flex items-center gap-2">
+                                <img
+                                    src={home.logo}
+                                    alt={home.name}
+                                    className="w-5 h-5 md:w-6 md:h-6 object-contain"
+                                />
+                                <span className="font-bold text-white text-xs md:text-sm">
+                                    {home.abbreviation}
+                                </span>
+                            </div>
                         </td>
                         {inningColumns.map((num, i) => {
                             const displayScore = innings && innings[i] ? innings[i].home : '-';
