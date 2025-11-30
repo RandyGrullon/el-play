@@ -1,0 +1,2996 @@
+{
+  "scheduleSample": {
+    "gamePk": 826279,
+    "status": "In Progress",
+    "date": "2025-11-30T20:00:00Z",
+    "venue": "Estadio Quisqueya Juan Marichal",
+    "away": {
+      "id": 669,
+      "name": "Estrellas Orientales",
+      "abbrev": "UNK",
+      "logo": "https://www.mlbstatic.com/team-logos/669.svg",
+      "color": "#ffffff",
+      "score": 1
+    },
+    "home": {
+      "id": 671,
+      "name": "Leones del Escogido",
+      "abbrev": "ESC",
+      "logo": "https://www.mlbstatic.com/team-logos/671.svg",
+      "color": "#E31837",
+      "score": 5
+    },
+    "liveData": {
+      "inning": "8th",
+      "isTopInning": false,
+      "balls": 2,
+      "strikes": 1,
+      "outs": 2,
+      "runners": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "batter": {
+        "id": 600474,
+        "name": "Pedro Severino"
+      },
+      "pitcher": {
+        "id": 660600,
+        "name": "Enoli Paredes"
+      }
+    }
+  },
+  "gameDetailSample": {
+    "status": "In Progress",
+    "gameDate": "2025-11-30T20:00:00Z",
+    "venue": "Estadio Quisqueya Juan Marichal",
+    "isTopInning": false,
+    "inning": "Bot 8th",
+    "home": {
+      "id": 671,
+      "name": "Leones del Escogido",
+      "logo": "https://www.mlbstatic.com/team-logos/671.svg",
+      "color": "#E31837",
+      "runs": 5,
+      "hits": 5,
+      "errors": 1,
+      "players": [
+        {
+          "id": 672744,
+          "name": "Alexander Canario",
+          "position": "OF",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 664042,
+          "name": "Travis Lakins Sr.",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 644433,
+          "name": "Chadwick Tromp",
+          "position": "C",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 623214,
+          "name": "Abiatal Avelino",
+          "position": "SS",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 609274,
+          "name": "Elier Hernandez",
+          "position": "CF",
+          "battingOrder": "700",
+          "stats": {
+            "batting": {
+              "summary": "1-4 | 2B, RBI, SB",
+              "gamesPlayed": 1,
+              "flyOuts": 1,
+              "groundOuts": 1,
+              "airOuts": 2,
+              "runs": 0,
+              "doubles": 1,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 1,
+              "hitByPitch": 0,
+              "atBats": 4,
+              "caughtStealing": 0,
+              "stolenBases": 1,
+              "stolenBasePercentage": "1.000",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 4,
+              "totalBases": 2,
+              "rbi": 1,
+              "leftOnBase": 5,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 0,
+              "lineOuts": 1
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 666301,
+          "name": "Indigo Diaz",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 622761,
+          "name": "Jorge Mateo",
+          "position": "SS",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 628345,
+          "name": "Darien Núñez",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 642607,
+          "name": "Dario Agrazal",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 678371,
+          "name": "Ivan Armstrong",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 683638,
+          "name": "Joel Valdez",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 570481,
+          "name": "Erik González",
+          "position": "SS",
+          "battingOrder": "200",
+          "stats": {
+            "batting": {
+              "summary": "1-3 | BB, R",
+              "gamesPlayed": 1,
+              "flyOuts": 0,
+              "groundOuts": 2,
+              "airOuts": 0,
+              "runs": 1,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 1,
+              "intentionalWalks": 0,
+              "hits": 1,
+              "hitByPitch": 0,
+              "atBats": 3,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 4,
+              "totalBases": 1,
+              "rbi": 0,
+              "leftOnBase": 1,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 0,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 608746,
+          "name": "Cesilio Pimentel",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 570482,
+          "name": "Gio Urshela",
+          "position": "3B",
+          "battingOrder": "400",
+          "stats": {
+            "batting": {
+              "summary": "0-4 | RBI",
+              "gamesPlayed": 1,
+              "flyOuts": 1,
+              "groundOuts": 3,
+              "airOuts": 1,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 4,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 1,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 4,
+              "totalBases": 0,
+              "rbi": 1,
+              "leftOnBase": 5,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 0,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 674375,
+          "name": "Dayeison Arias",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 672795,
+          "name": "Samuel Reyes",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 691176,
+          "name": "Jasson Domínguez",
+          "position": "OF",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 673945,
+          "name": "Freuddy Batista",
+          "position": "C",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 665782,
+          "name": "Luis De Los Santos",
+          "position": "3B",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 650204,
+          "name": "Norge Ruiz",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {
+              "summary": "5.2 IP, ER, K, 0 BB",
+              "gamesPlayed": 1,
+              "gamesStarted": 1,
+              "flyOuts": 8,
+              "groundOuts": 7,
+              "airOuts": 10,
+              "runs": 1,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 1,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 1,
+              "hitByPitch": 0,
+              "atBats": 19,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "numberOfPitches": 66,
+              "inningsPitched": "5.2",
+              "wins": 0,
+              "losses": 0,
+              "saves": 0,
+              "saveOpportunities": 0,
+              "holds": 0,
+              "blownSaves": 0,
+              "earnedRuns": 1,
+              "battersFaced": 19,
+              "outs": 17,
+              "gamesPitched": 1,
+              "completeGames": 0,
+              "shutouts": 0,
+              "pitchesThrown": 66,
+              "balls": 20,
+              "strikes": 46,
+              "strikePercentage": ".700",
+              "hitBatsmen": 0,
+              "balks": 0,
+              "wildPitches": 0,
+              "pickoffs": 0,
+              "rbi": 0,
+              "gamesFinished": 0,
+              "runsScoredPer9": "1.59",
+              "homeRunsPer9": "0.00",
+              "inheritedRunners": 0,
+              "inheritedRunnersScored": 0,
+              "catchersInterference": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "passedBall": 0,
+              "popOuts": 1,
+              "lineOuts": 1
+            }
+          }
+        },
+        {
+          "id": 622492,
+          "name": "Keury Mella",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 665789,
+          "name": "Kenny Hernandez",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 593647,
+          "name": "Sócrates Brito",
+          "position": "OF",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 622772,
+          "name": "Jimmy Cordero",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 805319,
+          "name": "Dervy Ventura",
+          "position": "PR",
+          "battingOrder": "501",
+          "stats": {
+            "batting": {
+              "note": "1-",
+              "summary": "0-0 | SB",
+              "gamesPlayed": 1,
+              "flyOuts": 0,
+              "groundOuts": 0,
+              "airOuts": 0,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 0,
+              "caughtStealing": 0,
+              "stolenBases": 1,
+              "stolenBasePercentage": "1.000",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 0,
+              "totalBases": 0,
+              "rbi": 0,
+              "leftOnBase": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 0,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 606930,
+          "name": "Jacob Barnes",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 642758,
+          "name": "Domingo Acevedo",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 517370,
+          "name": "Jimmy Paredes",
+          "position": "OF",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 650893,
+          "name": "Génesis Cabrera",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 691322,
+          "name": "Hansel Marcelino",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 456501,
+          "name": "Johnny Cueto",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 472551,
+          "name": "Fernando Abad",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 516809,
+          "name": "Junior Lake",
+          "position": "LF",
+          "battingOrder": "100",
+          "stats": {
+            "batting": {
+              "summary": "1-3 | BB, K, R",
+              "gamesPlayed": 1,
+              "flyOuts": 0,
+              "groundOuts": 0,
+              "airOuts": 1,
+              "runs": 1,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 1,
+              "baseOnBalls": 1,
+              "intentionalWalks": 0,
+              "hits": 1,
+              "hitByPitch": 0,
+              "atBats": 3,
+              "caughtStealing": 0,
+              "stolenBases": 1,
+              "stolenBasePercentage": "1.000",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 4,
+              "totalBases": 1,
+              "rbi": 0,
+              "leftOnBase": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 0,
+              "lineOuts": 1
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 600474,
+          "name": "Pedro Severino",
+          "position": "C",
+          "battingOrder": "900",
+          "stats": {
+            "batting": {
+              "summary": "0-4 | K",
+              "gamesPlayed": 1,
+              "flyOuts": 1,
+              "groundOuts": 1,
+              "airOuts": 2,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 1,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 4,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 4,
+              "totalBases": 0,
+              "rbi": 0,
+              "leftOnBase": 5,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 1,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 683583,
+          "name": "Yorlin Calderon",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 664744,
+          "name": "Jose Espada",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 660620,
+          "name": "Jonathan Araúz",
+          "position": "2B",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 668665,
+          "name": "Stephen Nogosek",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 606143,
+          "name": "Alejandro Mejia",
+          "position": "1B",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 678594,
+          "name": "Randy Florentino",
+          "position": "C",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 800212,
+          "name": "Francis Pena",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 608601,
+          "name": "Luis Santos",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 592530,
+          "name": "José Marmolejos",
+          "position": "1B",
+          "battingOrder": "600",
+          "stats": {
+            "batting": {
+              "summary": "0-1 | 3 BB, R",
+              "gamesPlayed": 1,
+              "flyOuts": 0,
+              "groundOuts": 0,
+              "airOuts": 1,
+              "runs": 1,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 3,
+              "intentionalWalks": 1,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 1,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 4,
+              "totalBases": 0,
+              "rbi": 0,
+              "leftOnBase": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 1,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 808535,
+          "name": "John Gil",
+          "position": "3B",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 667050,
+          "name": "Grant Gavin",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 656008,
+          "name": "Aneurys Zabala",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 658742,
+          "name": "Diogenes Almengo",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {
+              "summary": "0.1 IP, 0 ER, 0 K, 0 BB",
+              "gamesPlayed": 1,
+              "gamesStarted": 0,
+              "flyOuts": 0,
+              "groundOuts": 0,
+              "airOuts": 1,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 1,
+              "hitByPitch": 0,
+              "atBats": 2,
+              "caughtStealing": 0,
+              "stolenBases": 1,
+              "stolenBasePercentage": "1.000",
+              "numberOfPitches": 9,
+              "inningsPitched": "0.1",
+              "wins": 0,
+              "losses": 0,
+              "saves": 0,
+              "saveOpportunities": 0,
+              "holds": 0,
+              "blownSaves": 0,
+              "earnedRuns": 0,
+              "battersFaced": 2,
+              "outs": 1,
+              "gamesPitched": 1,
+              "completeGames": 0,
+              "shutouts": 0,
+              "pitchesThrown": 9,
+              "balls": 1,
+              "strikes": 8,
+              "strikePercentage": ".890",
+              "hitBatsmen": 0,
+              "balks": 0,
+              "wildPitches": 0,
+              "pickoffs": 0,
+              "rbi": 1,
+              "gamesFinished": 0,
+              "runsScoredPer9": "0.00",
+              "homeRunsPer9": "0.00",
+              "inheritedRunners": 1,
+              "inheritedRunnersScored": 1,
+              "catchersInterference": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "passedBall": 0,
+              "popOuts": 1,
+              "lineOuts": 0
+            }
+          }
+        },
+        {
+          "id": 614173,
+          "name": "Franchy Cordero",
+          "position": "OF",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 501605,
+          "name": "Yamaico Navarro",
+          "position": "DH",
+          "battingOrder": "500",
+          "stats": {
+            "batting": {
+              "summary": "2-4 | K, 2 RBI, R",
+              "gamesPlayed": 1,
+              "flyOuts": 0,
+              "groundOuts": 1,
+              "airOuts": 0,
+              "runs": 1,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 1,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 2,
+              "hitByPitch": 0,
+              "atBats": 4,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 4,
+              "totalBases": 2,
+              "rbi": 2,
+              "leftOnBase": 2,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 0,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 666695,
+          "name": "Jonathan Guzmán",
+          "position": "2B",
+          "battingOrder": "800",
+          "stats": {
+            "batting": {
+              "summary": "0-3 | BB",
+              "gamesPlayed": 1,
+              "flyOuts": 0,
+              "groundOuts": 2,
+              "airOuts": 1,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 1,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 3,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 4,
+              "totalBases": 0,
+              "rbi": 0,
+              "leftOnBase": 1,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 1,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 665001,
+          "name": "Trevor Kelley",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 692285,
+          "name": "Luis Guerrero",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 570488,
+          "name": "Phillips Valdez",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {
+              "summary": "2.0 IP, 0 ER, K, 0 BB",
+              "gamesPlayed": 1,
+              "gamesStarted": 0,
+              "flyOuts": 1,
+              "groundOuts": 2,
+              "airOuts": 3,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 1,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 1,
+              "hitByPitch": 1,
+              "atBats": 7,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "numberOfPitches": 20,
+              "inningsPitched": "2.0",
+              "wins": 0,
+              "losses": 0,
+              "saves": 0,
+              "saveOpportunities": 0,
+              "holds": 0,
+              "blownSaves": 0,
+              "earnedRuns": 0,
+              "battersFaced": 8,
+              "outs": 6,
+              "gamesPitched": 1,
+              "completeGames": 0,
+              "shutouts": 0,
+              "pitchesThrown": 20,
+              "balls": 6,
+              "strikes": 14,
+              "strikePercentage": ".700",
+              "hitBatsmen": 1,
+              "balks": 0,
+              "wildPitches": 0,
+              "pickoffs": 0,
+              "rbi": 0,
+              "gamesFinished": 0,
+              "runsScoredPer9": "0.00",
+              "homeRunsPer9": "0.00",
+              "inheritedRunners": 0,
+              "inheritedRunnersScored": 0,
+              "catchersInterference": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "passedBall": 0,
+              "popOuts": 1,
+              "lineOuts": 1
+            }
+          }
+        },
+        {
+          "id": 660431,
+          "name": "Hector Perez",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 660822,
+          "name": "Robinson Martínez",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 464400,
+          "name": "Henry Sosa",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 467031,
+          "name": "Wirfin Obispo",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 691548,
+          "name": "Rolddy Muñoz",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 699302,
+          "name": "Héctor Rodríguez",
+          "position": "RF",
+          "battingOrder": "300",
+          "stats": {
+            "batting": {
+              "summary": "0-2 | 2 BB, K, R",
+              "gamesPlayed": 1,
+              "flyOuts": 1,
+              "groundOuts": 0,
+              "airOuts": 1,
+              "runs": 1,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 1,
+              "baseOnBalls": 2,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 2,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 4,
+              "totalBases": 0,
+              "rbi": 0,
+              "leftOnBase": 1,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 0,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 679712,
+          "name": "Lael Lockhart",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 692039,
+          "name": "Carlos Jimenez",
+          "position": "OF",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        }
+      ],
+      "teamStats": {
+        "batting": {
+          "flyOuts": 4,
+          "groundOuts": 10,
+          "airOuts": 9,
+          "runs": 5,
+          "doubles": 1,
+          "triples": 0,
+          "homeRuns": 0,
+          "strikeOuts": 4,
+          "baseOnBalls": 8,
+          "intentionalWalks": 1,
+          "hits": 5,
+          "hitByPitch": 0,
+          "avg": ".237",
+          "atBats": 28,
+          "obp": ".327",
+          "slg": ".330",
+          "ops": ".657",
+          "caughtStealing": 0,
+          "stolenBases": 3,
+          "stolenBasePercentage": "1.000",
+          "groundIntoDoublePlay": 1,
+          "groundIntoTriplePlay": 0,
+          "plateAppearances": 36,
+          "totalBases": 6,
+          "rbi": 4,
+          "leftOnBase": 20,
+          "sacBunts": 0,
+          "sacFlies": 0,
+          "catchersInterference": 0,
+          "pickoffs": 0,
+          "atBatsPerHomeRun": "-.--",
+          "popOuts": 3,
+          "lineOuts": 2
+        },
+        "pitching": {
+          "flyOuts": 9,
+          "groundOuts": 9,
+          "airOuts": 14,
+          "runs": 1,
+          "doubles": 0,
+          "triples": 0,
+          "homeRuns": 0,
+          "strikeOuts": 2,
+          "baseOnBalls": 0,
+          "intentionalWalks": 0,
+          "hits": 3,
+          "hitByPitch": 1,
+          "atBats": 28,
+          "obp": ".138",
+          "caughtStealing": 0,
+          "stolenBases": 1,
+          "stolenBasePercentage": "1.000",
+          "caughtStealingPercentage": ".000",
+          "numberOfPitches": 95,
+          "era": "3.88",
+          "inningsPitched": "8.0",
+          "saveOpportunities": 0,
+          "earnedRuns": 1,
+          "whip": "1.37",
+          "battersFaced": 29,
+          "outs": 24,
+          "completeGames": 0,
+          "shutouts": 0,
+          "pitchesThrown": 95,
+          "balls": 27,
+          "strikes": 68,
+          "strikePercentage": ".720",
+          "hitBatsmen": 1,
+          "balks": 0,
+          "wildPitches": 0,
+          "pickoffs": 0,
+          "groundOutsToAirouts": "0.64",
+          "rbi": 1,
+          "pitchesPerInning": "11.88",
+          "runsScoredPer9": "1.13",
+          "homeRunsPer9": "0.00",
+          "inheritedRunners": 0,
+          "inheritedRunnersScored": 0,
+          "catchersInterference": 0,
+          "sacBunts": 0,
+          "sacFlies": 0,
+          "passedBall": 0,
+          "popOuts": 3,
+          "lineOuts": 2
+        },
+        "fielding": {
+          "caughtStealing": 0,
+          "stolenBases": 1,
+          "stolenBasePercentage": "1.000",
+          "caughtStealingPercentage": ".---",
+          "assists": 6,
+          "putOuts": 24,
+          "errors": 1,
+          "chances": 31,
+          "passedBall": 0,
+          "pickoffs": 0
+        }
+      }
+    },
+    "away": {
+      "id": 669,
+      "name": "Estrellas Orientales",
+      "logo": "https://www.mlbstatic.com/team-logos/669.svg",
+      "color": "#000000",
+      "runs": 1,
+      "hits": 3,
+      "errors": 2,
+      "players": [
+        {
+          "id": 429664,
+          "name": "Robinson Canó",
+          "position": "2B",
+          "battingOrder": "400",
+          "stats": {
+            "batting": {
+              "summary": "0-3",
+              "gamesPlayed": 1,
+              "flyOuts": 0,
+              "groundOuts": 2,
+              "airOuts": 1,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 3,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 3,
+              "totalBases": 0,
+              "rbi": 0,
+              "leftOnBase": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 0,
+              "lineOuts": 1
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 642770,
+          "name": "Javy Guerra",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 672701,
+          "name": "José Devers",
+          "position": "SS",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 650959,
+          "name": "Marcos Diplán",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 570639,
+          "name": "Yefri Pérez",
+          "position": "OF",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 702881,
+          "name": "Aldrin Batista",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 682825,
+          "name": "Luis Mey",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 666703,
+          "name": "Eguy Rosario",
+          "position": "3B",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 601980,
+          "name": "Geronimo Franzua",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 644396,
+          "name": "Luis Ledo",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 642376,
+          "name": "Jefry Yan",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 627893,
+          "name": "Carlos Belen",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 660710,
+          "name": "Rodolfo Durán",
+          "position": "DH",
+          "battingOrder": "300",
+          "stats": {
+            "batting": {
+              "summary": "0-3",
+              "gamesPlayed": 1,
+              "flyOuts": 1,
+              "groundOuts": 1,
+              "airOuts": 2,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 3,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 3,
+              "totalBases": 0,
+              "rbi": 0,
+              "leftOnBase": 1,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 1,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 678577,
+          "name": "Junior Perez",
+          "position": "OF",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 544836,
+          "name": "Enny Romero",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 700370,
+          "name": "Felipe De La Cruz",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 622256,
+          "name": "Patrick Weigel",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 554241,
+          "name": "Andy Otero",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {
+              "summary": "5.0 IP, 0 ER, 4 K, 0 BB",
+              "gamesPlayed": 1,
+              "gamesStarted": 0,
+              "flyOuts": 2,
+              "groundOuts": 4,
+              "airOuts": 6,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 4,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 1,
+              "hitByPitch": 0,
+              "atBats": 15,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "numberOfPitches": 58,
+              "inningsPitched": "5.0",
+              "wins": 0,
+              "losses": 0,
+              "saves": 0,
+              "saveOpportunities": 0,
+              "holds": 0,
+              "blownSaves": 0,
+              "earnedRuns": 0,
+              "battersFaced": 15,
+              "outs": 15,
+              "gamesPitched": 1,
+              "completeGames": 0,
+              "shutouts": 0,
+              "pitchesThrown": 58,
+              "balls": 21,
+              "strikes": 37,
+              "strikePercentage": ".640",
+              "hitBatsmen": 0,
+              "balks": 0,
+              "wildPitches": 0,
+              "pickoffs": 0,
+              "rbi": 0,
+              "gamesFinished": 0,
+              "runsScoredPer9": "0.00",
+              "homeRunsPer9": "0.00",
+              "inheritedRunners": 0,
+              "inheritedRunnersScored": 0,
+              "catchersInterference": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "passedBall": 0,
+              "popOuts": 3,
+              "lineOuts": 1
+            }
+          }
+        },
+        {
+          "id": 642601,
+          "name": "Oscar De La Cruz",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 667803,
+          "name": "Ernesto Martinez Jr.",
+          "position": "1B",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 680118,
+          "name": "Dairon Blanco",
+          "position": "CF",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 682657,
+          "name": "Angel Martínez",
+          "position": "CF",
+          "battingOrder": "600",
+          "stats": {
+            "batting": {
+              "summary": "0-3",
+              "gamesPlayed": 1,
+              "flyOuts": 2,
+              "groundOuts": 0,
+              "airOuts": 3,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 3,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 3,
+              "totalBases": 0,
+              "rbi": 0,
+              "leftOnBase": 1,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 1,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 664573,
+          "name": "Oddy Nunez",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 681401,
+          "name": "Josh Green",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 642563,
+          "name": "Raffi Vizcaíno",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 606132,
+          "name": "Raimel Tapia",
+          "position": "OF",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 686857,
+          "name": "James Gonzalez",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 660644,
+          "name": "Vidal Bruján",
+          "position": "3B",
+          "battingOrder": "700",
+          "stats": {
+            "batting": {
+              "summary": "0-3",
+              "gamesPlayed": 1,
+              "flyOuts": 2,
+              "groundOuts": 1,
+              "airOuts": 2,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 3,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 3,
+              "totalBases": 0,
+              "rbi": 0,
+              "leftOnBase": 1,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 0,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 660600,
+          "name": "Enoli Paredes",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {
+              "summary": "0.2 IP, 0 ER, 0 K, 2 BB",
+              "gamesPlayed": 1,
+              "gamesStarted": 0,
+              "flyOuts": 1,
+              "groundOuts": 1,
+              "airOuts": 1,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 2,
+              "intentionalWalks": 0,
+              "hits": 1,
+              "hitByPitch": 0,
+              "atBats": 3,
+              "caughtStealing": 0,
+              "stolenBases": 2,
+              "stolenBasePercentage": "1.000",
+              "numberOfPitches": 27,
+              "inningsPitched": "0.2",
+              "wins": 0,
+              "losses": 0,
+              "saves": 0,
+              "saveOpportunities": 0,
+              "holds": 0,
+              "blownSaves": 0,
+              "earnedRuns": 0,
+              "battersFaced": 5,
+              "outs": 2,
+              "gamesPitched": 1,
+              "completeGames": 0,
+              "shutouts": 0,
+              "pitchesThrown": 27,
+              "balls": 15,
+              "strikes": 12,
+              "strikePercentage": ".440",
+              "hitBatsmen": 0,
+              "balks": 0,
+              "wildPitches": 0,
+              "pickoffs": 0,
+              "rbi": 0,
+              "gamesFinished": 0,
+              "runsScoredPer9": "0.00",
+              "homeRunsPer9": "0.00",
+              "inheritedRunners": 0,
+              "inheritedRunnersScored": 0,
+              "catchersInterference": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "passedBall": 0,
+              "popOuts": 0,
+              "lineOuts": 0
+            }
+          }
+        },
+        {
+          "id": 650895,
+          "name": "Diego Castillo",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 694756,
+          "name": "J.P. Woodward",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 542669,
+          "name": "Roman Mendez",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {
+              "summary": "0.1 IP, 0 ER, 0 K, 0 BB",
+              "gamesPlayed": 1,
+              "gamesStarted": 0,
+              "flyOuts": 0,
+              "groundOuts": 2,
+              "airOuts": 0,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 2,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "numberOfPitches": 8,
+              "inningsPitched": "0.1",
+              "wins": 0,
+              "losses": 0,
+              "saves": 0,
+              "saveOpportunities": 0,
+              "holds": 0,
+              "blownSaves": 0,
+              "earnedRuns": 0,
+              "battersFaced": 2,
+              "outs": 1,
+              "gamesPitched": 1,
+              "completeGames": 0,
+              "shutouts": 0,
+              "pitchesThrown": 8,
+              "balls": 3,
+              "strikes": 5,
+              "strikePercentage": ".630",
+              "hitBatsmen": 0,
+              "balks": 0,
+              "wildPitches": 0,
+              "pickoffs": 0,
+              "rbi": 0,
+              "gamesFinished": 0,
+              "runsScoredPer9": "0.00",
+              "homeRunsPer9": "0.00",
+              "inheritedRunners": 2,
+              "inheritedRunnersScored": 1,
+              "catchersInterference": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "passedBall": 0,
+              "popOuts": 0,
+              "lineOuts": 0
+            }
+          }
+        },
+        {
+          "id": 593619,
+          "name": "Domingo Tapia",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 682648,
+          "name": "Juan Guerrero",
+          "position": "OF",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 666801,
+          "name": "Rodolfo Castro",
+          "position": "SS",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 665998,
+          "name": "Ismael Munguia",
+          "position": "LF",
+          "battingOrder": "100",
+          "stats": {
+            "batting": {
+              "summary": "2-4 | R, SB",
+              "gamesPlayed": 1,
+              "flyOuts": 1,
+              "groundOuts": 1,
+              "airOuts": 1,
+              "runs": 1,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 2,
+              "hitByPitch": 0,
+              "atBats": 4,
+              "caughtStealing": 0,
+              "stolenBases": 1,
+              "stolenBasePercentage": "1.000",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 4,
+              "totalBases": 2,
+              "rbi": 0,
+              "leftOnBase": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 0,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 642751,
+          "name": "Carlos Martínez",
+          "position": "C",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 593934,
+          "name": "Miguel Sanó",
+          "position": "1B",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 501647,
+          "name": "Wilin Rosario",
+          "position": "1B",
+          "battingOrder": "500",
+          "stats": {
+            "batting": {
+              "summary": "0-3 | K",
+              "gamesPlayed": 1,
+              "flyOuts": 0,
+              "groundOuts": 1,
+              "airOuts": 1,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 1,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 3,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 3,
+              "totalBases": 0,
+              "rbi": 0,
+              "leftOnBase": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 0,
+              "lineOuts": 1
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 491703,
+          "name": "Neftalí Feliz",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 623507,
+          "name": "Josh Lester",
+          "position": "1B",
+          "battingOrder": "200",
+          "stats": {
+            "batting": {
+              "summary": "1-4 | RBI",
+              "gamesPlayed": 1,
+              "flyOuts": 2,
+              "groundOuts": 1,
+              "airOuts": 2,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 1,
+              "hitByPitch": 0,
+              "atBats": 4,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 4,
+              "totalBases": 1,
+              "rbi": 1,
+              "leftOnBase": 2,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 0,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 677588,
+          "name": "José Tena",
+          "position": "SS",
+          "battingOrder": "900",
+          "stats": {
+            "batting": {
+              "summary": "0-3 | K",
+              "gamesPlayed": 1,
+              "flyOuts": 0,
+              "groundOuts": 1,
+              "airOuts": 1,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 1,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 3,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 3,
+              "totalBases": 0,
+              "rbi": 0,
+              "leftOnBase": 1,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 1,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 691032,
+          "name": "Luis Moreno",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {
+              "summary": "0.0 IP, ER, 0 K, 3 BB",
+              "gamesPlayed": 1,
+              "gamesStarted": 0,
+              "flyOuts": 0,
+              "groundOuts": 0,
+              "airOuts": 0,
+              "runs": 1,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 3,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 0,
+              "caughtStealing": 0,
+              "stolenBases": 1,
+              "stolenBasePercentage": "1.000",
+              "numberOfPitches": 15,
+              "inningsPitched": "0.0",
+              "wins": 0,
+              "losses": 0,
+              "saves": 0,
+              "saveOpportunities": 0,
+              "holds": 0,
+              "blownSaves": 0,
+              "earnedRuns": 1,
+              "battersFaced": 3,
+              "outs": 0,
+              "gamesPitched": 1,
+              "completeGames": 0,
+              "shutouts": 0,
+              "pitchesThrown": 15,
+              "balls": 12,
+              "strikes": 3,
+              "strikePercentage": ".200",
+              "hitBatsmen": 0,
+              "balks": 0,
+              "wildPitches": 0,
+              "pickoffs": 0,
+              "rbi": 0,
+              "gamesFinished": 0,
+              "runsScoredPer9": "-.--",
+              "homeRunsPer9": "-.--",
+              "inheritedRunners": 0,
+              "inheritedRunnersScored": 0,
+              "catchersInterference": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "passedBall": 0,
+              "popOuts": 0,
+              "lineOuts": 0
+            }
+          }
+        },
+        {
+          "id": 683494,
+          "name": "Euribiel Angeles",
+          "position": "3B",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 642423,
+          "name": "Magneuris Sierra",
+          "position": "RF",
+          "battingOrder": "501",
+          "stats": {
+            "batting": {
+              "summary": "0-0",
+              "gamesPlayed": 1,
+              "flyOuts": 0,
+              "groundOuts": 0,
+              "airOuts": 0,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 0,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 0,
+              "totalBases": 0,
+              "rbi": 0,
+              "leftOnBase": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 0,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 681744,
+          "name": "Junior Santos",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {
+              "summary": "1.0 IP, 0 ER, 0 K, BB",
+              "gamesPlayed": 1,
+              "gamesStarted": 0,
+              "flyOuts": 1,
+              "groundOuts": 1,
+              "airOuts": 2,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 1,
+              "intentionalWalks": 1,
+              "hits": 0,
+              "hitByPitch": 0,
+              "atBats": 3,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "numberOfPitches": 9,
+              "inningsPitched": "1.0",
+              "wins": 0,
+              "losses": 0,
+              "saves": 0,
+              "saveOpportunities": 0,
+              "holds": 0,
+              "blownSaves": 0,
+              "earnedRuns": 0,
+              "battersFaced": 4,
+              "outs": 3,
+              "gamesPitched": 1,
+              "completeGames": 0,
+              "shutouts": 0,
+              "pitchesThrown": 9,
+              "balls": 5,
+              "strikes": 4,
+              "strikePercentage": ".440",
+              "hitBatsmen": 0,
+              "balks": 0,
+              "wildPitches": 0,
+              "pickoffs": 0,
+              "rbi": 1,
+              "gamesFinished": 0,
+              "runsScoredPer9": "0.00",
+              "homeRunsPer9": "0.00",
+              "inheritedRunners": 3,
+              "inheritedRunnersScored": 1,
+              "catchersInterference": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "passedBall": 0,
+              "popOuts": 0,
+              "lineOuts": 1
+            }
+          }
+        },
+        {
+          "id": 501697,
+          "name": "Jhan Mariñez",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 665839,
+          "name": "Enmanuel Valdez",
+          "position": "1B",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 674384,
+          "name": "Eduarniel Núñez",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 501659,
+          "name": "Abraham Almonte",
+          "position": "OF",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 506747,
+          "name": "Francisco Peña",
+          "position": "C",
+          "battingOrder": "800",
+          "stats": {
+            "batting": {
+              "summary": "0-2 | HBP",
+              "gamesPlayed": 1,
+              "flyOuts": 1,
+              "groundOuts": 1,
+              "airOuts": 1,
+              "runs": 0,
+              "doubles": 0,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 0,
+              "intentionalWalks": 0,
+              "hits": 0,
+              "hitByPitch": 1,
+              "atBats": 2,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "groundIntoDoublePlay": 0,
+              "groundIntoTriplePlay": 0,
+              "plateAppearances": 3,
+              "totalBases": 0,
+              "rbi": 0,
+              "leftOnBase": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "catchersInterference": 0,
+              "pickoffs": 0,
+              "atBatsPerHomeRun": "-.--",
+              "popOuts": 0,
+              "lineOuts": 0
+            },
+            "pitching": {}
+          }
+        },
+        {
+          "id": 678868,
+          "name": "Eddy Yean",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 469134,
+          "name": "Esmil Rogers",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {
+              "summary": "0.2 IP, 3 ER, 0 K, 2 BB",
+              "gamesPlayed": 1,
+              "gamesStarted": 1,
+              "flyOuts": 0,
+              "groundOuts": 2,
+              "airOuts": 0,
+              "runs": 4,
+              "doubles": 1,
+              "triples": 0,
+              "homeRuns": 0,
+              "strikeOuts": 0,
+              "baseOnBalls": 2,
+              "intentionalWalks": 0,
+              "hits": 3,
+              "hitByPitch": 0,
+              "atBats": 5,
+              "caughtStealing": 0,
+              "stolenBases": 0,
+              "stolenBasePercentage": ".---",
+              "numberOfPitches": 32,
+              "inningsPitched": "0.2",
+              "wins": 0,
+              "losses": 0,
+              "saves": 0,
+              "saveOpportunities": 0,
+              "holds": 0,
+              "blownSaves": 0,
+              "earnedRuns": 3,
+              "battersFaced": 7,
+              "outs": 2,
+              "gamesPitched": 1,
+              "completeGames": 0,
+              "shutouts": 0,
+              "pitchesThrown": 32,
+              "balls": 15,
+              "strikes": 17,
+              "strikePercentage": ".530",
+              "hitBatsmen": 0,
+              "balks": 0,
+              "wildPitches": 0,
+              "pickoffs": 0,
+              "rbi": 3,
+              "gamesFinished": 0,
+              "runsScoredPer9": "54.00",
+              "homeRunsPer9": "0.00",
+              "inheritedRunners": 0,
+              "inheritedRunnersScored": 0,
+              "catchersInterference": 0,
+              "sacBunts": 0,
+              "sacFlies": 0,
+              "passedBall": 0,
+              "popOuts": 0,
+              "lineOuts": 0
+            }
+          }
+        },
+        {
+          "id": 678742,
+          "name": "Rainer Nunez",
+          "position": "1B",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 691267,
+          "name": "Alex Ramírez",
+          "position": "OF",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        },
+        {
+          "id": 823701,
+          "name": "Tomohiro Anraku",
+          "position": "P",
+          "stats": {
+            "batting": {},
+            "pitching": {}
+          }
+        }
+      ],
+      "teamStats": {
+        "batting": {
+          "flyOuts": 9,
+          "groundOuts": 9,
+          "airOuts": 14,
+          "runs": 1,
+          "doubles": 0,
+          "triples": 0,
+          "homeRuns": 0,
+          "strikeOuts": 2,
+          "baseOnBalls": 0,
+          "intentionalWalks": 0,
+          "hits": 3,
+          "hitByPitch": 1,
+          "avg": ".263",
+          "atBats": 28,
+          "obp": ".350",
+          "slg": ".398",
+          "ops": ".748",
+          "caughtStealing": 0,
+          "stolenBases": 1,
+          "stolenBasePercentage": "1.000",
+          "groundIntoDoublePlay": 0,
+          "groundIntoTriplePlay": 0,
+          "plateAppearances": 29,
+          "totalBases": 3,
+          "rbi": 1,
+          "leftOnBase": 6,
+          "sacBunts": 0,
+          "sacFlies": 0,
+          "catchersInterference": 0,
+          "pickoffs": 0,
+          "atBatsPerHomeRun": "-.--",
+          "popOuts": 3,
+          "lineOuts": 2
+        },
+        "pitching": {
+          "flyOuts": 4,
+          "groundOuts": 10,
+          "airOuts": 9,
+          "runs": 5,
+          "doubles": 1,
+          "triples": 0,
+          "homeRuns": 0,
+          "strikeOuts": 4,
+          "baseOnBalls": 8,
+          "intentionalWalks": 1,
+          "hits": 5,
+          "hitByPitch": 0,
+          "atBats": 28,
+          "obp": ".361",
+          "caughtStealing": 0,
+          "stolenBases": 3,
+          "stolenBasePercentage": "1.000",
+          "caughtStealingPercentage": ".000",
+          "numberOfPitches": 149,
+          "era": "4.71",
+          "inningsPitched": "7.2",
+          "saveOpportunities": 0,
+          "earnedRuns": 4,
+          "whip": "1.44",
+          "battersFaced": 36,
+          "outs": 23,
+          "completeGames": 0,
+          "shutouts": 0,
+          "pitchesThrown": 149,
+          "balls": 71,
+          "strikes": 78,
+          "strikePercentage": ".520",
+          "hitBatsmen": 0,
+          "balks": 0,
+          "wildPitches": 0,
+          "pickoffs": 0,
+          "groundOutsToAirouts": "1.11",
+          "rbi": 4,
+          "pitchesPerInning": "19.43",
+          "runsScoredPer9": "5.87",
+          "homeRunsPer9": "0.00",
+          "inheritedRunners": 0,
+          "inheritedRunnersScored": 0,
+          "catchersInterference": 0,
+          "sacBunts": 0,
+          "sacFlies": 0,
+          "passedBall": 0,
+          "popOuts": 3,
+          "lineOuts": 2
+        },
+        "fielding": {
+          "caughtStealing": 0,
+          "stolenBases": 3,
+          "stolenBasePercentage": "1.000",
+          "caughtStealingPercentage": ".---",
+          "assists": 10,
+          "putOuts": 23,
+          "errors": 2,
+          "chances": 35,
+          "passedBall": 0,
+          "pickoffs": 0
+        }
+      }
+    },
+    "count": {
+      "balls": 2,
+      "strikes": 1,
+      "outs": 2
+    },
+    "runners": {
+      "first": true,
+      "second": true,
+      "third": true
+    },
+    "matchup": {
+      "pitcher": "Enoli Paredes",
+      "batter": "Pedro Severino"
+    },
+    "lastPlay": "Pedro Severino flies out sharply to center fielder Angel Martínez.",
+    "playHistory": [
+      {
+        "event": "Elevado de Out",
+        "description": "Pedro Severino falla con elevado sharply al jardín centraler Angel Martínez.",
+        "inning": "Baja 8",
+        "time": "2025-11-30T22:39:39.767Z"
+      },
+      {
+        "event": "Base por Bolas",
+        "description": "Jonathan Guzmán recibe base por bolas.",
+        "inning": "Baja 8",
+        "time": "2025-11-30T22:37:55.362Z"
+      },
+      {
+        "event": "Out Forzado",
+        "description": "Elier Hernandez grounds into a force out, first baseman Josh Lester al campocorto José Tena. Dervy Ventura to 3rd. José Marmolejos out at 2nd. Elier Hernandez to 1st.",
+        "inning": "Baja 8",
+        "time": "2025-11-30T22:34:37.556Z"
+      },
+      {
+        "event": "Base por Bolas",
+        "description": "José Marmolejos recibe base por bolas.",
+        "inning": "Baja 8",
+        "time": "2025-11-30T22:30:07.892Z"
+      },
+      {
+        "event": "Sencillo",
+        "description": "Yamaico Navarro conecta sencillo on a ground ball al jardín izquierdoer Ismael Munguia.",
+        "inning": "Baja 8",
+        "time": "2025-11-30T22:26:45.611Z"
+      },
+      {
+        "event": "Rodado de Out",
+        "description": "Josh Lester falla con rodado a primera baseman José Marmolejos.",
+        "inning": "Alta 8",
+        "time": "2025-11-30T22:23:32.410Z"
+      },
+      {
+        "event": "Sencillo",
+        "description": "Ismael Munguia conecta sencillo on a line drive al jardín izquierdoer Junior Lake. José Tena to 2nd.",
+        "inning": "Alta 8",
+        "time": "2025-11-30T22:21:50.167Z"
+      },
+      {
+        "event": "Out Forzado",
+        "description": "José Tena grounds into a force out, first baseman José Marmolejos al campocorto Erik González. Francisco Peña out at 2nd. José Tena to 1st.",
+        "inning": "Alta 8",
+        "time": "2025-11-30T22:21:06.201Z"
+      },
+      {
+        "event": "Golpeado",
+        "description": "Francisco Peña hit by pitch.",
+        "inning": "Alta 8",
+        "time": "2025-11-30T22:19:32.568Z"
+      },
+      {
+        "event": "Elevado de Out",
+        "description": "Vidal Bruján falla con elevado al jardín centraler Elier Hernandez.",
+        "inning": "Alta 8",
+        "time": "2025-11-30T22:18:33.125Z"
+      },
+      {
+        "event": "Rodado de Out",
+        "description": "Gio Urshela falla con rodado, second baseman Robinson Canó a primera baseman Wilin Rosario.",
+        "inning": "Baja 7",
+        "time": "2025-11-30T22:14:11.648Z"
+      },
+      {
+        "event": "Ponche",
+        "description": "Héctor Rodríguez ponchado mirando.",
+        "inning": "Baja 7",
+        "time": "2025-11-30T22:11:51.101Z"
+      },
+      {
+        "event": "Rodado de Out",
+        "description": "Erik González falla con rodado, second baseman Robinson Canó a primera baseman Wilin Rosario.",
+        "inning": "Baja 7",
+        "time": "2025-11-30T22:11:00.445Z"
+      },
+      {
+        "event": "Elevado al Cuadro",
+        "description": "Angel Martínez falla con elevado al cuadro a segunda baseman Jonathan Guzmán.",
+        "inning": "Alta 7",
+        "time": "2025-11-30T22:07:33.035Z"
+      },
+      {
+        "event": "Ponche",
+        "description": "Wilin Rosario ponchado mirando.",
+        "inning": "Alta 7",
+        "time": "2025-11-30T22:06:07.161Z"
+      },
+      {
+        "event": "Línea de Out",
+        "description": "Robinson Canó falla con línea al jardín izquierdoer Junior Lake.",
+        "inning": "Alta 7",
+        "time": "2025-11-30T22:04:04.227Z"
+      },
+      {
+        "event": "Ponche",
+        "description": "Junior Lake ponchado mirando.",
+        "inning": "Baja 6",
+        "time": "2025-11-30T21:59:35.695Z"
+      },
+      {
+        "event": "Ponche",
+        "description": "Pedro Severino se poncha tirándole.",
+        "inning": "Baja 6",
+        "time": "2025-11-30T21:57:36.228Z"
+      },
+      {
+        "event": "Rodado de Out",
+        "description": "Jonathan Guzmán falla con rodado softly, third baseman Josh Lester a primera baseman Wilin Rosario.",
+        "inning": "Baja 6",
+        "time": "2025-11-30T21:56:39.786Z"
+      },
+      {
+        "event": "Elevado al Cuadro",
+        "description": "Rodolfo Durán falla con elevado al cuadro a tercera baseman Gio Urshela in foul territory.",
+        "inning": "Alta 6",
+        "time": "2025-11-30T21:51:44.744Z"
+      },
+      {
+        "event": "Sencillo",
+        "description": "Josh Lester conecta sencillo on a line drive al jardín centraler Elier Hernandez. Ismael Munguia scores.",
+        "inning": "Alta 6",
+        "time": "2025-11-30T21:49:39.246Z"
+      },
+      {
+        "event": "Sencillo",
+        "description": "Ismael Munguia conecta sencillo on a ground ball al jardín izquierdoer Junior Lake.",
+        "inning": "Alta 6",
+        "time": "2025-11-30T21:45:28.863Z"
+      },
+      {
+        "event": "Elevado al Cuadro",
+        "description": "José Tena falla con elevado al cuadro a segunda baseman Jonathan Guzmán.",
+        "inning": "Alta 6",
+        "time": "2025-11-30T21:44:52.713Z"
+      },
+      {
+        "event": "Rodado de Out",
+        "description": "Francisco Peña falla con rodado, shortstop Erik González a primera baseman José Marmolejos.",
+        "inning": "Alta 6",
+        "time": "2025-11-30T21:44:10.431Z"
+      },
+      {
+        "event": "Elevado de Out",
+        "description": "Elier Hernandez falla con elevado al jardín derechoer Vidal Bruján.",
+        "inning": "Baja 5",
+        "time": "2025-11-30T21:40:56.993Z"
+      },
+      {
+        "event": "Elevado al Cuadro",
+        "description": "José Marmolejos falla con elevado al cuadro a tercera baseman Josh Lester.",
+        "inning": "Baja 5",
+        "time": "2025-11-30T21:37:47.588Z"
+      },
+      {
+        "event": "Ponche",
+        "description": "Yamaico Navarro se poncha tirándole.",
+        "inning": "Baja 5",
+        "time": "2025-11-30T21:34:45.115Z"
+      },
+      {
+        "event": "Elevado de Out",
+        "description": "Vidal Bruján falla con elevado al jardín centraler Elier Hernandez.",
+        "inning": "Alta 5",
+        "time": "2025-11-30T21:30:52.086Z"
+      },
+      {
+        "event": "Elevado de Out",
+        "description": "Angel Martínez falla con elevado al jardín izquierdoer Junior Lake.",
+        "inning": "Alta 5",
+        "time": "2025-11-30T21:28:56.970Z"
+      },
+      {
+        "event": "Rodado de Out",
+        "description": "Wilin Rosario falla con rodado, pitcher Norge Ruiz a primera baseman José Marmolejos.",
+        "inning": "Alta 5",
+        "time": "2025-11-30T21:27:35.141Z"
+      },
+      {
+        "event": "Grounded Into DP",
+        "description": "Gio Urshela grounds into a double play, third baseman Josh Lester a segunda baseman Robinson Canó a primera baseman Wilin Rosario. Erik González out at 2nd. Gio Urshela out at 1st.",
+        "inning": "Baja 4",
+        "time": "2025-11-30T21:23:22.728Z"
+      },
+      {
+        "event": "Elevado de Out",
+        "description": "Héctor Rodríguez falla con elevado al jardín centraler Angel Martínez.",
+        "inning": "Baja 4",
+        "time": "2025-11-30T21:22:58.860Z"
+      },
+      {
+        "event": "Sencillo",
+        "description": "Erik González conecta sencillo on a ground ball a tercera baseman Josh Lester.",
+        "inning": "Baja 4",
+        "time": "2025-11-30T21:20:51.398Z"
+      },
+      {
+        "event": "Rodado de Out",
+        "description": "Robinson Canó falla con rodado a primera baseman José Marmolejos.",
+        "inning": "Alta 4",
+        "time": "2025-11-30T21:16:14.698Z"
+      },
+      {
+        "event": "Elevado de Out",
+        "description": "Rodolfo Durán falla con elevado al jardín derechoer Héctor Rodríguez.",
+        "inning": "Alta 4",
+        "time": "2025-11-30T21:15:42.196Z"
+      },
+      {
+        "event": "Elevado de Out",
+        "description": "Josh Lester falla con elevado sharply al jardín izquierdoer Junior Lake.",
+        "inning": "Alta 4",
+        "time": "2025-11-30T21:14:09.440Z"
+      },
+      {
+        "event": "Línea de Out",
+        "description": "Junior Lake falla con línea al jardín derechoer Vidal Bruján.",
+        "inning": "Baja 3",
+        "time": "2025-11-30T21:10:45.048Z"
+      },
+      {
+        "event": "Elevado al Cuadro",
+        "description": "Pedro Severino falla con elevado al cuadro al receptor Francisco Peña in foul territory.",
+        "inning": "Baja 3",
+        "time": "2025-11-30T21:09:59.610Z"
+      },
+      {
+        "event": "Elevado al Cuadro",
+        "description": "Jonathan Guzmán falla con elevado al cuadro a tercera baseman Josh Lester.",
+        "inning": "Baja 3",
+        "time": "2025-11-30T21:08:45.108Z"
+      },
+      {
+        "event": "Elevado de Out",
+        "description": "Ismael Munguia falla con elevado al jardín derechoer Héctor Rodríguez.",
+        "inning": "Alta 3",
+        "time": "2025-11-30T21:05:29.291Z"
+      },
+      {
+        "event": "Ponche",
+        "description": "José Tena se poncha tirándole.",
+        "inning": "Alta 3",
+        "time": "2025-11-30T21:04:30.433Z"
+      },
+      {
+        "event": "Elevado de Out",
+        "description": "Francisco Peña falla con elevado al jardín izquierdoer Junior Lake.",
+        "inning": "Alta 3",
+        "time": "2025-11-30T21:03:21.165Z"
+      },
+      {
+        "event": "Línea de Out",
+        "description": "Elier Hernandez falla con línea al jardín derechoer Vidal Bruján.",
+        "inning": "Baja 2",
+        "time": "2025-11-30T21:00:15.165Z"
+      },
+      {
+        "event": "Intent Walk",
+        "description": "Junior Santos intentionally recibe base por bolas José Marmolejos.",
+        "inning": "Baja 2",
+        "time": "2025-11-30T20:58:53.980Z"
+      },
+      {
+        "event": "Rodado de Out",
+        "description": "Yamaico Navarro falla con rodado softly, shortstop José Tena a primera baseman Wilin Rosario. Junior Lake scores. Erik González to 3rd. Héctor Rodríguez to 2nd.",
+        "inning": "Baja 2",
+        "time": "2025-11-30T20:57:53.184Z"
+      },
+      {
+        "event": "Elevado de Out",
+        "description": "Gio Urshela falla con elevado al jardín centraler Angel Martínez.",
+        "inning": "Baja 2",
+        "time": "2025-11-30T20:56:46.805Z"
+      },
+      {
+        "event": "Base por Bolas",
+        "description": "Héctor Rodríguez recibe base por bolas. Junior Lake to 3rd. Erik González to 2nd.",
+        "inning": "Baja 2",
+        "time": "2025-11-30T20:51:27.109Z"
+      },
+      {
+        "event": "Base por Bolas",
+        "description": "Erik González recibe base por bolas.",
+        "inning": "Baja 2",
+        "time": "2025-11-30T20:48:58.606Z"
+      },
+      {
+        "event": "Base por Bolas",
+        "description": "Junior Lake recibe base por bolas.",
+        "inning": "Baja 2",
+        "time": "2025-11-30T20:47:11.446Z"
+      },
+      {
+        "event": "Rodado de Out",
+        "description": "Vidal Bruján falla con rodado a primera baseman José Marmolejos.",
+        "inning": "Alta 2",
+        "time": "2025-11-30T20:42:06.918Z"
+      },
+      {
+        "event": "Elevado de Out",
+        "description": "Angel Martínez falla con elevado al jardín izquierdoer Junior Lake.",
+        "inning": "Alta 2",
+        "time": "2025-11-30T20:40:55.780Z"
+      },
+      {
+        "event": "Error",
+        "description": "Wilin Rosario reaches on a fielding error by left fielder Junior Lake.",
+        "inning": "Alta 2",
+        "time": "2025-11-30T20:39:42.822Z"
+      },
+      {
+        "event": "Rodado de Out",
+        "description": "Robinson Canó falla con rodado, shortstop Erik González a primera baseman José Marmolejos.",
+        "inning": "Alta 2",
+        "time": "2025-11-30T20:38:40.177Z"
+      },
+      {
+        "event": "Rodado de Out",
+        "description": "Pedro Severino falla con rodado, shortstop José Tena a primera baseman Wilin Rosario.",
+        "inning": "Baja 1",
+        "time": "2025-11-30T20:33:09.953Z"
+      },
+      {
+        "event": "Error",
+        "description": "Jonathan Guzmán reaches on a fielding error by third baseman Josh Lester. José Marmolejos scores. Elier Hernandez to 3rd.",
+        "inning": "Baja 1",
+        "time": "2025-11-30T20:31:27.757Z"
+      },
+      {
+        "event": "Doble",
+        "description": "Elier Hernandez conecta doble (1) on a line drive al jardín izquierdoer Ismael Munguia. Yamaico Navarro scores. José Marmolejos to 3rd.",
+        "inning": "Baja 1",
+        "time": "2025-11-30T20:26:04.984Z"
+      },
+      {
+        "event": "Base por Bolas",
+        "description": "José Marmolejos recibe base por bolas. Yamaico Navarro to 2nd.",
+        "inning": "Baja 1",
+        "time": "2025-11-30T20:24:06.548Z"
+      },
+      {
+        "event": "Sencillo",
+        "description": "Yamaico Navarro conecta sencillo on a ground ball al jardín centraler Angel Martínez. Héctor Rodríguez scores.",
+        "inning": "Baja 1",
+        "time": "2025-11-30T20:20:52.658Z"
+      },
+      {
+        "event": "Rodado de Out",
+        "description": "Gio Urshela falla con rodado, third baseman Josh Lester a primera baseman Wilin Rosario. Erik González scores. Héctor Rodríguez to 2nd.",
+        "inning": "Baja 1",
+        "time": "2025-11-30T20:19:09.238Z"
+      },
+      {
+        "event": "Base por Bolas",
+        "description": "Héctor Rodríguez recibe base por bolas. Erik González to 3rd. Erik González advances to 3rd, on a throwing error by catcher Francisco Peña.",
+        "inning": "Baja 1",
+        "time": "2025-11-30T20:16:45.309Z"
+      },
+      {
+        "event": "Out Forzado",
+        "description": "Erik González grounds into a force out, shortstop José Tena a segunda baseman Robinson Canó. Junior Lake out at 2nd. Erik González to 1st.",
+        "inning": "Baja 1",
+        "time": "2025-11-30T20:14:04.109Z"
+      },
+      {
+        "event": "Sencillo",
+        "description": "Junior Lake conecta sencillo on a ground ball al campocorto José Tena.",
+        "inning": "Baja 1",
+        "time": "2025-11-30T20:12:10.234Z"
+      },
+      {
+        "event": "Rodado de Out",
+        "description": "Rodolfo Durán falla con rodado, second baseman Jonathan Guzmán a primera baseman José Marmolejos.",
+        "inning": "Alta 1",
+        "time": "2025-11-30T20:08:37.191Z"
+      },
+      {
+        "event": "Elevado de Out",
+        "description": "Josh Lester falla con elevado al jardín izquierdoer Junior Lake.",
+        "inning": "Alta 1",
+        "time": "2025-11-30T20:07:43.452Z"
+      },
+      {
+        "event": "Rodado de Out",
+        "description": "Estrellas challenged (play at 1st), call on the field was upheld: Ismael Munguia falla con rodado, shortstop Erik González a primera baseman José Marmolejos.",
+        "inning": "Alta 1",
+        "time": "2025-11-30T20:04:15.454Z"
+      }
+    ],
+    "currentPitches": [
+      {
+        "id": 1,
+        "coordinates": {
+          "pX": 0.15848097,
+          "pZ": 4.113405
+        },
+        "strikeZoneTop": 3.48,
+        "strikeZoneBottom": 1.6,
+        "call": "Ball",
+        "code": "B",
+        "speed": 87.5,
+        "type": "FC"
+      },
+      {
+        "id": 2,
+        "coordinates": {
+          "pX": -0.53135824,
+          "pZ": 2.696929
+        },
+        "strikeZoneTop": 3.48,
+        "strikeZoneBottom": 1.6,
+        "call": "Called Strike",
+        "code": "C",
+        "speed": 94.7,
+        "type": "FF"
+      },
+      {
+        "id": 3,
+        "coordinates": {
+          "pX": -1.4711056,
+          "pZ": 1.2727165
+        },
+        "strikeZoneTop": 3.48,
+        "strikeZoneBottom": 1.6,
+        "call": "Ball",
+        "code": "B",
+        "speed": 93,
+        "type": "FF"
+      },
+      {
+        "id": 4,
+        "coordinates": {
+          "pX": -0.35511485,
+          "pZ": 2.7455938
+        },
+        "strikeZoneTop": 3.48,
+        "strikeZoneBottom": 1.6,
+        "call": "In play, out(s)",
+        "code": "X",
+        "speed": 87.2,
+        "type": "FC"
+      }
+    ],
+    "innings": [
+      {
+        "num": 1,
+        "away": 0,
+        "home": 4
+      },
+      {
+        "num": 2,
+        "away": 0,
+        "home": 1
+      },
+      {
+        "num": 3,
+        "away": 0,
+        "home": 0
+      },
+      {
+        "num": 4,
+        "away": 0,
+        "home": 0
+      },
+      {
+        "num": 5,
+        "away": 0,
+        "home": 0
+      },
+      {
+        "num": 6,
+        "away": 1,
+        "home": 0
+      },
+      {
+        "num": 7,
+        "away": 0,
+        "home": 0
+      },
+      {
+        "num": 8,
+        "away": 0
+      }
+    ],
+    "decisions": {
+      "winner": null,
+      "loser": null,
+      "save": null
+    },
+    "topPerformers": [
+      {
+        "id": 501605,
+        "name": "Yamaico Navarro",
+        "teamLogo": "https://www.mlbstatic.com/team-logos/671.svg",
+        "stats": "2-4, 2 CI",
+        "type": "Batter"
+      },
+      {
+        "id": 623507,
+        "name": "Josh Lester",
+        "teamLogo": "https://www.mlbstatic.com/team-logos/669.svg",
+        "stats": "1-4, 1 CI",
+        "type": "Batter"
+      }
+    ]
+  }
+}

@@ -9,6 +9,7 @@ import { Game } from './pages/Game';
 import { SplashLoader } from './components/ui/SplashLoader';
 
 import { UpdateModal } from './components/common/UpdateModal';
+import { InstallPWA } from './components/common/InstallPWA';
 
 function App() {
     const [isLoading, setIsLoading] = React.useState(true);
@@ -49,8 +50,11 @@ function App() {
                                     </h1>
                                 </div>
                             </Link>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-600 uppercase tracking-widest bg-zinc-900/50 px-3 py-1.5 rounded-full border border-white/5">
-                                <Activity className="w-3 h-3 text-emerald-500" />
+                            <div className="flex items-center gap-3">
+                                <InstallPWA />
+                                <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-600 uppercase tracking-widest bg-zinc-900/50 px-3 py-1.5 rounded-full border border-white/5">
+                                    <Activity className="w-3 h-3 text-emerald-500" />
+                                </div>
                             </div>
                         </div>
                     </header>
