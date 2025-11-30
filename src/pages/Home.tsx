@@ -10,6 +10,7 @@ import { Standings } from '../components/game/Standings';
 import { Leaders } from '../components/game/Leaders';
 import { GameCardSkeleton } from '../components/game/GameCardSkeleton';
 import { ScheduleItem } from '../types';
+import AdBanner from '../components/ads/AdBanner';
 
 const TEAM_COLORS: Record<number, string> = {
     667: '#FDB927', // Aguilas
@@ -167,6 +168,9 @@ export const Home: React.FC = () => {
                         </button>
                     </div>
                 </div>
+
+                {/* Top Ad Banner */}
+                <AdBanner dataAdSlot="0987654321" className="mb-6" />
 
                 {/* Draggable Date Strip */}
                 <div className="relative group">
@@ -427,6 +431,9 @@ export const Home: React.FC = () => {
                     )}
                 </div>
             </section>
+
+            {/* Ad Banner */}
+            <AdBanner dataAdSlot="1234567890" className="md:col-span-2 lg:col-span-3" />
 
             {/* Stats Grid */}
             <section className="grid md:grid-cols-2 gap-4 md:gap-8 pt-8 border-t border-white/5">

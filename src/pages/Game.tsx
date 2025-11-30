@@ -11,6 +11,7 @@ import { BoxScore } from '../components/game/BoxScore';
 import { GameSummary } from '../components/game/GameSummary';
 import { GameDetailSkeleton } from '../components/game/GameDetailSkeleton';
 import { GameData } from '../types';
+import AdBanner from '../components/ads/AdBanner';
 
 export const Game: React.FC = () => {
     const { gamePk } = useParams<{ gamePk: string }>();
@@ -76,6 +77,11 @@ export const Game: React.FC = () => {
                         venue={displayData.venue}
                     />
                 )}
+
+                {/* Ad Banner */}
+                <div className="px-4 md:px-8 mt-4">
+                    <AdBanner dataAdSlot="1234567890" />
+                </div>
 
                 {/* Tabs Navigation */}
                 <div className="flex justify-center mt-6 mb-6">
