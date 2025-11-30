@@ -141,7 +141,7 @@ export const Game: React.FC = () => {
 
                                     {/* Diamond - "Poco más pequeño" */}
                                     <div className="transform scale-90 origin-top">
-                                        <BaseballDiamond runners={displayData.runners} teamColor={battingTeam.color} />
+                                        <BaseballDiamond runners={displayData.runners} teamColor={battingTeam.id === 673 ? '#00be66' : battingTeam.color} />
 
                                         {/* Count Indicators */}
                                         <div className="flex justify-center gap-6 mt-4">
