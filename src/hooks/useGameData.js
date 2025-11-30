@@ -41,13 +41,30 @@ export const useSchedule = () => {
     queryFn: fetchSchedule,
     refetchInterval: (query) => {
       const data = query.state.data;
-      if (!data) return 60000;
+      if (!data) return 2000;
 
+      // Check for live games
       const hasLiveGames = data.some(game =>
         game.status === 'Live' || game.status === 'In Progress'
       );
 
-      return hasLiveGames ? 10000 : 60000;
+      if (hasLiveGames) {
+        return 2000; // 2 seconds (Same as Game Detail)
+      }
+
+      // Check for games starting soon (within 30 mins)
+      const now = new Date().getTime();
+      const hasUpcomingGames = data.some(game => {
+        const gameTime = new Date(game.date).getTime();
+        const diff = gameTime - now;
+        return diff > 0 && diff <= 30 * 60 * 1000;
+      });
+
+      if (hasUpcomingGames) {
+        return 10000; // 10 seconds
+      }
+
+      return 60000; // 1 minute
     }
   });
 
