@@ -38,18 +38,14 @@ function App() {
                     <header className="flex flex-col gap-6 border-b border-white/5 pb-6">
                         <div className="flex justify-between items-end">
                             <Link to="/">
-                                <div>
+                                <div className="flex items-center gap-2">
                                     <h1 className="text-3xl font-black tracking-tighter bg-gradient-to-br from-white to-zinc-500 bg-clip-text text-transparent cursor-pointer">
                                         EL <span className="text-cyan-400">PLAY</span>
                                     </h1>
-                                    <p className="text-xs text-zinc-500 font-medium tracking-widest uppercase mt-1">
-                                        Sin Truco ni Pitola
-                                    </p>
                                 </div>
                             </Link>
                             <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-600 uppercase tracking-widest bg-zinc-900/50 px-3 py-1.5 rounded-full border border-white/5">
                                 <Activity className="w-3 h-3 text-emerald-500" />
-                                <span>Live</span>
                             </div>
                         </div>
                     </header>

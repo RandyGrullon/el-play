@@ -29,9 +29,6 @@ export const useFavoriteTeam = () => {
 
     useEffect(() => {
         localStorage.setItem(NOTIFICATIONS_KEY, notificationsEnabled.toString());
-        if (notificationsEnabled) {
-            requestNotificationPermission();
-        }
     }, [notificationsEnabled]);
 
     useEffect(() => {
@@ -42,32 +39,43 @@ export const useFavoriteTeam = () => {
         setFavoriteTeamId(prev => prev === teamId ? null : teamId);
     }, []);
 
-    const toggleGameSubscription = useCallback((gameId: number) => {
-        setSubscribedGames(prev => {
-            const isSubscribed = prev.includes(gameId);
-            if (!isSubscribed) {
-                requestNotificationPermission();
-            }
-            return isSubscribed ? prev.filter(id => id !== gameId) : [...prev, gameId];
-        });
-    }, []);
-
     const requestNotificationPermission = async () => {
         if (!('Notification' in window)) {
             console.log('This browser does not support desktop notification');
-            return;
+            return false;
         }
-        if (Notification.permission !== 'granted') {
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') {
-                setNotificationsEnabled(false);
-            }
+
+        if (Notification.permission === 'granted') {
+            return true;
         }
+
+        const permission = await Notification.requestPermission();
+        return permission === 'granted';
     };
 
-    const toggleNotifications = useCallback(() => {
-        setNotificationsEnabled(prev => !prev);
-    }, []);
+    const toggleGameSubscription = useCallback(async (gameId: number) => {
+        const isSubscribed = subscribedGames.includes(gameId);
+
+        if (!isSubscribed) {
+            const granted = await requestNotificationPermission();
+            if (granted) {
+                setSubscribedGames(prev => [...prev, gameId]);
+            }
+        } else {
+            setSubscribedGames(prev => prev.filter(id => id !== gameId));
+        }
+    }, [subscribedGames]);
+
+    const toggleNotifications = useCallback(async () => {
+        if (!notificationsEnabled) {
+            const granted = await requestNotificationPermission();
+            if (granted) {
+                setNotificationsEnabled(true);
+            }
+        } else {
+            setNotificationsEnabled(false);
+        }
+    }, [notificationsEnabled]);
 
     return {
         favoriteTeamId,

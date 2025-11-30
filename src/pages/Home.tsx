@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, ChevronRight, ChevronLeft, Heart, Bell, BellOff, MapPin } from 'lucide-react';
+import { Calendar, ChevronRight, ChevronLeft, Heart, Bell, MapPin } from 'lucide-react';
 import { useSchedule } from '../hooks/useGameData';
 import { useFavoriteTeam } from '../hooks/useFavoriteTeam';
 import { fetchStandings, fetchLeaders } from '../services/api';
@@ -22,7 +22,7 @@ const TEAM_COLORS: Record<number, string> = {
 
 export const Home: React.FC = () => {
     const { schedule, loading } = useSchedule() as { schedule: ScheduleItem[], loading: boolean };
-    const { favoriteTeamId, toggleFavoriteTeam, notificationsEnabled, toggleNotifications, subscribedGames, toggleGameSubscription } = useFavoriteTeam();
+    const { favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription } = useFavoriteTeam();
     const [standings, setStandings] = useState<any[]>([]);
     const [leaders, setLeaders] = useState<any[]>([]);
     const [selectedDate, setSelectedDate] = useState<string>(() => {
@@ -84,16 +84,14 @@ export const Home: React.FC = () => {
 
     // Notification Logic
     useEffect(() => {
-        if ((!favoriteTeamId || !notificationsEnabled) && subscribedGames.length === 0) return;
+        if (subscribedGames.length === 0) return;
 
         const checkGameStart = () => {
             const now = new Date();
             schedule.forEach(game => {
-                const isFavoriteTeamGame = favoriteTeamId && (game.away.id === favoriteTeamId || game.home.id === favoriteTeamId);
-                const shouldNotifyFavorite = isFavoriteTeamGame && notificationsEnabled;
                 const isSubscribedGame = subscribedGames.includes(game.gamePk);
 
-                if (shouldNotifyFavorite || isSubscribedGame) {
+                if (isSubscribedGame) {
                     const gameDate = new Date(game.date);
                     const timeDiff = gameDate.getTime() - now.getTime();
                     // Notify if game starts in 15 minutes or less, and hasn't started yet (positive diff)
@@ -117,7 +115,7 @@ export const Home: React.FC = () => {
         checkGameStart(); // Check immediately
 
         return () => clearInterval(interval);
-    }, [schedule, favoriteTeamId, notificationsEnabled, subscribedGames]);
+    }, [schedule, subscribedGames]);
 
     const handlePrevDay = () => {
         const currentIndex = dates.indexOf(selectedDate);
@@ -142,15 +140,6 @@ export const Home: React.FC = () => {
                     <div className="flex items-center gap-2">
                         <Calendar className="w-5 h-5 text-cyan-400" />
                         <h2 className="text-xl font-bold text-white tracking-tight">Calendario</h2>
-                        {favoriteTeamId && (
-                            <button
-                                onClick={toggleNotifications}
-                                className={`ml-4 p-2 rounded-full transition-colors ${notificationsEnabled ? 'bg-cyan-500/20 text-cyan-400' : 'bg-zinc-800 text-zinc-500'}`}
-                                title={notificationsEnabled ? "Notificaciones activadas" : "Activar notificaciones"}
-                            >
-                                {notificationsEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
-                            </button>
-                        )}
                     </div>
 
                     {/* Mobile Arrows (visible on small screens if needed, but we use scroll) */}
