@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, ChevronRight, ChevronLeft, Heart, Bell, BellOff } from 'lucide-react';
+import { Calendar, ChevronRight, ChevronLeft, Heart, Bell, BellOff, MapPin } from 'lucide-react';
 import { useSchedule } from '../hooks/useGameData';
 import { useFavoriteTeam } from '../hooks/useFavoriteTeam';
 import { fetchStandings, fetchLeaders } from '../services/api';
@@ -401,7 +401,14 @@ export const Home: React.FC = () => {
                                         </div>
                                     )}
 
-                                    <div className="mt-4 pt-4 border-t border-white/5 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {game.venue && (
+                                        <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-xs text-zinc-500">
+                                            <MapPin className="w-3.5 h-3.5" />
+                                            <span className="truncate">{game.venue}</span>
+                                        </div>
+                                    )}
+
+                                    <div className="mt-2 pt-2 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Ver Detalles</span>
                                         <ChevronRight className="w-4 h-4 text-cyan-400" />
                                     </div>
@@ -418,7 +425,7 @@ export const Home: React.FC = () => {
             </section>
 
             {/* Stats Grid */}
-            <section className="grid md:grid-cols-2 gap-8 pt-8 border-t border-white/5">
+            <section className="grid md:grid-cols-2 gap-4 md:gap-8 pt-8 border-t border-white/5">
                 <Standings standings={standings} />
                 <Leaders leaders={leaders} />
             </section>

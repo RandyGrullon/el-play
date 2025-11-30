@@ -218,6 +218,7 @@ const transformGameData = (data) => {
     return {
         status: gameStatus,
         gameDate: data.gameData.datetime.dateTime,
+        venue: data.gameData.venue.name,
         isTopInning: linescore.isTopInning,
         inning: `${linescore.isTopInning ? 'Top' : 'Bot'} ${linescore.currentInningOrdinal || ''}`,
         home: {

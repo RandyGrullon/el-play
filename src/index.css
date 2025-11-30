@@ -29,3 +29,13 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     @apply bg-zinc-700;
 }
+
+/* Hide Scrollbar Utility */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}

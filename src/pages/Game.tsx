@@ -39,6 +39,7 @@ export const Game: React.FC = () => {
     const displayData: GameData = gameData || {
         status: "Unknown",
         gameDate: "",
+        venue: "",
         isTopInning: false,
         inning: "",
         home: { id: 0, name: "Home Team", abbreviation: "HOM", logo: "", color: "", runs: 0, hits: 0, errors: 0, players: [] },
@@ -72,6 +73,7 @@ export const Game: React.FC = () => {
                         away={displayData.away}
                         inning={displayData.inning}
                         status={displayData.status}
+                        venue={displayData.venue}
                     />
                 )}
 

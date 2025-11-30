@@ -70,6 +70,7 @@ export interface Pitch {
 export interface GameData {
     status: string;
     gameDate: string;
+    venue: string;
     isTopInning: boolean;
     inning: string;
     home: Team;
@@ -123,6 +124,7 @@ export interface ScheduleItem {
     gamePk: number;
     status: string;
     date: string;
+    venue: string;
     away: {
         id: number;
         name: string;

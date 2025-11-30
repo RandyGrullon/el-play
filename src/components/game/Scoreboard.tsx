@@ -1,3 +1,5 @@
+import { MapPin } from 'lucide-react';
+
 import React from 'react';
 import { Team } from '../../types';
 
@@ -6,6 +8,7 @@ interface ScoreboardProps {
     away: Team;
     inning: string;
     status: string;
+    venue: string;
 }
 
 interface TeamScoreProps {
@@ -37,21 +40,30 @@ const TeamScore: React.FC<TeamScoreProps> = ({ team, isHome }) => (
     </div>
 );
 
-export const Scoreboard: React.FC<ScoreboardProps> = ({ home, away, inning, status }) => {
+export const Scoreboard: React.FC<ScoreboardProps> = ({ home, away, inning, status, venue }) => {
     return (
-        <div className="grid grid-cols-[1fr_auto_1fr] gap-4 md:gap-8 items-center w-full">
-            <TeamScore team={away} isHome={false} />
+        <div className="flex flex-col items-center w-full gap-6">
+            {venue && (
+                <div className="flex items-center gap-2 text-[10px] md:text-xs text-zinc-400 uppercase tracking-widest bg-zinc-900/50 px-4 py-1.5 rounded-full border border-white/5 backdrop-blur-sm animate-in fade-in slide-in-from-top-2">
+                    <MapPin className="w-3 h-3" />
+                    {venue}
+                </div>
+            )}
 
-            <div className="flex flex-col items-center justify-center px-4 py-2 md:px-6 md:py-4 bg-zinc-900/50 rounded-xl border border-white/5 backdrop-blur-sm">
-                <span className="text-[8px] md:text-[10px] font-bold text-cyan-400 uppercase tracking-[0.2em] mb-1 text-center">
-                    {status}
-                </span>
-                <span className="text-lg md:text-2xl font-bold text-white whitespace-nowrap">
-                    {inning}
-                </span>
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-4 md:gap-8 items-center w-full">
+                <TeamScore team={away} isHome={false} />
+
+                <div className="flex flex-col items-center justify-center px-4 py-2 md:px-6 md:py-4 bg-zinc-900/50 rounded-xl border border-white/5 backdrop-blur-sm">
+                    <span className="text-[8px] md:text-[10px] font-bold text-cyan-400 uppercase tracking-[0.2em] mb-1 text-center">
+                        {status}
+                    </span>
+                    <span className="text-lg md:text-2xl font-bold text-white whitespace-nowrap">
+                        {inning}
+                    </span>
+                </div>
+
+                <TeamScore team={home} isHome={true} />
             </div>
-
-            <TeamScore team={home} isHome={true} />
         </div>
     );
 };

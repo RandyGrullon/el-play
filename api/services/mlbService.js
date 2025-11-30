@@ -38,6 +38,7 @@ const fetchScheduleData = async (startDate, endDate) => {
                 gamePk: game.gamePk,
                 status: game.status.detailedState,
                 date: game.gameDate,
+                venue: game.venue.name,
                 away: {
                     id: awayId,
                     name: game.teams.away.team.name,
@@ -99,29 +100,56 @@ const fetchStandingsData = async () => {
 };
 
 const fetchLeadersData = async () => {
-    const response = await axios.get(`${MLB_API_BASE}/stats`, {
-        params: {
-            stats: 'season',
-            group: 'hitting',
-            gameType: 'R',
-            leagueId: 131,
-            season: 2025,
-            limit: 5,
-            sortStat: 'homeRuns'
+    const statsToFetch = [
+        { stat: 'homeRuns', label: 'HR', sortStat: 'homeRuns' },
+        { stat: 'avg', label: 'AVG', sortStat: 'battingAverage' },
+        { stat: 'rbi', label: 'RBI', sortStat: 'runsBattedIn' },
+        { stat: 'ops', label: 'OPS', sortStat: 'ops' },
+        { stat: 'hits', label: 'H', sortStat: 'hits' },
+        { stat: 'stolenBases', label: 'SB', sortStat: 'stolenBases' }
+    ];
+
+    const promises = statsToFetch.map(async ({ stat, label, sortStat }) => {
+        try {
+            const response = await axios.get(`${MLB_API_BASE}/stats`, {
+                params: {
+                    stats: 'season',
+                    group: 'hitting',
+                    gameType: 'R',
+                    leagueId: 131,
+                    season: 2025,
+                    limit: 5,
+                    sortStat: sortStat
+                }
+            });
+
+            if (!response.data.stats || !response.data.stats[0]) return [];
+
+            return response.data.stats[0].splits.map(split => ({
+                rank: split.rank,
+                player: split.player.fullName,
+                team: split.team.name,
+                teamId: split.team.id,
+                teamLogo: `https://www.mlbstatic.com/team-logos/${split.team.id}.svg`,
+                value: split.stat[stat],
+                statName: label
+            }));
+        } catch (error) {
+            console.error(`Error fetching leaders for ${stat}:`, error);
+            return [];
         }
     });
 
-    if (!response.data.stats || !response.data.stats[0]) return [];
+    const [homeRuns, battingAverage, runsBattedIn, ops, hits, stolenBases] = await Promise.all(promises);
 
-    return response.data.stats[0].splits.map(split => ({
-        rank: split.rank,
-        player: split.player.fullName,
-        team: split.team.name,
-        teamId: split.team.id,
-        teamLogo: `https://www.mlbstatic.com/team-logos/${split.team.id}.svg`,
-        value: split.stat.homeRuns,
-        statName: 'HR'
-    }));
+    return {
+        homeRuns,
+        battingAverage,
+        runsBattedIn,
+        ops,
+        hits,
+        stolenBases
+    };
 };
 
 module.exports = {
