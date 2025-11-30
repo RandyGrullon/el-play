@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchGameData, fetchSchedule } from '../services/api';
 
 export const useGameData = (gamePk) => {
-  const { data: gameData, isLoading, error, dataUpdatedAt } = useQuery({
+  const { data: gameData, isLoading, error, dataUpdatedAt, refetch } = useQuery({
     queryKey: ['game', gamePk],
     queryFn: () => fetchGameData(gamePk),
     enabled: !!gamePk,
@@ -31,12 +31,13 @@ export const useGameData = (gamePk) => {
     gameData,
     loading: isLoading,
     error: error ? error.message : null,
-    lastUpdated: dataUpdatedAt ? new Date(dataUpdatedAt) : null
+    lastUpdated: dataUpdatedAt ? new Date(dataUpdatedAt) : null,
+    refetch
   };
 };
 
 export const useSchedule = () => {
-  const { data: schedule = [], isLoading } = useQuery({
+  const { data: schedule = [], isLoading, refetch } = useQuery({
     queryKey: ['schedule'],
     queryFn: fetchSchedule,
     refetchInterval: (query) => {
@@ -68,5 +69,5 @@ export const useSchedule = () => {
     }
   });
 
-  return { schedule, loading: isLoading };
+  return { schedule, loading: isLoading, refetch };
 };
