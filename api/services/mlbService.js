@@ -33,6 +33,7 @@ const fetchScheduleData = async (startDate, endDate) => {
 
             const linescore = game.linescore || {};
             const offense = linescore.offense || {};
+            const defense = linescore.defense || {};
 
             return {
                 gamePk: game.gamePk,
@@ -67,7 +68,15 @@ const fetchScheduleData = async (startDate, endDate) => {
                         first: !!offense.first,
                         second: !!offense.second,
                         third: !!offense.third
-                    }
+                    },
+                    batter: offense.batter ? {
+                        id: offense.batter.id,
+                        name: offense.batter.fullName
+                    } : null,
+                    pitcher: defense.pitcher ? {
+                        id: defense.pitcher.id,
+                        name: defense.pitcher.fullName
+                    } : null
                 }
             };
         });

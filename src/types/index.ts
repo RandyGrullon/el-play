@@ -150,5 +150,13 @@ export interface ScheduleItem {
         strikes: number;
         outs: number;
         runners: Runners;
+        batter?: {
+            id: number;
+            name: string;
+        };
+        pitcher?: {
+            id: number;
+            name: string;
+        };
     };
 }

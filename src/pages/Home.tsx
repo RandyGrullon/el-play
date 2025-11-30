@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, ChevronRight, ChevronLeft, Heart, Bell, MapPin } from 'lucide-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBaseballBatBall } from '@fortawesome/free-solid-svg-icons';
+import { faBaseballBatBall, faBaseball } from '@fortawesome/free-solid-svg-icons';
 import { useSchedule } from '../hooks/useGameData';
 import { useFavoriteTeam } from '../hooks/useFavoriteTeam';
 import { useAnalytics } from '../hooks/useAnalytics';
@@ -461,6 +461,33 @@ export const Home: React.FC = () => {
                                         <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-xs text-zinc-500">
                                             <MapPin className="w-3.5 h-3.5" />
                                             <span className="truncate">{game.venue}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Batter & Pitcher Info */}
+                                    {(game.status === 'Live' || game.status === 'In Progress') && game.liveData && (
+                                        <div className="mt-3 pt-3 border-t border-white/5 space-y-2">
+                                            {/* Batter */}
+                                            {game.liveData.batter && (
+                                                <div className="flex items-center gap-2 text-xs text-zinc-300">
+                                                    <img
+                                                        src={game.liveData.isTopInning ? game.away.logo : game.home.logo}
+                                                        alt="Batting Team"
+                                                        className="w-3.5 h-3.5 object-contain"
+                                                    />
+                                                    <span className="font-medium truncate">{game.liveData.batter.name}</span>
+                                                    <span className="text-zinc-500 text-[10px] uppercase ml-auto flex-shrink-0">Al Bate</span>
+                                                </div>
+                                            )}
+
+                                            {/* Pitcher */}
+                                            {game.liveData.pitcher && (
+                                                <div className="flex items-center gap-2 text-xs text-zinc-300">
+                                                    <FontAwesomeIcon icon={faBaseball} className="w-3.5 h-3.5 text-zinc-500" />
+                                                    <span className="font-medium truncate">{game.liveData.pitcher.name}</span>
+                                                    <span className="text-zinc-500 text-[10px] uppercase ml-auto flex-shrink-0">Lanzando</span>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
