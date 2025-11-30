@@ -22,21 +22,21 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
         if (!container) return;
 
         const handleTouchStart = (e: TouchEvent) => {
-            // Only enable pull to refresh if we are at the top of the page
-            if (window.scrollY === 0) {
+            // Only enable pull to refresh if we are at the top of the page (with small tolerance)
+            if (window.scrollY <= 10) {
                 setStartY(e.touches[0].clientY);
             }
         };
 
         const handleTouchMove = (e: TouchEvent) => {
-            if (startY === 0 || window.scrollY > 0 || refreshing) return;
+            if (!startY || refreshing) return;
 
             const y = e.touches[0].clientY;
             const diff = y - startY;
 
-            if (diff > 0) {
-                // Prevent default only if we are pulling down at the top
-                // This prevents native browser refresh in some cases, but we want our custom one
+            // If pulling down and at top
+            if (diff > 0 && window.scrollY <= 10) {
+                // Prevent default to stop native scroll/overscroll
                 if (e.cancelable) e.preventDefault();
 
                 // Add resistance
@@ -46,7 +46,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
         };
 
         const handleTouchEnd = async () => {
-            if (startY === 0 || window.scrollY > 0 || refreshing) {
+            if (!startY || refreshing) {
                 setStartY(0);
                 setCurrentY(0);
                 return;
