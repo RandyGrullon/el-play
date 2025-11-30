@@ -94,13 +94,28 @@ export const Home: React.FC = () => {
                 if (isSubscribedGame) {
                     const gameDate = new Date(game.date);
                     const timeDiff = gameDate.getTime() - now.getTime();
-                    // Notify if game starts in 10 minutes or less, and hasn't started yet (positive diff)
+
+                    // 1. Notification: 10 minutes before
                     if (timeDiff > 0 && timeDiff <= 10 * 60 * 1000) {
-                        const notifiedKey = `notified-${game.gamePk}`;
+                        const notifiedKey = `notified-pre-${game.gamePk}`;
                         if (!sessionStorage.getItem(notifiedKey)) {
                             if (Notification.permission === 'granted') {
                                 new Notification('¡El juego va a comenzar!', {
-                                    body: `${game.away.name} vs ${game.home.name} comienza en breve.`,
+                                    body: `${game.away.name} vs ${game.home.name} comienza en 10 minutos.`,
+                                    icon: '/pwa-192x192.png'
+                                });
+                                sessionStorage.setItem(notifiedKey, 'true');
+                            }
+                        }
+                    }
+
+                    // 2. Notification: Game Started (Playball)
+                    if (game.status === 'Live' || game.status === 'In Progress') {
+                        const notifiedKey = `notified-start-${game.gamePk}`;
+                        if (!sessionStorage.getItem(notifiedKey)) {
+                            if (Notification.permission === 'granted') {
+                                new Notification('¡Playball!', {
+                                    body: `El juego entre ${game.away.name} y ${game.home.name} ha comenzado.`,
                                     icon: '/pwa-192x192.png'
                                 });
                                 sessionStorage.setItem(notifiedKey, 'true');
