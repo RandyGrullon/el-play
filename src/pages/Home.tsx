@@ -94,8 +94,8 @@ export const Home: React.FC = () => {
                 if (isSubscribedGame) {
                     const gameDate = new Date(game.date);
                     const timeDiff = gameDate.getTime() - now.getTime();
-                    // Notify if game starts in 15 minutes or less, and hasn't started yet (positive diff)
-                    if (timeDiff > 0 && timeDiff <= 15 * 60 * 1000) {
+                    // Notify if game starts in 10 minutes or less, and hasn't started yet (positive diff)
+                    if (timeDiff > 0 && timeDiff <= 10 * 60 * 1000) {
                         const notifiedKey = `notified-${game.gamePk}`;
                         if (!sessionStorage.getItem(notifiedKey)) {
                             if (Notification.permission === 'granted') {
