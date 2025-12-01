@@ -7,10 +7,24 @@ interface PullToRefreshProps {
 }
 
 export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, children }) => {
-    const [startY, setStartY] = useState(0);
-    const [currentY, setCurrentY] = useState(0);
     const [refreshing, setRefreshing] = useState(false);
+    const [currentY, setCurrentY] = useState(0);
+
+    // Refs to keep track of values inside event listeners without triggering re-renders/re-binds
+    const startYRef = useRef(0);
+    const currentYRef = useRef(0);
+    const refreshingRef = useRef(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const onRefreshRef = useRef(onRefresh);
+
+    // Update refs when props/state change
+    useEffect(() => {
+        onRefreshRef.current = onRefresh;
+    }, [onRefresh]);
+
+    useEffect(() => {
+        refreshingRef.current = refreshing;
+    }, [refreshing]);
 
     // Threshold to trigger refresh (in pixels)
     const PULL_THRESHOLD = 80;
@@ -22,56 +36,88 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
         if (!container) return;
 
         const handleTouchStart = (e: TouchEvent) => {
-            // Only enable pull to refresh if we are at the top of the page (with small tolerance)
-            if (window.scrollY <= 10) {
-                setStartY(e.touches[0].clientY);
+            // Only enable pull to refresh if we are at the top of the page
+            if (window.scrollY <= 5 && !refreshingRef.current) {
+                startYRef.current = e.touches[0].clientY;
+            } else {
+                startYRef.current = 0;
             }
         };
 
         const handleTouchMove = (e: TouchEvent) => {
-            if (!startY || refreshing) return;
+            if (refreshingRef.current) return;
 
             const y = e.touches[0].clientY;
-            const diff = y - startY;
 
-            // If pulling down and at top
-            if (diff > 0 && window.scrollY <= 10) {
+            // 1. Check if we should start tracking (late start)
+            // This handles the case where the user scrolls up to the top and keeps pulling
+            if (!startYRef.current && window.scrollY <= 5) {
+                startYRef.current = y;
+            }
+
+            // 2. If we are not tracking, or we have scrolled down, stop.
+            if (!startYRef.current || window.scrollY > 5) {
+                startYRef.current = 0;
+                currentYRef.current = 0;
+                setCurrentY(0);
+                return;
+            }
+
+            const diff = y - startYRef.current;
+
+            // 3. If pulling down
+            if (diff > 0) {
                 // Prevent default to stop native scroll/overscroll
                 if (e.cancelable) e.preventDefault();
 
                 // Add resistance
                 const newY = Math.min(diff * 0.5, MAX_PULL);
-                setCurrentY(newY);
+                currentYRef.current = newY;
+                setCurrentY(newY); // Update state for UI
+            } else {
+                // Pushing up (scrolling down), let native scroll happen
+                currentYRef.current = 0;
+                setCurrentY(0);
             }
         };
 
         const handleTouchEnd = async () => {
-            if (!startY || refreshing) {
-                setStartY(0);
-                setCurrentY(0);
+            if (!startYRef.current || refreshingRef.current) {
+                startYRef.current = 0;
+                // Only reset currentY if we are not refreshing
+                if (!refreshingRef.current) {
+                    currentYRef.current = 0;
+                    setCurrentY(0);
+                }
                 return;
             }
 
-            if (currentY > PULL_THRESHOLD) {
+            if (currentYRef.current > PULL_THRESHOLD) {
                 setRefreshing(true);
+                refreshingRef.current = true;
                 setCurrentY(PULL_THRESHOLD); // Snap to threshold
+                currentYRef.current = PULL_THRESHOLD;
 
                 try {
-                    await onRefresh();
+                    await onRefreshRef.current();
                 } finally {
                     setTimeout(() => {
                         setRefreshing(false);
+                        refreshingRef.current = false;
                         setCurrentY(0);
-                        setStartY(0);
+                        currentYRef.current = 0;
+                        startYRef.current = 0;
                     }, 500); // Small delay to show completion
                 }
             } else {
                 // Snap back
                 setCurrentY(0);
-                setStartY(0);
+                currentYRef.current = 0;
+                startYRef.current = 0;
             }
         };
 
+        // Use passive: false for touchmove to allow preventDefault
         container.addEventListener('touchstart', handleTouchStart, { passive: true });
         container.addEventListener('touchmove', handleTouchMove, { passive: false });
         container.addEventListener('touchend', handleTouchEnd);
@@ -81,7 +127,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
             container.removeEventListener('touchmove', handleTouchMove);
             container.removeEventListener('touchend', handleTouchEnd);
         };
-    }, [startY, currentY, refreshing, onRefresh]);
+    }, []); // Empty dependency array ensures listeners are bound only once
 
     return (
         <div ref={containerRef} className="min-h-screen relative">
