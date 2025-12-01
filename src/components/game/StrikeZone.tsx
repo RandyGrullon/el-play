@@ -122,25 +122,7 @@ export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches = [] }) => {
                     })}
                 </svg>
 
-                {/* Info Overlay for Last Pitch */}
-                {lastPitch && (
-                    <div className="absolute top-2 left-2 right-2 flex justify-between items-start text-[10px] uppercase font-bold tracking-wider">
-                        <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded text-white">
-                            {lastPitch.speed ? `${lastPitch.speed.toFixed(1)} MPH` : ''}
-                        </div>
-                        <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded text-cyan-400">
-                            {lastPitch.type || ''}
-                        </div>
-                    </div>
-                )}
 
-                {lastPitch && (
-                    <div className="absolute bottom-2 left-0 right-0 text-center">
-                        <span className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-white">
-                            {lastPitch.call}
-                        </span>
-                    </div>
-                )}
             </div>
             <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-3">Zona de Strike</h3>
         </div>

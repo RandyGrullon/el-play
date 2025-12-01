@@ -50,7 +50,7 @@ export const useSchedule = () => {
       );
 
       if (hasLiveGames) {
-        return 2000; // 2 seconds (Same as Game Detail)
+        return 2000; // 2 seconds
       }
 
       // Check for games starting soon (within 30 mins)

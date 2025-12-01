@@ -170,6 +170,31 @@ export const Game: React.FC = () => {
                                             </div>
                                         </div>
 
+                                        {/* Last Pitch Info (Mobile Only) - Moved Above Play History */}
+                                        {displayData.currentPitches && displayData.currentPitches.length > 0 && (
+                                            <div className="md:hidden w-full flex justify-between items-center bg-zinc-900/50 border border-white/5 rounded-xl p-3 backdrop-blur-sm">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Último Lanzamiento</span>
+                                                        <div className="flex items-baseline gap-2">
+                                                            <span className="text-lg font-bold text-white">
+                                                                {displayData.currentPitches[displayData.currentPitches.length - 1].speed ? `${displayData.currentPitches[displayData.currentPitches.length - 1].speed.toFixed(1)}` : '--'}
+                                                                <span className="text-xs text-zinc-400 ml-1">MPH</span>
+                                                            </span>
+                                                            <span className="text-xs font-bold text-cyan-400">
+                                                                {displayData.currentPitches[displayData.currentPitches.length - 1].type || ''}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className={`px-3 py-1 rounded-full text-xs font-bold ${['S', 'C', 'W'].includes(displayData.currentPitches[displayData.currentPitches.length - 1].code) ? 'bg-red-500/20 text-red-400' :
+                                                    ['B'].includes(displayData.currentPitches[displayData.currentPitches.length - 1].code) ? 'bg-green-500/20 text-green-400' :
+                                                        'bg-blue-500/20 text-blue-400'
+                                                    }`}>
+                                                    {displayData.currentPitches[displayData.currentPitches.length - 1].call}
+                                                </div>
+                                            </div>
+                                        )}
                                         {/* Play History (Mobile Only) - Moved Above StrikeZone */}
                                         <div className="md:hidden w-full">
                                             <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Historial de Jugadas</h3>
