@@ -12,6 +12,7 @@ import { GameSummary } from '../components/game/GameSummary';
 import { GameDetailSkeleton } from '../components/game/GameDetailSkeleton';
 import { GameData } from '../types';
 import { PullToRefresh } from '../components/common/PullToRefresh';
+import AdBanner from '../components/common/AdBanner';
 
 export const Game: React.FC = () => {
     const { gamePk } = useParams<{ gamePk: string }>();
@@ -80,6 +81,9 @@ export const Game: React.FC = () => {
     return (
         <PullToRefresh onRefresh={handleRefresh}>
             <div className="space-y-6 px-4 pb-10">
+                {/* Top Ad Banner */}
+                <AdBanner slot="2345678901" format="auto" />
+
                 <Link to="/" className="inline-flex items-center gap-2 text-zinc-500 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest ml-1">
                     <ArrowLeft className="w-4 h-4" />
                     Volver
@@ -362,6 +366,9 @@ export const Game: React.FC = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Bottom Ad Banner */}
+                <AdBanner slot="3456789012" format="auto" />
             </div>
         </PullToRefresh>
     );
