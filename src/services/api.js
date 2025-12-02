@@ -5,11 +5,23 @@ export const fetchGameData = async (gamePk = DEFAULT_GAME_PK) => {
         ? `http://localhost:5000/api/game/${gamePk}`
         : `/api/game/${gamePk}`;
 
-    const response = await fetch(apiUrl);
-    if (!response.ok) {
-        throw new Error('Network response was not ok');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+    try {
+        const response = await fetch(apiUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timeout - servidor no disponible');
+        }
+        throw error;
     }
-    return await response.json();
 };
 
 export const fetchSchedule = async () => {
@@ -17,11 +29,23 @@ export const fetchSchedule = async () => {
         ? `http://localhost:5000/api/schedule`
         : `/api/schedule`;
 
-    const response = await fetch(apiUrl);
-    if (!response.ok) {
-        throw new Error('Network response was not ok');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+    try {
+        const response = await fetch(apiUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timeout - servidor no disponible');
+        }
+        throw error;
     }
-    return await response.json();
 };
 
 export const fetchStandings = async () => {
@@ -29,11 +53,23 @@ export const fetchStandings = async () => {
         ? `http://localhost:5000/api/standings`
         : `/api/standings`;
 
-    const response = await fetch(apiUrl);
-    if (!response.ok) {
-        throw new Error('Network response was not ok');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+    try {
+        const response = await fetch(apiUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timeout - servidor no disponible');
+        }
+        throw error;
     }
-    return await response.json();
 };
 
 export const fetchLeaders = async () => {
@@ -41,9 +77,21 @@ export const fetchLeaders = async () => {
         ? `http://localhost:5000/api/leaders`
         : `/api/leaders`;
 
-    const response = await fetch(apiUrl);
-    if (!response.ok) {
-        throw new Error('Network response was not ok');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+    try {
+        const response = await fetch(apiUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timeout - servidor no disponible');
+        }
+        throw error;
     }
-    return await response.json();
 };

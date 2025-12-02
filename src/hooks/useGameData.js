@@ -13,6 +13,8 @@ export const useGameData = (gamePk) => {
     queryKey: ['game', gamePk],
     queryFn: () => fetchGameData(gamePk),
     enabled: !!gamePk,
+    retry: 2, // Solo 2 reintentos
+    retryDelay: 1000, // 1 segundo entre reintentos
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data) return getRandomInterval(5000, 8000);
@@ -48,6 +50,8 @@ export const useSchedule = () => {
   const { data: schedule = [], isLoading, refetch } = useQuery({
     queryKey: ['schedule'],
     queryFn: fetchSchedule,
+    retry: 2, // Solo 2 reintentos
+    retryDelay: 1000, // 1 segundo entre reintentos
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data || data.length === 0) return getRandomInterval(50000, 90000); // Si no hay data, check cada 50-90s

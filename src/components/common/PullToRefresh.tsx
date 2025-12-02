@@ -36,8 +36,8 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
         if (!container) return;
 
         const handleTouchStart = (e: TouchEvent) => {
-            // Only enable pull to refresh if we are at the top of the page
-            if (window.scrollY <= 5 && !refreshingRef.current) {
+            // Enable pull to refresh at any scroll position
+            if (!refreshingRef.current) {
                 startYRef.current = e.touches[0].clientY;
             } else {
                 startYRef.current = 0;
@@ -50,13 +50,12 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
             const y = e.touches[0].clientY;
 
             // 1. Check if we should start tracking (late start)
-            // This handles the case where the user scrolls up to the top and keeps pulling
-            if (!startYRef.current && window.scrollY <= 5) {
+            if (!startYRef.current) {
                 startYRef.current = y;
             }
 
-            // 2. If we are not tracking, or we have scrolled down, stop.
-            if (!startYRef.current || window.scrollY > 5) {
+            // 2. If we are tracking
+            if (!startYRef.current) {
                 startYRef.current = 0;
                 currentYRef.current = 0;
                 setCurrentY(0);
