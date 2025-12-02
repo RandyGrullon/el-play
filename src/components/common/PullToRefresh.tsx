@@ -36,8 +36,9 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
         if (!container) return;
 
         const handleTouchStart = (e: TouchEvent) => {
-            // Enable pull to refresh at any scroll position
-            if (!refreshingRef.current) {
+            // Solo iniciar si estamos en el tope de la página
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            if (scrollTop === 0 && !refreshingRef.current) {
                 startYRef.current = e.touches[0].clientY;
             } else {
                 startYRef.current = 0;
@@ -47,34 +48,37 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
         const handleTouchMove = (e: TouchEvent) => {
             if (refreshingRef.current) return;
 
-            const y = e.touches[0].clientY;
-
-            // 1. Check if we should start tracking (late start)
-            if (!startYRef.current) {
-                startYRef.current = y;
-            }
-
-            // 2. If we are tracking
-            if (!startYRef.current) {
+            // Verificar que seguimos en el tope
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            
+            // Si no estamos en el tope, no hacer nada
+            if (scrollTop > 0) {
                 startYRef.current = 0;
                 currentYRef.current = 0;
                 setCurrentY(0);
                 return;
             }
 
+            const y = e.touches[0].clientY;
+
+            // Si no hay punto de inicio, salir
+            if (!startYRef.current) {
+                return;
+            }
+
             const diff = y - startYRef.current;
 
-            // 3. If pulling down
+            // Solo si estamos jalando hacia abajo (diff > 0) y en el tope
             if (diff > 0) {
-                // Prevent default to stop native scroll/overscroll
+                // Prevenir scroll nativo solo cuando estamos jalando
                 if (e.cancelable) e.preventDefault();
 
-                // Add resistance
+                // Agregar resistencia
                 const newY = Math.min(diff * 0.5, MAX_PULL);
                 currentYRef.current = newY;
-                setCurrentY(newY); // Update state for UI
+                setCurrentY(newY);
             } else {
-                // Pushing up (scrolling down), let native scroll happen
+                // Si empujamos hacia arriba, resetear
                 currentYRef.current = 0;
                 setCurrentY(0);
             }
