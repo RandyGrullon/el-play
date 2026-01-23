@@ -1,17 +1,26 @@
 const axios = require('axios');
-const { MLB_API_BASE, MLB_API_BASE_V1_1, LIDOM_TEAMS } = require('../config/constants');
+const { MLB_API_BASE, MLB_API_BASE_V1_1, LEAGUES, LIDOM_TEAMS, WBC_TEAMS } = require('../config/constants');
 const { transformGameData } = require('../utils/transformers');
+
+// Helper to get team config based on league
+const getTeamConfig = (leagueId) => {
+    if (leagueId === 'wbc' || leagueId === 160) return WBC_TEAMS;
+    return LIDOM_TEAMS;
+};
 
 const fetchLiveGameData = async (gamePk) => {
     const response = await axios.get(`${MLB_API_BASE_V1_1}/game/${gamePk}/feed/live`);
     return transformGameData(response.data);
 };
 
-const fetchScheduleData = async (startDate, endDate) => {
+const fetchScheduleData = async (startDate, endDate, leagueId = 'lidom') => {
+    const league = LEAGUES[leagueId] || LEAGUES.lidom;
+    const teamsConfig = getTeamConfig(leagueId);
+    
     const response = await axios.get(`${MLB_API_BASE}/schedule`, {
         params: {
-            sportId: 17, // Winter Leagues
-            leagueId: 131, // LIDOM
+            sportId: league.sportId,
+            leagueId: league.leagueId,
             startDate,
             endDate,
             hydrate: 'linescore'
@@ -22,11 +31,6 @@ const fetchScheduleData = async (startDate, endDate) => {
 
     // Flatten and Transform
     return dates.flatMap(date => date.games)
-        .filter(game => {
-            const homeId = game.teams.home.team.id;
-            const awayId = game.teams.away.team.id;
-            return LIDOM_TEAMS[homeId] || LIDOM_TEAMS[awayId];
-        })
         .map(game => {
             const homeId = game.teams.home.team.id;
             const awayId = game.teams.away.team.id;
@@ -34,6 +38,17 @@ const fetchScheduleData = async (startDate, endDate) => {
             const linescore = game.linescore || {};
             const offense = linescore.offense || {};
             const defense = linescore.defense || {};
+
+            // For WBC, use team abbreviation from API if not in our config
+            const getTeamAbbrev = (teamId, teamName) => {
+                if (teamsConfig[teamId]) return teamsConfig[teamId].abbrev;
+                // Extract 3-letter code from team name for WBC
+                return teamName.substring(0, 3).toUpperCase();
+            };
+
+            const getTeamColor = (teamId) => {
+                return teamsConfig[teamId]?.color || '#ffffff';
+            };
 
             return {
                 gamePk: game.gamePk,
@@ -43,18 +58,18 @@ const fetchScheduleData = async (startDate, endDate) => {
                 away: {
                     id: awayId,
                     name: game.teams.away.team.name,
-                    abbrev: LIDOM_TEAMS[awayId]?.abbrev || 'UNK',
+                    abbrev: getTeamAbbrev(awayId, game.teams.away.team.name),
                     logo: `https://www.mlbstatic.com/team-logos/${awayId}.svg`,
-                    color: LIDOM_TEAMS[awayId]?.color || '#ffffff',
+                    color: getTeamColor(awayId),
                     score: game.teams.away.score || 0,
                     isWinner: game.teams.away.isWinner
                 },
                 home: {
                     id: homeId,
                     name: game.teams.home.team.name,
-                    abbrev: LIDOM_TEAMS[homeId]?.abbrev || 'UNK',
+                    abbrev: getTeamAbbrev(homeId, game.teams.home.team.name),
                     logo: `https://www.mlbstatic.com/team-logos/${homeId}.svg`,
-                    color: LIDOM_TEAMS[homeId]?.color || '#ffffff',
+                    color: getTeamColor(homeId),
                     score: game.teams.home.score || 0,
                     isWinner: game.teams.home.isWinner
                 },
@@ -77,34 +92,42 @@ const fetchScheduleData = async (startDate, endDate) => {
                         id: defense.pitcher.id,
                         name: defense.pitcher.fullName
                     } : null
-                }
+                },
+                league: leagueId
             };
         });
 };
 
-const fetchStandingsData = async () => {
-    // Fetch both regular season, postseason (round robin) standings and final series schedule
+const fetchStandingsData = async (leagueId = 'lidom') => {
+    const league = LEAGUES[leagueId] || LEAGUES.lidom;
+    
+    // For WBC, fetch pool standings differently
+    if (leagueId === 'wbc') {
+        return fetchWBCStandings(league);
+    }
+    
+    // LIDOM: Fetch regular season, postseason (round robin) standings and final series schedule
     const [regularResponse, postseasonResponse, finalSeriesResponse] = await Promise.all([
         axios.get(`${MLB_API_BASE}/standings`, {
             params: {
-                leagueId: 131,
-                season: 2025,
+                leagueId: league.leagueId,
+                season: league.season,
                 standingsTypes: 'regularSeason'
             }
         }),
         axios.get(`${MLB_API_BASE}/standings`, {
             params: {
-                leagueId: 131,
-                season: 2025,
+                leagueId: league.leagueId,
+                season: league.season,
                 standingsTypes: 'postseason'
             }
         }),
         // Get final series games (gameType W = World Series / Final)
         axios.get(`${MLB_API_BASE}/schedule`, {
             params: {
-                sportId: 17,
-                leagueId: 131,
-                season: 2025,
+                sportId: league.sportId,
+                leagueId: league.leagueId,
+                season: league.season,
                 gameTypes: 'W'
             }
         })
@@ -256,7 +279,63 @@ const fetchStandingsData = async () => {
     };
 };
 
-const fetchLeadersData = async () => {
+// WBC Standings - organized by pools
+const fetchWBCStandings = async (league) => {
+    try {
+        const response = await axios.get(`${MLB_API_BASE}/standings`, {
+            params: {
+                leagueId: league.leagueId,
+                season: league.season,
+                standingsTypes: 'regularSeason'
+            }
+        });
+
+        const records = response.data.records || [];
+        const pools = {};
+        
+        records.forEach(record => {
+            const divisionName = record.division?.name || 'Pool';
+            if (!pools[divisionName]) {
+                pools[divisionName] = [];
+            }
+            
+            record.teamRecords?.forEach(teamRecord => {
+                pools[divisionName].push({
+                    rank: teamRecord.rank || teamRecord.divisionRank,
+                    team: {
+                        name: teamRecord.team.name,
+                        id: teamRecord.team.id,
+                        logo: `https://www.mlbstatic.com/team-logos/${teamRecord.team.id}.svg`
+                    },
+                    wins: teamRecord.wins,
+                    losses: teamRecord.losses,
+                    gamesPlayed: teamRecord.gamesPlayed || (teamRecord.wins + teamRecord.losses),
+                    pct: teamRecord.winningPercentage,
+                    gamesBack: teamRecord.gamesBack || '-',
+                    streak: teamRecord.streak?.streakCode || '-'
+                });
+            });
+        });
+
+        // Sort each pool by rank
+        Object.keys(pools).forEach(poolName => {
+            pools[poolName].sort((a, b) => a.rank - b.rank);
+        });
+
+        return {
+            pools,
+            type: 'wbc',
+            league: 'wbc'
+        };
+    } catch (error) {
+        console.error('Error fetching WBC standings:', error);
+        return { pools: {}, type: 'wbc', league: 'wbc' };
+    }
+};
+
+const fetchLeadersData = async (leagueId = 'lidom') => {
+    const league = LEAGUES[leagueId] || LEAGUES.lidom;
+    
     const statsToFetch = [
         { stat: 'homeRuns', label: 'HR', sortStat: 'homeRuns' },
         { stat: 'avg', label: 'AVG', sortStat: 'battingAverage' },
@@ -273,8 +352,8 @@ const fetchLeadersData = async () => {
                     stats: 'season',
                     group: 'hitting',
                     gameType: 'R',
-                    leagueId: 131,
-                    season: 2025,
+                    leagueId: league.leagueId,
+                    season: league.season,
                     limit: 5,
                     sortStat: sortStat
                 }
@@ -305,7 +384,8 @@ const fetchLeadersData = async () => {
         runsBattedIn,
         ops,
         hits,
-        stolenBases
+        stolenBases,
+        league: leagueId
     };
 };
 

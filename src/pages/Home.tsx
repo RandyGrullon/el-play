@@ -6,6 +6,7 @@ import { faBaseballBatBall, faBaseball } from '@fortawesome/free-solid-svg-icons
 import { useSchedule } from '../hooks/useGameData';
 import { useFavoriteTeam } from '../hooks/useFavoriteTeam';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { useLeague } from '../store/LeagueContext';
 import { fetchStandings, fetchLeaders } from '../services/api';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -26,7 +27,8 @@ const TEAM_COLORS: Record<number, string> = {
 };
 
 export const Home: React.FC = () => {
-    const { schedule, loading, refetch } = useSchedule() as { schedule: ScheduleItem[], loading: boolean, refetch: () => Promise<any> };
+    const { activeLeague } = useLeague();
+    const { schedule, loading, refetch } = useSchedule(activeLeague) as { schedule: ScheduleItem[], loading: boolean, refetch: () => Promise<any> };
     const { favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription } = useFavoriteTeam();
     const { trackNotificationSubscribe, trackNotificationUnsubscribe } = useAnalytics();
     const [standings, setStandings] = useState<any>(null);
@@ -35,10 +37,11 @@ export const Home: React.FC = () => {
         return new Date().toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
     });
 
+    // Refetch data when league changes
     useEffect(() => {
-        fetchStandings().then(setStandings).catch(console.error);
-        fetchLeaders().then(setLeaders).catch(console.error);
-    }, []);
+        fetchStandings(activeLeague).then(setStandings).catch(console.error);
+        fetchLeaders(activeLeague).then(setLeaders).catch(console.error);
+    }, [activeLeague]);
 
     const scrollRef = useRef<HTMLDivElement>(null);
 

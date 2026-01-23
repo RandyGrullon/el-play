@@ -3,9 +3,10 @@ const { fetchStandingsData, fetchLeadersData } = require('../services/mlbService
 const { TTL } = require('../config/constants');
 
 const getStandings = async (req, res, next) => {
-    const cacheKey = 'standings';
     try {
-        const data = await fetchWithCache(cacheKey, fetchStandingsData, TTL.STANDINGS);
+        const leagueId = req.query.league || 'lidom';
+        const cacheKey = `standings_${leagueId}`;
+        const data = await fetchWithCache(cacheKey, () => fetchStandingsData(leagueId), TTL.STANDINGS);
         res.json(data);
     } catch (error) {
         next(error);
@@ -13,9 +14,10 @@ const getStandings = async (req, res, next) => {
 };
 
 const getLeaders = async (req, res, next) => {
-    const cacheKey = 'leaders_hr';
     try {
-        const data = await fetchWithCache(cacheKey, fetchLeadersData, TTL.LEADERS);
+        const leagueId = req.query.league || 'lidom';
+        const cacheKey = `leaders_${leagueId}`;
+        const data = await fetchWithCache(cacheKey, () => fetchLeadersData(leagueId), TTL.LEADERS);
         res.json(data);
     } catch (error) {
         next(error);
