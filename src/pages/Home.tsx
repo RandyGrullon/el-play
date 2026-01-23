@@ -29,7 +29,7 @@ export const Home: React.FC = () => {
     const { schedule, loading, refetch } = useSchedule() as { schedule: ScheduleItem[], loading: boolean, refetch: () => Promise<any> };
     const { favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription } = useFavoriteTeam();
     const { trackNotificationSubscribe, trackNotificationUnsubscribe } = useAnalytics();
-    const [standings, setStandings] = useState<any[]>([]);
+    const [standings, setStandings] = useState<any>(null);
     const [leaders, setLeaders] = useState<any[]>([]);
     const [selectedDate, setSelectedDate] = useState<string>(() => {
         return new Date().toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
