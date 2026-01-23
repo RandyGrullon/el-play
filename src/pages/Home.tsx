@@ -15,7 +15,6 @@ import { Leaders } from '../components/game/Leaders';
 import { GameCardSkeleton } from '../components/game/GameCardSkeleton';
 import { ScheduleItem } from '../types';
 import { PullToRefresh } from '../components/common/PullToRefresh';
-import AdBanner from '../components/common/AdBanner';
 
 const TEAM_COLORS: Record<number, string> = {
     667: '#FDB927', // Aguilas
@@ -236,10 +235,6 @@ export const Home: React.FC = () => {
                     </div>
                 ) : (
                 <>
-
-                {/* Top Ad Banner */}
-                <AdBanner slot="1234567890" format="auto" />
-
                 {/* Date Selector & Games */}
                 <section className="space-y-6">
                     <div className="flex items-center justify-between">
@@ -582,13 +577,11 @@ export const Home: React.FC = () => {
                                 </Link>
                             ))
                         ) : (
-                            <div className="col-span-full space-y-6">
+                            <div className="col-span-full">
                                 <div className="flex flex-col items-center justify-center p-12 text-center text-zinc-500 bg-zinc-900/30 rounded-xl border border-white/5 border-dashed">
                                     <Calendar className="w-8 h-8 mb-3 opacity-20" />
                                     <p>No hay juegos programados para este día.</p>
                                 </div>
-                                {/* Ad cuando no hay juegos */}
-                                <AdBanner slot="5678901234" format="horizontal" />
                             </div>
                         )}
                     </div>
@@ -599,10 +592,6 @@ export const Home: React.FC = () => {
                     <Standings standings={standings} />
                     <Leaders leaders={leaders} />
                 </section>
-
-                {/* Bottom Ad Banner */}
-                <AdBanner slot="0987654321" format="auto" />
-
                 </>
                 )}
 
