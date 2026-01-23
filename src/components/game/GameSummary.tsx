@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { GameData } from '../../types';
 import { Card } from '../ui/Card';
 import { LineScore } from './LineScore';
+import { useLeague } from '../../store/LeagueContext';
 
 interface GameSummaryProps {
     gameData: GameData;
@@ -10,6 +11,7 @@ interface GameSummaryProps {
 
 export const GameSummary: React.FC<GameSummaryProps> = ({ gameData }) => {
     const { home, away, decisions, topPerformers, innings } = gameData;
+    const { leagueConfig } = useLeague();
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -109,11 +111,11 @@ export const GameSummary: React.FC<GameSummaryProps> = ({ gameData }) => {
                                         <img src={player.teamLogo} alt="Team" className="w-4 h-4 object-contain" />
                                     </div>
                                 </div>
-                                <Link to={`/player/${player.id}`} className="font-bold text-white hover:text-cyan-400 transition-colors mb-1">
+                                <Link to={`/player/${player.id}`} className="font-bold text-white hover:opacity-80 transition-opacity mb-1">
                                     {player.name}
                                 </Link>
                                 <div className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-2">{player.type}</div>
-                                <div className="text-sm font-mono text-cyan-400">{player.stats}</div>
+                                <div className="text-sm font-mono" style={{ color: leagueConfig.color }}>{player.stats}</div>
                             </Card>
                         ))}
                     </div>

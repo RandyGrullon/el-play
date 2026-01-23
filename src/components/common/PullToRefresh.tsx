@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useLeague } from '../../store/LeagueContext';
 
 interface PullToRefreshProps {
     onRefresh: () => Promise<void> | void;
@@ -9,6 +10,7 @@ interface PullToRefreshProps {
 export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, children }) => {
     const [refreshing, setRefreshing] = useState(false);
     const [currentY, setCurrentY] = useState(0);
+    const { leagueConfig } = useLeague();
 
     // Refs to keep track of values inside event listeners without triggering re-renders/re-binds
     const startYRef = useRef(0);
@@ -139,7 +141,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
                 }}
             >
                 <div className="bg-zinc-900/90 backdrop-blur-md border border-white/10 rounded-full p-2 shadow-xl">
-                    <Loader2 className={`w-6 h-6 text-cyan-400 ${refreshing ? 'animate-spin' : ''}`} style={{ transform: `rotate(${currentY * 2}deg)` }} />
+                    <Loader2 className={`w-6 h-6 ${refreshing ? 'animate-spin' : ''}`} style={{ color: leagueConfig.color, transform: `rotate(${currentY * 2}deg)` }} />
                 </div>
             </div>
 

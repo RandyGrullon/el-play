@@ -1,11 +1,23 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+
+// Get saved league color from localStorage (before context is available)
+const getLeagueColor = (): string => {
+    const saved = localStorage.getItem('activeLeague');
+    if (saved === 'wbc') return '#f59e0b'; // amber-500
+    return '#22d3ee'; // cyan-400 (default for lidom)
+};
 
 export const SplashLoader: React.FC = () => {
+    const leagueColor = useMemo(() => getLeagueColor(), []);
+    
     return (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950">
             {/* Background Effects */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-900/20 rounded-full blur-[100px] animate-pulse" />
+                <div 
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-[100px] animate-pulse"
+                    style={{ backgroundColor: `${leagueColor}20` }}
+                />
             </div>
 
             {/* Logo Container */}
@@ -14,7 +26,8 @@ export const SplashLoader: React.FC = () => {
                     <img
                         src="/logo.svg"
                         alt="El Play Logo"
-                        className="w-full h-full drop-shadow-[0_0_15px_rgba(34,211,238,0.3)]"
+                        className="w-full h-full"
+                        style={{ filter: `drop-shadow(0 0 15px ${leagueColor}50)` }}
                     />
 
                     {/* Ripple Effect */}
@@ -25,12 +38,12 @@ export const SplashLoader: React.FC = () => {
                 {/* Loading Text */}
                 <div className="flex flex-col items-center gap-2">
                     <h1 className="text-2xl font-black tracking-tighter text-white">
-                        EL <span className="text-cyan-400">PLAY</span>
+                        EL <span style={{ color: leagueColor }}>PLAY</span>
                     </h1>
                     <div className="flex gap-1">
-                        <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce delay-0" />
-                        <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce delay-100" />
-                        <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce delay-200" />
+                        <div className="w-1.5 h-1.5 rounded-full animate-bounce delay-0" style={{ backgroundColor: leagueColor }} />
+                        <div className="w-1.5 h-1.5 rounded-full animate-bounce delay-100" style={{ backgroundColor: leagueColor }} />
+                        <div className="w-1.5 h-1.5 rounded-full animate-bounce delay-200" style={{ backgroundColor: leagueColor }} />
                     </div>
                 </div>
             </div>

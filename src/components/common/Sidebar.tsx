@@ -116,13 +116,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                         >
                             <div className="flex items-center gap-4">
                                 <div 
-                                    className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl transition-transform duration-300 group-hover:scale-110"
+                                    className="w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-110"
                                     style={{ 
                                         backgroundColor: `${league.color}20`, 
                                         boxShadow: activeLeague === league.id ? `0 0 20px ${league.color}30` : undefined
                                     }}
                                 >
-                                    {league.logo}
+                                    <img 
+                                        src={league.id === 'lidom' ? '/lidom.png' : '/wbsc.jpg'}
+                                        alt={league.name}
+                                        className="w-10 h-10 object-contain"
+                                    />
                                 </div>
                                 <div className="flex-1">
                                     <h3 

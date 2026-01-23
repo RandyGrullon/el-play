@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, ChevronRight, ChevronLeft, Heart, Bell, MapPin } from 'lucide-react';
+import { Calendar, ChevronRight, ChevronLeft, Heart, Bell, MapPin, Wrench } from 'lucide-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBaseballBatBall, faBaseball } from '@fortawesome/free-solid-svg-icons';
 import { useSchedule } from '../hooks/useGameData';
@@ -195,14 +195,47 @@ export const Home: React.FC = () => {
 
     const handleRefresh = async () => {
         await refetch();
-        // Also refetch standings and leaders
-        fetchStandings().then(setStandings).catch(console.error);
-        fetchLeaders().then(setLeaders).catch(console.error);
+        // Also refetch standings and leaders with current league
+        fetchStandings(activeLeague).then(setStandings).catch(console.error);
+        fetchLeaders(activeLeague).then(setLeaders).catch(console.error);
     };
 
     return (
         <PullToRefresh onRefresh={handleRefresh}>
             <div className="space-y-8">
+
+                {/* Show "Coming Soon" for WBC */}
+                {activeLeague === 'wbc' ? (
+                    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
+                        <div 
+                            className="w-24 h-24 rounded-full flex items-center justify-center mb-6"
+                            style={{ backgroundColor: `${leagueConfig.color}20` }}
+                        >
+                            <Wrench className="w-12 h-12" style={{ color: leagueConfig.color }} />
+                        </div>
+                        <h2 className="text-2xl font-black text-white mb-2">
+                            ¡Estamos Trabajando!
+                        </h2>
+                        <p className="text-zinc-400 text-sm max-w-xs mb-6">
+                            La sección del World Baseball Classic estará disponible muy pronto. Estamos preparando todo para ti.
+                        </p>
+                        <div 
+                            className="text-6xl mb-4"
+                        >
+                            🌎⚾
+                        </div>
+                        <span 
+                            className="text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full"
+                            style={{ 
+                                backgroundColor: `${leagueConfig.color}20`,
+                                color: leagueConfig.color
+                            }}
+                        >
+                            Próximamente
+                        </span>
+                    </div>
+                ) : (
+                <>
 
                 {/* Top Ad Banner */}
                 <AdBanner slot="1234567890" format="auto" />
@@ -542,8 +575,8 @@ export const Home: React.FC = () => {
                                         )}
 
                                         <div className="mt-2 pt-2 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Ver Detalles</span>
-                                            <ChevronRight className="w-4 h-4 text-cyan-400" />
+                                            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: leagueConfig.color }}>Ver Detalles</span>
+                                            <ChevronRight className="w-4 h-4" style={{ color: leagueConfig.color }} />
                                         </div>
                                     </Card>
                                 </Link>
@@ -569,6 +602,9 @@ export const Home: React.FC = () => {
 
                 {/* Bottom Ad Banner */}
                 <AdBanner slot="0987654321" format="auto" />
+
+                </>
+                )}
 
             </div>
         </PullToRefresh>

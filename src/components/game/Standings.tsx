@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Card } from '../ui/Card';
+import { useLeague } from '../../store/LeagueContext';
 
 interface StandingItem {
     team: {
@@ -27,8 +28,8 @@ interface StandingsProps {
 type PhaseType = 'regular' | 'roundRobin' | 'final';
 
 export const Standings: React.FC<StandingsProps> = ({ standings }) => {
+    const { leagueConfig } = useLeague();
     const [activeTab, setActiveTab] = useState<PhaseType>('regular');
-    const scrollRef = useRef<HTMLDivElement>(null);
     const tabsRef = useRef<HTMLDivElement>(null);
 
     // Determine if we have the new multi-phase structure
@@ -58,20 +59,6 @@ export const Standings: React.FC<StandingsProps> = ({ standings }) => {
             const data = standings as StandingsData;
             if (data.activePhase) {
                 setActiveTab(data.activePhase);
-                
-                // Scroll to the correct phase after a brief delay to ensure the container is rendered
-                const index = tabs.findIndex(t => t.id === data.activePhase);
-                if (index !== -1) {
-                    // Use requestAnimationFrame to ensure DOM is ready
-                    requestAnimationFrame(() => {
-                        if (scrollRef.current) {
-                            scrollRef.current.scrollTo({
-                                left: index * scrollRef.current.clientWidth,
-                                behavior: 'auto' // Use 'auto' for initial load to avoid visible animation
-                            });
-                        }
-                    });
-                }
             }
         }
     }, [standings, isMultiPhase]);
@@ -92,31 +79,6 @@ export const Standings: React.FC<StandingsProps> = ({ standings }) => {
 
     const handleTabClick = (tabId: PhaseType) => {
         setActiveTab(tabId);
-        const index = tabs.findIndex(t => t.id === tabId);
-        if (scrollRef.current) {
-            scrollRef.current.scrollTo({
-                left: index * scrollRef.current.clientWidth,
-                behavior: 'smooth'
-            });
-        }
-    };
-
-    const handleScroll = () => {
-        if (scrollRef.current) {
-            const index = Math.round(scrollRef.current.scrollLeft / scrollRef.current.clientWidth);
-            const tabId = tabs[index]?.id as PhaseType;
-            if (tabId && tabId !== activeTab) {
-                setActiveTab(tabId);
-
-                // Scroll active tab into view in the header
-                if (tabsRef.current) {
-                    const tabButton = tabsRef.current.children[0].children[index] as HTMLElement;
-                    if (tabButton) {
-                        tabButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                    }
-                }
-            }
-        }
     };
 
     return (
@@ -136,11 +98,12 @@ export const Standings: React.FC<StandingsProps> = ({ standings }) => {
                                 disabled={!hasData}
                                 className={`flex-1 md:flex-none px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
                                     activeTab === tab.id
-                                        ? 'bg-cyan-500 text-black shadow-sm'
+                                        ? 'text-black shadow-sm'
                                         : hasData
                                             ? 'text-zinc-500 hover:text-zinc-300'
                                             : 'text-zinc-700 cursor-not-allowed'
                                 }`}
+                                style={activeTab === tab.id ? { backgroundColor: leagueConfig.color } : {}}
                             >
                                 {tab.label}
                                 {hasData && <span className="ml-1 text-[8px]">({phaseData.length})</span>}
@@ -154,31 +117,28 @@ export const Standings: React.FC<StandingsProps> = ({ standings }) => {
                 className="overflow-hidden transition-all duration-300 ease-out"
                 style={{ height: getPhaseHeight(activeTab) }}
             >
-                <div
-                    ref={scrollRef}
-                    className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide w-full max-w-full h-full"
-                    onScroll={handleScroll}
-                    style={{ scrollBehavior: 'smooth' }}
-                >
-                    {tabs.map((tab) => {
-                        const phaseStandings = standings[tab.id as PhaseType] || [];
+                {tabs.map((tab) => {
+                    const phaseStandings = standings[tab.id as PhaseType] || [];
+                    const isActive = activeTab === tab.id;
 
-                        return (
-                            <div key={tab.id} className="min-w-full w-full snap-center px-1">
-                                {phaseStandings.length > 0 ? (
-                                    <div>
-                                        <StandingsTable standings={phaseStandings} />
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center h-64 text-zinc-500 gap-2 opacity-50">
-                                        <div className="w-12 h-1 bg-zinc-800 rounded-full" />
-                                        <span className="text-xs">No hay datos disponibles</span>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
+                    return (
+                        <div 
+                            key={tab.id} 
+                            className={`w-full px-1 transition-opacity duration-200 ${isActive ? 'block' : 'hidden'}`}
+                        >
+                            {phaseStandings.length > 0 ? (
+                                <div>
+                                    <StandingsTable standings={phaseStandings} />
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-64 text-zinc-500 gap-2 opacity-50">
+                                    <div className="w-12 h-1 bg-zinc-800 rounded-full" />
+                                    <span className="text-xs">No hay datos disponibles</span>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         </Card>
     );
