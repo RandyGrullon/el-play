@@ -27,7 +27,7 @@ const TEAM_COLORS: Record<number, string> = {
 };
 
 export const Home: React.FC = () => {
-    const { activeLeague } = useLeague();
+    const { activeLeague, leagueConfig } = useLeague();
     const { schedule, loading, refetch } = useSchedule(activeLeague) as { schedule: ScheduleItem[], loading: boolean, refetch: () => Promise<any> };
     const { favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription } = useFavoriteTeam();
     const { trackNotificationSubscribe, trackNotificationUnsubscribe } = useAnalytics();
@@ -211,8 +211,17 @@ export const Home: React.FC = () => {
                 <section className="space-y-6">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Calendar className="w-5 h-5 text-cyan-400" />
+                            <Calendar className="w-5 h-5 transition-colors duration-300" style={{ color: leagueConfig.color }} />
                             <h2 className="text-xl font-bold text-white tracking-tight">Calendario</h2>
+                            <span 
+                                className="text-xs font-medium px-2 py-0.5 rounded-full ml-2 transition-all duration-300"
+                                style={{ 
+                                    backgroundColor: `${leagueConfig.color}15`,
+                                    color: leagueConfig.color
+                                }}
+                            >
+                                {leagueConfig.name}
+                            </span>
                         </div>
 
                         {/* Mobile Arrows (visible on small screens if needed, but we use scroll) */}
@@ -250,10 +259,15 @@ export const Home: React.FC = () => {
                                         className={`
                                             flex-shrink-0 snap-start flex flex-col items-center justify-center w-16 h-20 rounded-2xl border transition-all duration-300
                                             ${isSelected
-                                                ? 'bg-cyan-500 text-black border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)] scale-105'
+                                                ? 'text-black scale-105'
                                                 : 'bg-zinc-900/50 text-zinc-400 border-white/5 hover:bg-zinc-800 hover:border-white/10'
                                             }
                                         `}
+                                        style={isSelected ? {
+                                            backgroundColor: leagueConfig.color,
+                                            borderColor: leagueConfig.color,
+                                            boxShadow: `0 0 20px ${leagueConfig.color}40`
+                                        } : undefined}
                                     >
                                         <span className="text-[10px] font-bold uppercase tracking-wider">
                                             {d.toLocaleDateString('es-DO', { weekday: 'short', timeZone: 'America/La_Paz' }).replace('.', '')}
@@ -262,7 +276,10 @@ export const Home: React.FC = () => {
                                             {d.getDate()}
                                         </span>
                                         {hasGames && (
-                                            <div className={`w-1.5 h-1.5 rounded-full mt-1 ${isSelected ? 'bg-black' : 'bg-cyan-500'}`} />
+                                            <div 
+                                                className={`w-1.5 h-1.5 rounded-full mt-1 transition-colors duration-300`}
+                                                style={{ backgroundColor: isSelected ? '#000' : leagueConfig.color }}
+                                            />
                                         )}
                                     </button>
                                 );
@@ -281,12 +298,19 @@ export const Home: React.FC = () => {
                         ) : sortedGames.length > 0 ? (
                             sortedGames.map((game) => (
                                 <Link key={game.gamePk} to={`/game/${game.gamePk}`}>
-                                    <Card className="hover:bg-white/5 transition-all duration-300 group cursor-pointer border-l-4 border-l-transparent hover:border-l-cyan-400 h-full">
+                                    <Card 
+                                        className="hover:bg-white/5 transition-all duration-300 group cursor-pointer border-l-4 h-full"
+                                        style={{ 
+                                            borderLeftColor: 'transparent',
+                                        }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.borderLeftColor = leagueConfig.color)}
+                                        onMouseLeave={(e) => (e.currentTarget.style.borderLeftColor = 'transparent')}
+                                    >
                                         <div className="flex justify-between items-center mb-4">
                                             {(() => {
                                                 const status = getGameStatus(game);
                                                 return (
-                                                    <Badge variant={status.variant}>
+                                                    <Badge variant={status.variant} style={status.variant === 'live' ? { backgroundColor: `${leagueConfig.color}20`, color: leagueConfig.color } : undefined}>
                                                         {status.text}
                                                     </Badge>
                                                 );
@@ -297,15 +321,25 @@ export const Home: React.FC = () => {
                                                         e.preventDefault();
                                                         handleGameSubscription(game.gamePk, `${game.away.name} vs ${game.home.name}`);
                                                     }}
-                                                    className={`transition-colors ${subscribedGames.includes(game.gamePk) ? 'text-cyan-400' : 'text-zinc-600 hover:text-zinc-400'}`}
+                                                    className="transition-colors"
+                                                    style={{ color: subscribedGames.includes(game.gamePk) ? leagueConfig.color : undefined }}
                                                     title={subscribedGames.includes(game.gamePk) ? "Desactivar notificación" : "Activar notificación"}
                                                 >
-                                                    <Bell className={`w-4 h-4 ${subscribedGames.includes(game.gamePk) ? 'fill-current' : ''}`} />
+                                                    <Bell className={`w-4 h-4 ${subscribedGames.includes(game.gamePk) ? 'fill-current' : 'text-zinc-600 hover:text-zinc-400'}`} />
                                                 </button>
                                                 {/* Show inning if game is live, otherwise show time if not started */}
                                                 {(game.status === 'Live' || game.status === 'In Progress') && game.liveData?.inning ? (
-                                                    <div className="flex items-center gap-1.5 bg-cyan-500/10 border border-cyan-500/20 px-3 py-1.5 rounded-full">
-                                                        <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                                                    <div 
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border"
+                                                        style={{ 
+                                                            backgroundColor: `${leagueConfig.color}15`,
+                                                            borderColor: `${leagueConfig.color}30`
+                                                        }}
+                                                    >
+                                                        <span 
+                                                            className="text-xs font-bold uppercase tracking-wider"
+                                                            style={{ color: leagueConfig.color }}
+                                                        >
                                                             {game.liveData.isTopInning ? '▲' : '▼'} {game.liveData.inning}
                                                         </span>
                                                     </div>
@@ -349,7 +383,7 @@ export const Home: React.FC = () => {
                                                         </span>
                                                     </div>
                                                     {(game.status === 'Live' || game.status === 'In Progress') && game.liveData?.isTopInning && (
-                                                        <FontAwesomeIcon icon={faBaseballBatBall} className="w-4 h-4 text-cyan-400" />
+                                                        <FontAwesomeIcon icon={faBaseballBatBall} className="w-4 h-4" style={{ color: leagueConfig.color }} />
                                                     )}
                                                 </div>
                                                 <span className="text-xl font-black text-white">{game.away.score}</span>
@@ -386,7 +420,7 @@ export const Home: React.FC = () => {
                                                         </span>
                                                     </div>
                                                     {(game.status === 'Live' || game.status === 'In Progress') && !game.liveData?.isTopInning && (
-                                                        <FontAwesomeIcon icon={faBaseballBatBall} className="w-4 h-4 text-cyan-400" />
+                                                        <FontAwesomeIcon icon={faBaseballBatBall} className="w-4 h-4" style={{ color: leagueConfig.color }} />
                                                     )}
                                                 </div>
                                                 <span className="text-xl font-black text-white">{game.home.score}</span>

@@ -26,7 +26,8 @@ const LEAGUES: LeagueConfig[] = [
         fullName: 'Liga Dominicana de Béisbol',
         sportId: 17,
         leagueId: 131,
-        color: '#22d3ee' // cyan-400
+        color: '#22d3ee', // cyan-400
+        logo: '🇩🇴'
     },
     {
         id: 'wbc',
@@ -34,7 +35,8 @@ const LEAGUES: LeagueConfig[] = [
         fullName: 'World Baseball Classic',
         sportId: 51,
         leagueId: 160,
-        color: '#f59e0b' // amber-500
+        color: '#f59e0b', // amber-500
+        logo: '🌎'
     }
 ];
 

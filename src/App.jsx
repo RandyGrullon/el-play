@@ -36,41 +36,46 @@ function AppContent() {
             <UpdateModal />
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-            {/* Background Gradient Mesh */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[120px]" />
-                <div className="absolute top-[20%] -right-[10%] w-[40%] h-[40%] bg-cyan-900/10 rounded-full blur-[100px]" />
+            {/* Background Gradient Mesh - changes based on league */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden transition-all duration-700">
+                <div 
+                    className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full blur-[120px] transition-colors duration-700"
+                    style={{ backgroundColor: `${leagueConfig.color}15` }}
+                />
+                <div 
+                    className="absolute top-[20%] -right-[10%] w-[40%] h-[40%] rounded-full blur-[100px] transition-colors duration-700"
+                    style={{ backgroundColor: `${leagueConfig.color}08` }}
+                />
+                <div 
+                    className="absolute bottom-[10%] left-[20%] w-[30%] h-[30%] rounded-full blur-[80px] transition-colors duration-700"
+                    style={{ backgroundColor: `${leagueConfig.color}05` }}
+                />
             </div>
 
             <div className="relative max-w-5xl mx-auto p-6 md:p-12 space-y-8">
 
                 {/* Header */}
-                <header className="flex flex-col gap-6 border-b border-white/5 pb-6">
-                    <div className="flex justify-between items-end">
+                <header className="flex flex-col gap-6 border-b pb-6 transition-colors duration-500" style={{ borderColor: `${leagueConfig.color}20` }}>
+                    <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
                             <BaseballIcon isOpen={sidebarOpen} onClick={() => setSidebarOpen(!sidebarOpen)} />
                             <Link to="/">
-                                <div className="flex items-center gap-2">
-                                    <h1 className="text-3xl font-black tracking-tighter bg-gradient-to-br from-white to-zinc-500 bg-clip-text text-transparent cursor-pointer">
-                                        EL <span style={{ color: leagueConfig.color }}>PLAY</span>
-                                    </h1>
-                                    <span 
-                                        className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border"
-                                        style={{ 
-                                            color: leagueConfig.color, 
-                                            borderColor: `${leagueConfig.color}40`,
-                                            backgroundColor: `${leagueConfig.color}10`
-                                        }}
-                                    >
-                                        {leagueConfig.name}
-                                    </span>
-                                </div>
+                                <h1 className="text-3xl font-black tracking-tighter bg-gradient-to-br from-white to-zinc-500 bg-clip-text text-transparent cursor-pointer">
+                                    EL <span className="transition-colors duration-500" style={{ color: leagueConfig.color }}>PLAY</span>
+                                </h1>
                             </Link>
                         </div>
                         <div className="flex items-center gap-3">
                             <InstallPWA />
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-600 uppercase tracking-widest bg-zinc-900/50 px-3 py-1.5 rounded-full border border-white/5">
+                            <div 
+                                className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all duration-500"
+                                style={{ 
+                                    backgroundColor: `${leagueConfig.color}08`,
+                                    borderColor: `${leagueConfig.color}20`
+                                }}
+                            >
                                 <Activity className="w-3 h-3 text-emerald-500" />
+                                <span className="text-zinc-500 hidden sm:inline">Live</span>
                             </div>
                         </div>
                     </div>

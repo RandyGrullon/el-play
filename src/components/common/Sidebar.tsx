@@ -94,34 +94,48 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 </div>
 
                 {/* League List */}
-                <div className="p-4 space-y-2">
+                <div className="p-4 space-y-3">
                     {leagues.map((league) => (
                         <button
                             key={league.id}
                             onClick={() => handleLeagueSelect(league.id)}
-                            className={`w-full p-4 rounded-xl text-left transition-all duration-200 ${
+                            className={`w-full p-4 rounded-xl text-left transition-all duration-300 group ${
                                 activeLeague === league.id
-                                    ? 'bg-white/10 border-2'
+                                    ? 'bg-gradient-to-r border-2 shadow-lg'
                                     : 'bg-zinc-800/50 border-2 border-transparent hover:bg-zinc-800 hover:border-white/10'
                             }`}
                             style={{
-                                borderColor: activeLeague === league.id ? league.color : undefined
+                                borderColor: activeLeague === league.id ? league.color : undefined,
+                                background: activeLeague === league.id 
+                                    ? `linear-gradient(135deg, ${league.color}15 0%, ${league.color}05 100%)`
+                                    : undefined,
+                                boxShadow: activeLeague === league.id 
+                                    ? `0 4px 20px ${league.color}20`
+                                    : undefined
                             }}
                         >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-4">
                                 <div 
-                                    className="w-12 h-12 rounded-lg flex items-center justify-center text-lg font-bold"
-                                    style={{ backgroundColor: `${league.color}20`, color: league.color }}
+                                    className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl transition-transform duration-300 group-hover:scale-110"
+                                    style={{ 
+                                        backgroundColor: `${league.color}20`, 
+                                        boxShadow: activeLeague === league.id ? `0 0 20px ${league.color}30` : undefined
+                                    }}
                                 >
-                                    {league.name.slice(0, 2)}
+                                    {league.logo}
                                 </div>
                                 <div className="flex-1">
-                                    <h3 className="font-bold text-white">{league.name}</h3>
+                                    <h3 
+                                        className="font-bold text-lg transition-colors duration-300"
+                                        style={{ color: activeLeague === league.id ? league.color : 'white' }}
+                                    >
+                                        {league.name}
+                                    </h3>
                                     <p className="text-xs text-zinc-500">{league.fullName}</p>
                                 </div>
                                 {activeLeague === league.id && (
                                     <div 
-                                        className="w-2 h-2 rounded-full"
+                                        className="w-3 h-3 rounded-full animate-pulse"
                                         style={{ backgroundColor: league.color }}
                                     />
                                 )}
