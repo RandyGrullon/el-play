@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Download, Share, PlusSquare, X } from 'lucide-react';
+import { useLeague } from '../../store/LeagueContext';
 
 export const InstallPWA: React.FC = () => {
+    const { leagueConfig } = useLeague();
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [isVisible, setIsVisible] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
@@ -66,7 +68,13 @@ export const InstallPWA: React.FC = () => {
         <>
             <button
                 onClick={handleInstallClick}
-                className="flex items-center gap-2 text-[10px] font-bold text-cyan-400 uppercase tracking-widest bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-full border border-cyan-500/20 transition-all duration-300 animate-in fade-in zoom-in"
+                className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full transition-all duration-300 animate-in fade-in zoom-in"
+                style={{
+                    color: leagueConfig.color,
+                    backgroundColor: `${leagueConfig.color}1a`,
+                    borderWidth: 1,
+                    borderColor: `${leagueConfig.color}33`
+                }}
             >
                 <Download className="w-3 h-3" />
                 <span>Instalar App</span>
@@ -85,7 +93,7 @@ export const InstallPWA: React.FC = () => {
 
                         <div className="flex flex-col items-center text-center space-y-4">
                             <div className="p-3 bg-zinc-800 rounded-xl">
-                                <Share className="w-6 h-6 text-cyan-400" />
+                                <Share className="w-6 h-6" style={{ color: leagueConfig.color }} />
                             </div>
 
                             <h3 className="text-lg font-bold text-white">Instalar en iPhone/iPad</h3>
@@ -103,7 +111,8 @@ export const InstallPWA: React.FC = () => {
 
                             <button
                                 onClick={() => setShowIOSInstructions(false)}
-                                className="w-full py-3 text-sm font-bold text-black bg-cyan-500 hover:bg-cyan-400 rounded-xl transition-colors"
+                                className="w-full py-3 text-sm font-bold text-black rounded-xl transition-colors"
+                                style={{ backgroundColor: leagueConfig.color }}
                             >
                                 Entendido
                             </button>

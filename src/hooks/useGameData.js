@@ -46,10 +46,10 @@ export const useGameData = (gamePk) => {
   };
 };
 
-export const useSchedule = () => {
+export const useSchedule = (league = 'lidom') => {
   const { data: schedule = [], isLoading, refetch } = useQuery({
-    queryKey: ['schedule'],
-    queryFn: fetchSchedule,
+    queryKey: ['schedule', league],
+    queryFn: () => fetchSchedule(league),
     retry: 2, // Solo 2 reintentos
     retryDelay: 1000, // 1 segundo entre reintentos
     refetchInterval: (query) => {

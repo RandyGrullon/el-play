@@ -24,10 +24,11 @@ export const fetchGameData = async (gamePk = DEFAULT_GAME_PK) => {
     }
 };
 
-export const fetchSchedule = async () => {
-    const apiUrl = import.meta.env.DEV
+export const fetchSchedule = async (league = 'lidom') => {
+    const baseUrl = import.meta.env.DEV
         ? `http://localhost:5000/api/schedule`
         : `/api/schedule`;
+    const apiUrl = `${baseUrl}?league=${league}`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
@@ -48,10 +49,11 @@ export const fetchSchedule = async () => {
     }
 };
 
-export const fetchStandings = async () => {
-    const apiUrl = import.meta.env.DEV
+export const fetchStandings = async (league = 'lidom') => {
+    const baseUrl = import.meta.env.DEV
         ? `http://localhost:5000/api/standings`
         : `/api/standings`;
+    const apiUrl = `${baseUrl}?league=${league}`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
@@ -72,10 +74,11 @@ export const fetchStandings = async () => {
     }
 };
 
-export const fetchLeaders = async () => {
-    const apiUrl = import.meta.env.DEV
+export const fetchLeaders = async (league = 'lidom') => {
+    const baseUrl = import.meta.env.DEV
         ? `http://localhost:5000/api/leaders`
         : `/api/leaders`;
+    const apiUrl = `${baseUrl}?league=${league}`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout

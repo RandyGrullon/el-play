@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, ChevronRight, ChevronLeft, Heart, Bell, MapPin } from 'lucide-react';
+import { Calendar, ChevronRight, ChevronLeft, Heart, Bell, MapPin, Wrench } from 'lucide-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBaseballBatBall, faBaseball } from '@fortawesome/free-solid-svg-icons';
 import { useSchedule } from '../hooks/useGameData';
 import { useFavoriteTeam } from '../hooks/useFavoriteTeam';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { useLeague } from '../store/LeagueContext';
 import { fetchStandings, fetchLeaders } from '../services/api';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -14,6 +15,7 @@ import { Leaders } from '../components/game/Leaders';
 import { GameCardSkeleton } from '../components/game/GameCardSkeleton';
 import { ScheduleItem } from '../types';
 import { PullToRefresh } from '../components/common/PullToRefresh';
+import AdBanner from '../components/common/AdBanner';
 
 const TEAM_COLORS: Record<number, string> = {
     667: '#FDB927', // Aguilas
@@ -25,19 +27,21 @@ const TEAM_COLORS: Record<number, string> = {
 };
 
 export const Home: React.FC = () => {
-    const { schedule, loading, refetch } = useSchedule() as { schedule: ScheduleItem[], loading: boolean, refetch: () => Promise<any> };
+    const { activeLeague, leagueConfig } = useLeague();
+    const { schedule, loading, refetch } = useSchedule(activeLeague) as { schedule: ScheduleItem[], loading: boolean, refetch: () => Promise<any> };
     const { favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription } = useFavoriteTeam();
     const { trackNotificationSubscribe, trackNotificationUnsubscribe } = useAnalytics();
-    const [standings, setStandings] = useState<any[]>([]);
+    const [standings, setStandings] = useState<any>(null);
     const [leaders, setLeaders] = useState<any[]>([]);
     const [selectedDate, setSelectedDate] = useState<string>(() => {
         return new Date().toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
     });
 
+    // Refetch data when league changes
     useEffect(() => {
-        fetchStandings().then(setStandings).catch(console.error);
-        fetchLeaders().then(setLeaders).catch(console.error);
-    }, []);
+        fetchStandings(activeLeague).then(setStandings).catch(console.error);
+        fetchLeaders(activeLeague).then(setLeaders).catch(console.error);
+    }, [activeLeague]);
 
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -191,21 +195,66 @@ export const Home: React.FC = () => {
 
     const handleRefresh = async () => {
         await refetch();
-        // Also refetch standings and leaders
-        fetchStandings().then(setStandings).catch(console.error);
-        fetchLeaders().then(setLeaders).catch(console.error);
+        // Also refetch standings and leaders with current league
+        fetchStandings(activeLeague).then(setStandings).catch(console.error);
+        fetchLeaders(activeLeague).then(setLeaders).catch(console.error);
     };
 
     return (
         <PullToRefresh onRefresh={handleRefresh}>
             <div className="space-y-8">
 
+                {/* Show "Coming Soon" for WBC */}
+                {activeLeague === 'wbc' ? (
+                    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
+                        <div 
+                            className="w-24 h-24 rounded-full flex items-center justify-center mb-6"
+                            style={{ backgroundColor: `${leagueConfig.color}20` }}
+                        >
+                            <Wrench className="w-12 h-12" style={{ color: leagueConfig.color }} />
+                        </div>
+                        <h2 className="text-2xl font-black text-white mb-2">
+                            ¡Estamos Trabajando!
+                        </h2>
+                        <p className="text-zinc-400 text-sm max-w-xs mb-6">
+                            La sección del World Baseball Classic estará disponible muy pronto. Estamos preparando todo para ti.
+                        </p>
+                        <div 
+                            className="text-6xl mb-4"
+                        >
+                            🌎⚾
+                        </div>
+                        <span 
+                            className="text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full"
+                            style={{ 
+                                backgroundColor: `${leagueConfig.color}20`,
+                                color: leagueConfig.color
+                            }}
+                        >
+                            Próximamente
+                        </span>
+                    </div>
+                ) : (
+                <>
+
+                {/* Top Ad Banner */}
+                <AdBanner slot="1234567890" format="auto" />
+
                 {/* Date Selector & Games */}
                 <section className="space-y-6">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Calendar className="w-5 h-5 text-cyan-400" />
+                            <Calendar className="w-5 h-5 transition-colors duration-300" style={{ color: leagueConfig.color }} />
                             <h2 className="text-xl font-bold text-white tracking-tight">Calendario</h2>
+                            <span 
+                                className="text-xs font-medium px-2 py-0.5 rounded-full ml-2 transition-all duration-300"
+                                style={{ 
+                                    backgroundColor: `${leagueConfig.color}15`,
+                                    color: leagueConfig.color
+                                }}
+                            >
+                                {leagueConfig.name}
+                            </span>
                         </div>
 
                         {/* Mobile Arrows (visible on small screens if needed, but we use scroll) */}
@@ -243,10 +292,15 @@ export const Home: React.FC = () => {
                                         className={`
                                             flex-shrink-0 snap-start flex flex-col items-center justify-center w-16 h-20 rounded-2xl border transition-all duration-300
                                             ${isSelected
-                                                ? 'bg-cyan-500 text-black border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)] scale-105'
+                                                ? 'text-black scale-105'
                                                 : 'bg-zinc-900/50 text-zinc-400 border-white/5 hover:bg-zinc-800 hover:border-white/10'
                                             }
                                         `}
+                                        style={isSelected ? {
+                                            backgroundColor: leagueConfig.color,
+                                            borderColor: leagueConfig.color,
+                                            boxShadow: `0 0 20px ${leagueConfig.color}40`
+                                        } : undefined}
                                     >
                                         <span className="text-[10px] font-bold uppercase tracking-wider">
                                             {d.toLocaleDateString('es-DO', { weekday: 'short', timeZone: 'America/La_Paz' }).replace('.', '')}
@@ -255,7 +309,10 @@ export const Home: React.FC = () => {
                                             {d.getDate()}
                                         </span>
                                         {hasGames && (
-                                            <div className={`w-1.5 h-1.5 rounded-full mt-1 ${isSelected ? 'bg-black' : 'bg-cyan-500'}`} />
+                                            <div 
+                                                className={`w-1.5 h-1.5 rounded-full mt-1 transition-colors duration-300`}
+                                                style={{ backgroundColor: isSelected ? '#000' : leagueConfig.color }}
+                                            />
                                         )}
                                     </button>
                                 );
@@ -274,12 +331,19 @@ export const Home: React.FC = () => {
                         ) : sortedGames.length > 0 ? (
                             sortedGames.map((game) => (
                                 <Link key={game.gamePk} to={`/game/${game.gamePk}`}>
-                                    <Card className="hover:bg-white/5 transition-all duration-300 group cursor-pointer border-l-4 border-l-transparent hover:border-l-cyan-400 h-full">
+                                    <Card 
+                                        className="hover:bg-white/5 transition-all duration-300 group cursor-pointer border-l-4 h-full"
+                                        style={{ 
+                                            borderLeftColor: 'transparent',
+                                        }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.borderLeftColor = leagueConfig.color)}
+                                        onMouseLeave={(e) => (e.currentTarget.style.borderLeftColor = 'transparent')}
+                                    >
                                         <div className="flex justify-between items-center mb-4">
                                             {(() => {
                                                 const status = getGameStatus(game);
                                                 return (
-                                                    <Badge variant={status.variant}>
+                                                    <Badge variant={status.variant} style={status.variant === 'live' ? { backgroundColor: `${leagueConfig.color}20`, color: leagueConfig.color } : undefined}>
                                                         {status.text}
                                                     </Badge>
                                                 );
@@ -290,15 +354,25 @@ export const Home: React.FC = () => {
                                                         e.preventDefault();
                                                         handleGameSubscription(game.gamePk, `${game.away.name} vs ${game.home.name}`);
                                                     }}
-                                                    className={`transition-colors ${subscribedGames.includes(game.gamePk) ? 'text-cyan-400' : 'text-zinc-600 hover:text-zinc-400'}`}
+                                                    className="transition-colors"
+                                                    style={{ color: subscribedGames.includes(game.gamePk) ? leagueConfig.color : undefined }}
                                                     title={subscribedGames.includes(game.gamePk) ? "Desactivar notificación" : "Activar notificación"}
                                                 >
-                                                    <Bell className={`w-4 h-4 ${subscribedGames.includes(game.gamePk) ? 'fill-current' : ''}`} />
+                                                    <Bell className={`w-4 h-4 ${subscribedGames.includes(game.gamePk) ? 'fill-current' : 'text-zinc-600 hover:text-zinc-400'}`} />
                                                 </button>
                                                 {/* Show inning if game is live, otherwise show time if not started */}
                                                 {(game.status === 'Live' || game.status === 'In Progress') && game.liveData?.inning ? (
-                                                    <div className="flex items-center gap-1.5 bg-cyan-500/10 border border-cyan-500/20 px-3 py-1.5 rounded-full">
-                                                        <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                                                    <div 
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border"
+                                                        style={{ 
+                                                            backgroundColor: `${leagueConfig.color}15`,
+                                                            borderColor: `${leagueConfig.color}30`
+                                                        }}
+                                                    >
+                                                        <span 
+                                                            className="text-xs font-bold uppercase tracking-wider"
+                                                            style={{ color: leagueConfig.color }}
+                                                        >
                                                             {game.liveData.isTopInning ? '▲' : '▼'} {game.liveData.inning}
                                                         </span>
                                                     </div>
@@ -342,7 +416,7 @@ export const Home: React.FC = () => {
                                                         </span>
                                                     </div>
                                                     {(game.status === 'Live' || game.status === 'In Progress') && game.liveData?.isTopInning && (
-                                                        <FontAwesomeIcon icon={faBaseballBatBall} className="w-4 h-4 text-cyan-400" />
+                                                        <FontAwesomeIcon icon={faBaseballBatBall} className="w-4 h-4" style={{ color: leagueConfig.color }} />
                                                     )}
                                                 </div>
                                                 <span className="text-xl font-black text-white">{game.away.score}</span>
@@ -379,7 +453,7 @@ export const Home: React.FC = () => {
                                                         </span>
                                                     </div>
                                                     {(game.status === 'Live' || game.status === 'In Progress') && !game.liveData?.isTopInning && (
-                                                        <FontAwesomeIcon icon={faBaseballBatBall} className="w-4 h-4 text-cyan-400" />
+                                                        <FontAwesomeIcon icon={faBaseballBatBall} className="w-4 h-4" style={{ color: leagueConfig.color }} />
                                                     )}
                                                 </div>
                                                 <span className="text-xl font-black text-white">{game.home.score}</span>
@@ -501,16 +575,20 @@ export const Home: React.FC = () => {
                                         )}
 
                                         <div className="mt-2 pt-2 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Ver Detalles</span>
-                                            <ChevronRight className="w-4 h-4 text-cyan-400" />
+                                            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: leagueConfig.color }}>Ver Detalles</span>
+                                            <ChevronRight className="w-4 h-4" style={{ color: leagueConfig.color }} />
                                         </div>
                                     </Card>
                                 </Link>
                             ))
                         ) : (
-                            <div className="col-span-full flex flex-col items-center justify-center p-12 text-center text-zinc-500 bg-zinc-900/30 rounded-xl border border-white/5 border-dashed">
-                                <Calendar className="w-8 h-8 mb-3 opacity-20" />
-                                <p>No hay juegos programados para este día.</p>
+                            <div className="col-span-full space-y-6">
+                                <div className="flex flex-col items-center justify-center p-12 text-center text-zinc-500 bg-zinc-900/30 rounded-xl border border-white/5 border-dashed">
+                                    <Calendar className="w-8 h-8 mb-3 opacity-20" />
+                                    <p>No hay juegos programados para este día.</p>
+                                </div>
+                                {/* Ad cuando no hay juegos */}
+                                <AdBanner slot="5678901234" format="horizontal" />
                             </div>
                         )}
                     </div>
@@ -521,6 +599,12 @@ export const Home: React.FC = () => {
                     <Standings standings={standings} />
                     <Leaders leaders={leaders} />
                 </section>
+
+                {/* Bottom Ad Banner */}
+                <AdBanner slot="0987654321" format="auto" />
+
+                </>
+                )}
 
             </div>
         </PullToRefresh>

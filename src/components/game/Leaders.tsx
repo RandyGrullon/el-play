@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Card } from '../ui/Card';
+import { useLeague } from '../../store/LeagueContext';
 
 interface LeaderItem {
     rank: number;
@@ -24,6 +25,7 @@ interface LeadersProps {
 }
 
 export const Leaders: React.FC<LeadersProps> = ({ leaders }) => {
+    const { leagueConfig } = useLeague();
     const [activeTab, setActiveTab] = useState<'homeRuns' | 'battingAverage' | 'runsBattedIn' | 'ops' | 'hits' | 'stolenBases'>('homeRuns');
     const scrollRef = useRef<HTMLDivElement>(null);
     const tabsRef = useRef<HTMLDivElement>(null);
@@ -79,9 +81,10 @@ export const Leaders: React.FC<LeadersProps> = ({ leaders }) => {
                             key={tab.id}
                             onClick={() => handleTabClick(tab.id)}
                             className={`flex-1 md:flex-none px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === tab.id
-                                ? 'bg-cyan-500 text-black shadow-sm'
+                                ? 'text-black shadow-sm'
                                 : 'text-zinc-500 hover:text-zinc-300'
                                 }`}
+                            style={activeTab === tab.id ? { backgroundColor: leagueConfig.color } : {}}
                         >
                             {tab.label}
                         </button>
@@ -122,7 +125,7 @@ export const Leaders: React.FC<LeadersProps> = ({ leaders }) => {
                                                 </div>
                                             </div>
                                             <div className="flex flex-col items-end">
-                                                <span className="text-xl font-black text-cyan-400 tabular-nums leading-none">{player.value}</span>
+                                                <span className="text-xl font-black tabular-nums leading-none" style={{ color: leagueConfig.color }}>{player.value}</span>
                                                 <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider mt-1">{player.statName}</span>
                                             </div>
                                         </div>

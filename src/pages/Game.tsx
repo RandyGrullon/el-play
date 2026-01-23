@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Activity, BarChart2 } from 'lucide-react';
 import { useGameData } from '../hooks/useGameData';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { useLeague } from '../store/LeagueContext';
 import { Scoreboard } from '../components/game/Scoreboard';
 import { BaseballDiamond } from '../components/game/BaseballDiamond';
 import { LineScore } from '../components/game/LineScore';
@@ -12,12 +13,14 @@ import { GameSummary } from '../components/game/GameSummary';
 import { GameDetailSkeleton } from '../components/game/GameDetailSkeleton';
 import { GameData } from '../types';
 import { PullToRefresh } from '../components/common/PullToRefresh';
+import AdBanner from '../components/common/AdBanner';
 
 export const Game: React.FC = () => {
     const { gamePk } = useParams<{ gamePk: string }>();
     const { gameData, loading, error, refetch } = useGameData(gamePk) as { gameData: GameData | null, loading: boolean, error: string | null, refetch: () => Promise<any> };
     const [activeTab, setActiveTab] = useState<'game' | 'stats'>('game');
     const { trackGameView, trackTabChange } = useAnalytics();
+    const { leagueConfig } = useLeague();
 
     // Track game view when component mounts and gameData is available
     useEffect(() => {
@@ -49,7 +52,7 @@ export const Game: React.FC = () => {
                     {error}
                 </div>
                 <br />
-                <Link to="/" className="text-cyan-400 hover:text-cyan-300 text-sm font-bold uppercase tracking-widest">
+                <Link to="/" className="text-sm font-bold uppercase tracking-widest hover:opacity-80 transition-opacity" style={{ color: leagueConfig.color }}>
                     &larr; Volver al Inicio
                 </Link>
             </div>
@@ -80,6 +83,9 @@ export const Game: React.FC = () => {
     return (
         <PullToRefresh onRefresh={handleRefresh}>
             <div className="space-y-6 px-4 pb-10">
+                {/* Top Ad Banner */}
+                <AdBanner slot="2345678901" format="auto" />
+
                 <Link to="/" className="inline-flex items-center gap-2 text-zinc-500 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest ml-1">
                     <ArrowLeft className="w-4 h-4" />
                     Volver
@@ -102,9 +108,13 @@ export const Game: React.FC = () => {
                             <button
                                 onClick={() => handleTabChange('game')}
                                 className={`flex items-center gap-2 px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'game'
-                                    ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]'
+                                    ? 'text-black'
                                     : 'text-zinc-500 hover:text-zinc-300'
                                     }`}
+                                style={activeTab === 'game' ? { 
+                                    backgroundColor: leagueConfig.color,
+                                    boxShadow: `0 0 15px ${leagueConfig.color}40`
+                                } : undefined}
                             >
                                 <Activity className="w-4 h-4" />
                                 {displayData.status === 'Final' || displayData.status === 'Game Over' ? 'Resumen' : 'En Vivo'}
@@ -112,9 +122,13 @@ export const Game: React.FC = () => {
                             <button
                                 onClick={() => handleTabChange('stats')}
                                 className={`flex items-center gap-2 px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'stats'
-                                    ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]'
+                                    ? 'text-black'
                                     : 'text-zinc-500 hover:text-zinc-300'
                                     }`}
+                                style={activeTab === 'stats' ? { 
+                                    backgroundColor: leagueConfig.color,
+                                    boxShadow: `0 0 15px ${leagueConfig.color}40`
+                                } : undefined}
                             >
                                 <BarChart2 className="w-4 h-4" />
                                 Estadísticas
@@ -181,7 +195,7 @@ export const Game: React.FC = () => {
                                                                 {displayData.currentPitches[displayData.currentPitches.length - 1].speed ? `${displayData.currentPitches[displayData.currentPitches.length - 1].speed.toFixed(1)}` : '--'}
                                                                 <span className="text-xs text-zinc-400 ml-1">MPH</span>
                                                             </span>
-                                                            <span className="text-xs font-bold text-cyan-400">
+                                                            <span className="text-xs font-bold" style={{ color: leagueConfig.color }}>
                                                                 {displayData.currentPitches[displayData.currentPitches.length - 1].type || ''}
                                                             </span>
                                                         </div>
@@ -362,6 +376,9 @@ export const Game: React.FC = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Bottom Ad Banner */}
+                <AdBanner slot="3456789012" format="auto" />
             </div>
         </PullToRefresh>
     );

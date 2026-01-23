@@ -4,9 +4,10 @@ interface BadgeProps {
     children: React.ReactNode;
     className?: string;
     variant?: 'default' | 'success' | 'danger' | 'warning' | 'info' | 'live';
+    style?: React.CSSProperties;
 }
 
-export const Badge: React.FC<BadgeProps> = ({ children, className = '', variant = 'default' }) => {
+export const Badge: React.FC<BadgeProps> = ({ children, className = '', variant = 'default', style }) => {
     const variants: Record<string, string> = {
         default: 'bg-zinc-800 text-zinc-300',
         success: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
@@ -17,7 +18,10 @@ export const Badge: React.FC<BadgeProps> = ({ children, className = '', variant 
     };
 
     return (
-        <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium tracking-wide ${variants[variant] || variants.default} ${className}`}>
+        <span 
+            className={`px-2.5 py-0.5 rounded-full text-xs font-medium tracking-wide ${variants[variant] || variants.default} ${className}`}
+            style={style}
+        >
             {children}
         </span>
     );
