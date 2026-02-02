@@ -69,14 +69,65 @@ export const Home: React.FC = () => {
         return days;
     }, []);
 
-    // Filter games for selected date
-    const filteredGames = useMemo(() => {
+    // Get today's date string for comparison
+    const todayStr = useMemo(() => {
+        return new Date().toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
+    }, []);
+
+    // Check if there are live games from yesterday that should still be shown
+    const liveGamesFromPreviousDays = useMemo(() => {
+        const now = new Date();
         return schedule.filter(game => {
+            const gameDateStr = new Date(game.date).toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
+            const isFromPreviousDay = gameDateStr < todayStr;
+            const isLive = game.status === 'Live' || game.status === 'In Progress';
+            
+            // Also show games that ended less than 1 hour ago
+            const isRecentlyEnded = (game.status === 'Final' || game.status === 'Game Over') && (() => {
+                // Estimate game end time as game start + 3 hours (typical game length)
+                const gameStart = new Date(game.date);
+                const estimatedEnd = new Date(gameStart.getTime() + 3 * 60 * 60 * 1000);
+                const hoursSinceEnd = (now.getTime() - estimatedEnd.getTime()) / (1000 * 60 * 60);
+                return hoursSinceEnd < 1 && hoursSinceEnd >= 0;
+            })();
+            
+            return isFromPreviousDay && (isLive || isRecentlyEnded);
+        });
+    }, [schedule, todayStr]);
+
+    // Auto-select yesterday's date if there are live games from yesterday
+    useEffect(() => {
+        if (liveGamesFromPreviousDays.length > 0 && selectedDate === todayStr) {
+            // Get the date of the first live game from previous days
+            const liveGameDate = new Date(liveGamesFromPreviousDays[0].date)
+                .toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
+            
+            // Only switch if we haven't manually selected a different date
+            if (dates.includes(liveGameDate)) {
+                setSelectedDate(liveGameDate);
+            }
+        }
+    }, [liveGamesFromPreviousDays, todayStr, dates]);
+
+    // Filter games for selected date (includes live games from previous days when viewing today)
+    const filteredGames = useMemo(() => {
+        const gamesForSelectedDate = schedule.filter(game => {
             // Convert game UTC date to La Paz date string for comparison
             const gameDateSD = new Date(game.date).toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
             return gameDateSD === selectedDate;
         });
-    }, [schedule, selectedDate]);
+
+        // If viewing today, also include live games from previous days
+        if (selectedDate === todayStr) {
+            const liveFromPrevious = liveGamesFromPreviousDays.filter(game => {
+                const gameDateSD = new Date(game.date).toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
+                return gameDateSD !== selectedDate; // Don't duplicate
+            });
+            return [...liveFromPrevious, ...gamesForSelectedDate];
+        }
+
+        return gamesForSelectedDate;
+    }, [schedule, selectedDate, todayStr, liveGamesFromPreviousDays]);
 
     // Sort games to show favorite team first
     const sortedGames = useMemo(() => {
