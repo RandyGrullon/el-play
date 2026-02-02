@@ -15,6 +15,7 @@ import { Leaders } from '../components/game/Leaders';
 import { GameCardSkeleton } from '../components/game/GameCardSkeleton';
 import { ScheduleItem } from '../types';
 import { PullToRefresh } from '../components/common/PullToRefresh';
+import MiniGame from '../components/game/MiniGame';
 
 const TEAM_COLORS: Record<number, string> = {
     667: '#FDB927', // Aguilas
@@ -32,6 +33,7 @@ export const Home: React.FC = () => {
     const { trackNotificationSubscribe, trackNotificationUnsubscribe } = useAnalytics();
     const [standings, setStandings] = useState<any>(null);
     const [leaders, setLeaders] = useState<any[]>([]);
+    const [showMiniGame, setShowMiniGame] = useState(false);
     const hasCalculatedInitialDate = useRef(false);
     const [selectedDate, setSelectedDate] = useState<string>(() => {
         return new Date().toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
@@ -267,32 +269,55 @@ export const Home: React.FC = () => {
                 {/* Show "Coming Soon" for WBC */}
                 {activeLeague === 'wbc' ? (
                     <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
-                        <div 
-                            className="w-24 h-24 rounded-full flex items-center justify-center mb-6"
-                            style={{ backgroundColor: `${leagueConfig.color}20` }}
-                        >
-                            <Wrench className="w-12 h-12" style={{ color: leagueConfig.color }} />
-                        </div>
-                        <h2 className="text-2xl font-black text-white mb-2">
-                            ¡Estamos Trabajando!
-                        </h2>
-                        <p className="text-zinc-400 text-sm max-w-xs mb-6">
-                            La sección del World Baseball Classic estará disponible muy pronto. Estamos preparando todo para ti.
-                        </p>
-                        <div 
-                            className="text-6xl mb-4"
-                        >
-                            🌎⚾
-                        </div>
-                        <span 
-                            className="text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full"
-                            style={{ 
-                                backgroundColor: `${leagueConfig.color}20`,
-                                color: leagueConfig.color
-                            }}
-                        >
-                            Próximamente
-                        </span>
+                        {showMiniGame ? (
+                            <div className="w-full max-w-md">
+                                <button
+                                    onClick={() => setShowMiniGame(false)}
+                                    className="mb-4 text-sm text-zinc-400 hover:text-white transition-colors flex items-center gap-2 mx-auto"
+                                >
+                                    ← Volver
+                                </button>
+                                <MiniGame 
+                                    leagueColor={leagueConfig.color} 
+                                    leagueName="WBC" 
+                                />
+                            </div>
+                        ) : (
+                            <>
+                                <div 
+                                    className="w-24 h-24 rounded-full flex items-center justify-center mb-6"
+                                    style={{ backgroundColor: `${leagueConfig.color}20` }}
+                                >
+                                    <Wrench className="w-12 h-12" style={{ color: leagueConfig.color }} />
+                                </div>
+                                <h2 className="text-2xl font-black text-white mb-2">
+                                    ¡Estamos Trabajando!
+                                </h2>
+                                <p className="text-zinc-400 text-sm max-w-xs mb-6">
+                                    La sección del World Baseball Classic estará disponible muy pronto. Estamos preparando todo para ti.
+                                </p>
+                                <div className="text-6xl mb-4">
+                                    🌎⚾
+                                </div>
+                                <span 
+                                    className="text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full mb-8"
+                                    style={{ 
+                                        backgroundColor: `${leagueConfig.color}20`,
+                                        color: leagueConfig.color
+                                    }}
+                                >
+                                    Próximamente
+                                </span>
+                                
+                                <button
+                                    onClick={() => setShowMiniGame(true)}
+                                    className="mt-8 px-6 py-3 rounded-xl font-bold text-white transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+                                    style={{ backgroundColor: leagueConfig.color }}
+                                >
+                                    🎮 ¿Estás aburrido? ¡Juega!
+                                </button>
+                            </>
+                        )}
                     </div>
                 ) : (
                 <>
@@ -638,12 +663,10 @@ export const Home: React.FC = () => {
                                 </Link>
                             ))
                         ) : (
-                            <div className="col-span-full">
-                                <div className="flex flex-col items-center justify-center p-12 text-center text-zinc-500 bg-zinc-900/30 rounded-xl border border-white/5 border-dashed">
-                                    <Calendar className="w-8 h-8 mb-3 opacity-20" />
-                                    <p>No hay juegos programados para este día.</p>
-                                </div>
-                            </div>
+                            <MiniGame 
+                                leagueColor={leagueConfig.color} 
+                                leagueName={activeLeague.toUpperCase()} 
+                            />
                         )}
                     </div>
                 </section>

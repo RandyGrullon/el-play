@@ -39,3 +39,50 @@ body {
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
+
+/* Mini Game Animations */
+@keyframes fly-ball {
+    0% {
+        transform: translateX(-50%) translateY(0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(-50%) translateY(-200px) scale(0.3);
+        opacity: 0;
+    }
+}
+
+@keyframes bounce-in {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes spin-slow {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-fly-ball {
+    animation: fly-ball 1s ease-out forwards;
+}
+
+.animate-bounce-in {
+    animation: bounce-in 0.3s ease-out forwards;
+}
+
+.animate-spin-slow {
+    animation: spin-slow 0.5s linear infinite;
+}
