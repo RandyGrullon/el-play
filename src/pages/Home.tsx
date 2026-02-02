@@ -32,6 +32,7 @@ export const Home: React.FC = () => {
     const { trackNotificationSubscribe, trackNotificationUnsubscribe } = useAnalytics();
     const [standings, setStandings] = useState<any>(null);
     const [leaders, setLeaders] = useState<any[]>([]);
+    const hasCalculatedInitialDate = useRef(false);
     const [selectedDate, setSelectedDate] = useState<string>(() => {
         return new Date().toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
     });
@@ -95,19 +96,28 @@ export const Home: React.FC = () => {
         });
     }, [schedule, todayStr]);
 
-    // Auto-select yesterday's date if there are live games from yesterday
+    // Calculate initial date when schedule loads (before render, no animation)
     useEffect(() => {
-        if (liveGamesFromPreviousDays.length > 0 && selectedDate === todayStr) {
-            // Get the date of the first live game from previous days
-            const liveGameDate = new Date(liveGamesFromPreviousDays[0].date)
-                .toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
+        if (!loading && schedule.length > 0 && !hasCalculatedInitialDate.current) {
+            hasCalculatedInitialDate.current = true;
             
-            // Only switch if we haven't manually selected a different date
-            if (dates.includes(liveGameDate)) {
-                setSelectedDate(liveGameDate);
+            // Check for live games from previous days
+            const liveFromPrev = schedule.filter(game => {
+                const gameDateStr = new Date(game.date).toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
+                const isFromPreviousDay = gameDateStr < todayStr;
+                const isLive = game.status === 'Live' || game.status === 'In Progress';
+                return isFromPreviousDay && isLive;
+            });
+            
+            if (liveFromPrev.length > 0) {
+                const liveGameDate = new Date(liveFromPrev[0].date)
+                    .toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
+                if (dates.includes(liveGameDate)) {
+                    setSelectedDate(liveGameDate);
+                }
             }
         }
-    }, [liveGamesFromPreviousDays, todayStr, dates]);
+    }, [loading, schedule, todayStr, dates]);
 
     // Filter games for selected date (includes live games from previous days when viewing today)
     const filteredGames = useMemo(() => {
