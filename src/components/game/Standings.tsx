@@ -21,11 +21,33 @@ interface StandingsData {
     activePhase: 'regular' | 'roundRobin' | 'final';
 }
 
+interface WBCStandingsData {
+    pools: Record<string, StandingItem[]>;
+    type: 'wbc';
+    league: string;
+}
+
+interface SDCStandingsData {
+    teams: StandingItem[];
+    type: 'sdc';
+    league: string;
+}
+
 interface StandingsProps {
-    standings: StandingsData | StandingItem[];
+    standings: StandingsData | WBCStandingsData | SDCStandingsData | StandingItem[];
 }
 
 type PhaseType = 'regular' | 'roundRobin' | 'final';
+
+// Check if standings is WBC format
+const isWBCFormat = (data: any): data is WBCStandingsData => {
+    return data && typeof data === 'object' && data.type === 'wbc' && 'pools' in data;
+};
+
+// Check if standings is SDC format
+const isSDCFormat = (data: any): data is SDCStandingsData => {
+    return data && typeof data === 'object' && data.type === 'sdc' && 'teams' in data;
+};
 
 export const Standings: React.FC<StandingsProps> = ({ standings }) => {
     const { leagueConfig } = useLeague();
@@ -64,6 +86,48 @@ export const Standings: React.FC<StandingsProps> = ({ standings }) => {
     }, [standings, isMultiPhase]);
 
     if (!standings) return null;
+
+    // Handle WBC format with pools
+    if (isWBCFormat(standings)) {
+        const poolNames = Object.keys(standings.pools).sort();
+        return (
+            <Card className="h-full flex flex-col">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex-shrink-0">Tabla de Posiciones - WBC</h3>
+                <div className="overflow-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent max-h-[500px] space-y-6">
+                    {poolNames.length > 0 ? poolNames.map(poolName => (
+                        <div key={poolName}>
+                            <h4 className="text-sm font-bold text-amber-500 mb-2 px-2">{poolName}</h4>
+                            <StandingsTable standings={standings.pools[poolName]} />
+                        </div>
+                    )) : (
+                        <div className="flex flex-col items-center justify-center h-64 text-zinc-500 gap-2 opacity-50">
+                            <div className="w-12 h-1 bg-zinc-800 rounded-full" />
+                            <span className="text-xs">No hay datos disponibles</span>
+                        </div>
+                    )}
+                </div>
+            </Card>
+        );
+    }
+
+    // Handle SDC format (Serie del Caribe)
+    if (isSDCFormat(standings)) {
+        return (
+            <Card className="h-full flex flex-col">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex-shrink-0">Tabla de Posiciones - Serie del Caribe</h3>
+                <div className="overflow-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent max-h-[500px]">
+                    {standings.teams.length > 0 ? (
+                        <StandingsTable standings={standings.teams} />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-64 text-zinc-500 gap-2 opacity-50">
+                            <div className="w-12 h-1 bg-zinc-800 rounded-full" />
+                            <span className="text-xs">No hay datos disponibles</span>
+                        </div>
+                    )}
+                </div>
+            </Card>
+        );
+    }
 
     // Handle legacy array format
     if (Array.isArray(standings)) {

@@ -1,5 +1,32 @@
-const { LIDOM_TEAMS } = require('../config/constants');
+const { LIDOM_TEAMS, WBC_TEAMS, SDC_TEAMS } = require('../config/constants');
 const { GameDataSchema } = require('../schemas/mlb');
+
+// Generate a consistent color based on team ID for international teams
+const COUNTRY_COLORS = [
+    '#ef4444', // red-500
+    '#f97316', // orange-500
+    '#f59e0b', // amber-500
+    '#eab308', // yellow-500
+    '#84cc16', // lime-500
+    '#22c55e', // green-500
+    '#10b981', // emerald-500
+    '#14b8a6', // teal-500
+    '#06b6d4', // cyan-500
+    '#0ea5e9', // sky-500
+    '#3b82f6', // blue-500
+    '#6366f1', // indigo-500
+    '#8b5cf6', // violet-500
+    '#a855f7', // purple-500
+    '#d946ef', // fuchsia-500
+    '#ec4899', // pink-500
+    '#f43f5e', // rose-500
+    '#78716c', // stone-500
+];
+
+const getRandomColorForTeam = (teamId) => {
+    const index = teamId % COUNTRY_COLORS.length;
+    return COUNTRY_COLORS[index];
+};
 
 /**
  * Transform raw MLB Game Data into clean app format
@@ -20,10 +47,37 @@ const transformGameData = (data) => {
     const plays = liveData.plays;
     const gameStatus = gameData.status.detailedState;
 
+    // Detect if this is an international tournament (WBC or Serie del Caribe)
+    // Check both home and away team's league/sport info
+    const homeLeagueId = gameData.teams?.home?.league?.id;
+    const awayLeagueId = gameData.teams?.away?.league?.id;
+    const homeSportId = gameData.teams?.home?.sport?.id;
+    const awaySportId = gameData.teams?.away?.sport?.id;
+    
+    // WBC: leagueId 160, sportId 51
+    // Serie del Caribe: leagueId 162, sportId 17
+    const isInternationalTournament = 
+        homeLeagueId === 160 || awayLeagueId === 160 || // WBC
+        homeLeagueId === 162 || awayLeagueId === 162 || // Serie del Caribe
+        homeSportId === 51 || awaySportId === 51; // International Baseball
+
     const getTeamInfo = (teamType) => {
         const teamData = boxscore.teams[teamType];
         const teamId = teamData.team.id;
-        const lidomTeam = LIDOM_TEAMS[teamId] || LIDOM_TEAMS[String(teamId)] || {};
+        
+        // Check all team configs for color
+        const configuredTeam = LIDOM_TEAMS[teamId] || WBC_TEAMS[teamId] || SDC_TEAMS[teamId] || {};
+        
+        // Determine team color
+        let teamColor = configuredTeam.color;
+        if (!teamColor) {
+            // For international tournaments, generate a consistent random color
+            if (isInternationalTournament) {
+                teamColor = getRandomColorForTeam(teamId);
+            } else {
+                teamColor = '#000000'; // Default to black for other leagues
+            }
+        }
 
         // Extract players
         const players = Object.values(teamData.players)
@@ -49,7 +103,7 @@ const transformGameData = (data) => {
             name: teamData.team.name,
             abbreviation: teamData.team.abbreviation,
             logo: `https://www.mlbstatic.com/team-logos/${teamId}.svg`,
-            color: lidomTeam.color || '#000000', // Default to black if not found
+            color: teamColor,
             runs: linescore.teams[teamType].runs || 0,
             hits: linescore.teams[teamType].hits || 0,
             errors: linescore.teams[teamType].errors || 0,

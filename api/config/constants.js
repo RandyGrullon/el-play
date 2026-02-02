@@ -29,6 +29,15 @@ const LEAGUES = {
         leagueId: 160,
         season: 2026,
         hasPhases: false // Uses pools instead
+    },
+    sdc: {
+        id: 'sdc',
+        name: 'SDC',
+        fullName: 'Serie del Caribe',
+        sportId: 17,
+        leagueId: 162,
+        season: 2026,
+        hasPhases: false // Tournament format
     }
 };
 
@@ -40,6 +49,52 @@ const LIDOM_TEAMS = {
     671: { abbrev: 'ESC', name: 'Leones del Escogido', logo: 'https://www.mlbstatic.com/team-logos/671.svg', color: '#E31837' }, // Red
     672: { abbrev: 'LIC', name: 'Tigres del Licey', logo: 'https://www.mlbstatic.com/team-logos/672.svg', color: '#0069e0' }, // Blue
     673: { abbrev: 'EST', name: 'Estrellas Orientales', logo: 'https://www.mlbstatic.com/team-logos/673.svg', color: '#00be66' } // Green
+};
+
+// Serie del Caribe Team Configuration - Colores por país
+const SDC_TEAMS = {
+    // República Dominicana - Azul
+    667: { abbrev: 'AGU', name: 'Águilas Cibaeñas', color: '#002D62' },
+    668: { abbrev: 'TOR', name: 'Toros del Este', color: '#002D62' },
+    670: { abbrev: 'GIG', name: 'Gigantes del Cibao', color: '#002D62' },
+    671: { abbrev: 'ESC', name: 'Leones del Escogido', color: '#002D62' },
+    672: { abbrev: 'LIC', name: 'Tigres del Licey', color: '#002D62' },
+    673: { abbrev: 'EST', name: 'Estrellas Orientales', color: '#002D62' },
+    
+    // Venezuela - Vinotinto
+    4935: { abbrev: 'CAR', name: 'Leones del Caracas', color: '#8B0000' },
+    4936: { abbrev: 'MAG', name: 'Navegantes del Magallanes', color: '#8B0000' },
+    4937: { abbrev: 'ARA', name: 'Tigres de Aragua', color: '#8B0000' },
+    4938: { abbrev: 'ZUL', name: 'Águilas del Zulia', color: '#8B0000' },
+    4939: { abbrev: 'LAR', name: 'Cardenales de Lara', color: '#8B0000' },
+    4940: { abbrev: 'GUA', name: 'Tiburones de La Guaira', color: '#8B0000' },
+    
+    // Puerto Rico - Rojo
+    4941: { abbrev: 'CAG', name: 'Criollos de Caguas', color: '#ED0A3F' },
+    4942: { abbrev: 'MAY', name: 'Indios de Mayagüez', color: '#ED0A3F' },
+    4943: { abbrev: 'SAN', name: 'Cangrejeros de Santurce', color: '#ED0A3F' },
+    
+    // México - Verde
+    4944: { abbrev: 'YAQ', name: 'Yaquis de Obregón', color: '#006341' },
+    4945: { abbrev: 'MAZ', name: 'Venados de Mazatlán', color: '#006341' },
+    4946: { abbrev: 'JAL', name: 'Charros de Jalisco', color: '#006341' },
+    4947: { abbrev: 'CUL', name: 'Tomateros de Culiacán', color: '#006341' },
+    4948: { abbrev: 'HER', name: 'Naranjeros de Hermosillo', color: '#006341' },
+    
+    // Cuba - Rojo
+    4950: { abbrev: 'CUB', name: 'Cuba', color: '#CC0000' },
+    
+    // Panamá - Rojo
+    4951: { abbrev: 'PAN', name: 'Panamá', color: '#D52B1E' },
+    
+    // Colombia - Amarillo
+    4952: { abbrev: 'COL', name: 'Colombia', color: '#FCD116' },
+    
+    // Nicaragua - Azul
+    4953: { abbrev: 'NIC', name: 'Nicaragua', color: '#0067C6' },
+    
+    // Curazao - Azul
+    4954: { abbrev: 'CUR', name: 'Curazao', color: '#003DA5' },
 };
 
 // WBC Team Configuration (partial - will be populated from API)
@@ -72,5 +127,6 @@ module.exports = {
     TTL,
     LEAGUES,
     LIDOM_TEAMS,
-    WBC_TEAMS
+    WBC_TEAMS,
+    SDC_TEAMS
 };

@@ -1,11 +1,41 @@
 const axios = require('axios');
-const { MLB_API_BASE, MLB_API_BASE_V1_1, LEAGUES, LIDOM_TEAMS, WBC_TEAMS } = require('../config/constants');
+const { MLB_API_BASE, MLB_API_BASE_V1_1, LEAGUES, LIDOM_TEAMS, WBC_TEAMS, SDC_TEAMS } = require('../config/constants');
 const { transformGameData } = require('../utils/transformers');
 
 // Helper to get team config based on league
 const getTeamConfig = (leagueId) => {
     if (leagueId === 'wbc' || leagueId === 160) return WBC_TEAMS;
+    if (leagueId === 'sdc' || leagueId === 162) return SDC_TEAMS;
     return LIDOM_TEAMS;
+};
+
+// Generate a consistent color based on team ID for international teams
+// Uses a set of vibrant, distinguishable colors
+const COUNTRY_COLORS = [
+    '#ef4444', // red-500
+    '#f97316', // orange-500
+    '#f59e0b', // amber-500
+    '#eab308', // yellow-500
+    '#84cc16', // lime-500
+    '#22c55e', // green-500
+    '#10b981', // emerald-500
+    '#14b8a6', // teal-500
+    '#06b6d4', // cyan-500
+    '#0ea5e9', // sky-500
+    '#3b82f6', // blue-500
+    '#6366f1', // indigo-500
+    '#8b5cf6', // violet-500
+    '#a855f7', // purple-500
+    '#d946ef', // fuchsia-500
+    '#ec4899', // pink-500
+    '#f43f5e', // rose-500
+    '#78716c', // stone-500
+];
+
+const getRandomColorForTeam = (teamId) => {
+    // Use team ID to get a consistent index
+    const index = teamId % COUNTRY_COLORS.length;
+    return COUNTRY_COLORS[index];
 };
 
 const fetchLiveGameData = async (gamePk) => {
@@ -47,7 +77,15 @@ const fetchScheduleData = async (startDate, endDate, leagueId = 'lidom') => {
             };
 
             const getTeamColor = (teamId) => {
-                return teamsConfig[teamId]?.color || '#ffffff';
+                // First check if we have a configured color
+                if (teamsConfig[teamId]?.color) {
+                    return teamsConfig[teamId].color;
+                }
+                // For WBC and SDC (international tournaments), generate a consistent random color
+                if (leagueId === 'wbc' || leagueId === 'sdc' || leagueId === 160 || leagueId === 162) {
+                    return getRandomColorForTeam(teamId);
+                }
+                return '#ffffff';
             };
 
             return {
@@ -101,9 +139,13 @@ const fetchScheduleData = async (startDate, endDate, leagueId = 'lidom') => {
 const fetchStandingsData = async (leagueId = 'lidom') => {
     const league = LEAGUES[leagueId] || LEAGUES.lidom;
     
-    // For WBC, fetch pool standings differently
+    // For WBC and Serie del Caribe, fetch pool standings differently
     if (leagueId === 'wbc') {
         return fetchWBCStandings(league);
+    }
+    
+    if (leagueId === 'sdc') {
+        return fetchSDCStandings(league);
     }
     
     // LIDOM: Fetch regular season, postseason (round robin) standings and final series schedule
@@ -330,6 +372,56 @@ const fetchWBCStandings = async (league) => {
     } catch (error) {
         console.error('Error fetching WBC standings:', error);
         return { pools: {}, type: 'wbc', league: 'wbc' };
+    }
+};
+
+// Serie del Caribe Standings - tournament format
+const fetchSDCStandings = async (league) => {
+    try {
+        const response = await axios.get(`${MLB_API_BASE}/standings`, {
+            params: {
+                leagueId: league.leagueId,
+                season: league.season,
+                standingsTypes: 'regularSeason'
+            }
+        });
+
+        const records = response.data.records || [];
+        const teams = [];
+        
+        records.forEach(record => {
+            record.teamRecords?.forEach(teamRecord => {
+                teams.push({
+                    rank: teamRecord.rank || teamRecord.leagueRank,
+                    team: {
+                        name: teamRecord.team.name,
+                        id: teamRecord.team.id,
+                        logo: `https://www.mlbstatic.com/team-logos/${teamRecord.team.id}.svg`
+                    },
+                    wins: teamRecord.wins,
+                    losses: teamRecord.losses,
+                    gamesPlayed: teamRecord.gamesPlayed || (teamRecord.wins + teamRecord.losses),
+                    pct: teamRecord.winningPercentage,
+                    gamesBack: teamRecord.gamesBack || '-',
+                    streak: teamRecord.streak?.streakCode || '-'
+                });
+            });
+        });
+
+        // Sort by wins (descending), then by losses (ascending)
+        teams.sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+        
+        // Update ranks after sorting
+        teams.forEach((team, idx) => team.rank = idx + 1);
+
+        return {
+            teams,
+            type: 'sdc',
+            league: 'sdc'
+        };
+    } catch (error) {
+        console.error('Error fetching Serie del Caribe standings:', error);
+        return { teams: [], type: 'sdc', league: 'sdc' };
     }
 };
 

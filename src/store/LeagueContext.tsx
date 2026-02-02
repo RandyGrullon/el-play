@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-export type LeagueType = 'lidom' | 'wbc';
+export type LeagueType = 'lidom' | 'wbc' | 'sdc';
 
 interface LeagueConfig {
     id: LeagueType;
@@ -37,6 +37,15 @@ const LEAGUES: LeagueConfig[] = [
         leagueId: 160,
         color: '#f59e0b', // amber-500
         logo: '🌎'
+    },
+    {
+        id: 'sdc',
+        name: 'SDC',
+        fullName: 'Serie del Caribe',
+        sportId: 17,
+        leagueId: 162,
+        color: '#ef4444', // red-500
+        logo: '🌴'
     }
 ];
 

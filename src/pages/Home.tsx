@@ -201,7 +201,7 @@ export const Home: React.FC = () => {
 
     return (
         <PullToRefresh onRefresh={handleRefresh}>
-            <div className="space-y-2">
+            <div className="space-y-6">
 
                 {/* Show "Coming Soon" for WBC */}
                 {activeLeague === 'wbc' ? (
