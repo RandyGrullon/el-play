@@ -29,6 +29,9 @@ const apiLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 
+// Health check (para verificar que el backend carga en Vercel)
+app.get('/api', (req, res) => res.json({ status: 'ok', service: 'el-play-api' }));
+
 // Routes
 app.use('/api', routes);
 

@@ -2,6 +2,9 @@
     "name": "el-play",
     "version": "1.0.0",
     "private": true,
+    "engines": {
+        "node": ">=18.x"
+    },
     "scripts": {
         "dev": "concurrently \"npm run server\" \"npm run client\"",
         "server": "nodemon api/index.js",
