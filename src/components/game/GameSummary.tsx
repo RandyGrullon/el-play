@@ -25,7 +25,7 @@ export const GameSummary: React.FC<GameSummaryProps> = ({ gameData }) => {
                             <p className="text-zinc-500 text-sm font-medium">{away.runs} - {away.hits} - {away.errors}</p>
                         </div>
                         <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-zinc-800 flex items-center justify-center border-4 border-zinc-700 shadow-lg p-2">
-                            <img src={away.logo} alt={away.name} className="w-full h-full object-contain" />
+                            <img src={away.logo} alt={away.name} loading="lazy" className="w-full h-full object-contain" />
                         </div>
                     </div>
 
@@ -42,7 +42,7 @@ export const GameSummary: React.FC<GameSummaryProps> = ({ gameData }) => {
                     {/* Home Team */}
                     <div className="flex items-center gap-4 text-center md:text-right flex-row-reverse md:flex-row">
                         <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-zinc-800 flex items-center justify-center border-4 border-zinc-700 shadow-lg p-2">
-                            <img src={home.logo} alt={home.name} className="w-full h-full object-contain" />
+                            <img src={home.logo} alt={home.name} loading="lazy" className="w-full h-full object-contain" />
                         </div>
                         <div className="flex flex-col items-center md:items-start">
                             <h2 className="text-2xl font-bold text-white">{home.name}</h2>
@@ -101,6 +101,7 @@ export const GameSummary: React.FC<GameSummaryProps> = ({ gameData }) => {
                                         <img
                                             src={`https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${player.id}/headshot/67/current`}
                                             alt={player.name}
+                                            loading="lazy"
                                             className="w-full h-full object-cover"
                                             onError={(e) => {
                                                 (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Player';
@@ -108,7 +109,7 @@ export const GameSummary: React.FC<GameSummaryProps> = ({ gameData }) => {
                                         />
                                     </div>
                                     <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center">
-                                        <img src={player.teamLogo} alt="Team" className="w-4 h-4 object-contain" />
+                                        <img src={player.teamLogo} alt="Team" loading="lazy" className="w-4 h-4 object-contain" />
                                     </div>
                                 </div>
                                 <Link to={`/player/${player.id}`} className="font-bold text-white hover:opacity-80 transition-opacity mb-1">
@@ -142,7 +143,7 @@ export const GameSummary: React.FC<GameSummaryProps> = ({ gameData }) => {
                         <tbody className="text-sm font-medium text-zinc-300">
                             <tr className="border-b border-white/5">
                                 <td className="py-4 text-left flex items-center gap-3">
-                                    <img src={away.logo} alt={away.name} className="w-6 h-6 object-contain" />
+                                    <img src={away.logo} alt={away.name} loading="lazy" className="w-6 h-6 object-contain" />
                                     <span className="font-bold text-white">{away.name}</span>
                                 </td>
                                 <td className="py-4 font-bold text-white">{away.teamStats?.batting?.runs || away.runs}</td>
@@ -155,7 +156,7 @@ export const GameSummary: React.FC<GameSummaryProps> = ({ gameData }) => {
                             </tr>
                             <tr>
                                 <td className="py-4 text-left flex items-center gap-3">
-                                    <img src={home.logo} alt={home.name} className="w-6 h-6 object-contain" />
+                                    <img src={home.logo} alt={home.name} loading="lazy" className="w-6 h-6 object-contain" />
                                     <span className="font-bold text-white">{home.name}</span>
                                 </td>
                                 <td className="py-4 font-bold text-white">{home.teamStats?.batting?.runs || home.runs}</td>

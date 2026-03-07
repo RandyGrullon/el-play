@@ -28,7 +28,7 @@ const TEAM_COLORS: Record<number, string> = {
 
 export const Home: React.FC = () => {
     const { activeLeague, leagueConfig } = useLeague();
-    const { schedule: scheduleRaw, loading, refetch } = useSchedule(activeLeague) as { schedule: ScheduleItem[], loading: boolean, refetch: () => Promise<any> };
+    const { schedule: scheduleRaw, loading, isError: scheduleError, error: scheduleErrorMessage, refetch } = useSchedule(activeLeague) as { schedule: ScheduleItem[], loading: boolean, isError: boolean, error: string | null, refetch: () => Promise<any> };
     // Solo mostrar juegos de la liga activa (evita ver WBC al elegir SDC por cache/placeholder)
     const schedule = useMemo(() => {
         if (!scheduleRaw?.length) return scheduleRaw ?? [];
@@ -38,6 +38,8 @@ export const Home: React.FC = () => {
     const { trackNotificationSubscribe, trackNotificationUnsubscribe } = useAnalytics();
     const [standings, setStandings] = useState<any>(null);
     const [leaders, setLeaders] = useState<any[]>([]);
+    const [standingsError, setStandingsError] = useState<string | null>(null);
+    const [leadersError, setLeadersError] = useState<string | null>(null);
     const hasCalculatedInitialDate = useRef(false);
     const [selectedDate, setSelectedDate] = useState<string>(() => {
         return new Date().toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
@@ -45,9 +47,20 @@ export const Home: React.FC = () => {
 
     // Refetch data when league changes
     useEffect(() => {
-        fetchStandings(activeLeague).then(setStandings).catch(console.error);
-        fetchLeaders(activeLeague).then(setLeaders).catch(console.error);
+        setStandingsError(null);
+        setLeadersError(null);
+        fetchStandings(activeLeague).then((data) => { setStandings(data); setStandingsError(null); }).catch((err) => setStandingsError(err?.message || 'Error al cargar tabla'));
+        fetchLeaders(activeLeague).then((data) => { setLeaders(data); setLeadersError(null); }).catch((err) => setLeadersError(err?.message || 'Error al cargar líderes'));
     }, [activeLeague]);
+
+    const retryStandings = () => {
+        setStandingsError(null);
+        fetchStandings(activeLeague).then((data) => { setStandings(data); setStandingsError(null); }).catch((err) => setStandingsError(err?.message || 'Error al cargar tabla'));
+    };
+    const retryLeaders = () => {
+        setLeadersError(null);
+        fetchLeaders(activeLeague).then((data) => { setLeaders(data); setLeadersError(null); }).catch((err) => setLeadersError(err?.message || 'Error al cargar líderes'));
+    };
 
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -260,10 +273,11 @@ export const Home: React.FC = () => {
     };
 
     const handleRefresh = async () => {
+        setStandingsError(null);
+        setLeadersError(null);
         await refetch();
-        // Also refetch standings and leaders with current league
-        fetchStandings(activeLeague).then(setStandings).catch(console.error);
-        fetchLeaders(activeLeague).then(setLeaders).catch(console.error);
+        fetchStandings(activeLeague).then((data) => { setStandings(data); setStandingsError(null); }).catch((err) => setStandingsError(err?.message || 'Error al cargar tabla'));
+        fetchLeaders(activeLeague).then((data) => { setLeaders(data); setLeadersError(null); }).catch((err) => setLeadersError(err?.message || 'Error al cargar líderes'));
     };
 
     return (
@@ -301,22 +315,26 @@ export const Home: React.FC = () => {
                     <div className="relative group">
                         <div
                             ref={scrollRef}
+                            role="tablist"
+                            aria-label="Seleccionar fecha"
                             className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x"
                         >
                             {dates.map((date) => {
-                                // Create date object for display, forcing noon to avoid shifts
                                 const d = new Date(date + 'T12:00:00');
                                 const isSelected = date === selectedDate;
-                                // Check if there are games on this date (converted to SD time)
                                 const hasGames = schedule.some(g => {
                                     const gDate = new Date(g.date).toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
                                     return gDate === date;
                                 });
+                                const dateLabel = d.toLocaleDateString('es-DO', { weekday: 'long', day: 'numeric', month: 'long' });
 
                                 return (
                                     <button
                                         key={date}
                                         id={`date-${date}`}
+                                        role="tab"
+                                        aria-selected={isSelected}
+                                        aria-label={dateLabel}
                                         onClick={() => setSelectedDate(date)}
                                         className={`
                                             flex-shrink-0 snap-start flex flex-col items-center justify-center w-16 h-20 rounded-2xl border transition-all duration-300
@@ -357,6 +375,19 @@ export const Home: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-h-[200px]">
                         {loading ? (
                             [...Array(3)].map((_, i) => <GameCardSkeleton key={i} />)
+                        ) : scheduleError ? (
+                            <div className="col-span-full flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-white/10 bg-zinc-900/50">
+                                <p className="text-zinc-400 text-sm text-center mb-4">No se pudieron cargar los partidos.</p>
+                                {scheduleErrorMessage && <p className="text-zinc-500 text-xs mb-4">{scheduleErrorMessage}</p>}
+                                <button
+                                    type="button"
+                                    onClick={() => refetch()}
+                                    className="px-4 py-2 rounded-lg font-medium text-white transition-opacity hover:opacity-90"
+                                    style={{ backgroundColor: leagueConfig.color }}
+                                >
+                                    Reintentar
+                                </button>
+                            </div>
                         ) : sortedGames.length > 0 ? (
                             sortedGames.map((game) => (
                                 <Link key={game.gamePk} to={`/game/${game.gamePk}`}>
@@ -386,6 +417,7 @@ export const Home: React.FC = () => {
                                                     className="transition-colors"
                                                     style={{ color: subscribedGames.includes(game.gamePk) ? leagueConfig.color : undefined }}
                                                     title={subscribedGames.includes(game.gamePk) ? "Desactivar notificación" : "Activar notificación"}
+                                                    aria-label={subscribedGames.includes(game.gamePk) ? "Desactivar notificación para este partido" : "Activar notificación para este partido"}
                                                 >
                                                     <Bell className={`w-4 h-4 ${subscribedGames.includes(game.gamePk) ? 'fill-current' : 'text-zinc-600 hover:text-zinc-400'}`} />
                                                 </button>
@@ -419,6 +451,7 @@ export const Home: React.FC = () => {
                                                     <img
                                                         src={game.away.logo}
                                                         alt={game.away.name}
+                                                        loading="lazy"
                                                         className="w-10 h-10 object-contain"
                                                         onError={(e) => {
                                                             const target = e.target as HTMLImageElement;
@@ -439,6 +472,7 @@ export const Home: React.FC = () => {
                                                                     toggleFavoriteTeam(game.away.id);
                                                                 }}
                                                                 className={`transition-colors ${favoriteTeamId === game.away.id ? 'text-red-500 fill-current' : 'text-zinc-600 hover:text-zinc-400'}`}
+                                                                aria-label={favoriteTeamId === game.away.id ? `Quitar ${game.away.name} de favoritos` : `Marcar ${game.away.name} como favorito`}
                                                             >
                                                                 <Heart className={`w-4 h-4 ${favoriteTeamId === game.away.id ? 'fill-current' : ''}`} />
                                                             </button>
@@ -456,6 +490,7 @@ export const Home: React.FC = () => {
                                                     <img
                                                         src={game.home.logo}
                                                         alt={game.home.name}
+                                                        loading="lazy"
                                                         className="w-10 h-10 object-contain"
                                                         onError={(e) => {
                                                             const target = e.target as HTMLImageElement;
@@ -476,6 +511,7 @@ export const Home: React.FC = () => {
                                                                     toggleFavoriteTeam(game.home.id);
                                                                 }}
                                                                 className={`transition-colors ${favoriteTeamId === game.home.id ? 'text-red-500 fill-current' : 'text-zinc-600 hover:text-zinc-400'}`}
+                                                                aria-label={favoriteTeamId === game.home.id ? `Quitar ${game.home.name} de favoritos` : `Marcar ${game.home.name} como favorito`}
                                                             >
                                                                 <Heart className={`w-4 h-4 ${favoriteTeamId === game.home.id ? 'fill-current' : ''}`} />
                                                             </button>
@@ -585,6 +621,7 @@ export const Home: React.FC = () => {
                                                         <img
                                                             src={game.liveData.isTopInning ? game.away.logo : game.home.logo}
                                                             alt="Batting Team"
+                                                            loading="lazy"
                                                             className="w-3.5 h-3.5 object-contain"
                                                         />
                                                         <span className="font-medium truncate">{game.liveData.batter.name}</span>
@@ -621,8 +658,22 @@ export const Home: React.FC = () => {
 
                 {/* Stats Grid */}
                 <section className="grid md:grid-cols-2 gap-4 md:gap-8 pt-8 border-t border-white/5">
-                    <Standings standings={standings} />
-                    <Leaders leaders={leaders} />
+                    {standingsError ? (
+                        <Card className="flex flex-col items-center justify-center py-8 px-4">
+                            <p className="text-zinc-400 text-sm text-center mb-3">No se pudo cargar la tabla de posiciones.</p>
+                            <button type="button" onClick={retryStandings} className="px-3 py-1.5 rounded-lg text-sm font-medium text-white hover:opacity-90" style={{ backgroundColor: leagueConfig.color }}>Reintentar</button>
+                        </Card>
+                    ) : (
+                        <Standings standings={standings} />
+                    )}
+                    {leadersError ? (
+                        <Card className="flex flex-col items-center justify-center py-8 px-4">
+                            <p className="text-zinc-400 text-sm text-center mb-3">No se pudieron cargar los líderes.</p>
+                            <button type="button" onClick={retryLeaders} className="px-3 py-1.5 rounded-lg text-sm font-medium text-white hover:opacity-90" style={{ backgroundColor: leagueConfig.color }}>Reintentar</button>
+                        </Card>
+                    ) : (
+                        <Leaders leaders={leaders} />
+                    )}
                 </section>
 
             </div>

@@ -10,25 +10,62 @@ import { SplashLoader } from './components/ui/SplashLoader';
 
 import { UpdateModal } from './components/common/UpdateModal';
 import { InstallPWA } from './components/common/InstallPWA';
+import { OfflineFallback } from './components/common/OfflineFallback';
 import { Sidebar, BaseballIcon } from './components/common/Sidebar';
 import { LeagueProvider, useLeague } from './store/LeagueContext';
 
 function AppContent() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const { leagueConfig } = useLeague();
+    const { leagueConfig, activeLeague } = useLeague();
     const [isLoading, setIsLoading] = React.useState(true);
+    const [showTransitionLoader, setShowTransitionLoader] = React.useState(false);
+    const [contentVisible, setContentVisible] = React.useState(false);
+    const [isOnline, setIsOnline] = React.useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+    const isFirstLeagueRender = React.useRef(true);
 
     React.useEffect(() => {
-        // Simulate initial loading (or wait for resources)
-        const timer = setTimeout(() => {
-            setIsLoading(false);
-        }, 2500); // 2.5 seconds splash screen
-
+        const timer = setTimeout(() => setIsLoading(false), 2500);
         return () => clearTimeout(timer);
     }, []);
 
+    React.useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+
+    React.useEffect(() => {
+        if (isFirstLeagueRender.current) {
+            isFirstLeagueRender.current = false;
+            return;
+        }
+        setShowTransitionLoader(true);
+        const t = setTimeout(() => setShowTransitionLoader(false), 500);
+        return () => clearTimeout(t);
+    }, [activeLeague]);
+
+    React.useEffect(() => {
+        if (showTransitionLoader) {
+            setContentVisible(false);
+            return;
+        }
+        const id = setTimeout(() => setContentVisible(true), 50);
+        return () => clearTimeout(id);
+    }, [showTransitionLoader]);
+
+    if (showTransitionLoader) {
+        return <SplashLoader color={leagueConfig.color} />;
+    }
     if (isLoading) {
         return <SplashLoader />;
+    }
+    if (!isOnline) {
+        return <OfflineFallback onRetry={() => setIsOnline(navigator.onLine)} accentColor={leagueConfig.color} />;
     }
 
     return (
@@ -52,7 +89,7 @@ function AppContent() {
                 />
             </div>
 
-            <div className="relative max-w-5xl mx-auto p-6 md:p-12 space-y-8">
+            <div className={`relative max-w-5xl mx-auto p-6 md:p-12 space-y-8 transition-opacity duration-300 ${contentVisible ? 'opacity-100' : 'opacity-0'}`}>
 
                 {/* Header */}
                 <header className="flex flex-col gap-6 border-b pb-6 transition-colors duration-500" style={{ borderColor: `${leagueConfig.color}20` }}>

@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const routes = require('./routes');
 
 // Initialize App
@@ -9,10 +11,23 @@ const app = express();
 // Configuration
 const PORT = process.env.PORT || 5001;
 
+// Security headers (X-Content-Type-Options, X-Frame-Options, etc.)
+app.use(helmet());
+
 // Middleware
 app.use(cors());
-app.use(morgan('dev')); // Logging
+app.use(morgan('dev'));
 app.use(express.json());
+
+// Rate limit: 100 requests per 15 min per IP para /api (evita abuso)
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: { error: 'Demasiadas peticiones. Intenta de nuevo en unos minutos.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+app.use('/api', apiLimiter);
 
 // Routes
 app.use('/api', routes);

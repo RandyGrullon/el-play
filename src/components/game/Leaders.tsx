@@ -117,6 +117,7 @@ export const Leaders: React.FC<LeadersProps> = ({ leaders }) => {
                                                         <img
                                                             src={player.teamLogo}
                                                             alt={player.team}
+                                                            loading="lazy"
                                                             className="w-3.5 h-3.5 object-contain"
                                                             onError={(e) => (e.currentTarget.style.display = 'none')}
                                                         />

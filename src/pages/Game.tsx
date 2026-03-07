@@ -246,6 +246,7 @@ export const Game: React.FC = () => {
                                                     <img
                                                         src={displayData.isTopInning ? displayData.home.logo : displayData.away.logo}
                                                         alt="Pitcher"
+                                                        loading="lazy"
                                                         className="w-6 h-6 object-contain"
                                                     />
                                                 </div>
@@ -268,6 +269,7 @@ export const Game: React.FC = () => {
                                                     <img
                                                         src={battingTeam.logo}
                                                         alt="Batter"
+                                                        loading="lazy"
                                                         className="w-6 h-6 object-contain"
                                                     />
                                                 </div>
@@ -295,6 +297,7 @@ export const Game: React.FC = () => {
                                                         <img
                                                             src={displayData.isTopInning ? displayData.home.logo : displayData.away.logo}
                                                             alt="Pitching Team"
+                                                            loading="lazy"
                                                             className="w-8 h-8 object-contain"
                                                         />
                                                     </div>
@@ -311,6 +314,7 @@ export const Game: React.FC = () => {
                                                         <img
                                                             src={battingTeam.logo}
                                                             alt="Batting Team"
+                                                            loading="lazy"
                                                             className="w-8 h-8 object-contain"
                                                         />
                                                     </div>

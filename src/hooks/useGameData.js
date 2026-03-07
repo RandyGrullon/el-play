@@ -47,7 +47,7 @@ export const useGameData = (gamePk) => {
 };
 
 export const useSchedule = (league = 'lidom') => {
-  const { data: schedule = [], isLoading, refetch } = useQuery({
+  const { data: schedule = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['schedule', league],
     queryFn: () => fetchSchedule(league),
     retry: 2, // Solo 2 reintentos
@@ -128,5 +128,11 @@ export const useSchedule = (league = 'lidom') => {
     }
   });
 
-  return { schedule, loading: isLoading, refetch };
+  return {
+    schedule,
+    loading: isLoading,
+    isError,
+    error: error ? error.message : null,
+    refetch
+  };
 };

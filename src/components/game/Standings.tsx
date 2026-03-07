@@ -235,6 +235,7 @@ const StandingsTable: React.FC<{ standings: StandingItem[] }> = ({ standings }) 
                             <img
                                 src={team.team.logo}
                                 alt={team.team.name}
+                                loading="lazy"
                                 className="w-6 h-6 object-contain"
                                 onError={(e) => (e.currentTarget.style.display = 'none')}
                             />

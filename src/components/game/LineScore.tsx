@@ -34,6 +34,7 @@ export const LineScore: React.FC<LineScoreProps> = ({ innings, home, away }) => 
                                 <img
                                     src={away.logo}
                                     alt={away.name}
+                                    loading="lazy"
                                     className="w-5 h-5 md:w-6 md:h-6 object-contain"
                                 />
                                 <span className="font-bold text-white text-xs md:text-sm">
@@ -61,6 +62,7 @@ export const LineScore: React.FC<LineScoreProps> = ({ innings, home, away }) => 
                                 <img
                                     src={home.logo}
                                     alt={home.name}
+                                    loading="lazy"
                                     className="w-5 h-5 md:w-6 md:h-6 object-contain"
                                 />
                                 <span className="font-bold text-white text-xs md:text-sm">

@@ -1,14 +1,19 @@
 import React, { useMemo } from 'react';
+import { LEAGUE_COLORS, type LeagueId } from '../../constants/leagues';
 
-// Get saved league color from localStorage (before context is available)
-const getLeagueColor = (): string => {
-    const saved = localStorage.getItem('activeLeague');
-    if (saved === 'wbc') return '#f59e0b'; // amber-500
-    return '#22d3ee'; // cyan-400 (default for lidom)
-};
+function getLeagueColor(): string {
+    const saved = localStorage.getItem('activeLeague') as LeagueId | null;
+    return LEAGUE_COLORS[saved || 'lidom'] ?? LEAGUE_COLORS.lidom;
+}
 
-export const SplashLoader: React.FC = () => {
-    const leagueColor = useMemo(() => getLeagueColor(), []);
+interface SplashLoaderProps {
+    /** Si se pasa, usa este color (ej. al cambiar de segmento). Si no, usa el de localStorage. */
+    color?: string;
+}
+
+export const SplashLoader: React.FC<SplashLoaderProps> = ({ color: colorProp }) => {
+    const colorFromStorage = useMemo(() => getLeagueColor(), []);
+    const leagueColor = colorProp ?? colorFromStorage;
     
     return (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950">

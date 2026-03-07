@@ -21,6 +21,7 @@ const TeamScore: React.FC<TeamScoreProps> = ({ team, isHome }) => (
         <img
             src={team.logo}
             alt={team.name}
+            loading="lazy"
             className="w-12 h-12 md:w-16 md:h-16 object-contain mb-2"
             onError={(e) => (e.currentTarget.style.display = 'none')}
         />

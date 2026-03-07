@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { LEAGUE_COLORS, type LeagueId } from '../constants/leagues';
 
-export type LeagueType = 'lidom' | 'wbc' | 'sdc';
+export type LeagueType = LeagueId;
 
 interface LeagueConfig {
     id: LeagueType;
@@ -20,33 +21,9 @@ interface LeagueContextType {
 }
 
 const LEAGUES: LeagueConfig[] = [
-    {
-        id: 'lidom',
-        name: 'LIDOM',
-        fullName: 'Liga Dominicana de Béisbol',
-        sportId: 17,
-        leagueId: 131,
-        color: '#22d3ee', // cyan-400
-        logo: '🇩🇴'
-    },
-    {
-        id: 'wbc',
-        name: 'WBC',
-        fullName: 'World Baseball Classic',
-        sportId: 51,
-        leagueId: 160,
-        color: '#f59e0b', // amber-500
-        logo: '🌎'
-    },
-    {
-        id: 'sdc',
-        name: 'SDC',
-        fullName: 'Serie del Caribe',
-        sportId: 17,
-        leagueId: 162,
-        color: '#ef4444', // red-500
-        logo: '🌴'
-    }
+    { id: 'lidom', name: 'LIDOM', fullName: 'Liga Dominicana de Béisbol', sportId: 17, leagueId: 131, color: LEAGUE_COLORS.lidom, logo: '🇩🇴' },
+    { id: 'wbc', name: 'WBC', fullName: 'World Baseball Classic', sportId: 51, leagueId: 160, color: LEAGUE_COLORS.wbc, logo: '🌎' },
+    { id: 'sdc', name: 'SDC', fullName: 'Serie del Caribe', sportId: 17, leagueId: 162, color: LEAGUE_COLORS.sdc, logo: '🌴' }
 ];
 
 const LeagueContext = createContext<LeagueContextType | undefined>(undefined);

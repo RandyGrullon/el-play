@@ -15,9 +15,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
       },
       manifest: {
-        name: 'El Play - LIDOM en Vivo',
+        name: 'El Play - Béisbol en vivo',
         short_name: 'El Play',
-        description: 'Sigue los juegos de la LIDOM en vivo, calendario y estadísticas.',
+        description: 'LIDOM, Clásico Mundial y Serie del Caribe en vivo.',
         theme_color: '#09090b',
         background_color: '#09090b',
         display: 'standalone',
