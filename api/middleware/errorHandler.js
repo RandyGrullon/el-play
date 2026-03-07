@@ -1,15 +1,15 @@
 const errorHandler = (err, req, res, next) => {
     console.error('Error:', err.stack);
 
-    // Default Error
+    // Default Error - frontend translates by key
     let statusCode = 500;
-    let message = 'Internal Server Error';
+    let errorKey = 'internal_error';
     let details = null;
 
     // Handle specific error types
     if (err.message === 'Invalid Game Data received from MLB API') {
         statusCode = 502; // Bad Gateway (upstream data issue)
-        message = 'Received invalid data from MLB API';
+        errorKey = 'invalid_mlb_data';
     }
 
     // Development details
@@ -18,7 +18,7 @@ const errorHandler = (err, req, res, next) => {
     }
 
     res.status(statusCode).json({
-        error: message,
+        error: errorKey,
         details: details
     });
 };

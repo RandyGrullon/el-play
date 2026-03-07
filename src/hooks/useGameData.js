@@ -41,6 +41,7 @@ export const useGameData = (gamePk) => {
     gameData,
     loading: isLoading,
     error: error ? error.message : null,
+    errorCode: error?.code ?? null,
     lastUpdated: dataUpdatedAt ? new Date(dataUpdatedAt) : null,
     refetch
   };
@@ -133,6 +134,7 @@ export const useSchedule = (league = 'lidom') => {
     loading: isLoading,
     isError,
     error: error ? error.message : null,
+    errorCode: error?.code ?? null,
     refetch
   };
 };

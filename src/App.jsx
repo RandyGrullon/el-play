@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Activity } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
@@ -15,6 +16,7 @@ import { Sidebar, BaseballIcon } from './components/common/Sidebar';
 import { LeagueProvider, useLeague } from './store/LeagueContext';
 
 function AppContent() {
+    const { t, i18n } = useTranslation();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { leagueConfig, activeLeague } = useLeague();
     const [isLoading, setIsLoading] = React.useState(true);
@@ -98,21 +100,33 @@ function AppContent() {
                             <BaseballIcon isOpen={sidebarOpen} onClick={() => setSidebarOpen(!sidebarOpen)} />
                             <Link to="/">
                                 <h1 className="text-3xl font-black tracking-tighter bg-gradient-to-br from-white to-zinc-500 bg-clip-text text-transparent cursor-pointer">
-                                    EL <span className="transition-colors duration-500" style={{ color: leagueConfig.color }}>PLAY</span>
+                                    {t('common.el')} <span className="transition-colors duration-500" style={{ color: leagueConfig.color }}>{t('common.play')}</span>
                                 </h1>
                             </Link>
                         </div>
                         <div className="flex items-center gap-3">
                             <InstallPWA />
-                            <div 
-                                className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all duration-500"
-                                style={{ 
-                                    backgroundColor: `${leagueConfig.color}08`,
-                                    borderColor: `${leagueConfig.color}20`
-                                }}
-                            >
-                                <Activity className="w-3 h-3 text-emerald-500" />
-                                <span className="text-zinc-500 hidden sm:inline">Live</span>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => i18n.changeLanguage(i18n.language === 'es' ? 'en' : 'es')}
+                                    className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full border transition-all duration-300 hover:opacity-90"
+                                    style={{ borderColor: `${leagueConfig.color}40`, color: leagueConfig.color }}
+                                    aria-label={t('a11y.selectLanguage')}
+                                    title={t('a11y.selectLanguage')}
+                                >
+                                    {i18n.language === 'es' ? 'EN' : 'ES'}
+                                </button>
+                                <div 
+                                    className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all duration-500"
+                                    style={{ 
+                                        backgroundColor: `${leagueConfig.color}08`,
+                                        borderColor: `${leagueConfig.color}20`
+                                    }}
+                                >
+                                    <Activity className="w-3 h-3 text-emerald-500" />
+                                    <span className="text-zinc-500 hidden sm:inline">{t('common.live')}</span>
+                                </div>
                             </div>
                         </div>
                     </div>

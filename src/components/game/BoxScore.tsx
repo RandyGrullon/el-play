@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Team } from '../../types';
 
 interface BoxScoreProps {
@@ -7,6 +8,7 @@ interface BoxScoreProps {
 }
 
 export const BoxScore: React.FC<BoxScoreProps> = ({ home, away }) => {
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState<'home' | 'away'>('away'); // Default to away team (usually bats first)
 
     const activeTeam = activeTab === 'home' ? home : away;
@@ -40,11 +42,11 @@ export const BoxScore: React.FC<BoxScoreProps> = ({ home, away }) => {
 
             {/* Batting Stats */}
             <div className="overflow-x-auto">
-                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 px-2">Bateo</h3>
+                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 px-2">{t('boxScore.batting')}</h3>
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b border-white/10 text-[10px] text-zinc-500 uppercase tracking-wider">
-                            <th className="p-2 font-bold w-full">Jugador</th>
+                            <th className="p-2 font-bold w-full">{t('boxScore.player')}</th>
                             <th className="p-2 font-bold text-center">AB</th>
                             <th className="p-2 font-bold text-center">R</th>
                             <th className="p-2 font-bold text-center">H</th>
@@ -78,11 +80,11 @@ export const BoxScore: React.FC<BoxScoreProps> = ({ home, away }) => {
 
             {/* Pitching Stats */}
             <div className="overflow-x-auto">
-                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 px-2">Pitcheo</h3>
+                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 px-2">{t('boxScore.pitching')}</h3>
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b border-white/10 text-[10px] text-zinc-500 uppercase tracking-wider">
-                            <th className="p-2 font-bold w-full">Jugador</th>
+                            <th className="p-2 font-bold w-full">{t('boxScore.player')}</th>
                             <th className="p-2 font-bold text-center">IP</th>
                             <th className="p-2 font-bold text-center">H</th>
                             <th className="p-2 font-bold text-center">R</th>

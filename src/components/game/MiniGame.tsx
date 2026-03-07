@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Trophy, RotateCcw } from 'lucide-react';
 
 interface MiniGameProps {
@@ -17,6 +18,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     leagueColor = '#f59e0b',
     leagueName = 'LIDOM'
 }) => {
+    const { t } = useTranslation();
     const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover'>('idle');
     const [score, setScore] = useState(0);
     const [highScore, setHighScore] = useState(0);
@@ -180,13 +182,13 @@ const MiniGame: React.FC<MiniGameProps> = ({
                     <div className="flex items-center gap-2">
                         <span className="text-2xl">⚾</span>
                         <div>
-                            <h3 className="font-bold text-white text-sm">Flappy Ball</h3>
-                            <p className="text-[10px] text-zinc-500">Evita los bates</p>
+                            <h3 className="font-bold text-white text-sm">{t('minigame.title')}</h3>
+                            <p className="text-[10px] text-zinc-500">{t('minigame.avoidBats')}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="text-right">
-                            <p className="text-[10px] text-zinc-500">Récord</p>
+                            <p className="text-[10px] text-zinc-500">{t('minigame.record')}</p>
                             <p className="font-mono font-bold text-amber-400 flex items-center gap-1">
                                 <Trophy className="w-3 h-3" />
                                 {highScore}
@@ -338,19 +340,19 @@ const MiniGame: React.FC<MiniGameProps> = ({
                         <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-30">
                             <div className="text-center">
                                 <div className="text-6xl mb-4 animate-bounce">⚾</div>
-                                <h2 className="text-white font-black text-2xl mb-2">FLAPPY BALL</h2>
+                                <h2 className="text-white font-black text-2xl mb-2">{t('minigame.title').toUpperCase()}</h2>
                                 <p className="text-white/80 text-sm mb-6">
-                                    Toca para volar y evita los bates
+                                    {t('minigame.tapToFly')}
                                 </p>
                                 <button 
                                     className="px-8 py-3 rounded-full font-bold text-white text-lg shadow-lg transform hover:scale-105 active:scale-95 transition-transform"
                                     style={{ backgroundColor: leagueColor }}
                                     onClick={(e) => { e.stopPropagation(); startGame(); }}
                                 >
-                                    ▶ JUGAR
+                                    {t('minigame.play')}
                                 </button>
                                 <p className="text-white/50 text-xs mt-4">
-                                    Toca la pantalla o presiona ESPACIO
+                                    {t('minigame.tapOrSpace')}
                                 </p>
                             </div>
                         </div>
@@ -361,10 +363,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
                         <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-30">
                             <div className="text-center bg-zinc-900/90 p-6 rounded-2xl border border-white/10">
                                 <p className="text-5xl mb-3">💥</p>
-                                <h2 className="text-red-500 font-black text-2xl mb-4">GAME OVER</h2>
+                                <h2 className="text-red-500 font-black text-2xl mb-4">{t('minigame.gameOver')}</h2>
                                 
                                 <div className="mb-4">
-                                    <p className="text-zinc-400 text-sm">Puntuación</p>
+                                    <p className="text-zinc-400 text-sm">{t('minigame.score')}</p>
                                     <p className="text-4xl font-black" style={{ color: leagueColor }}>
                                         {score}
                                     </p>
@@ -373,7 +375,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                                 {score > 0 && score >= highScore && (
                                     <div className="flex items-center justify-center gap-2 text-amber-400 mb-4">
                                         <Trophy className="w-5 h-5" />
-                                        <span className="font-bold">¡NUEVO RÉCORD!</span>
+                                        <span className="font-bold">{t('minigame.newRecord')}</span>
                                     </div>
                                 )}
 
@@ -382,7 +384,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                                     style={{ backgroundColor: leagueColor }}
                                     onClick={(e) => { e.stopPropagation(); startGame(); }}
                                 >
-                                    🔄 REINTENTAR
+                                    {t('minigame.retry')}
                                 </button>
                             </div>
                         </div>
@@ -392,7 +394,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 {/* Instructions */}
                 <div className="p-2 bg-zinc-900/80 border-t border-white/5">
                     <p className="text-center text-[10px] text-zinc-500">
-                        📱 Toca la pantalla • ⌨️ Espacio / ↑ para saltar
+                        {t('minigame.instructions')}
                     </p>
                 </div>
             </div>

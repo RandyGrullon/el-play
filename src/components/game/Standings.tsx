@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../ui/Card';
 import { useLeague } from '../../store/LeagueContext';
 
@@ -50,6 +51,7 @@ const isSDCFormat = (data: any): data is SDCStandingsData => {
 };
 
 export const Standings: React.FC<StandingsProps> = ({ standings }) => {
+    const { t } = useTranslation();
     const { leagueConfig } = useLeague();
     const [activeTab, setActiveTab] = useState<PhaseType>('regular');
     const tabsRef = useRef<HTMLDivElement>(null);
@@ -70,9 +72,9 @@ export const Standings: React.FC<StandingsProps> = ({ standings }) => {
     };
 
     const tabs = [
-        { id: 'regular', label: 'Regular' },
-        { id: 'roundRobin', label: 'Round Robin' },
-        { id: 'final', label: 'Final' }
+        { id: 'regular', label: t('standings.regular') },
+        { id: 'roundRobin', label: t('standings.roundRobin') },
+        { id: 'final', label: t('standings.final') }
     ];
 
     // Set initial active tab based on which phase is currently active
@@ -92,7 +94,7 @@ export const Standings: React.FC<StandingsProps> = ({ standings }) => {
         const poolNames = Object.keys(standings.pools).sort();
         return (
             <Card className="h-full flex flex-col">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex-shrink-0">Tabla de Posiciones - WBC</h3>
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex-shrink-0">{t('standings.titleWBC')}</h3>
                 <div className="overflow-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent max-h-[500px] space-y-6">
                     {poolNames.length > 0 ? poolNames.map(poolName => (
                         <div key={poolName}>
@@ -102,7 +104,7 @@ export const Standings: React.FC<StandingsProps> = ({ standings }) => {
                     )) : (
                         <div className="flex flex-col items-center justify-center h-64 text-zinc-500 gap-2 opacity-50">
                             <div className="w-12 h-1 bg-zinc-800 rounded-full" />
-                            <span className="text-xs">No hay datos disponibles</span>
+                            <span className="text-xs">{t('standings.noData')}</span>
                         </div>
                     )}
                 </div>
@@ -114,14 +116,14 @@ export const Standings: React.FC<StandingsProps> = ({ standings }) => {
     if (isSDCFormat(standings)) {
         return (
             <Card className="h-full flex flex-col">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex-shrink-0">Tabla de Posiciones - Serie del Caribe</h3>
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex-shrink-0">{t('standings.titleSDC')}</h3>
                 <div className="overflow-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent max-h-[500px]">
                     {standings.teams.length > 0 ? (
                         <StandingsTable standings={standings.teams} />
                     ) : (
                         <div className="flex flex-col items-center justify-center h-64 text-zinc-500 gap-2 opacity-50">
                             <div className="w-12 h-1 bg-zinc-800 rounded-full" />
-                            <span className="text-xs">No hay datos disponibles</span>
+                            <span className="text-xs">{t('standings.noData')}</span>
                         </div>
                     )}
                 </div>
@@ -133,7 +135,7 @@ export const Standings: React.FC<StandingsProps> = ({ standings }) => {
     if (Array.isArray(standings)) {
         return (
             <Card className="h-full flex flex-col">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex-shrink-0">Tabla de Posiciones</h3>
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex-shrink-0">{t('standings.title')}</h3>
                 <div className="overflow-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent max-h-[400px]">
                     <StandingsTable standings={standings} />
                 </div>
@@ -147,7 +149,7 @@ export const Standings: React.FC<StandingsProps> = ({ standings }) => {
 
     return (
         <Card className="flex flex-col overflow-hidden w-full max-w-full">
-            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Tabla de Posiciones</h3>
+            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">{t('standings.title')}</h3>
 
             <div ref={tabsRef} className="flex items-center justify-between mb-4 overflow-x-auto scrollbar-hide w-full">
                 <div className="flex bg-zinc-900/50 rounded-lg p-1 border border-white/5 w-full md:w-auto min-w-max">
@@ -197,7 +199,7 @@ export const Standings: React.FC<StandingsProps> = ({ standings }) => {
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-64 text-zinc-500 gap-2 opacity-50">
                                     <div className="w-12 h-1 bg-zinc-800 rounded-full" />
-                                    <span className="text-xs">No hay datos disponibles</span>
+                                    <span className="text-xs">{t('standings.noData')}</span>
                                 </div>
                             )}
                         </div>
@@ -209,15 +211,17 @@ export const Standings: React.FC<StandingsProps> = ({ standings }) => {
 };
 
 // Extracted table component for reuse
-const StandingsTable: React.FC<{ standings: StandingItem[] }> = ({ standings }) => (
+const StandingsTable: React.FC<{ standings: StandingItem[] }> = ({ standings }) => {
+    const { t } = useTranslation();
+    return (
     <table className="w-full text-sm text-left border-collapse">
         <thead className="text-xs text-zinc-500 uppercase border-b border-white/5 sticky top-0 bg-zinc-900/95 backdrop-blur-sm z-10">
             <tr>
-                <th className="py-2 pl-2">Equipo</th>
-                <th className="py-2 text-center">G</th>
-                <th className="py-2 text-center">P</th>
-                <th className="py-2 text-center">PCT</th>
-                <th className="py-2 text-center pr-2">DIF</th>
+                <th className="py-2 pl-2">{t('standings.team')}</th>
+                <th className="py-2 text-center">{t('standings.g')}</th>
+                <th className="py-2 text-center">{t('standings.p')}</th>
+                <th className="py-2 text-center">{t('standings.pct')}</th>
+                <th className="py-2 text-center pr-2">{t('standings.dif')}</th>
             </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
@@ -250,4 +254,5 @@ const StandingsTable: React.FC<{ standings: StandingItem[] }> = ({ standings }) 
             ))}
         </tbody>
     </table>
-);
+    );
+};

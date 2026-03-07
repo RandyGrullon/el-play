@@ -1,6 +1,6 @@
 import { MapPin } from 'lucide-react';
-
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Team } from '../../types';
 
 interface ScoreboardProps {
@@ -16,7 +16,9 @@ interface TeamScoreProps {
     isHome: boolean;
 }
 
-const TeamScore: React.FC<TeamScoreProps> = ({ team, isHome }) => (
+const TeamScore: React.FC<TeamScoreProps> = ({ team, isHome }) => {
+    const { t } = useTranslation();
+    return (
     <div className={`flex flex-col ${isHome ? 'items-start' : 'items-end'} space-y-1`}>
         <img
             src={team.logo}
@@ -35,11 +37,12 @@ const TeamScore: React.FC<TeamScoreProps> = ({ team, isHome }) => (
             {team.runs}
         </div>
         <div className="flex gap-3 text-[10px] md:text-xs font-mono text-zinc-400 mt-2">
-            <span title="Hits">H: <span className="text-zinc-200">{team.hits}</span></span>
-            <span title="Errors">E: <span className="text-zinc-200">{team.errors}</span></span>
+            <span title={t('scoreboard.hits')}>H: <span className="text-zinc-200">{team.hits}</span></span>
+            <span title={t('scoreboard.errors')}>E: <span className="text-zinc-200">{team.errors}</span></span>
         </div>
     </div>
-);
+    );
+};
 
 export const Scoreboard: React.FC<ScoreboardProps> = ({ home, away, inning, status, venue }) => {
     return (

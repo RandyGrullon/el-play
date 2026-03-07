@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../ui/Card';
 import { useLeague } from '../../store/LeagueContext';
 
@@ -25,6 +26,7 @@ interface LeadersProps {
 }
 
 export const Leaders: React.FC<LeadersProps> = ({ leaders }) => {
+    const { t } = useTranslation();
     const { leagueConfig } = useLeague();
     const [activeTab, setActiveTab] = useState<'homeRuns' | 'battingAverage' | 'runsBattedIn' | 'ops' | 'hits' | 'stolenBases'>('homeRuns');
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -33,12 +35,12 @@ export const Leaders: React.FC<LeadersProps> = ({ leaders }) => {
     if (!leaders) return null;
 
     const tabs = [
-        { id: 'homeRuns', label: 'Jonrones' },
-        { id: 'battingAverage', label: 'Bateo' },
-        { id: 'runsBattedIn', label: 'Remolcadas' },
-        { id: 'ops', label: 'OPS' },
-        { id: 'hits', label: 'Hits' },
-        { id: 'stolenBases', label: 'Robos' }
+        { id: 'homeRuns', label: t('leaders.homeRuns') },
+        { id: 'battingAverage', label: t('leaders.battingAverage') },
+        { id: 'runsBattedIn', label: t('leaders.runsBattedIn') },
+        { id: 'ops', label: t('leaders.ops') },
+        { id: 'hits', label: t('leaders.hits') },
+        { id: 'stolenBases', label: t('leaders.stolenBases') }
     ];
 
     const handleTabClick = (tabId: string) => {
@@ -72,7 +74,7 @@ export const Leaders: React.FC<LeadersProps> = ({ leaders }) => {
 
     return (
         <Card className="h-full flex flex-col min-h-[400px] overflow-hidden w-full max-w-full">
-            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Líderes</h3>
+            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">{t('leaders.title')}</h3>
 
             <div ref={tabsRef} className="flex items-center justify-between mb-6 overflow-x-auto scrollbar-hide w-full">
                 <div className="flex bg-zinc-900/50 rounded-lg p-1 border border-white/5 w-full md:w-auto min-w-max">
@@ -134,7 +136,7 @@ export const Leaders: React.FC<LeadersProps> = ({ leaders }) => {
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-64 text-zinc-500 gap-2 opacity-50">
                                         <div className="w-12 h-1 bg-zinc-800 rounded-full" />
-                                        <span className="text-xs">No hay datos disponibles</span>
+                                        <span className="text-xs">{t('standings.noData')}</span>
                                     </div>
                                 )}
                             </div>

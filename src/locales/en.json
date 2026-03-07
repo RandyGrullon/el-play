@@ -1,0 +1,169 @@
+{
+  "common": {
+    "retry": "Retry",
+    "loading": "Loading...",
+    "error": "Error",
+    "back": "Back",
+    "backHome": "Back to Home",
+    "toggleMenu": "Toggle menu",
+    "live": "Live",
+    "el": "EL",
+    "play": "PLAY"
+  },
+  "sidebar": {
+    "selectLeague": "Select League",
+    "chooseTournament": "Choose which tournament to view",
+    "yourBaseballApp": "Your baseball app"
+  },
+  "offline": {
+    "title": "Offline",
+    "message": "Check your connection and try again."
+  },
+  "installPWA": {
+    "installApp": "Install App",
+    "installOnIOS": "Install on iPhone/iPad",
+    "step1": "Tap the Share button below.",
+    "share": "Share",
+    "step2": "Scroll and select Add to Home Screen.",
+    "addToHome": "Add to Home Screen",
+    "gotIt": "Got it"
+  },
+  "updateModal": {
+    "title": "New update available",
+    "body": "A new version of the app has been detected. Please restart to apply changes and get the latest improvements.",
+    "later": "Later",
+    "restartNow": "Restart now"
+  },
+  "pullToRefresh": {},
+  "splash": {
+    "logoAlt": "El Play Logo"
+  },
+  "home": {
+    "calendar": "Calendar",
+    "noGames": "Could not load games.",
+    "seeDetails": "View Details",
+    "selectDate": "Select date",
+    "status": {
+      "ended": "Ended",
+      "inProgress": "In Progress",
+      "starting": "Starting",
+      "preparing": "Preparing"
+    },
+    "notifyOff": "Turn off notification",
+    "notifyOn": "Turn on notification",
+    "notifyOffAria": "Turn off notification for this game",
+    "notifyOnAria": "Turn on notification for this game",
+    "removeFavorite": "Remove {{name}} from favorites",
+    "addFavorite": "Mark {{name}} as favorite",
+    "atBat": "At Bat",
+    "pitching": "Pitching",
+    "standingsError": "Could not load standings.",
+    "leadersError": "Could not load leaders."
+  },
+  "standings": {
+    "title": "Standings",
+    "titleWBC": "Standings - WBC",
+    "titleSDC": "Standings - Caribbean Series",
+    "noData": "No data available",
+    "regular": "Regular",
+    "roundRobin": "Round Robin",
+    "final": "Final",
+    "team": "Team",
+    "g": "G",
+    "p": "P",
+    "pct": "PCT",
+    "dif": "GB"
+  },
+  "leaders": {
+    "title": "Leaders",
+    "homeRuns": "Home Runs",
+    "battingAverage": "Batting",
+    "runsBattedIn": "RBI",
+    "ops": "OPS",
+    "hits": "Hits",
+    "stolenBases": "Steals"
+  },
+  "errors": {
+    "schedule": "Could not load games.",
+    "standings": "Error loading standings",
+    "leaders": "Error loading leaders",
+    "timeout": "Request timeout - server unavailable",
+    "rate_limit_exceeded": "Too many requests. Try again in a few minutes.",
+    "internal_error": "Internal Server Error",
+    "invalid_mlb_data": "Received invalid data from MLB API",
+    "notifications_not_supported": "This browser does not support notifications."
+  },
+  "leagues": {
+    "lidom": { "name": "LIDOM", "fullName": "Dominican Baseball League" },
+    "wbc": { "name": "WBC", "fullName": "World Baseball Classic" },
+    "sdc": { "name": "SDC", "fullName": "Caribbean Series" }
+  },
+  "notifications": {
+    "gameStarting": "Game starting soon!",
+    "gameStartingBody": "{{away}} vs {{home}} starts in 10 minutes.",
+    "playball": "Playball!",
+    "playballBody": "The game between {{away}} and {{home}} has started."
+  },
+  "game": {
+    "back": "Back",
+    "summary": "Summary",
+    "live": "Live",
+    "stats": "Statistics",
+    "lastPitch": "Last Pitch",
+    "playHistory": "Play History",
+    "noPlays": "No recent plays.",
+    "pitcher": "Pitcher",
+    "batter": "Batter",
+    "atBat": "At Bat",
+    "pitching": "Pitching",
+    "vs": "VS"
+  },
+  "gameSummary": {
+    "final": "Final",
+    "bestPerformances": "Top Performances",
+    "teamComparison": "Team Comparison",
+    "team": "Team",
+    "g": "G",
+    "p": "P",
+    "s": "S",
+    "decisionsG": "W",
+    "decisionsP": "L",
+    "decisionsS": "S",
+    "era": "ERA",
+    "runs": "R",
+    "hits": "H",
+    "hr": "HR",
+    "bt": "BT",
+    "br": "BR",
+    "lob": "LOB",
+    "e": "E"
+  },
+  "boxScore": {
+    "batting": "Batting",
+    "pitching": "Pitching",
+    "player": "Player"
+  },
+  "lineScore": {
+    "team": "Team"
+  },
+  "scoreboard": {
+    "hits": "Hits",
+    "errors": "Errors"
+  },
+  "minigame": {
+    "title": "Flappy Ball",
+    "avoidBats": "Avoid the bats",
+    "record": "Record",
+    "tapToFly": "Tap to fly and avoid the bats",
+    "play": "▶ PLAY",
+    "tapOrSpace": "Tap screen or press SPACE",
+    "gameOver": "GAME OVER",
+    "score": "Score",
+    "newRecord": "NEW RECORD!",
+    "retry": "🔄 RETRY",
+    "instructions": "📱 Tap screen • ⌨️ Space / ↑ to jump"
+  },
+  "a11y": {
+    "selectLanguage": "Select language"
+  }
+}

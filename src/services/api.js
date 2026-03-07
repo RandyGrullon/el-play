@@ -17,13 +17,19 @@ async function fetchApi(path, options = {}) {
         const response = await fetch(url, { ...options, signal: controller.signal });
         clearTimeout(timeoutId);
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const body = await response.json().catch(() => ({}));
+            const msg = body.message || body.error || `HTTP error! status: ${response.status}`;
+            const e = new Error(typeof msg === 'string' ? msg : `HTTP ${response.status}`);
+            if (typeof body.error === 'string') e.code = body.error;
+            throw e;
         }
         return await response.json();
     } catch (error) {
         clearTimeout(timeoutId);
         if (error.name === 'AbortError') {
-            throw new Error('Request timeout - servidor no disponible');
+            const e = new Error('Request timeout - servidor no disponible');
+            e.code = 'timeout';
+            throw e;
         }
         throw error;
     }

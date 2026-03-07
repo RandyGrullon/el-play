@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Calendar, ChevronRight, ChevronLeft, Heart, Bell, MapPin } from 'lucide-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -26,9 +27,13 @@ const TEAM_COLORS: Record<number, string> = {
     673: '#00be66'  // Estrellas
 };
 
+const dateLocale = (lang: string) => (lang === 'en' ? 'en-US' : 'es-DO');
+
 export const Home: React.FC = () => {
+    const { t, i18n } = useTranslation();
+    const locale = dateLocale(i18n.language);
     const { activeLeague, leagueConfig } = useLeague();
-    const { schedule: scheduleRaw, loading, isError: scheduleError, error: scheduleErrorMessage, refetch } = useSchedule(activeLeague) as { schedule: ScheduleItem[], loading: boolean, isError: boolean, error: string | null, refetch: () => Promise<any> };
+    const { schedule: scheduleRaw, loading, isError: scheduleError, error: scheduleErrorMessage, errorCode: scheduleErrorCode, refetch } = useSchedule(activeLeague) as { schedule: ScheduleItem[], loading: boolean, isError: boolean, error: string | null, errorCode?: string, refetch: () => Promise<any> };
     // Solo mostrar juegos de la liga activa (evita ver WBC al elegir SDC por cache/placeholder)
     const schedule = useMemo(() => {
         if (!scheduleRaw?.length) return scheduleRaw ?? [];
@@ -49,17 +54,17 @@ export const Home: React.FC = () => {
     useEffect(() => {
         setStandingsError(null);
         setLeadersError(null);
-        fetchStandings(activeLeague).then((data) => { setStandings(data); setStandingsError(null); }).catch((err) => setStandingsError(err?.message || 'Error al cargar tabla'));
-        fetchLeaders(activeLeague).then((data) => { setLeaders(data); setLeadersError(null); }).catch((err) => setLeadersError(err?.message || 'Error al cargar líderes'));
+        fetchStandings(activeLeague).then((data) => { setStandings(data); setStandingsError(null); }).catch((err) => setStandingsError(err?.code || 'standings'));
+        fetchLeaders(activeLeague).then((data) => { setLeaders(data); setLeadersError(null); }).catch((err) => setLeadersError(err?.code || 'leaders'));
     }, [activeLeague]);
 
     const retryStandings = () => {
         setStandingsError(null);
-        fetchStandings(activeLeague).then((data) => { setStandings(data); setStandingsError(null); }).catch((err) => setStandingsError(err?.message || 'Error al cargar tabla'));
+        fetchStandings(activeLeague).then((data) => { setStandings(data); setStandingsError(null); }).catch((err) => setStandingsError(err?.code || 'standings'));
     };
     const retryLeaders = () => {
         setLeadersError(null);
-        fetchLeaders(activeLeague).then((data) => { setLeaders(data); setLeadersError(null); }).catch((err) => setLeadersError(err?.message || 'Error al cargar líderes'));
+        fetchLeaders(activeLeague).then((data) => { setLeaders(data); setLeadersError(null); }).catch((err) => setLeadersError(err?.code || 'leaders'));
     };
 
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -201,8 +206,8 @@ export const Home: React.FC = () => {
                         const notifiedKey = `notified-pre-${game.gamePk}`;
                         if (!sessionStorage.getItem(notifiedKey)) {
                             if (Notification.permission === 'granted') {
-                                new Notification('¡El juego va a comenzar!', {
-                                    body: `${game.away.name} vs ${game.home.name} comienza en 10 minutos.`,
+                                new Notification(t('notifications.gameStarting'), {
+                                    body: t('notifications.gameStartingBody', { away: game.away.name, home: game.home.name }),
                                     icon: '/pwa-192x192.png'
                                 });
                                 sessionStorage.setItem(notifiedKey, 'true');
@@ -215,8 +220,8 @@ export const Home: React.FC = () => {
                         const notifiedKey = `notified-start-${game.gamePk}`;
                         if (!sessionStorage.getItem(notifiedKey)) {
                             if (Notification.permission === 'granted') {
-                                new Notification('¡Playball!', {
-                                    body: `El juego entre ${game.away.name} y ${game.home.name} ha comenzado.`,
+                                new Notification(t('notifications.playball'), {
+                                    body: t('notifications.playballBody', { away: game.away.name, home: game.home.name }),
                                     icon: '/pwa-192x192.png'
                                 });
                                 sessionStorage.setItem(notifiedKey, 'true');
@@ -231,7 +236,7 @@ export const Home: React.FC = () => {
         checkGameStart(); // Check immediately
 
         return () => clearInterval(interval);
-    }, [schedule, subscribedGames]);
+    }, [schedule, subscribedGames, t]);
 
     const handlePrevDay = () => {
         const currentIndex = dates.indexOf(selectedDate);
@@ -254,30 +259,30 @@ export const Home: React.FC = () => {
         const minutesDiff = timeDiff / (1000 * 60);
 
         if (game.status === 'Final' || game.status === 'Game Over') {
-            return { text: 'Ended', variant: 'default' as const };
+            return { text: t('home.status.ended'), variant: 'default' as const };
         }
 
         if (game.status === 'Live' || game.status === 'In Progress') {
-            return { text: 'In Progress', variant: 'live' as const };
+            return { text: t('home.status.inProgress'), variant: 'live' as const };
         }
 
         if (minutesDiff > 0 && minutesDiff <= 10) {
-            return { text: 'Starting', variant: 'live' as const };
+            return { text: t('home.status.starting'), variant: 'live' as const };
         }
 
         if (minutesDiff > 0 && minutesDiff <= 30) {
-            return { text: 'Preparing', variant: 'default' as const };
+            return { text: t('home.status.preparing'), variant: 'default' as const };
         }
 
-        return { text: "", variant: 'default' as const };
+        return { text: '', variant: 'default' as const };
     };
 
     const handleRefresh = async () => {
         setStandingsError(null);
         setLeadersError(null);
         await refetch();
-        fetchStandings(activeLeague).then((data) => { setStandings(data); setStandingsError(null); }).catch((err) => setStandingsError(err?.message || 'Error al cargar tabla'));
-        fetchLeaders(activeLeague).then((data) => { setLeaders(data); setLeadersError(null); }).catch((err) => setLeadersError(err?.message || 'Error al cargar líderes'));
+        fetchStandings(activeLeague).then((data) => { setStandings(data); setStandingsError(null); }).catch((err) => setStandingsError(err?.code || 'standings'));
+        fetchLeaders(activeLeague).then((data) => { setLeaders(data); setLeadersError(null); }).catch((err) => setLeadersError(err?.code || 'leaders'));
     };
 
     return (
@@ -288,7 +293,7 @@ export const Home: React.FC = () => {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Calendar className="w-5 h-5 transition-colors duration-300" style={{ color: leagueConfig.color }} />
-                            <h2 className="text-xl font-bold text-white tracking-tight">Calendario</h2>
+                            <h2 className="text-xl font-bold text-white tracking-tight">{t('home.calendar')}</h2>
                             <span 
                                 className="text-xs font-medium px-2 py-0.5 rounded-full ml-2 transition-all duration-300"
                                 style={{ 
@@ -316,7 +321,7 @@ export const Home: React.FC = () => {
                         <div
                             ref={scrollRef}
                             role="tablist"
-                            aria-label="Seleccionar fecha"
+                            aria-label={t('home.selectDate')}
                             className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x"
                         >
                             {dates.map((date) => {
@@ -326,7 +331,7 @@ export const Home: React.FC = () => {
                                     const gDate = new Date(g.date).toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
                                     return gDate === date;
                                 });
-                                const dateLabel = d.toLocaleDateString('es-DO', { weekday: 'long', day: 'numeric', month: 'long' });
+                                const dateLabel = d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
 
                                 return (
                                     <button
@@ -350,7 +355,7 @@ export const Home: React.FC = () => {
                                         } : undefined}
                                     >
                                         <span className="text-[10px] font-bold uppercase tracking-wider">
-                                            {d.toLocaleDateString('es-DO', { weekday: 'short', timeZone: 'America/La_Paz' }).replace('.', '')}
+                                            {d.toLocaleDateString(locale, { weekday: 'short', timeZone: 'America/La_Paz' }).replace('.', '')}
                                         </span>
                                         <span className={`text-2xl font-black ${isSelected ? 'text-black' : 'text-white'}`}>
                                             {d.getDate()}
@@ -377,15 +382,15 @@ export const Home: React.FC = () => {
                             [...Array(3)].map((_, i) => <GameCardSkeleton key={i} />)
                         ) : scheduleError ? (
                             <div className="col-span-full flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-white/10 bg-zinc-900/50">
-                                <p className="text-zinc-400 text-sm text-center mb-4">No se pudieron cargar los partidos.</p>
-                                {scheduleErrorMessage && <p className="text-zinc-500 text-xs mb-4">{scheduleErrorMessage}</p>}
+                                <p className="text-zinc-400 text-sm text-center mb-4">{scheduleErrorCode ? t(`errors.${scheduleErrorCode}`) : t('home.noGames')}</p>
+                                {scheduleErrorMessage && !scheduleErrorCode && <p className="text-zinc-500 text-xs mb-4">{scheduleErrorMessage}</p>}
                                 <button
                                     type="button"
                                     onClick={() => refetch()}
                                     className="px-4 py-2 rounded-lg font-medium text-white transition-opacity hover:opacity-90"
                                     style={{ backgroundColor: leagueConfig.color }}
                                 >
-                                    Reintentar
+                                    {t('common.retry')}
                                 </button>
                             </div>
                         ) : sortedGames.length > 0 ? (
@@ -416,8 +421,8 @@ export const Home: React.FC = () => {
                                                     }}
                                                     className="transition-colors"
                                                     style={{ color: subscribedGames.includes(game.gamePk) ? leagueConfig.color : undefined }}
-                                                    title={subscribedGames.includes(game.gamePk) ? "Desactivar notificación" : "Activar notificación"}
-                                                    aria-label={subscribedGames.includes(game.gamePk) ? "Desactivar notificación para este partido" : "Activar notificación para este partido"}
+                                                    title={subscribedGames.includes(game.gamePk) ? t('home.notifyOff') : t('home.notifyOn')}
+                                                    aria-label={subscribedGames.includes(game.gamePk) ? t('home.notifyOffAria') : t('home.notifyOnAria')}
                                                 >
                                                     <Bell className={`w-4 h-4 ${subscribedGames.includes(game.gamePk) ? 'fill-current' : 'text-zinc-600 hover:text-zinc-400'}`} />
                                                 </button>
@@ -439,7 +444,7 @@ export const Home: React.FC = () => {
                                                     </div>
                                                 ) : game.status !== 'Final' && game.status !== 'Game Over' ? (
                                                     <span className="text-xs text-zinc-500 font-medium">
-                                                        {new Date(game.date).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/La_Paz' })}
+                                                        {new Date(game.date).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/La_Paz' })}
                                                     </span>
                                                 ) : null}
                                             </div>
@@ -472,7 +477,7 @@ export const Home: React.FC = () => {
                                                                     toggleFavoriteTeam(game.away.id);
                                                                 }}
                                                                 className={`transition-colors ${favoriteTeamId === game.away.id ? 'text-red-500 fill-current' : 'text-zinc-600 hover:text-zinc-400'}`}
-                                                                aria-label={favoriteTeamId === game.away.id ? `Quitar ${game.away.name} de favoritos` : `Marcar ${game.away.name} como favorito`}
+                                                                aria-label={favoriteTeamId === game.away.id ? t('home.removeFavorite', { name: game.away.name }) : t('home.addFavorite', { name: game.away.name })}
                                                             >
                                                                 <Heart className={`w-4 h-4 ${favoriteTeamId === game.away.id ? 'fill-current' : ''}`} />
                                                             </button>
@@ -511,7 +516,7 @@ export const Home: React.FC = () => {
                                                                     toggleFavoriteTeam(game.home.id);
                                                                 }}
                                                                 className={`transition-colors ${favoriteTeamId === game.home.id ? 'text-red-500 fill-current' : 'text-zinc-600 hover:text-zinc-400'}`}
-                                                                aria-label={favoriteTeamId === game.home.id ? `Quitar ${game.home.name} de favoritos` : `Marcar ${game.home.name} como favorito`}
+                                                                aria-label={favoriteTeamId === game.home.id ? t('home.removeFavorite', { name: game.home.name }) : t('home.addFavorite', { name: game.home.name })}
                                                             >
                                                                 <Heart className={`w-4 h-4 ${favoriteTeamId === game.home.id ? 'fill-current' : ''}`} />
                                                             </button>
@@ -625,7 +630,7 @@ export const Home: React.FC = () => {
                                                             className="w-3.5 h-3.5 object-contain"
                                                         />
                                                         <span className="font-medium truncate">{game.liveData.batter.name}</span>
-                                                        <span className="text-zinc-500 text-[10px] uppercase ml-auto flex-shrink-0">Al Bate</span>
+                                                        <span className="text-zinc-500 text-[10px] uppercase ml-auto flex-shrink-0">{t('home.atBat')}</span>
                                                     </div>
                                                 )}
 
@@ -634,14 +639,14 @@ export const Home: React.FC = () => {
                                                     <div className="flex items-center gap-2 text-xs text-zinc-300">
                                                         <FontAwesomeIcon icon={faBaseball} className="w-3.5 h-3.5 text-zinc-500" />
                                                         <span className="font-medium truncate">{game.liveData.pitcher.name}</span>
-                                                        <span className="text-zinc-500 text-[10px] uppercase ml-auto flex-shrink-0">Lanzando</span>
+                                                        <span className="text-zinc-500 text-[10px] uppercase ml-auto flex-shrink-0">{t('home.pitching')}</span>
                                                     </div>
                                                 )}
                                             </div>
                                         )}
 
                                         <div className="mt-2 pt-2 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: leagueConfig.color }}>Ver Detalles</span>
+                                            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: leagueConfig.color }}>{t('home.seeDetails')}</span>
                                             <ChevronRight className="w-4 h-4" style={{ color: leagueConfig.color }} />
                                         </div>
                                     </Card>
@@ -660,16 +665,16 @@ export const Home: React.FC = () => {
                 <section className="grid md:grid-cols-2 gap-4 md:gap-8 pt-8 border-t border-white/5">
                     {standingsError ? (
                         <Card className="flex flex-col items-center justify-center py-8 px-4">
-                            <p className="text-zinc-400 text-sm text-center mb-3">No se pudo cargar la tabla de posiciones.</p>
-                            <button type="button" onClick={retryStandings} className="px-3 py-1.5 rounded-lg text-sm font-medium text-white hover:opacity-90" style={{ backgroundColor: leagueConfig.color }}>Reintentar</button>
+                            <p className="text-zinc-400 text-sm text-center mb-3">{t(`errors.${standingsError}`)}</p>
+                            <button type="button" onClick={retryStandings} className="px-3 py-1.5 rounded-lg text-sm font-medium text-white hover:opacity-90" style={{ backgroundColor: leagueConfig.color }}>{t('common.retry')}</button>
                         </Card>
                     ) : (
                         <Standings standings={standings} />
                     )}
                     {leadersError ? (
                         <Card className="flex flex-col items-center justify-center py-8 px-4">
-                            <p className="text-zinc-400 text-sm text-center mb-3">No se pudieron cargar los líderes.</p>
-                            <button type="button" onClick={retryLeaders} className="px-3 py-1.5 rounded-lg text-sm font-medium text-white hover:opacity-90" style={{ backgroundColor: leagueConfig.color }}>Reintentar</button>
+                            <p className="text-zinc-400 text-sm text-center mb-3">{t(`errors.${leadersError}`)}</p>
+                            <button type="button" onClick={retryLeaders} className="px-3 py-1.5 rounded-lg text-sm font-medium text-white hover:opacity-90" style={{ backgroundColor: leagueConfig.color }}>{t('common.retry')}</button>
                         </Card>
                     ) : (
                         <Leaders leaders={leaders} />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Inning, Team } from '../../types';
 
 interface LineScoreProps {
@@ -8,6 +9,7 @@ interface LineScoreProps {
 }
 
 export const LineScore: React.FC<LineScoreProps> = ({ innings, home, away }) => {
+    const { t } = useTranslation();
     // Ensure we always show at least 9 innings
     const totalInnings = Math.max(9, innings ? innings.length : 9);
     const inningColumns = Array.from({ length: totalInnings }, (_, i) => i + 1);
@@ -17,7 +19,7 @@ export const LineScore: React.FC<LineScoreProps> = ({ innings, home, away }) => 
             <table className="w-full text-center border-collapse text-[10px] md:text-sm">
                 <thead>
                     <tr className="border-b border-white/10 text-zinc-500 uppercase">
-                        <th className="py-2 text-left font-bold w-16 md:w-24">Eq</th>
+                        <th className="py-2 text-left font-bold w-16 md:w-24">{t('lineScore.team')}</th>
                         {inningColumns.map(num => (
                             <th key={num} className="py-2 w-auto md:w-8 font-medium">{num}</th>
                         ))}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { RefreshCw } from 'lucide-react';
 
 interface VersionData {
@@ -7,6 +8,7 @@ interface VersionData {
 }
 
 export const UpdateModal: React.FC = () => {
+    const { t } = useTranslation();
     const [showModal, setShowModal] = useState(false);
     const [initialVersion, setInitialVersion] = useState<string | null>(null);
 
@@ -61,9 +63,9 @@ export const UpdateModal: React.FC = () => {
                     </div>
 
                     <div className="space-y-2">
-                        <h3 className="text-xl font-bold text-white">Nueva actualización disponible</h3>
+                        <h3 className="text-xl font-bold text-white">{t('updateModal.title')}</h3>
                         <p className="text-zinc-400 text-sm">
-                            Se ha detectado una nueva versión de la aplicación. Por favor, reinicia para aplicar los cambios y obtener las últimas mejoras.
+                            {t('updateModal.body')}
                         </p>
                     </div>
 
@@ -72,13 +74,13 @@ export const UpdateModal: React.FC = () => {
                             onClick={() => setShowModal(false)}
                             className="flex-1 px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
                         >
-                            Más tarde
+                            {t('updateModal.later')}
                         </button>
                         <button
                             onClick={handleReload}
                             className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-lg shadow-blue-500/20"
                         >
-                            Reiniciar ahora
+                            {t('updateModal.restartNow')}
                         </button>
                     </div>
                 </div>

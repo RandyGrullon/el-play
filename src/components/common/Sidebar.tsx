@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLeague, LeagueType } from '../../store/LeagueContext';
 
 interface SidebarProps {
@@ -8,11 +9,12 @@ interface SidebarProps {
 
 // Baseball SVG with seams for the hamburger icon
 export const BaseballIcon: React.FC<{ isOpen: boolean; onClick: () => void }> = ({ isOpen, onClick }) => {
+    const { t } = useTranslation();
     return (
         <button
             onClick={onClick}
             className="relative w-10 h-10 flex items-center justify-center focus:outline-none group"
-            aria-label="Toggle menu"
+            aria-label={t('common.toggleMenu')}
         >
             <div className={`transition-transform duration-500 ease-out ${isOpen ? 'rotate-180' : 'group-hover:rotate-45'}`}>
                 <svg
@@ -64,6 +66,7 @@ export const BaseballIcon: React.FC<{ isOpen: boolean; onClick: () => void }> = 
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+    const { t } = useTranslation();
     const { activeLeague, setActiveLeague, leagues, leagueConfig } = useLeague();
 
     const handleLeagueSelect = (leagueId: LeagueType) => {
@@ -89,8 +92,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             >
                 {/* Header */}
                 <div className="p-6 border-b border-white/10">
-                    <h2 className="text-xl font-bold text-white">Selecciona Liga</h2>
-                    <p className="text-xs text-zinc-500 mt-1">Elige qué torneo quieres ver</p>
+                    <h2 className="text-xl font-bold text-white">{t('sidebar.selectLeague')}</h2>
+                    <p className="text-xs text-zinc-500 mt-1">{t('sidebar.chooseTournament')}</p>
                 </div>
 
                 {/* League List */}
@@ -135,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                                     >
                                         {league.name}
                                     </h3>
-                                    <p className="text-xs text-zinc-500">{league.fullName}</p>
+                                    <p className="text-xs text-zinc-500">{t(`leagues.${league.id}.fullName`)}</p>
                                 </div>
                                 {activeLeague === league.id && (
                                     <div 
@@ -151,9 +154,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 {/* Footer */}
                 <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
                     <div className="text-center text-xs text-zinc-600">
-                        <span className="text-zinc-400">EL</span>{' '}
-                        <span style={{ color: leagueConfig.color }}>PLAY</span>
-                        <p className="mt-1">Tu app de béisbol</p>
+                        <span className="text-zinc-400">{t('common.el')}</span>{' '}
+                        <span style={{ color: leagueConfig.color }}>{t('common.play')}</span>
+                        <p className="mt-1">{t('sidebar.yourBaseballApp')}</p>
                     </div>
                 </div>
             </div>

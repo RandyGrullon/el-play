@@ -23,7 +23,7 @@ app.use(express.json());
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100,
-    message: { error: 'Demasiadas peticiones. Intenta de nuevo en unos minutos.' },
+    message: { error: 'rate_limit_exceeded' },
     standardHeaders: true,
     legacyHeaders: false
 });

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LEAGUE_COLORS, type LeagueId } from '../../constants/leagues';
 
 function getLeagueColor(): string {
@@ -12,6 +13,7 @@ interface SplashLoaderProps {
 }
 
 export const SplashLoader: React.FC<SplashLoaderProps> = ({ color: colorProp }) => {
+    const { t } = useTranslation();
     const colorFromStorage = useMemo(() => getLeagueColor(), []);
     const leagueColor = colorProp ?? colorFromStorage;
     
@@ -30,7 +32,7 @@ export const SplashLoader: React.FC<SplashLoaderProps> = ({ color: colorProp }) 
                 <div className="relative w-32 h-32 md:w-40 md:h-40 animate-bounce-slow">
                     <img
                         src="/logo.svg"
-                        alt="El Play Logo"
+                        alt={t('splash.logoAlt')}
                         className="w-full h-full"
                         style={{ filter: `drop-shadow(0 0 15px ${leagueColor}50)` }}
                     />
@@ -43,7 +45,7 @@ export const SplashLoader: React.FC<SplashLoaderProps> = ({ color: colorProp }) 
                 {/* Loading Text */}
                 <div className="flex flex-col items-center gap-2">
                     <h1 className="text-2xl font-black tracking-tighter text-white">
-                        EL <span style={{ color: leagueColor }}>PLAY</span>
+                        {t('common.el')} <span style={{ color: leagueColor }}>{t('common.play')}</span>
                     </h1>
                     <div className="flex gap-1">
                         <div className="w-1.5 h-1.5 rounded-full animate-bounce delay-0" style={{ backgroundColor: leagueColor }} />

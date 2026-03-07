@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { GameData } from '../../types';
 import { Card } from '../ui/Card';
@@ -10,6 +11,7 @@ interface GameSummaryProps {
 }
 
 export const GameSummary: React.FC<GameSummaryProps> = ({ gameData }) => {
+    const { t } = useTranslation();
     const { home, away, decisions, topPerformers, innings } = gameData;
     const { leagueConfig } = useLeague();
 
@@ -33,7 +35,7 @@ export const GameSummary: React.FC<GameSummaryProps> = ({ gameData }) => {
                     <div className="flex items-center gap-8">
                         <span className="text-5xl md:text-7xl font-black text-white">{away.runs}</span>
                         <div className="flex flex-col items-center">
-                            <span className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-1">Final</span>
+                            <span className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-1">{t('gameSummary.final')}</span>
                             <div className="h-1 w-12 bg-zinc-700 rounded-full" />
                         </div>
                         <span className="text-5xl md:text-7xl font-black text-white">{home.runs}</span>
@@ -59,28 +61,28 @@ export const GameSummary: React.FC<GameSummaryProps> = ({ gameData }) => {
                         <div className="bg-zinc-900/50 rounded-xl p-4 border border-white/5 min-w-[250px] space-y-3">
                             {decisions.winner && (
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="font-bold text-zinc-500">G:</span>
+                                    <span className="font-bold text-zinc-500">{t('gameSummary.decisionsG')}:</span>
                                     <div className="text-right">
                                         <span className="font-bold text-white block">{decisions.winner.name}</span>
-                                        <span className="text-xs text-zinc-500">{decisions.winner.record} | {decisions.winner.era} EFE</span>
+                                        <span className="text-xs text-zinc-500">{decisions.winner.record} | {decisions.winner.era} {t('gameSummary.era')}</span>
                                     </div>
                                 </div>
                             )}
                             {decisions.loser && (
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="font-bold text-zinc-500">P:</span>
+                                    <span className="font-bold text-zinc-500">{t('gameSummary.decisionsP')}:</span>
                                     <div className="text-right">
                                         <span className="font-bold text-white block">{decisions.loser.name}</span>
-                                        <span className="text-xs text-zinc-500">{decisions.loser.record} | {decisions.loser.era} EFE</span>
+                                        <span className="text-xs text-zinc-500">{decisions.loser.record} | {decisions.loser.era} {t('gameSummary.era')}</span>
                                     </div>
                                 </div>
                             )}
                             {decisions.save && (
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="font-bold text-zinc-500">S:</span>
+                                    <span className="font-bold text-zinc-500">{t('gameSummary.decisionsS')}:</span>
                                     <div className="text-right">
                                         <span className="font-bold text-white block">{decisions.save.name}</span>
-                                        <span className="text-xs text-zinc-500">{decisions.save.record} | {decisions.save.era} EFE</span>
+                                        <span className="text-xs text-zinc-500">{decisions.save.record} | {decisions.save.era} {t('gameSummary.era')}</span>
                                     </div>
                                 </div>
                             )}
@@ -92,7 +94,7 @@ export const GameSummary: React.FC<GameSummaryProps> = ({ gameData }) => {
             {/* Top Performers */}
             {topPerformers && topPerformers.length > 0 && (
                 <div>
-                    <h3 className="text-lg font-bold text-white mb-4">Mejores Actuaciones</h3>
+                    <h3 className="text-lg font-bold text-white mb-4">{t('gameSummary.bestPerformances')}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {topPerformers.map((player) => (
                             <Card key={player.id} className="p-4 flex flex-col items-center text-center hover:bg-zinc-900/80 transition-colors">
@@ -125,19 +127,19 @@ export const GameSummary: React.FC<GameSummaryProps> = ({ gameData }) => {
 
             {/* Team Comparison */}
             <Card className="p-6">
-                <h3 className="text-lg font-bold text-white mb-6">Comparación de Equipos</h3>
+                <h3 className="text-lg font-bold text-white mb-6">{t('gameSummary.teamComparison')}</h3>
                 <div className="overflow-x-auto">
                     <table className="w-full text-center">
                         <thead>
                             <tr className="text-xs font-bold text-zinc-500 uppercase tracking-wider border-b border-white/10">
-                                <th className="pb-4 text-left w-1/3">Equipo</th>
-                                <th className="pb-4">C</th>
-                                <th className="pb-4">H</th>
-                                <th className="pb-4">HR</th>
-                                <th className="pb-4">BT</th>
-                                <th className="pb-4">BR</th>
-                                <th className="pb-4">DEB</th>
-                                <th className="pb-4">E</th>
+                                <th className="pb-4 text-left w-1/3">{t('gameSummary.team')}</th>
+                                <th className="pb-4">{t('gameSummary.runs')}</th>
+                                <th className="pb-4">{t('gameSummary.hits')}</th>
+                                <th className="pb-4">{t('gameSummary.hr')}</th>
+                                <th className="pb-4">{t('gameSummary.bt')}</th>
+                                <th className="pb-4">{t('gameSummary.br')}</th>
+                                <th className="pb-4">{t('gameSummary.lob')}</th>
+                                <th className="pb-4">{t('gameSummary.e')}</th>
                             </tr>
                         </thead>
                         <tbody className="text-sm font-medium text-zinc-300">

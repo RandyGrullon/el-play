@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Download, Share, PlusSquare, X } from 'lucide-react';
 import { useLeague } from '../../store/LeagueContext';
 
 export const InstallPWA: React.FC = () => {
+    const { t } = useTranslation();
     const { leagueConfig } = useLeague();
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [isVisible, setIsVisible] = useState(false);
@@ -77,7 +79,7 @@ export const InstallPWA: React.FC = () => {
                 }}
             >
                 <Download className="w-3 h-3" />
-                <span>Instalar App</span>
+                <span>{t('installPWA.installApp')}</span>
             </button>
 
             {/* iOS Instructions Modal */}
@@ -96,16 +98,16 @@ export const InstallPWA: React.FC = () => {
                                 <Share className="w-6 h-6" style={{ color: leagueConfig.color }} />
                             </div>
 
-                            <h3 className="text-lg font-bold text-white">Instalar en iPhone/iPad</h3>
+                            <h3 className="text-lg font-bold text-white">{t('installPWA.installOnIOS')}</h3>
 
                             <div className="space-y-4 text-sm text-zinc-400 text-left w-full bg-zinc-950/50 p-4 rounded-xl border border-white/5">
                                 <div className="flex items-center gap-3">
                                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-800 text-white font-bold text-xs">1</span>
-                                    <span>Toca el botón <span className="font-bold text-white">Compartir</span> <Share className="w-3 h-3 inline mx-1" /> abajo.</span>
+                                    <span>{t('installPWA.step1')} <Share className="w-3 h-3 inline mx-1" /></span>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-800 text-white font-bold text-xs">2</span>
-                                    <span>Desliza y selecciona <span className="font-bold text-white">Agregar a Inicio</span> <PlusSquare className="w-3 h-3 inline mx-1" />.</span>
+                                    <span>{t('installPWA.step2')} <PlusSquare className="w-3 h-3 inline mx-1" /></span>
                                 </div>
                             </div>
 
@@ -114,7 +116,7 @@ export const InstallPWA: React.FC = () => {
                                 className="w-full py-3 text-sm font-bold text-black rounded-xl transition-colors"
                                 style={{ backgroundColor: leagueConfig.color }}
                             >
-                                Entendido
+                                {t('installPWA.gotIt')}
                             </button>
                         </div>
 

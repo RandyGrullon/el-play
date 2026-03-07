@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Activity, BarChart2 } from 'lucide-react';
 import { useGameData } from '../hooks/useGameData';
@@ -15,8 +16,9 @@ import { GameData } from '../types';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 
 export const Game: React.FC = () => {
+    const { t } = useTranslation();
     const { gamePk } = useParams<{ gamePk: string }>();
-    const { gameData, loading, error, refetch } = useGameData(gamePk) as { gameData: GameData | null, loading: boolean, error: string | null, refetch: () => Promise<any> };
+    const { gameData, loading, error, errorCode, refetch } = useGameData(gamePk) as { gameData: GameData | null, loading: boolean, error: string | null, errorCode?: string, refetch: () => Promise<any> };
     const [activeTab, setActiveTab] = useState<'game' | 'stats'>('game');
     const { trackGameView, trackTabChange } = useAnalytics();
     const { leagueConfig } = useLeague();
@@ -48,11 +50,11 @@ export const Game: React.FC = () => {
         return (
             <div className="p-8 text-center">
                 <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 px-4 py-3 rounded-xl text-sm font-medium inline-block backdrop-blur-sm mb-4">
-                    {error}
+                    {errorCode ? t(`errors.${errorCode}`) : error}
                 </div>
                 <br />
                 <Link to="/" className="text-sm font-bold uppercase tracking-widest hover:opacity-80 transition-opacity" style={{ color: leagueConfig.color }}>
-                    &larr; Volver al Inicio
+                    &larr; {t('common.backHome')}
                 </Link>
             </div>
         );
@@ -84,7 +86,7 @@ export const Game: React.FC = () => {
             <div className="space-y-6 px-4 pb-10">
                 <Link to="/" className="inline-flex items-center gap-2 text-zinc-500 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest ml-1">
                     <ArrowLeft className="w-4 h-4" />
-                    Volver
+                    {t('game.back')}
                 </Link>
 
                 <div className="relative min-h-[80vh]">
@@ -113,7 +115,7 @@ export const Game: React.FC = () => {
                                 } : undefined}
                             >
                                 <Activity className="w-4 h-4" />
-                                {displayData.status === 'Final' || displayData.status === 'Game Over' ? 'Resumen' : 'En Vivo'}
+                                {displayData.status === 'Final' || displayData.status === 'Game Over' ? t('game.summary') : t('game.live')}
                             </button>
                             <button
                                 onClick={() => handleTabChange('stats')}
@@ -127,7 +129,7 @@ export const Game: React.FC = () => {
                                 } : undefined}
                             >
                                 <BarChart2 className="w-4 h-4" />
-                                Estadísticas
+                                {t('game.stats')}
                             </button>
                         </div>
                     </div>
@@ -185,7 +187,7 @@ export const Game: React.FC = () => {
                                             <div className="md:hidden w-full flex justify-between items-center bg-zinc-900/50 border border-white/5 rounded-xl p-3 backdrop-blur-sm">
                                                 <div className="flex items-center gap-3">
                                                     <div className="flex flex-col">
-                                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Último Lanzamiento</span>
+                                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{t('game.lastPitch')}</span>
                                                         <div className="flex items-baseline gap-2">
                                                             <span className="text-lg font-bold text-white">
                                                                 {displayData.currentPitches[displayData.currentPitches.length - 1].speed ? `${displayData.currentPitches[displayData.currentPitches.length - 1].speed.toFixed(1)}` : '--'}
@@ -207,7 +209,7 @@ export const Game: React.FC = () => {
                                         )}
                                         {/* Play History (Mobile Only) - Moved Above StrikeZone */}
                                         <div className="md:hidden w-full">
-                                            <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Historial de Jugadas</h3>
+                                            <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">{t('game.playHistory')}</h3>
                                             <div className="bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden backdrop-blur-sm">
                                                 <div className="max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
                                                     {displayData.playHistory && displayData.playHistory.length > 0 ? (
@@ -232,7 +234,7 @@ export const Game: React.FC = () => {
                                                         </div>
                                                     ) : (
                                                         <div className="p-6 text-center text-zinc-500 text-xs">
-                                                            No hay jugadas recientes.
+                                                            {t('game.noPlays')}
                                                         </div>
                                                     )}
                                                 </div>
@@ -251,18 +253,18 @@ export const Game: React.FC = () => {
                                                     />
                                                 </div>
                                                 <div className="flex flex-col min-w-0">
-                                                    <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Lanzador</span>
+                                                    <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">{t('game.pitcher')}</span>
                                                     <span className="text-xs font-bold text-white truncate">{displayData.matchup.pitcher}</span>
                                                 </div>
                                             </div>
 
                                             {/* VS */}
-                                            <div className="text-[10px] font-black text-zinc-700">VS</div>
+                                            <div className="text-[10px] font-black text-zinc-700">{t('game.vs')}</div>
 
                                             {/* Batter */}
                                             <div className="flex items-center justify-end gap-2 overflow-hidden text-right">
                                                 <div className="flex flex-col min-w-0">
-                                                    <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Bateador</span>
+                                                    <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">{t('game.batter')}</span>
                                                     <span className="text-xs font-bold text-white truncate">{displayData.matchup.batter}</span>
                                                 </div>
                                                 <div className="w-8 h-8 rounded-full bg-zinc-800 flex-shrink-0 flex items-center justify-center overflow-hidden border border-white/10">
@@ -291,36 +293,36 @@ export const Game: React.FC = () => {
 
                                         <div className="grid grid-cols-1 gap-4">
                                             <div className="bg-zinc-900/30 p-4 rounded-xl border border-white/5">
-                                                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Lanzador</h3>
+                                                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">{t('game.pitcher')}</h3>
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden border border-white/10">
                                                         <img
                                                             src={displayData.isTopInning ? displayData.home.logo : displayData.away.logo}
-                                                            alt="Pitching Team"
+                                                            alt={t('game.pitcher')}
                                                             loading="lazy"
                                                             className="w-8 h-8 object-contain"
                                                         />
                                                     </div>
                                                     <div>
                                                         <div className="font-bold text-zinc-200 text-sm md:text-base">{displayData.matchup.pitcher}</div>
-                                                        <div className="text-[10px] md:text-xs text-zinc-500">Lanzando</div>
+                                                        <div className="text-[10px] md:text-xs text-zinc-500">{t('game.pitching')}</div>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="bg-zinc-900/30 p-4 rounded-xl border border-white/5">
-                                                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Bateador</h3>
+                                                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">{t('game.batter')}</h3>
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden border border-white/10">
                                                         <img
                                                             src={battingTeam.logo}
-                                                            alt="Batting Team"
+                                                            alt={t('game.batter')}
                                                             loading="lazy"
                                                             className="w-8 h-8 object-contain"
                                                         />
                                                     </div>
                                                     <div>
                                                         <div className="font-bold text-zinc-200 text-sm md:text-base">{displayData.matchup.batter}</div>
-                                                        <div className="text-[10px] md:text-xs text-zinc-500">Al Bate</div>
+                                                        <div className="text-[10px] md:text-xs text-zinc-500">{t('game.atBat')}</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -354,7 +356,7 @@ export const Game: React.FC = () => {
                                                     </div>
                                                 ) : (
                                                     <div className="p-8 text-center text-zinc-500 text-xs">
-                                                        No hay jugadas recientes.
+                                                        {t('game.noPlays')}
                                                     </div>
                                                 )}
                                             </div>
