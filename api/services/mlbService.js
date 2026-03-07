@@ -59,9 +59,17 @@ const fetchScheduleData = async (startDate, endDate, leagueId = 'lidom') => {
 
     const dates = response.data.dates || [];
 
-    // Flatten and Transform
-    return dates.flatMap(date => date.games)
-        .map(game => {
+    // Flatten games
+    let games = dates.flatMap(date => date.games);
+    
+    // For WBC, filter only official tournament games (F=Pool Play, S=Second Round, W=Final)
+    // Exclude exhibition games (E) which are spring training matchups vs MLB teams
+    if (leagueId === 'wbc') {
+        games = games.filter(game => ['F', 'S', 'W', 'R'].includes(game.gameType));
+    }
+
+    // Transform
+    return games.map(game => {
             const homeId = game.teams.home.team.id;
             const awayId = game.teams.away.team.id;
 

@@ -2,7 +2,7 @@ const DEFAULT_GAME_PK = 826304;
 
 export const fetchGameData = async (gamePk = DEFAULT_GAME_PK) => {
     const apiUrl = import.meta.env.DEV
-        ? `http://localhost:5000/api/game/${gamePk}`
+        ? `http://localhost:5001/api/game/${gamePk}`
         : `/api/game/${gamePk}`;
 
     const controller = new AbortController();
@@ -26,7 +26,7 @@ export const fetchGameData = async (gamePk = DEFAULT_GAME_PK) => {
 
 export const fetchSchedule = async (league = 'lidom') => {
     const baseUrl = import.meta.env.DEV
-        ? `http://localhost:5000/api/schedule`
+        ? `http://localhost:5001/api/schedule`
         : `/api/schedule`;
     const apiUrl = `${baseUrl}?league=${league}`;
 
@@ -51,7 +51,7 @@ export const fetchSchedule = async (league = 'lidom') => {
 
 export const fetchStandings = async (league = 'lidom') => {
     const baseUrl = import.meta.env.DEV
-        ? `http://localhost:5000/api/standings`
+        ? `http://localhost:5001/api/standings`
         : `/api/standings`;
     const apiUrl = `${baseUrl}?league=${league}`;
 
@@ -76,7 +76,7 @@ export const fetchStandings = async (league = 'lidom') => {
 
 export const fetchLeaders = async (league = 'lidom') => {
     const baseUrl = import.meta.env.DEV
-        ? `http://localhost:5000/api/leaders`
+        ? `http://localhost:5001/api/leaders`
         : `/api/leaders`;
     const apiUrl = `${baseUrl}?league=${league}`;
 
