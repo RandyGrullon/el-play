@@ -28,7 +28,12 @@ const TEAM_COLORS: Record<number, string> = {
 
 export const Home: React.FC = () => {
     const { activeLeague, leagueConfig } = useLeague();
-    const { schedule, loading, refetch } = useSchedule(activeLeague) as { schedule: ScheduleItem[], loading: boolean, refetch: () => Promise<any> };
+    const { schedule: scheduleRaw, loading, refetch } = useSchedule(activeLeague) as { schedule: ScheduleItem[], loading: boolean, refetch: () => Promise<any> };
+    // Solo mostrar juegos de la liga activa (evita ver WBC al elegir SDC por cache/placeholder)
+    const schedule = useMemo(() => {
+        if (!scheduleRaw?.length) return scheduleRaw ?? [];
+        return scheduleRaw.filter(g => g.league === activeLeague);
+    }, [scheduleRaw, activeLeague]);
     const { favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription } = useFavoriteTeam();
     const { trackNotificationSubscribe, trackNotificationUnsubscribe } = useAnalytics();
     const [standings, setStandings] = useState<any>(null);

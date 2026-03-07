@@ -125,6 +125,7 @@ export interface ScheduleItem {
     status: string;
     date: string;
     venue: string;
+    league?: string; // lidom | wbc | sdc - para filtrar por liga activa
     away: {
         id: number;
         name: string;

@@ -9,6 +9,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['logo.svg'],
+      workbox: {
+        // Evita "Unexpected early exit" de terser en build (race con rollup)
+        mode: 'development',
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
+      },
       manifest: {
         name: 'El Play - LIDOM en Vivo',
         short_name: 'El Play',
