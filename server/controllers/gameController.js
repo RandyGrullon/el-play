@@ -1,5 +1,5 @@
 const { cached } = require('../utils/cache');
-const { fetchGame } = require('../services/mlbService');
+const { fetchGame, getFeedInfo } = require('../services/mlbService');
 const { TTL } = require('../config/constants');
 const { setCdnCache } = require('../middleware/cacheHeaders');
 const { toLegacyGame } = require('../utils/legacy');
@@ -21,6 +21,8 @@ const handler = (format) => async (req, res, next) => {
     try {
         const game = await loadGame(gamePk);
         setCdnCache(res, ttlForGame(game));
+        const feed = getFeedInfo(gamePk);
+        if (feed) res.set('X-Feed-Mode', `${feed.mode}; v=${feed.version}; ts=${game.updatedAt || ''}`);
         res.json(format(game));
     } catch (error) {
         next(error);

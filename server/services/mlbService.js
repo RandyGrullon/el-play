@@ -11,10 +11,14 @@ const leagueOf = (leagueKey) => LEAGUES[leagueKey] || LEAGUES.lidom;
 
 // La transformación se reutiliza mientras el documento no cambie (diffPatch devolvió []).
 const transformed = new Map(); // gamePk -> { version, data }
+// Cómo se obtuvo la última versión de cada juego (full | patch | unchanged): va en la cabecera X-Feed-Mode
+const feedInfo = new Map();
 
 const fetchGame = async (gamePk) => {
-    const { doc, version } = await getLiveFeed(gamePk);
+    const { doc, version, mode } = await getLiveFeed(gamePk);
     const key = String(gamePk);
+    feedInfo.set(key, { mode, version });
+    if (feedInfo.size > 50) feedInfo.delete(feedInfo.keys().next().value);
     const previous = transformed.get(key);
     if (previous && previous.version === version) return previous.data;
     const data = transformGame(doc);
@@ -305,9 +309,12 @@ const fetchLeaders = async (leagueKey = 'lidom') => {
     );
 };
 
+const getFeedInfo = (gamePk) => feedInfo.get(String(gamePk)) || null;
+
 module.exports = {
     poolsFromGames,
     fetchGame,
+    getFeedInfo,
     fetchSchedule,
     fetchStandings,
     fetchLeaders,
