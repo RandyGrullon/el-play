@@ -1,12 +1,12 @@
 // Valida contra un juego EN VIVO que la lectura incremental (feed/live/diffPatch) da el mismo resultado
-// que bajar el feed completo. Usa el código real de api/services/liveFeed.js.
+// que bajar el feed completo. Usa el código real de server/services/liveFeed.js.
 //
 // Uso: node scripts/probe-diffpatch.js [gamePk] [--sport=17] [--wait-min=240] [--rounds=12]
 // Sin gamePk espera (hasta --wait-min) a que algún juego del día esté en vivo.
 
-const http = require('../api/services/http');
-const { getLiveFeed } = require('../api/services/liveFeed');
-const { transformGame } = require('../api/utils/transformers');
+const http = require('../server/services/http');
+const { getLiveFeed } = require('../server/services/liveFeed');
+const { transformGame } = require('../server/utils/transformers');
 
 const BASE = 'https://statsapi.mlb.com/api';
 const arg = (name, fallback) => {

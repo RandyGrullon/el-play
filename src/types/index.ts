@@ -1,4 +1,4 @@
-// Contrato de la API v2 (api/utils/transformers.js)
+// Contrato de la API v2 (server/utils/transformers.js)
 
 export type LeagueId = 'lidom' | 'wbc' | 'sdc';
 export type GameState = 'preview' | 'live' | 'final';
