@@ -26,6 +26,9 @@ const teamColor = (teamId, leagueKey) => {
     return '#64748b';
 };
 
+/** Segundo color del uniforme (detalles, guantes, medias); null si no está configurado */
+const teamColor2 = (teamId, leagueKey) => findTeam(teamId, leagueKey)?.color2 || null;
+
 const teamAbbrev = (teamId, leagueKey, apiAbbrev, name = '') => {
     const config = findTeam(teamId, leagueKey);
     if (config?.abbrev) return config.abbrev;
@@ -35,4 +38,4 @@ const teamAbbrev = (teamId, leagueKey, apiAbbrev, name = '') => {
 
 const teamFlag = (teamId, leagueKey) => findTeam(teamId, leagueKey)?.flag || null;
 
-module.exports = { teamLogo, teamColor, teamAbbrev, teamFlag, findTeam };
+module.exports = { teamLogo, teamColor, teamColor2, teamAbbrev, teamFlag, findTeam };

@@ -56,13 +56,13 @@ const LEAGUES = {
 
 // LIDOM Team Configuration
 const LIDOM_TEAMS = {
-    667: { abbrev: 'AGU', name: 'Águilas Cibaeñas', logo: 'https://www.mlbstatic.com/team-logos/667.svg', color: '#FDB927' }, // Yellow
-    668: { abbrev: 'TOR', name: 'Toros del Este', logo: 'https://www.mlbstatic.com/team-logos/668.svg', color: '#FA4616' }, // Orange
-    669: { abbrev: 'EST', name: 'Estrellas Orientales', logo: 'https://www.mlbstatic.com/team-logos/669.svg', color: '#00be66' }, // Green (ID real en MLB StatsAPI)
-    670: { abbrev: 'GIG', name: 'Gigantes del Cibao', logo: 'https://www.mlbstatic.com/team-logos/670.svg', color: '#aa1141' }, // Wine
-    671: { abbrev: 'ESC', name: 'Leones del Escogido', logo: 'https://www.mlbstatic.com/team-logos/671.svg', color: '#E31837' }, // Red
-    672: { abbrev: 'LIC', name: 'Tigres del Licey', logo: 'https://www.mlbstatic.com/team-logos/672.svg', color: '#0069e0' }, // Blue
-    673: { abbrev: 'EST', name: 'Estrellas Orientales', logo: 'https://www.mlbstatic.com/team-logos/673.svg', color: '#00be66' } // Green (ID viejo, se deja por compatibilidad)
+    667: { abbrev: 'AGU', name: 'Águilas Cibaeñas', logo: 'https://www.mlbstatic.com/team-logos/667.svg', color: '#FDB927', color2: '#111111' }, // Amarillo y negro
+    668: { abbrev: 'TOR', name: 'Toros del Este', logo: 'https://www.mlbstatic.com/team-logos/668.svg', color: '#FA4616', color2: '#1c1c1c' }, // Naranja y negro
+    669: { abbrev: 'EST', name: 'Estrellas Orientales', logo: 'https://www.mlbstatic.com/team-logos/669.svg', color: '#00be66', color2: '#ffffff' }, // Verde y blanco (ID real en MLB StatsAPI)
+    670: { abbrev: 'GIG', name: 'Gigantes del Cibao', logo: 'https://www.mlbstatic.com/team-logos/670.svg', color: '#aa1141', color2: '#f5f5f5' }, // Vino y blanco
+    671: { abbrev: 'ESC', name: 'Leones del Escogido', logo: 'https://www.mlbstatic.com/team-logos/671.svg', color: '#E31837', color2: '#111111' }, // Rojo y negro
+    672: { abbrev: 'LIC', name: 'Tigres del Licey', logo: 'https://www.mlbstatic.com/team-logos/672.svg', color: '#0069e0', color2: '#ffffff' }, // Azul y blanco
+    673: { abbrev: 'EST', name: 'Estrellas Orientales', logo: 'https://www.mlbstatic.com/team-logos/673.svg', color: '#00be66', color2: '#ffffff' } // Verde (ID viejo, se deja por compatibilidad)
 };
 
 // Serie del Caribe Team Configuration - Colores por país con banderas

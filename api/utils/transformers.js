@@ -1,4 +1,4 @@
-const { teamLogo, teamColor, teamAbbrev, teamFlag, findTeam } = require('./teams');
+const { teamLogo, teamColor, teamColor2, teamAbbrev, teamFlag, findTeam } = require('./teams');
 
 // Convierte las respuestas crudas de MLB StatsAPI al formato compacto que usa la app.
 // Las descripciones se dejan en inglés con su código (eventType, call.code, type.code):
@@ -144,6 +144,7 @@ const transformGame = (feed) => {
             abbrev: teamAbbrev(id, leagueKey, info.abbreviation, name),
             logo: teamLogo(id),
             color: teamColor(id, leagueKey),
+            color2: teamColor2(id, leagueKey),
             flag: teamFlag(id, leagueKey),
             record: record(info.record),
             runs: line.runs ?? 0,
@@ -366,6 +367,7 @@ const transformScheduleGame = (game, leagueKey) => {
             abbrev: teamAbbrev(id, leagueKey, source.team?.abbreviation, name),
             logo: teamLogo(id),
             color: teamColor(id, leagueKey),
+            color2: teamColor2(id, leagueKey),
             flag: teamFlag(id, leagueKey),
             score: state === 'preview' ? null : source.score ?? 0,
             isWinner: !!source.isWinner,

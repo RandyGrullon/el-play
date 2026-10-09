@@ -2,12 +2,13 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Pitch } from '../../types';
 import { RESULT_COLORS, pitchCallName, pitchTypeColor, pitchTypeName } from '../../lib/baseball';
+import { BatterFigure, type UniformColors } from './BatterFigure';
 
 // Zona de strike en pies reales, vista del receptor (pX > 0 = lado de primera base).
 // 1 pie = 100 unidades del viewBox; el suelo (pZ = 0) está en y = 520.
 const UNIT = 100;
-const HALF_WIDTH = 2.0; // pies visibles a cada lado del centro del plato
-const TOP_FT = 4.7;
+const HALF_WIDTH = 2.35; // pies visibles a cada lado del centro del plato (cabe el bateador en su caja)
+const TOP_FT = 5.45; // hasta el casco del bateador
 const GROUND = TOP_FT * UNIT + 20;
 const VIEW_W = HALF_WIDTH * 2 * UNIT;
 const VIEW_H = GROUND + 40;
@@ -25,6 +26,8 @@ interface StrikeZoneProps {
     /** 'sequence': numerados y por resultado; 'types': todos los del lanzador por tipo */
     mode?: 'sequence' | 'types';
     batterSide?: string | null;
+    /** Colores del uniforme del bateador; sin ellos se dibuja en gris */
+    uniform?: UniformColors;
     selected?: number | null;
     onSelect?: (index: number | null) => void;
     className?: string;
@@ -36,7 +39,7 @@ const median = (values: number[], fallback: number) => {
     return list.length ? list[Math.floor(list.length / 2)] : fallback;
 };
 
-export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches, mode = 'sequence', batterSide, selected = null, onSelect, className = '', showLegend = true }) => {
+export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches, mode = 'sequence', batterSide, uniform, selected = null, onSelect, className = '', showLegend = true }) => {
     const { t, i18n } = useTranslation();
     const byType = mode === 'types';
 
@@ -71,8 +74,6 @@ export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches, mode = 'sequenc
     const lastIndex = located.length ? located[located.length - 1].index : -1;
     const missing = pitches.length - located.length;
     const side = batterSide === 'L' ? 'L' : batterSide === 'R' ? 'R' : null;
-    // Derecho se para del lado de tercera: a la izquierda en la vista del receptor
-    const batterX = side === 'R' ? sx(-2.02) : side === 'L' ? sx(2.02) : null;
 
     const label = (pitch: Pitch) =>
         `${pitch.n ?? ''} ${pitchTypeName(pitch, i18n.language)} ${pitch.mph ? `${pitch.mph} mph` : ''} — ${pitchCallName(pitch, i18n.language)}`;
@@ -85,12 +86,17 @@ export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches, mode = 'sequenc
                 role="img"
                 aria-label={t('zone.aria', { count: pitches.length })}
             >
-                {/* Silueta del bateador */}
-                {batterX !== null && (
-                    <g opacity={0.1} fill="rgb(var(--ink))">
-                        <circle cx={batterX} cy={sy(4.3)} r={17} />
-                        <rect x={batterX - 18} y={sy(4.0)} width={36} height={3.5 * UNIT} rx={18} />
-                    </g>
+                {/* Bateador en su caja con el uniforme de su equipo (no en la vista por lanzador: son varios bateadores) */}
+                {side && !byType && (
+                    <BatterFigure
+                        side={side}
+                        top={top}
+                        bot={bot}
+                        colors={uniform ?? { jersey: 'rgb(var(--faint))', trim: 'rgb(var(--muted))', pants: 'rgb(var(--raised))' }}
+                        sx={sx}
+                        sy={sy}
+                        unit={UNIT}
+                    />
                 )}
 
                 {/* Borde de la zona (una bola por fuera) */}

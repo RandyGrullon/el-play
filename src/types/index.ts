@@ -15,6 +15,8 @@ export interface TeamBase {
     abbrev: string;
     logo: string;
     color: string;
+    /** Segundo color del uniforme, si se conoce */
+    color2?: string | null;
     flag?: string | null;
     record: { wins: number; losses: number } | null;
 }

@@ -5,6 +5,7 @@ import type { AtBat, GameDetail } from '../../types';
 import { describePlay, eventName, eventTone, inningName, type EventTone } from '../../lib/baseball';
 import { Segmented } from '../ui/Segmented';
 import { StrikeZone } from './StrikeZone';
+import { uniformColors } from './BatterFigure';
 import { PitchList } from './PitchList';
 
 const TONES: Record<EventTone, string> = {
@@ -87,7 +88,7 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = f
                 </button>
                 {expanded && (
                     <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2 sm:items-start">
-                        <StrikeZone pitches={atBat.pitches} batterSide={atBat.batter.side} className="mx-auto w-full max-w-[260px]" />
+                        <StrikeZone pitches={atBat.pitches} batterSide={atBat.batter.side} uniform={uniformColors(team, !atBat.top)} className="mx-auto w-full max-w-[280px]" />
                         <PitchList pitches={atBat.pitches} newestFirst={false} />
                     </div>
                 )}

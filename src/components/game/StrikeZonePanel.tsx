@@ -4,6 +4,7 @@ import type { AtBat, GameDetail } from '../../types';
 import { arsenal, atBatForZone, eventName, pitchTypeColor, pitchesByPitcher } from '../../lib/baseball';
 import { Segmented } from '../ui/Segmented';
 import { StrikeZone } from './StrikeZone';
+import { uniformColors } from './BatterFigure';
 import { PitchList } from './PitchList';
 
 type Mode = 'atBat' | 'pitcher';
@@ -78,7 +79,13 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
 
             {mode === 'atBat' ? (
                 <div className="grid gap-4 p-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] sm:items-start">
-                    <StrikeZone pitches={atBat.pitches} batterSide={atBat.batter.side} selected={selected} onSelect={setSelected} />
+                    <StrikeZone
+                        pitches={atBat.pitches}
+                        batterSide={atBat.batter.side}
+                        uniform={uniformColors(atBat.top ? game.away : game.home, !atBat.top)}
+                        selected={selected}
+                        onSelect={setSelected}
+                    />
                     <div className="max-h-[360px] overflow-y-auto">
                         <PitchList pitches={atBat.pitches} selected={selected} onSelect={setSelected} />
                     </div>
