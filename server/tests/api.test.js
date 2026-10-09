@@ -261,3 +261,74 @@ describe('grupos del Clásico calculados desde los juegos', () => {
         expect(pools['Pool D'].map((row) => `${row.team.abbrev} ${row.wins}-${row.losses} ${row.gamesBack}`)).toEqual(['DOM 2-0 -', 'VEN 1-1 1', 'NED 0-2 2']);
     });
 });
+
+describe('diffPatch con los casos reales de producción (juego 867717)', () => {
+    const base = () => ({
+        metaData: { timeStamp: '20261009_203823', gameEvents: [] },
+        gameData: { status: { abstractGameState: 'Live' } },
+        liveData: { linescore: { balls: 0 }, plays: { allPlays: [{ pitchIndex: [1], playEvents: [{ n: 1 }] }] } }
+    });
+
+    it('salta fallos en campos sin uso y sigue por parche', async () => {
+        http.mlbGet = async (url) =>
+            url.endsWith('diffPatch')
+                ? [{ diff: [
+                    { op: 'replace', path: '/metaData/timeStamp', value: '20261009_203838' },
+                    { op: 'replace', path: '/metaData/gameEvents/0', value: 'pitch' },
+                    { op: 'remove', path: '/liveData/plays/allPlays/0/pitchIndex/2' },
+                    { op: 'replace', path: '/liveData/linescore/balls', value: 1 }
+                ] }]
+                : base();
+        await getLiveFeed(3);
+        const result = await getLiveFeed(3);
+        expect(result.mode).toBe('patch');
+        expect(result.doc.liveData.linescore.balls).toBe(1);
+    });
+
+    it('si falla un campo que sí se usa, baja el feed completo', async () => {
+        let fullCalls = 0;
+        http.mlbGet = async (url) => {
+            if (url.endsWith('diffPatch')) {
+                return [{ diff: [
+                    { op: 'replace', path: '/metaData/timeStamp', value: '20261009_203838' },
+                    { op: 'replace', path: '/liveData/plays/allPlays/0/playEvents/5', value: { n: 6 } }
+                ] }];
+            }
+            fullCalls += 1;
+            return base();
+        };
+        await getLiveFeed(4);
+        expect((await getLiveFeed(4)).mode).toBe('full');
+        expect(fullCalls).toBe(2);
+    });
+
+    it('cada 3 minutos se resincroniza con el feed completo', async () => {
+        const realNow = Date.now;
+        let now = realNow();
+        Date.now = () => now;
+        try {
+            const calls = [];
+            http.mlbGet = async (url) => {
+                calls.push(url.endsWith('diffPatch') ? 'diff' : 'full');
+                return url.endsWith('diffPatch') ? [] : base();
+            };
+            await getLiveFeed(5);
+            await getLiveFeed(5);
+            now += 4 * 60 * 1000;
+            expect((await getLiveFeed(5)).mode).toBe('full');
+            expect(calls).toEqual(['full', 'diff', 'full']);
+        } finally {
+            Date.now = realNow;
+        }
+    });
+
+    it('applyPatch informa cuántas operaciones saltó', () => {
+        const doc = { metaData: { gameEvents: [] }, a: 1 };
+        const { skipped } = applyPatch(doc, [{ op: 'replace', path: '/metaData/gameEvents/0', value: 'x' }, { op: 'replace', path: '/a', value: 2 }], {
+            ignorable: (path) => path.startsWith('/metaData/')
+        });
+        expect(skipped).toBe(1);
+        expect(doc.a).toBe(2);
+        expect(() => applyPatch(doc, [{ op: 'replace', path: '/b/c', value: 1 }], { ignorable: () => false })).toThrow();
+    });
+});

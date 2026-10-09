@@ -73,38 +73,51 @@ const replace = (doc, path, value) => {
     }
 };
 
+const applyOne = (doc, operation) => {
+    switch (operation.op) {
+        case 'add':
+            add(doc, operation.path, clone(operation.value));
+            break;
+        case 'remove':
+            remove(doc, operation.path);
+            break;
+        case 'replace':
+            replace(doc, operation.path, clone(operation.value));
+            break;
+        case 'move':
+            add(doc, operation.path, remove(doc, operation.from));
+            break;
+        case 'copy':
+            add(doc, operation.path, clone(getAt(doc, operation.from)));
+            break;
+        case 'test':
+            if (JSON.stringify(getAt(doc, operation.path)) !== JSON.stringify(operation.value)) {
+                throw new Error(`test falló en ${operation.path}`);
+            }
+            break;
+        default:
+            throw new Error(`Operación desconocida: ${operation.op}`);
+    }
+};
+
 /**
  * @param {object} doc documento a mutar
  * @param {Array<{op: string, path: string, value?: any, from?: string}>} operations
+ * @param {{ ignorable?: (path: string) => boolean }} [options] si una operación falla en una ruta "ignorable"
+ *   se salta en vez de abortar (campos que la app no usa)
+ * @returns {{ doc: object, skipped: number }}
  */
-const applyPatch = (doc, operations) => {
+const applyPatch = (doc, operations, { ignorable } = {}) => {
+    let skipped = 0;
     for (const operation of operations) {
-        switch (operation.op) {
-            case 'add':
-                add(doc, operation.path, clone(operation.value));
-                break;
-            case 'remove':
-                remove(doc, operation.path);
-                break;
-            case 'replace':
-                replace(doc, operation.path, clone(operation.value));
-                break;
-            case 'move':
-                add(doc, operation.path, remove(doc, operation.from));
-                break;
-            case 'copy':
-                add(doc, operation.path, clone(getAt(doc, operation.from)));
-                break;
-            case 'test':
-                if (JSON.stringify(getAt(doc, operation.path)) !== JSON.stringify(operation.value)) {
-                    throw new Error(`test falló en ${operation.path}`);
-                }
-                break;
-            default:
-                throw new Error(`Operación desconocida: ${operation.op}`);
+        try {
+            applyOne(doc, operation);
+        } catch (error) {
+            if (ignorable && ignorable(operation.path)) skipped += 1;
+            else throw error;
         }
     }
-    return doc;
+    return { doc, skipped };
 };
 
 module.exports = { applyPatch };

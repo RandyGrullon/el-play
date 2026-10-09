@@ -12,6 +12,13 @@ const { applyPatch } = require('../utils/jsonPatch');
 const games = new Map(); // gamePk -> { doc, timecode, version }
 const inflight = new Map();
 const IDLE_EVICT_MS = 15 * 60 * 1000;
+// Cada tanto se baja completo aunque los parches vayan bien: acota cualquier desfase con MLB
+const FULL_RESYNC_MS = 3 * 60 * 1000;
+
+// Campos que la app no usa: si un parche no cuadra ahí (pasó en producción con /metaData/gameEvents/0 y
+// .../pitchIndex/2) se salta esa operación en vez de bajar el feed completo
+const IGNORABLE = /^\/metaData\/(?!timeStamp$)|\/(pitchIndex|actionIndex|runnerIndex)(\/|$)/;
+const ignorable = (path) => IGNORABLE.test(path || '');
 
 const diffEnabled = () => process.env.MLB_DIFFPATCH !== '0';
 
@@ -35,7 +42,8 @@ const store = (gamePk, doc, previous) => {
         doc,
         timecode: doc.metaData?.timeStamp || null,
         version: (previous?.version || 0) + 1,
-        lastAccess: Date.now()
+        lastAccess: Date.now(),
+        fullAt: Date.now()
     };
     games.set(gamePk, entry);
     return entry;
@@ -44,7 +52,8 @@ const store = (gamePk, doc, previous) => {
 const refresh = async (gamePk) => {
     const previous = games.get(gamePk);
 
-    if (previous && previous.timecode && diffEnabled() && !isFinal(previous.doc)) {
+    const resyncDue = previous && Date.now() - (previous.fullAt || 0) > FULL_RESYNC_MS;
+    if (previous && previous.timecode && diffEnabled() && !isFinal(previous.doc) && !resyncDue) {
         try {
             const data = await http.mlbGet(`${MLB_API_BASE_V1_1}/game/${gamePk}/feed/live/diffPatch`, {
                 startTimecode: previous.timecode
@@ -57,7 +66,8 @@ const refresh = async (gamePk) => {
                 // [{ diff: [ops] }, …]; también se aceptan operaciones sueltas
                 const operations = data.flatMap((block) => (Array.isArray(block?.diff) ? block.diff : block?.op ? [block] : []));
                 if (operations.length === 0) throw new Error('formato de diffPatch desconocido');
-                applyPatch(previous.doc, operations);
+                const { skipped } = applyPatch(previous.doc, operations, { ignorable });
+                if (skipped) console.warn(`[liveFeed] ${gamePk}: ${skipped} operación(es) en campos sin uso saltadas`);
                 const timecode = previous.doc.metaData?.timeStamp;
                 // Si el timecode no avanzó, los cambios no se aplicaron bien: mejor bajar todo que quedarse viejo
                 if (!timecode || timecode === previous.timecode) throw new Error('diffPatch no avanzó el timecode');
