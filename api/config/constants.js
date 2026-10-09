@@ -2,12 +2,17 @@
 const MLB_API_BASE = 'https://statsapi.mlb.com/api/v1';
 const MLB_API_BASE_V1_1 = 'https://statsapi.mlb.com/api/v1.1';
 
-// Cache TTL (Time To Live) in seconds
+// Cache TTL en segundos. Cada valor es [memoria del servidor, CDN s-maxage, CDN stale-while-revalidate]:
+// el CDN de Vercel comparte una sola respuesta entre todos los usuarios y el servidor solo va a MLB al vencer.
 const TTL = {
-    GAME_LIVE: 1,       // 1 second for live game data
-    SCHEDULE: 1,        // 1 second for schedule (immediate updates)
-    STANDINGS: 60 * 10, // 10 minutes for standings
-    LEADERS: 60 * 30    // 30 minutes for leaders
+    GAME_LIVE: [3, 3, 7],
+    GAME_PREVIEW: [30, 30, 60],
+    GAME_FINAL: [600, 600, 86400],
+    SCHEDULE_LIVE: [5, 5, 10],
+    SCHEDULE_IDLE: [30, 30, 60],
+    STANDINGS: [600, 300, 900],
+    LEADERS: [1800, 900, 1800],
+    SEASON: [6 * 3600, 0, 0]
 };
 
 // League Configurations
@@ -18,7 +23,11 @@ const LEAGUES = {
         fullName: 'Liga Dominicana de Béisbol',
         sportId: 17,
         leagueId: 131,
-        season: 2025,
+        season: 2025, // respaldo: la temporada real se pide a /league/131 (ver services/season.js)
+        timeZone: 'America/Santo_Domingo',
+        scheduleDays: [3, 7], // días hacia atrás y hacia adelante
+        regularSeasonGames: 50,
+        roundRobinGames: 18,
         hasPhases: true // Regular, Round Robin, Final
     },
     wbc: {
@@ -28,6 +37,8 @@ const LEAGUES = {
         sportId: 51,
         leagueId: 160,
         season: 2026,
+        timeZone: 'America/New_York',
+        scheduleDays: [7, 14],
         hasPhases: false // Uses pools instead
     },
     sdc: {
@@ -37,6 +48,8 @@ const LEAGUES = {
         sportId: 17,
         leagueId: 162,
         season: 2026,
+        timeZone: 'America/Santo_Domingo',
+        scheduleDays: [3, 7],
         hasPhases: false // Tournament format
     }
 };
@@ -45,10 +58,11 @@ const LEAGUES = {
 const LIDOM_TEAMS = {
     667: { abbrev: 'AGU', name: 'Aguilas Cibaeñas', logo: 'https://www.mlbstatic.com/team-logos/667.svg', color: '#FDB927' }, // Yellow
     668: { abbrev: 'TOR', name: 'Toros del Este', logo: 'https://www.mlbstatic.com/team-logos/668.svg', color: '#FA4616' }, // Orange
+    669: { abbrev: 'EST', name: 'Estrellas Orientales', logo: 'https://www.mlbstatic.com/team-logos/669.svg', color: '#00be66' }, // Green (ID real en MLB StatsAPI)
     670: { abbrev: 'GIG', name: 'Gigantes del Cibao', logo: 'https://www.mlbstatic.com/team-logos/670.svg', color: '#aa1141' }, // Wine
     671: { abbrev: 'ESC', name: 'Leones del Escogido', logo: 'https://www.mlbstatic.com/team-logos/671.svg', color: '#E31837' }, // Red
     672: { abbrev: 'LIC', name: 'Tigres del Licey', logo: 'https://www.mlbstatic.com/team-logos/672.svg', color: '#0069e0' }, // Blue
-    673: { abbrev: 'EST', name: 'Estrellas Orientales', logo: 'https://www.mlbstatic.com/team-logos/673.svg', color: '#00be66' } // Green
+    673: { abbrev: 'EST', name: 'Estrellas Orientales', logo: 'https://www.mlbstatic.com/team-logos/673.svg', color: '#00be66' } // Green (ID viejo, se deja por compatibilidad)
 };
 
 // Serie del Caribe Team Configuration - Colores por país con banderas
@@ -56,6 +70,7 @@ const SDC_TEAMS = {
     // República Dominicana - Azul 🇩🇴
     667: { abbrev: 'AGU', name: 'Águilas Cibaeñas', color: '#002D62', flag: '🇩🇴', country: 'DOM' },
     668: { abbrev: 'TOR', name: 'Toros del Este', color: '#002D62', flag: '🇩🇴', country: 'DOM' },
+    669: { abbrev: 'EST', name: 'Estrellas Orientales', color: '#002D62', flag: '🇩🇴', country: 'DOM' },
     670: { abbrev: 'GIG', name: 'Gigantes del Cibao', color: '#002D62', flag: '🇩🇴', country: 'DOM' },
     671: { abbrev: 'ESC', name: 'Leones del Escogido', color: '#002D62', flag: '🇩🇴', country: 'DOM' },
     672: { abbrev: 'LIC', name: 'Tigres del Licey', color: '#002D62', flag: '🇩🇴', country: 'DOM' },

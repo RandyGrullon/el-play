@@ -1,315 +1,411 @@
-const { LIDOM_TEAMS, WBC_TEAMS, SDC_TEAMS } = require('../config/constants');
-const { GameDataSchema } = require('../schemas/mlb');
+const { teamLogo, teamColor, teamAbbrev, teamFlag } = require('./teams');
 
-// Generate a consistent color based on team ID for international teams
-const COUNTRY_COLORS = [
-    '#ef4444', // red-500
-    '#f97316', // orange-500
-    '#f59e0b', // amber-500
-    '#eab308', // yellow-500
-    '#84cc16', // lime-500
-    '#22c55e', // green-500
-    '#10b981', // emerald-500
-    '#14b8a6', // teal-500
-    '#06b6d4', // cyan-500
-    '#0ea5e9', // sky-500
-    '#3b82f6', // blue-500
-    '#6366f1', // indigo-500
-    '#8b5cf6', // violet-500
-    '#a855f7', // purple-500
-    '#d946ef', // fuchsia-500
-    '#ec4899', // pink-500
-    '#f43f5e', // rose-500
-    '#78716c', // stone-500
-];
+// Convierte las respuestas crudas de MLB StatsAPI al formato compacto que usa la app.
+// Las descripciones se dejan en inglés con su código (eventType, call.code, type.code):
+// la app las traduce según el idioma elegido.
 
-const getRandomColorForTeam = (teamId) => {
-    const index = teamId % COUNTRY_COLORS.length;
-    return COUNTRY_COLORS[index];
+const IN_PLAY_CODES = new Set(['X', 'D', 'E']);
+const STRIKE_CODES = new Set(['C', 'S', 'W', 'F', 'T', 'L', 'M', 'O', 'Q', 'R', 'A', 'K']);
+
+const num = (value, decimals = 3) => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+    const factor = 10 ** decimals;
+    return Math.round(value * factor) / factor;
 };
 
-/**
- * Transform raw MLB Game Data into clean app format
- */
-const transformGameData = (data) => {
-    // Validate incoming data
-    const validation = GameDataSchema.safeParse(data);
-    if (!validation.success) {
-        console.error('Validation Error:', JSON.stringify(validation.error.format(), null, 2));
-        // In production, we might want to throw or return a partial object.
-        // For now, let's throw to be caught by the global error handler.
-        throw new Error(`Invalid Game Data received from MLB API: ${JSON.stringify(validation.error.format(), null, 2)}`);
+const int = (value) => {
+    const parsed = typeof value === 'string' ? parseInt(value, 10) : value;
+    return typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : null;
+};
+
+/** 'preview' | 'live' | 'final' a partir de status.abstractGameState (no del texto detailedState). */
+const gameState = (status = {}) => {
+    if (status.abstractGameState === 'Live') return 'live';
+    if (status.abstractGameState === 'Final') return 'final';
+    return 'preview';
+};
+
+/** Resultado de un pitcheo: 'ball' | 'strike' | 'inplay' | 'hbp'. Usa las banderas de MLB y cae a los códigos. */
+const classifyPitch = (details = {}) => {
+    const code = details.call?.code || details.code || '';
+    if (details.isInPlay || IN_PLAY_CODES.has(code)) return 'inplay';
+    if (code === 'H') return 'hbp';
+    if (details.isStrike || STRIKE_CODES.has(code)) return 'strike';
+    return 'ball';
+};
+
+const toPitch = (event) => {
+    const details = event.details || {};
+    const pitchData = event.pitchData || {};
+    const coordinates = pitchData.coordinates || {};
+    const pitch = {
+        n: event.pitchNumber ?? null,
+        x: num(coordinates.pX),
+        z: num(coordinates.pZ),
+        top: num(pitchData.strikeZoneTop, 2),
+        bot: num(pitchData.strikeZoneBottom, 2),
+        r: classifyPitch(details),
+        code: details.call?.code || details.code || null,
+        call: details.call?.description || details.description || '',
+        type: details.type?.code || null,
+        typeDesc: details.type?.description || null,
+        mph: num(pitchData.startSpeed, 1),
+        spin: int(pitchData.breaks?.spinRate),
+        zone: int(pitchData.zone),
+        b: event.count?.balls ?? null,
+        s: event.count?.strikes ?? null
+    };
+    if (event.hitData) {
+        pitch.hit = {
+            ev: num(event.hitData.launchSpeed, 1),
+            la: num(event.hitData.launchAngle, 0),
+            dist: int(event.hitData.totalDistance)
+        };
     }
+    return pitch;
+};
 
-    const { gameData, liveData } = validation.data;
-    const linescore = liveData.linescore;
-    const boxscore = liveData.boxscore;
-    const plays = liveData.plays;
-    const gameStatus = gameData.status.detailedState;
+const toAtBat = (play, index) => {
+    const about = play.about || {};
+    const matchup = play.matchup || {};
+    const result = play.result || {};
+    const events = play.playEvents || [];
+    return {
+        i: about.atBatIndex ?? index,
+        inning: about.inning ?? null,
+        top: !!about.isTopInning,
+        complete: !!about.isComplete,
+        scoring: !!about.isScoringPlay,
+        batter: { id: matchup.batter?.id ?? null, name: matchup.batter?.fullName || '', side: matchup.batSide?.code || null },
+        pitcher: { id: matchup.pitcher?.id ?? null, name: matchup.pitcher?.fullName || '', hand: matchup.pitchHand?.code || null },
+        event: result.eventType || null,
+        eventLabel: result.event || null,
+        desc: result.description || '',
+        rbi: result.rbi || 0,
+        away: result.awayScore ?? null,
+        home: result.homeScore ?? null,
+        outs: play.count?.outs ?? null,
+        pitches: events.filter((event) => event.isPitch).map(toPitch),
+        actions: events
+            .filter((event) => !event.isPitch && event.type === 'action' && event.details?.description)
+            .map((event) => ({ event: event.details.eventType || null, desc: event.details.description }))
+    };
+};
 
-    // Detect if this is an international tournament (WBC or Serie del Caribe)
-    // Check both home and away team's league/sport info
-    const homeLeagueId = gameData.teams?.home?.league?.id;
-    const awayLeagueId = gameData.teams?.away?.league?.id;
-    const homeSportId = gameData.teams?.home?.sport?.id;
-    const awaySportId = gameData.teams?.away?.sport?.id;
-    
-    // WBC: leagueId 160, sportId 51
-    // Serie del Caribe: leagueId 162, sportId 17
-    const isInternationalTournament = 
-        homeLeagueId === 160 || awayLeagueId === 160 || // WBC
-        homeLeagueId === 162 || awayLeagueId === 162 || // Serie del Caribe
-        homeSportId === 51 || awaySportId === 51; // International Baseball
+const leagueKeyOf = (gameData) => {
+    const ids = [gameData.teams?.home?.league?.id, gameData.teams?.away?.league?.id];
+    const sports = [gameData.teams?.home?.sport?.id, gameData.teams?.away?.sport?.id];
+    if (ids.includes(160) || sports.includes(51)) return 'wbc';
+    if (ids.includes(162)) return 'sdc';
+    return 'lidom';
+};
 
-    const getTeamInfo = (teamType) => {
-        const teamData = boxscore.teams[teamType];
-        const teamId = teamData.team.id;
-        
-        // Check all team configs for color
-        const configuredTeam = LIDOM_TEAMS[teamId] || WBC_TEAMS[teamId] || SDC_TEAMS[teamId] || {};
-        
-        // Determine team color
-        let teamColor = configuredTeam.color;
-        if (!teamColor) {
-            // For international tournaments, generate a consistent random color
-            if (isInternationalTournament) {
-                teamColor = getRandomColorForTeam(teamId);
-            } else {
-                teamColor = '#000000'; // Default to black for other leagues
-            }
+const record = (source) => {
+    const r = source?.leagueRecord || source;
+    return r && typeof r.wins === 'number' ? { wins: r.wins, losses: r.losses } : null;
+};
+
+/** Feed crudo de /api/v1.1/game/{pk}/feed/live → detalle compacto del juego. */
+const transformGame = (feed) => {
+    if (!feed || !feed.gameData || !feed.liveData) throw new Error('Invalid Game Data received from MLB API');
+
+    const { gameData, liveData } = feed;
+    const linescore = liveData.linescore || {};
+    const boxscore = liveData.boxscore || { teams: {} };
+    const allPlays = liveData.plays?.allPlays || [];
+    const state = gameState(gameData.status);
+    const leagueKey = leagueKeyOf(gameData);
+    const people = gameData.players || {};
+
+    const shortName = (id, fallback = '') => {
+        const person = people[`ID${id}`];
+        return person?.boxscoreName || person?.lastName || fallback;
+    };
+
+    const boxPlayer = (id) => {
+        for (const side of ['away', 'home']) {
+            const player = boxscore.teams?.[side]?.players?.[`ID${id}`];
+            if (player) return player;
         }
+        return null;
+    };
 
-        // Extract players
-        const players = Object.values(teamData.players)
-            .filter(p => p.person.id) // Ensure valid player
-            .map(p => ({
-                id: p.person.id,
-                name: p.person.fullName,
-                position: p.position.abbreviation,
-                battingOrder: p.battingOrder,
-                stats: {
-                    batting: p.stats.batting || {},
-                    pitching: p.stats.pitching || {}
-                }
-            }))
-            .sort((a, b) => {
-                // Sort by batting order if available, otherwise by name
-                if (a.battingOrder && b.battingOrder) return parseInt(a.battingOrder) - parseInt(b.battingOrder);
-                return 0;
-            });
-
+    const team = (side) => {
+        const info = gameData.teams?.[side] || {};
+        const box = boxscore.teams?.[side]?.team || {};
+        const line = linescore.teams?.[side] || {};
+        const id = info.id ?? box.id;
+        const name = info.name || box.name || '';
         return {
-            id: teamId,
-            name: teamData.team.name,
-            abbreviation: teamData.team.abbreviation,
-            logo: `https://www.mlbstatic.com/team-logos/${teamId}.svg`,
-            color: teamColor,
-            runs: linescore.teams[teamType].runs || 0,
-            hits: linescore.teams[teamType].hits || 0,
-            errors: linescore.teams[teamType].errors || 0,
-            players: players
+            id,
+            name,
+            teamName: info.teamName || name,
+            abbrev: teamAbbrev(id, leagueKey, info.abbreviation, name),
+            logo: teamLogo(id),
+            color: teamColor(id, leagueKey),
+            flag: teamFlag(id, leagueKey),
+            record: record(info.record),
+            runs: line.runs ?? 0,
+            hits: line.hits ?? 0,
+            errors: line.errors ?? 0,
+            lob: line.leftOnBase ?? 0,
+            isWinner: state === 'final' && (line.runs ?? 0) > (linescore.teams?.[side === 'home' ? 'away' : 'home']?.runs ?? 0)
         };
     };
 
-    const innings = linescore.innings ? linescore.innings.map(inn => ({
-        num: inn.num,
-        away: inn.away.runs,
-        home: inn.home.runs
-    })) : [];
+    const atBats = allPlays.map(toAtBat);
+    const currentPlay = liveData.plays?.currentPlay;
+    const currentIndex = currentPlay?.about?.atBatIndex ?? (atBats.length ? atBats[atBats.length - 1].i : null);
 
-    const currentPlay = plays.currentPlay;
-    let currentPitches = [];
+    const offense = linescore.offense || {};
+    const runner = (base) => (offense[base]?.id ? { id: offense[base].id, name: shortName(offense[base].id, offense[base].fullName) } : null);
 
-    if (currentPlay && currentPlay.playEvents && currentPlay.playEvents.length > 0) {
-        const pitchEvents = currentPlay.playEvents.filter(e => e.isPitch);
-        currentPitches = pitchEvents.map((event, index) => {
-            if (event.pitchData) {
-                return {
-                    id: index + 1,
-                    coordinates: {
-                        pX: event.pitchData.coordinates.pX,
-                        pZ: event.pitchData.coordinates.pZ
-                    },
-                    strikeZoneTop: event.pitchData.strikeZoneTop,
-                    strikeZoneBottom: event.pitchData.strikeZoneBottom,
-                    call: event.details.description,
-                    code: event.details.code, // B, S, X, etc.
-                    speed: event.pitchData.startSpeed,
-                    type: event.details.type ? event.details.type.code : null
-                };
-            }
-            return null;
-        }).filter(p => p !== null);
+    let matchup = null;
+    if (state === 'live' && currentPlay?.matchup) {
+        const m = currentPlay.matchup;
+        const pitcherBox = boxPlayer(m.pitcher?.id);
+        const batterBox = boxPlayer(m.batter?.id);
+        matchup = {
+            pitcher: {
+                id: m.pitcher?.id ?? null,
+                name: m.pitcher?.fullName || '',
+                hand: m.pitchHand?.code || null,
+                pitches: pitcherBox?.stats?.pitching?.numberOfPitches ?? pitcherBox?.stats?.pitching?.pitchesThrown ?? null,
+                ip: pitcherBox?.stats?.pitching?.inningsPitched ?? null,
+                k: pitcherBox?.stats?.pitching?.strikeOuts ?? null,
+                era: pitcherBox?.seasonStats?.pitching?.era ?? null
+            },
+            batter: {
+                id: m.batter?.id ?? null,
+                name: m.batter?.fullName || '',
+                side: m.batSide?.code || null,
+                h: batterBox?.stats?.batting?.hits ?? null,
+                ab: batterBox?.stats?.batting?.atBats ?? null,
+                avg: batterBox?.seasonStats?.batting?.avg ?? null
+            },
+            onDeck: offense.onDeck?.id ? { id: offense.onDeck.id, name: offense.onDeck.fullName } : null
+        };
     }
 
-    const translateEvent = (event) => {
-        const translations = {
-            'Strikeout': 'Ponche',
-            'Walk': 'Base por Bolas',
-            'Home Run': 'Cuadrangular',
-            'Single': 'Sencillo',
-            'Double': 'Doble',
-            'Triple': 'Triple',
-            'Groundout': 'Rodado de Out',
-            'Flyout': 'Elevado de Out',
-            'Lineout': 'Línea de Out',
-            'Pop Out': 'Elevado al Cuadro',
-            'Forceout': 'Out Forzado',
-            'Sac Fly': 'Elevado de Sacrificio',
-            'Sac Bunt': 'Toque de Sacrificio',
-            'Hit By Pitch': 'Golpeado',
-            'Field Error': 'Error',
-            'Game Advisory': 'Aviso',
-            'Stolen Base 2B': 'Robo de 2da',
-            'Stolen Base 3B': 'Robo de 3ra',
-            'Caught Stealing 2B': 'Atrapado Robando 2da',
-            'Wild Pitch': 'Lanzamiento Descontrolado',
-            'Passed Ball': 'Pasbol',
-            'Pickoff 1B': 'Revire a 1ra',
-            'Pickoff 2B': 'Revire a 2da',
-            'Defensive Indiff': 'Indiferencia Defensiva'
-        };
-        return translations[event] || event;
-    };
+    const boxTeam = (side) => {
+        const source = boxscore.teams?.[side] || {};
+        const players = source.players || {};
+        const get = (id) => players[`ID${id}`];
 
-    const translateDescription = (desc) => {
-        if (!desc) return '';
-        let translated = desc;
+        const batters = (source.batters || [])
+            .map(get)
+            .filter((p) => p && p.battingOrder && p.stats?.batting && Object.keys(p.stats.batting).length > 0)
+            .map((p) => {
+                const s = p.stats.batting;
+                const order = int(p.battingOrder);
+                return {
+                    id: p.person.id,
+                    name: shortName(p.person.id, p.person.fullName),
+                    pos: p.position?.abbreviation || '',
+                    sub: order !== null && order % 100 !== 0,
+                    ab: s.atBats ?? 0,
+                    r: s.runs ?? 0,
+                    h: s.hits ?? 0,
+                    rbi: s.rbi ?? 0,
+                    bb: s.baseOnBalls ?? 0,
+                    k: s.strikeOuts ?? 0,
+                    hr: s.homeRuns ?? 0,
+                    avg: p.seasonStats?.batting?.avg ?? null
+                };
+            });
 
-        // Basic replacements
-        translated = translated.replace(/strikes out/g, 'se poncha');
-        translated = translated.replace(/walks/g, 'recibe base por bolas');
-        translated = translated.replace(/homers/g, 'conecta cuadrangular');
-        translated = translated.replace(/singles/g, 'conecta sencillo');
-        translated = translated.replace(/doubles/g, 'conecta doble');
-        translated = translated.replace(/triples/g, 'conecta triple');
-        translated = translated.replace(/grounds out/g, 'falla con rodado');
-        translated = translated.replace(/flies out/g, 'falla con elevado');
-        translated = translated.replace(/lines out/g, 'falla con línea');
-        translated = translated.replace(/pops out/g, 'falla con elevado al cuadro');
-        translated = translated.replace(/to pitcher/g, 'al lanzador');
-        translated = translated.replace(/to catcher/g, 'al receptor');
-        translated = translated.replace(/to first base/g, 'a primera base');
-        translated = translated.replace(/to second base/g, 'a segunda base');
-        translated = translated.replace(/to third base/g, 'a tercera base');
-        translated = translated.replace(/to shortstop/g, 'al campocorto');
-        translated = translated.replace(/to left field/g, 'al jardín izquierdo');
-        translated = translated.replace(/to center field/g, 'al jardín central');
-        translated = translated.replace(/to right field/g, 'al jardín derecho');
-        translated = translated.replace(/swinging/g, 'tirándole');
-        translated = translated.replace(/called out on strikes/g, 'ponchado mirando');
+        const pitchers = (source.pitchers || [])
+            .map(get)
+            .filter((p) => p && p.stats?.pitching && Object.keys(p.stats.pitching).length > 0)
+            .map((p) => {
+                const s = p.stats.pitching;
+                return {
+                    id: p.person.id,
+                    name: shortName(p.person.id, p.person.fullName),
+                    note: s.note || null,
+                    ip: s.inningsPitched ?? '0.0',
+                    h: s.hits ?? 0,
+                    r: s.runs ?? 0,
+                    er: s.earnedRuns ?? 0,
+                    bb: s.baseOnBalls ?? 0,
+                    k: s.strikeOuts ?? 0,
+                    hr: s.homeRuns ?? 0,
+                    np: s.numberOfPitches ?? s.pitchesThrown ?? null,
+                    st: s.strikes ?? null,
+                    era: p.seasonStats?.pitching?.era ?? null
+                };
+            });
 
-        return translated;
-    };
-
-    // Get ALL plays, reverse to show newest first
-    const playHistory = plays.allPlays ? plays.allPlays.slice().reverse().map(play => ({
-        event: translateEvent(play.result.event),
-        description: translateDescription(play.result.description),
-        inning: `${play.about.isTopInning ? 'Alta' : 'Baja'} ${play.about.inning}`,
-        time: play.about.startTime
-    })) : [];
-
-    const decisions = liveData.decisions || {};
-
-    // Helper to get top performers
-    const getTopPerformers = () => {
-        const performers = [];
-
-        // 1. Winning Pitcher (or best pitcher if no decision)
-        if (decisions.winner) {
-            const winnerId = decisions.winner.id;
-            // Find stats for winner
-            const homePlayers = Object.values(boxscore.teams.home.players);
-            const awayPlayers = Object.values(boxscore.teams.away.players);
-            const allPlayers = [...homePlayers, ...awayPlayers];
-            const winner = allPlayers.find(p => p.person.id === winnerId);
-
-            if (winner) {
-                performers.push({
-                    id: winner.person.id,
-                    name: winner.person.fullName,
-                    teamLogo: `https://www.mlbstatic.com/team-logos/${winner.parentTeamId || (homePlayers.includes(winner) ? boxscore.teams.home.team.id : boxscore.teams.away.team.id)}.svg`,
-                    stats: `${winner.stats.pitching.inningsPitche || 0} IP, ${winner.stats.pitching.strikeOuts || 0} K, ${winner.stats.pitching.runs || 0} C`,
-                    type: 'Pitcher'
-                });
+        const batting = source.teamStats?.batting || {};
+        return {
+            batters,
+            pitchers,
+            totals: {
+                ab: batting.atBats ?? null,
+                r: batting.runs ?? null,
+                h: batting.hits ?? null,
+                rbi: batting.rbi ?? null,
+                bb: batting.baseOnBalls ?? null,
+                k: batting.strikeOuts ?? null,
+                hr: batting.homeRuns ?? null,
+                lob: batting.leftOnBase ?? null,
+                avg: batting.avg ?? null
             }
-        }
-
-        // 2. Best Batter from Winning Team
-        const winningTeamType = linescore.teams.home.runs > linescore.teams.away.runs ? 'home' : 'away';
-        const winningTeamPlayers = Object.values(boxscore.teams[winningTeamType].players).filter(p => p.stats.batting);
-        const bestBatterWinner = winningTeamPlayers.sort((a, b) => (b.stats.batting.rbi || 0) - (a.stats.batting.rbi || 0) || (b.stats.batting.homeRuns || 0) - (a.stats.batting.homeRuns || 0))[0];
-
-        if (bestBatterWinner) {
-            performers.push({
-                id: bestBatterWinner.person.id,
-                name: bestBatterWinner.person.fullName,
-                teamLogo: `https://www.mlbstatic.com/team-logos/${boxscore.teams[winningTeamType].team.id}.svg`,
-                stats: `${bestBatterWinner.stats.batting.hits}-${bestBatterWinner.stats.batting.atBats}, ${bestBatterWinner.stats.batting.homeRuns > 0 ? bestBatterWinner.stats.batting.homeRuns + ' HR, ' : ''}${bestBatterWinner.stats.batting.rbi || 0} CI`,
-                type: 'Batter'
-            });
-        }
-
-        // 3. Best Batter from Losing Team
-        const losingTeamType = winningTeamType === 'home' ? 'away' : 'home';
-        const losingTeamPlayers = Object.values(boxscore.teams[losingTeamType].players).filter(p => p.stats.batting);
-        const bestBatterLoser = losingTeamPlayers.sort((a, b) => (b.stats.batting.rbi || 0) - (a.stats.batting.rbi || 0) || (b.stats.batting.hits || 0) - (a.stats.batting.hits || 0))[0];
-
-        if (bestBatterLoser) {
-            performers.push({
-                id: bestBatterLoser.person.id,
-                name: bestBatterLoser.person.fullName,
-                teamLogo: `https://www.mlbstatic.com/team-logos/${boxscore.teams[losingTeamType].team.id}.svg`,
-                stats: `${bestBatterLoser.stats.batting.hits}-${bestBatterLoser.stats.batting.atBats}, ${bestBatterLoser.stats.batting.rbi || 0} CI`,
-                type: 'Batter'
-            });
-        }
-
-        return performers;
+        };
     };
+
+    const decisionsSource = liveData.decisions || {};
+    const decision = (person, kind) => {
+        if (!person?.id) return null;
+        const season = boxPlayer(person.id)?.seasonStats?.pitching || {};
+        return {
+            id: person.id,
+            name: person.fullName || shortName(person.id),
+            wins: season.wins ?? null,
+            losses: season.losses ?? null,
+            saves: kind === 'save' ? season.saves ?? null : undefined,
+            era: season.era ?? null
+        };
+    };
+
+    const probable = (side) => {
+        const person = gameData.probablePitchers?.[side];
+        if (!person?.id) return null;
+        const season = boxPlayer(person.id)?.seasonStats?.pitching || {};
+        return {
+            id: person.id,
+            name: person.fullName || shortName(person.id),
+            wins: season.wins ?? null,
+            losses: season.losses ?? null,
+            era: season.era ?? null
+        };
+    };
+
+    const away = team('away');
+    const home = team('home');
+    const box = { away: boxTeam('away'), home: boxTeam('home') };
+
+    // Mejores actuaciones: el mejor bateador de cada equipo y el pitcher ganador
+    const topPerformers = [];
+    const winner = decision(decisionsSource.winner, 'winner');
+    if (winner) {
+        const winnerSide = box.home.pitchers.some((p) => p.id === winner.id) ? 'home' : 'away';
+        const line = box[winnerSide].pitchers.find((p) => p.id === winner.id);
+        if (line) topPerformers.push({ kind: 'pitcher', teamId: winnerSide === 'home' ? home.id : away.id, ...line });
+    }
+    for (const side of state === 'final' && home.runs > away.runs ? ['home', 'away'] : ['away', 'home']) {
+        const score = (b) => b.h + 3 * b.hr + 1.5 * b.rbi + b.r + 0.5 * b.bb;
+        const best = [...box[side].batters].sort((a, b) => score(b) - score(a))[0];
+        if (best && score(best) > 0) topPerformers.push({ kind: 'hitter', teamId: side === 'home' ? home.id : away.id, ...best });
+    }
 
     return {
-        status: gameStatus,
-        gameDate: data.gameData.datetime.dateTime,
-        venue: data.gameData.venue.name,
-        isTopInning: linescore.isTopInning,
-        inning: `${linescore.isTopInning ? 'Top' : 'Bot'} ${linescore.currentInningOrdinal || ''}`,
-        home: {
-            ...getTeamInfo('home'),
-            teamStats: boxscore.teams.home.teamStats
-        },
-        away: {
-            ...getTeamInfo('away'),
-            teamStats: boxscore.teams.away.teamStats
-        },
+        gamePk: gameData.game?.pk ?? null,
+        league: leagueKey,
+        state,
+        detailedState: gameData.status?.detailedState || '',
+        reason: gameData.status?.reason || null,
+        date: gameData.datetime?.dateTime || null,
+        venue: gameData.venue?.name || '',
+        weather: gameData.weather?.condition ? { condition: gameData.weather.condition, temp: gameData.weather.temp || null } : null,
+        description: gameData.game?.description || null,
+        scheduledInnings: linescore.scheduledInnings ?? 9,
+        away,
+        home,
+        inning: linescore.currentInning
+            ? {
+                n: linescore.currentInning,
+                ordinal: linescore.currentInningOrdinal || String(linescore.currentInning),
+                isTop: !!linescore.isTopInning,
+                state: linescore.inningState || (linescore.isTopInning ? 'Top' : 'Bottom')
+            }
+            : null,
         count: {
-            balls: linescore.balls || 0,
-            strikes: linescore.strikes || 0,
-            outs: linescore.outs || 0
+            balls: linescore.balls ?? 0,
+            strikes: linescore.strikes ?? 0,
+            outs: linescore.outs ?? 0
         },
-        runners: {
-            first: !!linescore.offense?.first,
-            second: !!linescore.offense?.second,
-            third: !!linescore.offense?.third,
-        },
-        matchup: {
-            pitcher: linescore.defense?.pitcher ? linescore.defense.pitcher.fullName : 'Unknown',
-            batter: linescore.offense?.batter ? linescore.offense.batter.fullName : 'Unknown'
-        },
-        lastPlay: plays.currentPlay ? plays.currentPlay.result.description : 'No plays yet',
-        playHistory,
-        currentPitches,
-        innings,
+        runners: { first: runner('first'), second: runner('second'), third: runner('third') },
+        matchup,
+        probables: { away: probable('away'), home: probable('home') },
+        linescore: (linescore.innings || []).map((inning) => ({
+            n: inning.num,
+            away: inning.away?.runs ?? null,
+            home: inning.home?.runs ?? null
+        })),
+        atBats,
+        currentAtBat: currentIndex,
+        box,
         decisions: {
-            winner: decisions.winner ? { name: decisions.winner.fullName, record: '1-0', era: '0.00' } : null, // Mock record/era if not in decisions object
-            loser: decisions.loser ? { name: decisions.loser.fullName, record: '0-1', era: '0.00' } : null,
-            save: decisions.save ? { name: decisions.save.fullName, record: '0', era: '0.00' } : null
+            winner,
+            loser: decision(decisionsSource.loser, 'loser'),
+            save: decision(decisionsSource.save, 'save')
         },
-        topPerformers: getTopPerformers()
+        topPerformers,
+        updatedAt: feed.metaData?.timeStamp || null
     };
 };
 
-module.exports = {
-    transformGameData
+/** Un juego del endpoint /schedule (hydrate=linescore,probablePitcher,decisions) → tarjeta del calendario. */
+const transformScheduleGame = (game, leagueKey) => {
+    const state = gameState(game.status);
+    const linescore = game.linescore || {};
+    const offense = linescore.offense || {};
+    const defense = linescore.defense || {};
+
+    const side = (key) => {
+        const source = game.teams?.[key] || {};
+        const id = source.team?.id;
+        const name = source.team?.name || '';
+        const pitcher = source.probablePitcher;
+        return {
+            id,
+            name,
+            abbrev: teamAbbrev(id, leagueKey, source.team?.abbreviation, name),
+            logo: teamLogo(id),
+            color: teamColor(id, leagueKey),
+            flag: teamFlag(id, leagueKey),
+            score: state === 'preview' ? null : source.score ?? 0,
+            isWinner: !!source.isWinner,
+            record: record(source.leagueRecord),
+            probable: pitcher?.id ? { id: pitcher.id, name: pitcher.fullName } : null
+        };
+    };
+
+    const person = (p) => (p?.id ? { id: p.id, name: p.fullName } : null);
+
+    return {
+        gamePk: game.gamePk,
+        league: leagueKey,
+        date: game.gameDate,
+        state,
+        detailedState: game.status?.detailedState || '',
+        gameType: game.gameType || null,
+        description: game.seriesDescription || null,
+        venue: game.venue?.name || '',
+        scheduledInnings: linescore.scheduledInnings ?? game.scheduledInnings ?? 9,
+        inningsPlayed: linescore.innings?.length ?? null,
+        away: side('away'),
+        home: side('home'),
+        live:
+            state === 'live'
+                ? {
+                    inning: linescore.currentInning ?? null,
+                    ordinal: linescore.currentInningOrdinal || null,
+                    isTop: !!linescore.isTopInning,
+                    inningState: linescore.inningState || null,
+                    balls: linescore.balls ?? 0,
+                    strikes: linescore.strikes ?? 0,
+                    outs: linescore.outs ?? 0,
+                    runners: { first: !!offense.first, second: !!offense.second, third: !!offense.third },
+                    batter: person(offense.batter),
+                    pitcher: person(defense.pitcher)
+                }
+                : null,
+        decisions: game.decisions
+            ? { winner: person(game.decisions.winner), loser: person(game.decisions.loser), save: person(game.decisions.save) }
+            : null
+    };
 };
+
+module.exports = { transformGame, transformScheduleGame, transformGameData: transformGame, gameState, classifyPitch };

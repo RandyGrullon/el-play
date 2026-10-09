@@ -1,19 +1,34 @@
-const { fetchWithCache } = require('../utils/cache');
-const { fetchLiveGameData } = require('../services/mlbService');
+const { cached } = require('../utils/cache');
+const { fetchGame } = require('../services/mlbService');
 const { TTL } = require('../config/constants');
+const { setCdnCache } = require('../middleware/cacheHeaders');
+const { toLegacyGame } = require('../utils/legacy');
 
-const getGameData = async (req, res, next) => {
+const ttlForGame = (game) => {
+    if (game.state === 'live') return TTL.GAME_LIVE;
+    if (game.state === 'final') return TTL.GAME_FINAL;
+    const startsIn = game.date ? new Date(game.date).getTime() - Date.now() : Infinity;
+    return startsIn < 30 * 60 * 1000 ? [10, 10, 20] : TTL.GAME_PREVIEW;
+};
+
+const loadGame = (gamePk) => cached(`game_${gamePk}`, (game) => ttlForGame(game)[0], () => fetchGame(gamePk), { staleSec: 120 });
+
+const handler = (format) => async (req, res, next) => {
     const { gamePk } = req.params;
-    const cacheKey = `game_${gamePk}`;
-
+    if (!/^\d{3,9}$/.test(gamePk)) {
+        return res.status(400).json({ error: 'invalid_game' });
+    }
     try {
-        const data = await fetchWithCache(cacheKey, () => fetchLiveGameData(gamePk), TTL.GAME_LIVE);
-        res.json(data);
+        const game = await loadGame(gamePk);
+        setCdnCache(res, ttlForGame(game));
+        res.json(format(game));
     } catch (error) {
         next(error);
     }
 };
 
 module.exports = {
-    getGameData
+    getGame: handler((game) => game),
+    getGameData: handler(toLegacyGame),
+    ttlForGame
 };

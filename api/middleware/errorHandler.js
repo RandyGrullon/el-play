@@ -1,25 +1,26 @@
+// Respuestas de error con una clave que la app traduce
 const errorHandler = (err, req, res, next) => {
-    console.error('Error:', err.stack);
-
-    // Default Error - frontend translates by key
+    const upstreamStatus = err.response?.status;
     let statusCode = 500;
     let errorKey = 'internal_error';
-    let details = null;
 
-    // Handle specific error types
-    if (err.message === 'Invalid Game Data received from MLB API') {
-        statusCode = 502; // Bad Gateway (upstream data issue)
+    if (upstreamStatus === 404) {
+        statusCode = 404;
+        errorKey = 'game_not_found';
+    } else if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
+        statusCode = 504;
+        errorKey = 'upstream_timeout';
+    } else if (upstreamStatus || err.isAxiosError || err.message?.startsWith('Invalid Game Data')) {
+        statusCode = 502;
         errorKey = 'invalid_mlb_data';
     }
 
-    // Development details
-    if (process.env.NODE_ENV === 'development') {
-        details = err.message;
-    }
+    console.error(`[api] ${req.method} ${req.originalUrl} → ${statusCode} ${errorKey}: ${err.message}`);
 
+    res.set('Cache-Control', 'no-store');
     res.status(statusCode).json({
         error: errorKey,
-        details: details
+        details: process.env.NODE_ENV === 'development' ? err.message : null
     });
 };
 
