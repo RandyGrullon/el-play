@@ -1,4 +1,4 @@
-const { teamLogo, teamColor, teamAbbrev, teamFlag } = require('./teams');
+const { teamLogo, teamColor, teamAbbrev, teamFlag, findTeam } = require('./teams');
 
 // Convierte las respuestas crudas de MLB StatsAPI al formato compacto que usa la app.
 // Las descripciones se dejan en inglés con su código (eventType, call.code, type.code):
@@ -87,7 +87,8 @@ const toAtBat = (play, index) => {
         outs: play.count?.outs ?? null,
         pitches: events.filter((event) => event.isPitch).map(toPitch),
         actions: events
-            .filter((event) => !event.isPitch && event.type === 'action' && event.details?.description)
+            // Sin avisos internos de MLB ("Status Change - Warmup", game_advisory)
+            .filter((event) => !event.isPitch && event.type === 'action' && event.details?.description && event.details.eventType !== 'game_advisory' && !/^Status Change/.test(event.details.description))
             .map((event) => ({ event: event.details.eventType || null, desc: event.details.description }))
     };
 };
@@ -135,7 +136,7 @@ const transformGame = (feed) => {
         const box = boxscore.teams?.[side]?.team || {};
         const line = linescore.teams?.[side] || {};
         const id = info.id ?? box.id;
-        const name = info.name || box.name || '';
+        const name = findTeam(id, leagueKey)?.name || info.name || box.name || '';
         return {
             id,
             name,
@@ -356,7 +357,8 @@ const transformScheduleGame = (game, leagueKey) => {
     const side = (key) => {
         const source = game.teams?.[key] || {};
         const id = source.team?.id;
-        const name = source.team?.name || '';
+        // MLB escribe sin tildes ("Aguilas Cibaenas"); se prefiere el nombre configurado
+        const name = findTeam(id, leagueKey)?.name || source.team?.name || '';
         const pitcher = source.probablePitcher;
         return {
             id,

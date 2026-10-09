@@ -39,7 +39,7 @@ const scheduleRange = (league, now = Date.now()) => {
 const fetchSchedule = async (leagueKey = 'lidom') => {
     const league = leagueOf(leagueKey);
     const { startDate, endDate } = scheduleRange(league);
-    const params = { sportId: league.sportId, leagueId: league.leagueId, startDate, endDate, hydrate: 'linescore,probablePitcher,decisions' };
+    const params = { sportId: league.sportId, leagueId: league.leagueId, startDate, endDate, hydrate: 'linescore,probablePitcher,decisions,team' };
 
     let data;
     try {
@@ -68,9 +68,9 @@ const standingRow = (record, leagueKey) => ({
     rank: Number(record.rank || record.leagueRank || record.divisionRank) || 0,
     team: {
         id: record.team.id,
-        // standings trae el nombre corto ("Aguilas"); se usa el completo si está configurado
+        // con hydrate=team llegan name completo, teamName corto ("Aguilas") y la sigla oficial
         name: findTeam(record.team.id, leagueKey)?.name || record.team.name,
-        shortName: record.team.name,
+        shortName: record.team.teamName || record.team.name,
         abbrev: teamAbbrev(record.team.id, leagueKey, record.team.abbreviation, record.team.name),
         logo: teamLogo(record.team.id),
         color: teamColor(record.team.id, leagueKey),
@@ -104,7 +104,7 @@ const sortByRecord = (rows) => {
 const sortByRank = (rows) => withGamesBack(rows.sort((a, b) => a.rank - b.rank || b.wins - a.wins));
 
 const getStandings = (league, season, standingsTypes) =>
-    http.mlbGet(`${MLB_API_BASE}/standings`, { leagueId: league.leagueId, season, standingsTypes });
+    http.mlbGet(`${MLB_API_BASE}/standings`, { leagueId: league.leagueId, season, standingsTypes, hydrate: 'team' });
 
 /** Pide posiciones de la temporada vigente; si aún no empezó, devuelve la anterior marcada como tal. */
 const withSeasonFallback = async (leagueKey, load, isEmpty) => {
@@ -120,7 +120,7 @@ const loadLidomStandings = async (league, season, regularSeasonGames) => {
     const [regular, postseason, finals] = await Promise.all([
         getStandings(league, season, 'regularSeason'),
         getStandings(league, season, 'postseason').catch(() => ({ records: [] })),
-        http.mlbGet(`${MLB_API_BASE}/schedule`, { sportId: league.sportId, leagueId: league.leagueId, season, gameTypes: 'W' }).catch(() => ({ dates: [] }))
+        http.mlbGet(`${MLB_API_BASE}/schedule`, { sportId: league.sportId, leagueId: league.leagueId, season, gameTypes: 'W', hydrate: 'team' }).catch(() => ({ dates: [] }))
     ]);
 
     const rows = (response) => sortByRank((response?.records?.[0]?.teamRecords || []).map((record) => standingRow(record, 'lidom')));
@@ -166,14 +166,55 @@ const loadLidomStandings = async (league, season, regularSeasonGames) => {
     };
 };
 
+// /standings no tiene datos del Clásico 2026: si viene vacío, cada grupo se arma con los juegos de la
+// fase de grupos (gameType F, description "Pool A"…)
+const poolsFromGames = (games, leagueKey) => {
+    const pools = {};
+    for (const game of games) {
+        const pool = game.description || game.teams?.away?.team?.division?.name;
+        if (!pool) continue;
+        const table = (pools[pool] ||= new Map());
+        const final = game.status?.abstractGameState === 'Final';
+        for (const [key, other] of [['away', 'home'], ['home', 'away']]) {
+            const side = game.teams?.[key];
+            if (!side?.team?.id) continue;
+            if (!table.has(side.team.id)) {
+                table.set(side.team.id, { ...standingRow({ team: side.team, wins: 0, losses: 0, gamesPlayed: 0 }, leagueKey), runDiff: 0 });
+            }
+            if (!final || typeof side.isWinner !== 'boolean') continue;
+            const row = table.get(side.team.id);
+            if (side.isWinner) row.wins += 1;
+            else row.losses += 1;
+            row.gamesPlayed = row.wins + row.losses;
+            row.pct = (row.wins / row.gamesPlayed).toFixed(3).replace(/^0/, '');
+            row.runDiff += (side.score ?? 0) - (game.teams[other]?.score ?? 0);
+        }
+    }
+    return Object.fromEntries(
+        Object.keys(pools)
+            .sort()
+            .map((pool) => {
+                const rows = [...pools[pool].values()].sort((a, b) => b.wins - a.wins || a.losses - b.losses || b.runDiff - a.runDiff);
+                rows.forEach((row, index) => { row.rank = index + 1; });
+                return [pool, withGamesBack(rows)];
+            })
+    );
+};
+
 const loadPoolStandings = async (league, season) => {
-    const response = await getStandings(league, season, 'regularSeason');
+    const response = await getStandings(league, season, 'regularSeason').catch(() => ({ records: [] }));
     const pools = {};
     for (const record of response?.records || []) {
         const name = record.division?.name || record.league?.name || 'Pool';
         pools[name] = sortByRank((record.teamRecords || []).map((teamRecord) => standingRow(teamRecord, league.id)));
     }
-    return { type: 'wbc', league: 'wbc', pools };
+    if (Object.keys(pools).length) return { type: 'wbc', league: 'wbc', pools };
+
+    const schedule = await http
+        .mlbGet(`${MLB_API_BASE}/schedule`, { sportId: league.sportId, leagueId: league.leagueId, season, gameTypes: 'F', hydrate: 'team' })
+        .catch(() => ({ dates: [] }));
+    const games = (schedule?.dates || []).flatMap((date) => date.games || []);
+    return { type: 'wbc', league: 'wbc', pools: poolsFromGames(games, league.id) };
 };
 
 const loadTournamentStandings = async (league, season) => {
@@ -265,6 +306,7 @@ const fetchLeaders = async (leagueKey = 'lidom') => {
 };
 
 module.exports = {
+    poolsFromGames,
     fetchGame,
     fetchSchedule,
     fetchStandings,

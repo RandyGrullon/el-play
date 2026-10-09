@@ -5,6 +5,7 @@ import type { GameState, TeamBase } from '../../types';
 import { finalLabel, inningName, isNotPlayed, stateName } from '../../lib/baseball';
 import { formatShortDate, formatTime } from '../../lib/format';
 import { usePreferences } from '../../store/preferences';
+import { teamDisplayName } from '../../lib/teams';
 import { TeamLogo } from '../ui/TeamLogo';
 import { Bases, OutsDots } from './Bases';
 
@@ -70,7 +71,7 @@ export const GameHeader: React.FC<{ model: HeaderModel }> = ({ model }) => {
 };
 
 const TeamSide: React.FC<{ team: HeaderModel['away']; align: 'start' | 'end'; showScore: boolean; dim: boolean }> = ({ team, align, showScore, dim }) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const { favoriteTeamId, toggleFavoriteTeam } = usePreferences();
     const favorite = favoriteTeamId === team.id;
     const end = align === 'end';
@@ -79,7 +80,7 @@ const TeamSide: React.FC<{ team: HeaderModel['away']; align: 'start' | 'end'; sh
         <div className={`flex min-w-0 flex-col ${end ? 'items-end text-right' : 'items-start'}`}>
             <TeamLogo team={team} size={44} />
             <span className="display mt-1 text-2xl leading-none">{team.abbrev}</span>
-            <span className="mt-0.5 hidden max-w-full truncate text-xs text-muted sm:block">{team.name}</span>
+            <span className="mt-0.5 hidden max-w-full truncate text-xs text-muted sm:block">{teamDisplayName(team, i18n.language)}</span>
             <span className={`mt-1 flex items-center gap-1 text-[11px] text-faint ${end ? 'flex-row-reverse' : ''}`}>
                 {team.record && <span className="num">{team.record.wins}-{team.record.losses}</span>}
                 <button

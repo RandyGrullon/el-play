@@ -12,7 +12,7 @@ import { PullToRefresh } from '../components/common/PullToRefresh';
 type Phase = 'regular' | 'roundRobin' | 'final';
 
 export const StandingsPage: React.FC = () => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const { activeLeague } = useLeague();
     const standings = useStandings(activeLeague);
     const data = standings.data;
@@ -69,7 +69,7 @@ export const StandingsPage: React.FC = () => {
                     <div className="grid gap-4 md:grid-cols-2">
                         {Object.entries(data.pools).map(([pool, rows]) => (
                             <section key={pool} className="card overflow-hidden">
-                                <StandingsTable rows={rows} title={pool} cutoff={2} />
+                                <StandingsTable rows={rows} title={i18n.language.startsWith('en') ? pool : pool.replace(/^Pool\b/, 'Grupo')} cutoff={2} />
                             </section>
                         ))}
                         {Object.keys(data.pools).length === 0 && <p className="text-sm text-muted">{t('standings.noData')}</p>}

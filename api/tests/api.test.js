@@ -187,7 +187,7 @@ describe('posiciones y líderes con datos reales de LIDOM 2025', () => {
         const standings = await fetchStandings('lidom');
         expect(standings.season).toBe(2025);
         expect(standings.regular[0]).toMatchObject({ rank: 1, wins: 32, losses: 17, gamesBack: '-' });
-        expect(standings.regular[0].team.name).toBe('Aguilas Cibaeñas');
+        expect(standings.regular[0].team.name).toBe('Águilas Cibaeñas');
         expect(standings.regular[1].gamesBack).toBe('5');
         expect(standings.roundRobinInfo.games).toBe(18);
         expect(standings.final[0]).toMatchObject({ wins: 4, losses: 1 }); // Escogido campeón; los pospuestos no cuentan
@@ -235,5 +235,29 @@ describe('datos simulados (MLB_MOCK)', () => {
         expect(game.state).toBe('live');
         expect(game.matchup?.pitcher.name).toBeTruthy();
         expect(game.atBats.length).toBeGreaterThan(10);
+    });
+});
+
+describe('grupos del Clásico calculados desde los juegos', () => {
+    it('cuenta ganados/perdidos por grupo y desempata por diferencia de carreras', () => {
+        const { poolsFromGames } = require('../services/mlbService');
+        const team = (id, name, abbreviation) => ({ id, name, abbreviation });
+        const game = (pool, away, home, awayScore, homeScore, state = 'Final') => ({
+            description: pool,
+            status: { abstractGameState: state },
+            teams: {
+                away: { team: away, score: awayScore, isWinner: state === 'Final' ? awayScore > homeScore : undefined },
+                home: { team: home, score: homeScore, isWinner: state === 'Final' ? homeScore > awayScore : undefined }
+            }
+        });
+        const dom = team(805, 'Dominican Republic', 'DOM');
+        const ven = team(944, 'Venezuela', 'VEN');
+        const ned = team(878, 'Netherlands', 'NED');
+        const pools = poolsFromGames(
+            [game('Pool D', dom, ven, 5, 1), game('Pool D', ven, ned, 9, 2), game('Pool D', ned, dom, 0, 3), game('Pool D', ven, dom, 0, 0, 'Preview')],
+            'wbc'
+        );
+        expect(Object.keys(pools)).toEqual(['Pool D']);
+        expect(pools['Pool D'].map((row) => `${row.team.abbrev} ${row.wins}-${row.losses} ${row.gamesBack}`)).toEqual(['DOM 2-0 -', 'VEN 1-1 1', 'NED 0-2 2']);
     });
 });

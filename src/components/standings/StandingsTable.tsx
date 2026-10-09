@@ -4,6 +4,7 @@ import { Star } from 'lucide-react';
 import type { StandingRow } from '../../types';
 import { usePreferences } from '../../store/preferences';
 import { TeamLogo } from '../ui/TeamLogo';
+import { teamDisplayName } from '../../lib/teams';
 
 interface StandingsTableProps {
     rows: StandingRow[];
@@ -14,8 +15,11 @@ interface StandingsTableProps {
 }
 
 export const StandingsTable: React.FC<StandingsTableProps> = ({ rows, title, cutoff, compact = false }) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const { favoriteTeamId, toggleFavoriteTeam } = usePreferences();
+    // El Clásico no trae racha ni últimos 10: esas columnas se ocultan si nadie las tiene
+    const showLastTen = !compact && rows.some((row) => row.lastTen);
+    const showStreak = !compact && rows.some((row) => row.streak && row.streak !== '-');
 
     if (!rows.length) return <p className="px-4 py-8 text-center text-sm text-muted">{t('standings.noData')}</p>;
 
@@ -31,8 +35,8 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({ rows, title, cut
                         <th className="px-2 py-2 text-right font-semibold">{t('standings.l')}</th>
                         {!compact && <th className="px-2 py-2 text-right font-semibold">{t('standings.pct')}</th>}
                         <th className="px-2 py-2 text-right font-semibold">{t('standings.gb')}</th>
-                        {!compact && <th className="hidden px-2 py-2 text-right font-semibold sm:table-cell">{t('standings.last10')}</th>}
-                        {!compact && <th className="px-2 py-2 pr-4 text-right font-semibold">{t('standings.streak')}</th>}
+                        {showLastTen && <th className="hidden px-2 py-2 text-right font-semibold sm:table-cell">{t('standings.last10')}</th>}
+                        {showStreak && <th className="px-2 py-2 pr-4 text-right font-semibold">{t('standings.streak')}</th>}
                     </tr>
                 </thead>
                 <tbody>
@@ -51,7 +55,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({ rows, title, cut
                                                 ) : (
                                                     <>
                                                         <span className="sm:hidden">{row.team.abbrev}</span>
-                                                        <span className="hidden sm:inline">{row.team.name}</span>
+                                                        <span className="hidden sm:inline">{teamDisplayName(row.team, i18n.language)}</span>
                                                     </>
                                                 )}
                                             </span>
@@ -72,9 +76,9 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({ rows, title, cut
                                 <td className="num px-2 text-right font-semibold">{row.wins}</td>
                                 <td className="num px-2 text-right">{row.losses}</td>
                                 {!compact && <td className="num px-2 text-right text-muted">{row.pct}</td>}
-                                <td className={`num px-2 text-right text-muted ${compact ? 'pr-4' : ''}`}>{row.gamesBack}</td>
-                                {!compact && <td className="num hidden px-2 text-right text-muted sm:table-cell">{row.lastTen ? `${row.lastTen.wins}-${row.lastTen.losses}` : '—'}</td>}
-                                {!compact && (
+                                <td className={`num px-2 text-right text-muted ${compact || !showStreak ? 'pr-4' : ''}`}>{row.gamesBack}</td>
+                                {showLastTen && <td className="num hidden px-2 text-right text-muted sm:table-cell">{row.lastTen ? `${row.lastTen.wins}-${row.lastTen.losses}` : '—'}</td>}
+                                {showStreak && (
                                     <td className={`num px-2 pr-4 text-right font-semibold ${row.streak.startsWith('W') ? 'text-ball' : row.streak.startsWith('L') ? 'text-strike' : 'text-muted'}`}>
                                         {streakLabel(row.streak, t)}
                                     </td>

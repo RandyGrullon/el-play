@@ -56,7 +56,7 @@ const LEAGUES = {
 
 // LIDOM Team Configuration
 const LIDOM_TEAMS = {
-    667: { abbrev: 'AGU', name: 'Aguilas Cibaeñas', logo: 'https://www.mlbstatic.com/team-logos/667.svg', color: '#FDB927' }, // Yellow
+    667: { abbrev: 'AGU', name: 'Águilas Cibaeñas', logo: 'https://www.mlbstatic.com/team-logos/667.svg', color: '#FDB927' }, // Yellow
     668: { abbrev: 'TOR', name: 'Toros del Este', logo: 'https://www.mlbstatic.com/team-logos/668.svg', color: '#FA4616' }, // Orange
     669: { abbrev: 'EST', name: 'Estrellas Orientales', logo: 'https://www.mlbstatic.com/team-logos/669.svg', color: '#00be66' }, // Green (ID real en MLB StatsAPI)
     670: { abbrev: 'GIG', name: 'Gigantes del Cibao', logo: 'https://www.mlbstatic.com/team-logos/670.svg', color: '#aa1141' }, // Wine
@@ -67,6 +67,13 @@ const LIDOM_TEAMS = {
 
 // Serie del Caribe Team Configuration - Colores por país con banderas
 const SDC_TEAMS = {
+    // IDs reales de la Serie del Caribe 2026 en MLB StatsAPI (season 2025): juegan selecciones, no clubes
+    1191: { abbrev: 'DOM', name: 'República Dominicana', color: '#002D62', flag: '🇩🇴', country: 'DOM' },
+    1192: { abbrev: 'MXR', name: 'México Rojo', color: '#CE1126', flag: '🇲🇽', country: 'MEX' },
+    6487: { abbrev: 'MXV', name: 'México Verde', color: '#006341', flag: '🇲🇽', country: 'MEX' },
+    690: { abbrev: 'PUR', name: 'Puerto Rico', color: '#ED0A3F', flag: '🇵🇷', country: 'PUR' },
+    5440: { abbrev: 'PAN', name: 'Panamá', color: '#DA121A', flag: '🇵🇦', country: 'PAN' },
+
     // República Dominicana - Azul 🇩🇴
     667: { abbrev: 'AGU', name: 'Águilas Cibaeñas', color: '#002D62', flag: '🇩🇴', country: 'DOM' },
     668: { abbrev: 'TOR', name: 'Toros del Este', color: '#002D62', flag: '🇩🇴', country: 'DOM' },
@@ -145,6 +152,7 @@ const WBC_TEAMS = {
     840: { abbrev: 'ISR', name: 'Israel', color: '#0038B8', flag: '🇮🇱' },
     
     // Países adicionales que pueden clasificar
+    776: { abbrev: 'BRA', name: 'Brazil', color: '#009739', flag: '🇧🇷' }, // ID real del Clásico 2026
     4960: { abbrev: 'BRA', name: 'Brazil', color: '#009739', flag: '🇧🇷' },
     4961: { abbrev: 'ARG', name: 'Argentina', color: '#74ACDF', flag: '🇦🇷' },
     4962: { abbrev: 'RSA', name: 'South Africa', color: '#007749', flag: '🇿🇦' },

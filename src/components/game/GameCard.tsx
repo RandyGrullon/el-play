@@ -6,6 +6,7 @@ import type { ScheduleGame, ScheduleTeam } from '../../types';
 import { finalLabel, inningName, isNotPlayed, stateName } from '../../lib/baseball';
 import { formatCountdown, formatTime } from '../../lib/format';
 import { usePrefetchGame } from '../../lib/queries';
+import { teamDisplayName } from '../../lib/teams';
 import { usePreferences } from '../../store/preferences';
 import { TeamLogo } from '../ui/TeamLogo';
 import { Bases, OutsDots } from './Bases';
@@ -27,7 +28,7 @@ export const GameCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
             <TeamLogo team={team} size={30} />
             <div className="min-w-0 flex-1">
                 <p className={`flex items-center gap-1.5 truncate font-semibold ${final && !team.isWinner ? 'text-muted' : ''}`}>
-                    <span className="truncate">{team.name}</span>
+                    <span className="truncate">{teamDisplayName(team, i18n.language)}</span>
                     {favoriteTeamId === team.id && <Star className="h-3.5 w-3.5 shrink-0 fill-gold text-gold" aria-label={t('teams.favorite')} />}
                     {batting && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-live" aria-label={t('game.atBatNow')} />}
                 </p>

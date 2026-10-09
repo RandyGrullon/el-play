@@ -75,6 +75,9 @@ describe('textos de béisbol', () => {
         expect(describePlay('Enmanuel Valdez homers (1) on a fly ball to right field. Yefri Pérez scores.', 'es')).toBe(
             'Enmanuel Valdez conecta jonrón (1) de elevado al jardín derecho. Yefri Pérez anota.'
         );
+        expect(describePlay('Enmanuel Valdez hits a grand slam (1) to right center field. Magneuris Sierra scores.', 'es')).toBe(
+            'Enmanuel Valdez conecta grand slam (1) al jardín derecho-central. Magneuris Sierra anota.'
+        );
         expect(describePlay('Ronny Peña called out on strikes.', 'en')).toBe('Ronny Peña called out on strikes.');
     });
 

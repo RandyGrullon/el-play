@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowRight, CalendarX2, Gamepad2 } from 'lucide-react';
 import type { ScheduleGame } from '../types';
 import { useSchedule, useStandings } from '../lib/queries';
-import { dayKey, dayRange, formatLongDate, todayKey } from '../lib/format';
+import { dayKey, dayRange, formatLongDate, seasonLabel, todayKey } from '../lib/format';
 import { useLeague } from '../store/LeagueContext';
 import { usePreferences } from '../store/preferences';
 import { useGameAlerts } from '../hooks/useGameAlerts';
@@ -128,7 +128,10 @@ const StandingsAside: React.FC = () => {
     return (
         <section className="card sticky top-20 overflow-hidden">
             <header className="flex items-center justify-between border-b border-line/10 px-4 py-3">
-                <h2 className="eyebrow">{t('nav.standings')}</h2>
+                <h2 className="eyebrow">
+                    {t('nav.standings')}
+                    {data && <span className="ml-1.5 normal-case tracking-normal text-faint">{seasonLabel(data.season, activeLeague)}</span>}
+                </h2>
                 <Link to="/posiciones" className="text-xs font-semibold text-accent-ink">{t('common.seeAll')}</Link>
             </header>
             {standings.isPending ? <div className="space-y-2 p-4">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-6" />)}</div> : <StandingsTable rows={rows} compact />}
