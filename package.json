@@ -11,7 +11,8 @@
         "server": "nodemon --watch api --watch server api/index.js",
         "server:mock": "nodemon --watch api --watch server api/index.js --mock",
         "client": "vite",
-        "build": "node generate-version.js && tsc && vite build",
+        "build": "node generate-version.js && tsc -p tsconfig.build.json && vite build",
+        "typecheck": "tsc --noEmit",
         "preview": "vite preview",
         "test": "vitest run",
         "test:watch": "vitest"
