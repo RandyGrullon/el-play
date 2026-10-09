@@ -1,19 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>El Play · Béisbol en vivo</title>
+  <meta name="description" content="LIDOM, Serie del Caribe y Clásico Mundial en vivo: marcador, zona de strike pitcheo a pitcheo, jugadas, box score, posiciones y líderes.">
+  <meta name="theme-color" content="#090c11">
   <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>El Play</title>
-  <meta name="description" content="Sigue los juegos de la LIDOM en vivo, calendario y estadísticas.">
-  <meta name="theme-color" content="#09090b">
-  <link rel="apple-touch-icon" href="/logo.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="preconnect" href="https://www.mlbstatic.com" crossorigin>
+  <style>
+    /* Fondo inmediato mientras carga el JS (la animación de entrada la pinta React) */
+    html { background: #f4f2ed; }
+    @media (prefers-color-scheme: dark) { html:not([data-theme='light']) { background: #090c11; } }
+    html[data-theme='dark'] { background: #090c11; }
+  </style>
+  <script>
+    // Aplica el tema guardado antes de pintar (evita el destello claro/oscuro)
+    try {
+      var theme = JSON.parse(localStorage.getItem('el-play-theme') || '"system"');
+      if (theme === 'light' || theme === 'dark') document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) {}
+  </script>
 </head>
 
 <body>
   <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
+  <script type="module" src="/src/main.tsx"></script>
 </body>
 
 </html>

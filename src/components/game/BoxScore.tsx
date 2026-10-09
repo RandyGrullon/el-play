@@ -1,120 +1,118 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Team } from '../../types';
+import type { GameDetail } from '../../types';
+import { Segmented } from '../ui/Segmented';
+import { TeamLogo } from '../ui/TeamLogo';
 
-interface BoxScoreProps {
-    home: Team;
-    away: Team;
-}
-
-export const BoxScore: React.FC<BoxScoreProps> = ({ home, away }) => {
+export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
     const { t } = useTranslation();
-    const [activeTab, setActiveTab] = useState<'home' | 'away'>('away'); // Default to away team (usually bats first)
-
-    const activeTeam = activeTab === 'home' ? home : away;
-
-    const batters = activeTeam.players?.filter(p => p.stats.batting && Object.keys(p.stats.batting).length > 0 && p.battingOrder) || [];
-    const pitchers = activeTeam.players?.filter(p => p.stats.pitching && Object.keys(p.stats.pitching).length > 0) || [];
+    const [side, setSide] = useState<'away' | 'home'>(game.inning && !game.inning.isTop ? 'home' : 'away');
+    const team = game[side];
+    const box = game.box[side];
 
     return (
-        <div className="space-y-6">
-            {/* Team Tabs */}
-            <div className="flex p-1 bg-zinc-900/50 rounded-xl border border-white/5">
-                <button
-                    onClick={() => setActiveTab('away')}
-                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeTab === 'away'
-                        ? 'bg-zinc-800 text-white shadow-lg'
-                        : 'text-zinc-500 hover:text-zinc-300'
-                        }`}
-                >
-                    {away.name}
-                </button>
-                <button
-                    onClick={() => setActiveTab('home')}
-                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeTab === 'home'
-                        ? 'bg-zinc-800 text-white shadow-lg'
-                        : 'text-zinc-500 hover:text-zinc-300'
-                        }`}
-                >
-                    {home.name}
-                </button>
-            </div>
+        <div className="space-y-4">
+            <Segmented
+                label={t('box.team')}
+                value={side}
+                onChange={setSide}
+                className="w-full justify-center"
+                options={(['away', 'home'] as const).map((key) => ({
+                    value: key,
+                    label: (
+                        <span className="inline-flex items-center gap-2">
+                            <TeamLogo team={game[key]} size={18} />
+                            {game[key].abbrev}
+                        </span>
+                    )
+                }))}
+            />
 
-            {/* Batting Stats */}
-            <div className="overflow-x-auto">
-                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 px-2">{t('boxScore.batting')}</h3>
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="border-b border-white/10 text-[10px] text-zinc-500 uppercase tracking-wider">
-                            <th className="p-2 font-bold w-full">{t('boxScore.player')}</th>
-                            <th className="p-2 font-bold text-center">AB</th>
-                            <th className="p-2 font-bold text-center">R</th>
-                            <th className="p-2 font-bold text-center">H</th>
-                            <th className="p-2 font-bold text-center">RBI</th>
-                            <th className="p-2 font-bold text-center">BB</th>
-                            <th className="p-2 font-bold text-center">SO</th>
-                            <th className="p-2 font-bold text-center">AVG</th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-xs font-medium text-zinc-300">
-                        {batters.map((player) => (
-                            <tr key={player.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                <td className="p-2">
-                                    <div className="flex flex-col">
-                                        <span className="text-white">{player.name}</span>
-                                        <span className="text-[10px] text-zinc-500">{player.position}</span>
-                                    </div>
-                                </td>
-                                <td className="p-2 text-center">{player.stats.batting.atBats}</td>
-                                <td className="p-2 text-center">{player.stats.batting.runs}</td>
-                                <td className="p-2 text-center">{player.stats.batting.hits}</td>
-                                <td className="p-2 text-center">{player.stats.batting.rbi}</td>
-                                <td className="p-2 text-center">{player.stats.batting.baseOnBalls}</td>
-                                <td className="p-2 text-center">{player.stats.batting.strikeOuts}</td>
-                                <td className="p-2 text-center">{player.stats.batting.avg}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            <section className="card overflow-hidden" aria-label={t('box.batting')}>
+                <h2 className="eyebrow border-b border-line/10 px-4 py-3">{t('box.batting')} · {team.name}</h2>
+                {box.batters.length === 0 ? (
+                    <p className="px-4 py-8 text-center text-sm text-muted">{t('box.noData')}</p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[460px] text-sm">
+                            <thead>
+                                <tr className="text-[11px] uppercase tracking-wide text-faint">
+                                    <th className="px-4 py-2 text-left font-semibold">{t('box.player')}</th>
+                                    {['ab', 'r', 'h', 'rbi', 'bb', 'k', 'avg'].map((key) => (
+                                        <th key={key} className="px-2 py-2 text-right font-semibold">{t(`stats.${key}`)}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-line/10">
+                                {box.batters.map((batter) => (
+                                    <tr key={batter.id}>
+                                        <td className={`py-2 pr-2 ${batter.sub ? 'pl-8' : 'pl-4'}`}>
+                                            <span className="font-medium">{batter.name}</span>
+                                            <span className="ml-1.5 text-xs text-faint">{batter.pos}</span>
+                                            {batter.hr > 0 && <span className="ml-1.5 rounded bg-gold/15 px-1 text-[10px] font-bold text-gold">HR{batter.hr > 1 ? ` ${batter.hr}` : ''}</span>}
+                                        </td>
+                                        <td className="num px-2 text-right">{batter.ab}</td>
+                                        <td className="num px-2 text-right">{batter.r}</td>
+                                        <td className={`num px-2 text-right ${batter.h ? 'font-semibold' : ''}`}>{batter.h}</td>
+                                        <td className="num px-2 text-right">{batter.rbi}</td>
+                                        <td className="num px-2 text-right">{batter.bb}</td>
+                                        <td className="num px-2 text-right">{batter.k}</td>
+                                        <td className="num px-2 pr-4 text-right text-muted">{batter.avg ?? '—'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            <tfoot>
+                                <tr className="border-t border-line/15 font-semibold">
+                                    <td className="px-4 py-2">{t('box.totals')}</td>
+                                    {(['ab', 'r', 'h', 'rbi', 'bb', 'k'] as const).map((key) => (
+                                        <td key={key} className="num px-2 text-right">{box.totals[key] ?? '—'}</td>
+                                    ))}
+                                    <td className="num px-2 pr-4 text-right text-muted">{box.totals.avg ?? ''}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                )}
+                {box.totals.lob !== null && <p className="px-4 pb-3 text-xs text-muted">{t('box.lob', { count: box.totals.lob })}</p>}
+            </section>
 
-            {/* Pitching Stats */}
-            <div className="overflow-x-auto">
-                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 px-2">{t('boxScore.pitching')}</h3>
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="border-b border-white/10 text-[10px] text-zinc-500 uppercase tracking-wider">
-                            <th className="p-2 font-bold w-full">{t('boxScore.player')}</th>
-                            <th className="p-2 font-bold text-center">IP</th>
-                            <th className="p-2 font-bold text-center">H</th>
-                            <th className="p-2 font-bold text-center">R</th>
-                            <th className="p-2 font-bold text-center">ER</th>
-                            <th className="p-2 font-bold text-center">BB</th>
-                            <th className="p-2 font-bold text-center">SO</th>
-                            <th className="p-2 font-bold text-center">ERA</th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-xs font-medium text-zinc-300">
-                        {pitchers.map((player) => (
-                            <tr key={player.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                <td className="p-2">
-                                    <div className="flex flex-col">
-                                        <span className="text-white">{player.name}</span>
-                                        <span className="text-[10px] text-zinc-500">{player.position}</span>
-                                    </div>
-                                </td>
-                                <td className="p-2 text-center">{player.stats.pitching.inningsPitche}</td>
-                                <td className="p-2 text-center">{player.stats.pitching.hits}</td>
-                                <td className="p-2 text-center">{player.stats.pitching.runs}</td>
-                                <td className="p-2 text-center">{player.stats.pitching.earnedRuns}</td>
-                                <td className="p-2 text-center">{player.stats.pitching.baseOnBalls}</td>
-                                <td className="p-2 text-center">{player.stats.pitching.strikeOuts}</td>
-                                <td className="p-2 text-center">{player.stats.pitching.era}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            <section className="card overflow-hidden" aria-label={t('box.pitching')}>
+                <h2 className="eyebrow border-b border-line/10 px-4 py-3">{t('box.pitching')} · {team.name}</h2>
+                {box.pitchers.length === 0 ? (
+                    <p className="px-4 py-8 text-center text-sm text-muted">{t('box.noData')}</p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[500px] text-sm">
+                            <thead>
+                                <tr className="text-[11px] uppercase tracking-wide text-faint">
+                                    <th className="px-4 py-2 text-left font-semibold">{t('box.pitcher')}</th>
+                                    {['ip', 'h', 'r', 'er', 'bb', 'k', 'pitches', 'era'].map((key) => (
+                                        <th key={key} className="px-2 py-2 text-right font-semibold">{t(`stats.${key}`)}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-line/10">
+                                {box.pitchers.map((pitcher) => (
+                                    <tr key={pitcher.id}>
+                                        <td className="px-4 py-2">
+                                            <span className="font-medium">{pitcher.name}</span>
+                                            {pitcher.note && <span className="ml-1.5 text-xs font-semibold text-accent-ink">{pitcher.note}</span>}
+                                        </td>
+                                        <td className="num px-2 text-right">{pitcher.ip}</td>
+                                        <td className="num px-2 text-right">{pitcher.h}</td>
+                                        <td className="num px-2 text-right">{pitcher.r}</td>
+                                        <td className="num px-2 text-right">{pitcher.er}</td>
+                                        <td className="num px-2 text-right">{pitcher.bb}</td>
+                                        <td className="num px-2 text-right">{pitcher.k}</td>
+                                        <td className="num px-2 text-right">{pitcher.np !== null ? `${pitcher.np}${pitcher.st !== null ? `-${pitcher.st}` : ''}` : '—'}</td>
+                                        <td className="num px-2 pr-4 text-right text-muted">{pitcher.era ?? '—'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </section>
         </div>
     );
 };

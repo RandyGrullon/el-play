@@ -1,64 +1,59 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { LEAGUE_COLORS, type LeagueId } from '../constants/leagues';
+import React, { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { LEAGUES, type LeagueConfig } from '../constants/leagues';
+import type { LeagueId } from '../types';
+import { readRawStorage, writeRawStorage } from './storage';
 
 export type LeagueType = LeagueId;
 
-interface LeagueConfig {
-    id: LeagueType;
-    name: string;
-    fullName: string;
-    sportId: number;
-    leagueId: number;
-    logo?: string;
-    color: string;
-}
-
 interface LeagueContextType {
-    activeLeague: LeagueType;
-    setActiveLeague: (league: LeagueType) => void;
+    activeLeague: LeagueId;
+    setActiveLeague: (league: LeagueId) => void;
     leagueConfig: LeagueConfig;
     leagues: LeagueConfig[];
 }
 
-const LEAGUES: LeagueConfig[] = [
-    { id: 'lidom', name: 'LIDOM', fullName: 'Liga Dominicana de Béisbol', sportId: 17, leagueId: 131, color: LEAGUE_COLORS.lidom, logo: '🇩🇴' },
-    { id: 'wbc', name: 'WBC', fullName: 'World Baseball Classic', sportId: 51, leagueId: 160, color: LEAGUE_COLORS.wbc, logo: '🌎' },
-    { id: 'sdc', name: 'SDC', fullName: 'Serie del Caribe', sportId: 17, leagueId: 162, color: LEAGUE_COLORS.sdc, logo: '🌴' }
-];
-
 const LeagueContext = createContext<LeagueContextType | undefined>(undefined);
 
+const hexToRgb = (hex: string) => {
+    const value = parseInt(hex.slice(1), 16);
+    return `${(value >> 16) & 255} ${(value >> 8) & 255} ${value & 255}`;
+};
+
 export const LeagueProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [activeLeague, setActiveLeagueState] = useState<LeagueType>(() => {
-        // Restore from localStorage
-        const saved = localStorage.getItem('activeLeague');
-        return (saved as LeagueType) || 'lidom';
+    const [activeLeague, setActive] = useState<LeagueId>(() => {
+        const saved = readRawStorage('activeLeague');
+        return LEAGUES.some((league) => league.id === saved) ? (saved as LeagueId) : 'lidom';
     });
 
-    const setActiveLeague = (league: LeagueType) => {
-        setActiveLeagueState(league);
-        localStorage.setItem('activeLeague', league);
-    };
+    const leagueConfig = LEAGUES.find((league) => league.id === activeLeague) || LEAGUES[0];
 
-    const leagueConfig = LEAGUES.find(l => l.id === activeLeague) || LEAGUES[0];
+    // El color de la liga vive en variables CSS: los componentes usan bg-accent / text-accent-ink
+    useEffect(() => {
+        const root = document.documentElement.style;
+        root.setProperty('--accent', hexToRgb(leagueConfig.color));
+        root.setProperty('--accent-ink-light', hexToRgb(leagueConfig.inkLight));
+        root.setProperty('--accent-ink-dark', hexToRgb(leagueConfig.inkDark));
+    }, [leagueConfig]);
 
-    return (
-        <LeagueContext.Provider value={{ 
-            activeLeague, 
-            setActiveLeague, 
+    const value = useMemo(
+        () => ({
+            activeLeague,
+            setActiveLeague: (league: LeagueId) => {
+                setActive(league);
+                writeRawStorage('activeLeague', league);
+            },
             leagueConfig,
-            leagues: LEAGUES 
-        }}>
-            {children}
-        </LeagueContext.Provider>
+            leagues: LEAGUES
+        }),
+        [activeLeague, leagueConfig]
     );
+
+    return <LeagueContext.Provider value={value}>{children}</LeagueContext.Provider>;
 };
 
 export const useLeague = (): LeagueContextType => {
     const context = useContext(LeagueContext);
-    if (!context) {
-        throw new Error('useLeague must be used within a LeagueProvider');
-    }
+    if (!context) throw new Error('useLeague must be used within a LeagueProvider');
     return context;
 };
 

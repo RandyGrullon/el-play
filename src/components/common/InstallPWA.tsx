@@ -1,127 +1,68 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Download, Share, PlusSquare, X } from 'lucide-react';
-import { useLeague } from '../../store/LeagueContext';
+import { Download, PlusSquare, Share, X } from 'lucide-react';
+
+interface InstallPromptEvent extends Event {
+    prompt: () => Promise<void>;
+    userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
 export const InstallPWA: React.FC = () => {
     const { t } = useTranslation();
-    const { leagueConfig } = useLeague();
-    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-    const [isVisible, setIsVisible] = useState(false);
+    const [deferred, setDeferred] = useState<InstallPromptEvent | null>(null);
     const [isIOS, setIsIOS] = useState(false);
-    const [showIOSInstructions, setShowIOSInstructions] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
 
     useEffect(() => {
-        // Check if it's iOS
-        const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-        setIsIOS(isIOSDevice);
-
-        // Check if already installed (standalone mode)
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
-
-        if (isIOSDevice && !isStandalone) {
-            setIsVisible(true);
-        }
-
-        const handler = (e: any) => {
-            // Prevent the mini-infobar from appearing on mobile
-            e.preventDefault();
-            // Stash the event so it can be triggered later.
-            setDeferredPrompt(e);
-            // Update UI notify the user they can install the PWA
-            setIsVisible(true);
+        const standalone = window.matchMedia?.('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone;
+        if (standalone) return;
+        setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent));
+        const handler = (event: Event) => {
+            event.preventDefault();
+            setDeferred(event as InstallPromptEvent);
         };
-
         window.addEventListener('beforeinstallprompt', handler);
-
-        return () => {
-            window.removeEventListener('beforeinstallprompt', handler);
-        };
+        return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
-    const handleInstallClick = async () => {
+    if (!deferred && !isIOS) return null;
+
+    const install = async () => {
         if (isIOS) {
-            setShowIOSInstructions(true);
+            setShowHelp(true);
             return;
         }
-
-        if (!deferredPrompt) return;
-
-        // Show the install prompt
-        deferredPrompt.prompt();
-
-        // Wait for the user to respond to the prompt
-        const { outcome } = await deferredPrompt.userChoice;
-
-        if (outcome === 'accepted') {
-            console.log('User accepted the install prompt');
-        } else {
-            console.log('User dismissed the install prompt');
-        }
-
-        // We've used the prompt, and can't use it again, throw it away
-        setDeferredPrompt(null);
-        setIsVisible(false);
+        if (!deferred) return;
+        await deferred.prompt();
+        await deferred.userChoice;
+        setDeferred(null);
     };
-
-    if (!isVisible) return null;
 
     return (
         <>
-            <button
-                onClick={handleInstallClick}
-                className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full transition-all duration-300 animate-in fade-in zoom-in"
-                style={{
-                    color: leagueConfig.color,
-                    backgroundColor: `${leagueConfig.color}1a`,
-                    borderWidth: 1,
-                    borderColor: `${leagueConfig.color}33`
-                }}
-            >
-                <Download className="w-3 h-3" />
-                <span>{t('installPWA.installApp')}</span>
+            <button type="button" onClick={install} className="rounded-full p-2 text-muted hover:bg-raised hover:text-ink" aria-label={t('install.button')} title={t('install.button')}>
+                <Download className="h-[18px] w-[18px]" />
             </button>
-
-            {/* iOS Instructions Modal */}
-            {showIOSInstructions && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in slide-in-from-bottom-10 duration-300 relative">
-                        <button
-                            onClick={() => setShowIOSInstructions(false)}
-                            className="absolute top-4 right-4 text-zinc-500 hover:text-white"
-                        >
-                            <X className="w-5 h-5" />
+            {showHelp && (
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center" onClick={() => setShowHelp(false)}>
+                    <div className="card relative w-full max-w-sm animate-fade-up p-5" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="install-title">
+                        <button type="button" onClick={() => setShowHelp(false)} className="absolute right-3 top-3 rounded-full p-1.5 text-muted hover:bg-raised" aria-label={t('common.close')}>
+                            <X className="h-4 w-4" />
                         </button>
-
-                        <div className="flex flex-col items-center text-center space-y-4">
-                            <div className="p-3 bg-zinc-800 rounded-xl">
-                                <Share className="w-6 h-6" style={{ color: leagueConfig.color }} />
-                            </div>
-
-                            <h3 className="text-lg font-bold text-white">{t('installPWA.installOnIOS')}</h3>
-
-                            <div className="space-y-4 text-sm text-zinc-400 text-left w-full bg-zinc-950/50 p-4 rounded-xl border border-white/5">
-                                <div className="flex items-center gap-3">
-                                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-800 text-white font-bold text-xs">1</span>
-                                    <span>{t('installPWA.step1')} <Share className="w-3 h-3 inline mx-1" /></span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-800 text-white font-bold text-xs">2</span>
-                                    <span>{t('installPWA.step2')} <PlusSquare className="w-3 h-3 inline mx-1" /></span>
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={() => setShowIOSInstructions(false)}
-                                className="w-full py-3 text-sm font-bold text-black rounded-xl transition-colors"
-                                style={{ backgroundColor: leagueConfig.color }}
-                            >
-                                {t('installPWA.gotIt')}
-                            </button>
-                        </div>
-
-                        {/* Little arrow pointing down for mobile context */}
-                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-zinc-900 border-r border-b border-zinc-800 rotate-45 sm:hidden"></div>
+                        <h2 id="install-title" className="display text-2xl">{t('install.iosTitle')}</h2>
+                        <ol className="mt-4 space-y-3 text-sm">
+                            <li className="flex items-center gap-3">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-raised text-xs font-bold">1</span>
+                                <span>{t('install.step1')} <Share className="mx-1 inline h-4 w-4" /></span>
+                            </li>
+                            <li className="flex items-center gap-3">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-raised text-xs font-bold">2</span>
+                                <span>{t('install.step2')} <PlusSquare className="mx-1 inline h-4 w-4" /></span>
+                            </li>
+                        </ol>
+                        <button type="button" onClick={() => setShowHelp(false)} className="mt-5 w-full rounded-xl bg-accent py-2.5 text-sm font-semibold text-white">
+                            {t('install.gotIt')}
+                        </button>
                     </div>
                 </div>
             )}

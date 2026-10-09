@@ -1,92 +1,61 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Inning, Team } from '../../types';
+import type { GameDetail } from '../../types';
+import { TeamLogo } from '../ui/TeamLogo';
 
-interface LineScoreProps {
-    innings: Inning[];
-    home: Team;
-    away: Team;
-}
-
-export const LineScore: React.FC<LineScoreProps> = ({ innings, home, away }) => {
+export const LineScore: React.FC<{ game: GameDetail }> = ({ game }) => {
     const { t } = useTranslation();
-    // Ensure we always show at least 9 innings
-    const totalInnings = Math.max(9, innings ? innings.length : 9);
-    const inningColumns = Array.from({ length: totalInnings }, (_, i) => i + 1);
+    const total = Math.max(game.scheduledInnings || 9, game.linescore.length);
+    const innings = Array.from({ length: total }, (_, index) => game.linescore[index] || { n: index + 1, away: null, home: null });
+    const current = game.state === 'live' ? game.inning?.n : null;
+
+    const cell = (value: number | null, inning: number, side: 'away' | 'home') => {
+        if (value !== null) return value;
+        // Baja de la última entrada sin jugar porque el home club iba ganando
+        if (game.state === 'final' && side === 'home' && inning === game.linescore.length) return 'x';
+        return '';
+    };
 
     return (
-        <div className="w-full">
-            <table className="w-full text-center border-collapse text-[10px] md:text-sm">
-                <thead>
-                    <tr className="border-b border-white/10 text-zinc-500 uppercase">
-                        <th className="py-2 text-left font-bold w-16 md:w-24">{t('lineScore.team')}</th>
-                        {inningColumns.map(num => (
-                            <th key={num} className="py-2 w-auto md:w-8 font-medium">{num}</th>
-                        ))}
-                        <th className="py-2 w-6 md:w-8 font-bold text-white bg-white/5">C</th>
-                        <th className="py-2 w-6 md:w-8 text-zinc-400">H</th>
-                        <th className="py-2 w-6 md:w-8 text-zinc-400">E</th>
-                    </tr>
-                </thead>
-                <tbody className="text-zinc-300 font-medium">
-                    {/* Away Team Row */}
-                    <tr className="border-b border-white/5">
-                        <td className="py-2 text-left">
-                            <div className="flex items-center gap-2">
-                                <img
-                                    src={away.logo}
-                                    alt={away.name}
-                                    loading="lazy"
-                                    className="w-5 h-5 md:w-6 md:h-6 object-contain"
-                                />
-                                <span className="font-bold text-white text-xs md:text-sm">
-                                    {away.abbreviation}
-                                </span>
-                            </div>
-                        </td>
-                        {inningColumns.map((num, i) => {
-                            const score = innings && innings[i] ? innings[i].away : (i < innings?.length ? 0 : '-');
+        <section className="card overflow-hidden" aria-label={t('lineScore.title')}>
+            <div className="overflow-x-auto scrollbar-none">
+                <table className="w-full min-w-[420px] text-center text-sm">
+                    <thead>
+                        <tr className="border-b border-line/10 text-[11px] text-faint">
+                            <th className="sticky left-0 bg-surface px-3 py-2 text-left font-semibold">{t('lineScore.team')}</th>
+                            {innings.map((inning) => (
+                                <th key={inning.n} className={`num w-7 py-2 font-semibold ${inning.n === current ? 'text-accent-ink' : ''}`}>{inning.n}</th>
+                            ))}
+                            <th className="num w-9 border-l border-line/10 py-2 font-bold text-ink">{t('lineScore.runs')}</th>
+                            <th className="num w-8 py-2 font-semibold">{t('lineScore.hits')}</th>
+                            <th className="num w-8 py-2 pr-2 font-semibold">{t('lineScore.errors')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {(['away', 'home'] as const).map((side) => {
+                            const team = game[side];
                             return (
-                                <td key={num} className="py-2 text-zinc-400">
-                                    {score !== undefined ? score : '-'}
-                                </td>
+                                <tr key={side} className="border-b border-line/5 last:border-0">
+                                    <th scope="row" className="sticky left-0 bg-surface px-3 py-2 text-left">
+                                        <span className="flex items-center gap-2">
+                                            <TeamLogo team={team} size={20} />
+                                            <span className="font-display text-base font-bold">{team.abbrev}</span>
+                                        </span>
+                                    </th>
+                                    {innings.map((inning) => (
+                                        <td key={inning.n} className={`num py-2 ${inning.n === current ? 'bg-accent/5 font-semibold' : 'text-muted'}`}>
+                                            {cell(inning[side], inning.n, side)}
+                                        </td>
+                                    ))}
+                                    <td className="num border-l border-line/10 py-2 font-display text-lg font-bold">{team.runs}</td>
+                                    <td className="num py-2 text-muted">{team.hits}</td>
+                                    <td className="num py-2 pr-2 text-muted">{team.errors}</td>
+                                </tr>
                             );
                         })}
-                        <td className="py-2 font-bold text-white bg-white/5">{away.runs}</td>
-                        <td className="py-2 text-zinc-400">{away.hits}</td>
-                        <td className="py-2 text-zinc-400">{away.errors}</td>
-                    </tr>
-
-                    {/* Home Team Row */}
-                    <tr>
-                        <td className="py-2 text-left">
-                            <div className="flex items-center gap-2">
-                                <img
-                                    src={home.logo}
-                                    alt={home.name}
-                                    loading="lazy"
-                                    className="w-5 h-5 md:w-6 md:h-6 object-contain"
-                                />
-                                <span className="font-bold text-white text-xs md:text-sm">
-                                    {home.abbreviation}
-                                </span>
-                            </div>
-                        </td>
-                        {inningColumns.map((num, i) => {
-                            const displayScore = innings && innings[i] ? innings[i].home : '-';
-
-                            return (
-                                <td key={num} className="py-2 text-zinc-400">
-                                    {displayScore}
-                                </td>
-                            );
-                        })}
-                        <td className="py-2 font-bold text-white bg-white/5">{home.runs}</td>
-                        <td className="py-2 text-zinc-400">{home.hits}</td>
-                        <td className="py-2 text-zinc-400">{home.errors}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                    </tbody>
+                </table>
+            </div>
+        </section>
     );
 };

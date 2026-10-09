@@ -1,169 +1,290 @@
 {
   "common": {
     "retry": "Retry",
-    "loading": "Loading...",
-    "error": "Error",
-    "back": "Back",
-    "backHome": "Back to Home",
-    "toggleMenu": "Toggle menu",
-    "live": "Live",
-    "el": "EL",
-    "play": "PLAY"
+    "close": "Close",
+    "seeAll": "See all",
+    "season": "{{season}} season"
   },
-  "sidebar": {
-    "selectLeague": "Select League",
-    "chooseTournament": "Choose which tournament to view",
-    "yourBaseballApp": "Your baseball app"
+  "nav": {
+    "label": "Sections",
+    "home": "Home",
+    "games": "Games",
+    "standings": "Standings",
+    "leaders": "Leaders"
   },
-  "offline": {
-    "title": "Offline",
-    "message": "Check your connection and try again."
+  "leagues": {
+    "choose": "Choose league",
+    "lidom": {
+      "name": "LIDOM",
+      "fullName": "Dominican Winter League"
+    },
+    "wbc": {
+      "name": "World Classic",
+      "fullName": "World Baseball Classic"
+    },
+    "sdc": {
+      "name": "Caribbean Series",
+      "fullName": "Caribbean Series"
+    }
   },
-  "installPWA": {
-    "installApp": "Install App",
-    "installOnIOS": "Install on iPhone/iPad",
-    "step1": "Tap the Share button below.",
-    "share": "Share",
-    "step2": "Scroll and select Add to Home Screen.",
-    "addToHome": "Add to Home Screen",
+  "theme": {
+    "label": "Theme: {{mode}}",
+    "system": "automatic",
+    "light": "light",
+    "dark": "dark"
+  },
+  "a11y": {
+    "selectLanguage": "Cambiar idioma a español"
+  },
+  "install": {
+    "button": "Install app",
+    "iosTitle": "Install on iPhone",
+    "step1": "Tap Share",
+    "step2": "Choose “Add to Home Screen”",
     "gotIt": "Got it"
   },
-  "updateModal": {
-    "title": "New update available",
-    "body": "A new version of the app has been detected. Please restart to apply changes and get the latest improvements.",
-    "later": "Later",
-    "restartNow": "Restart now"
+  "offline": {
+    "banner": "Offline: showing the last data loaded"
   },
-  "pullToRefresh": {},
-  "splash": {
-    "logoAlt": "El Play Logo"
+  "update": {
+    "available": "A new version of El Play is available",
+    "reload": "Update"
   },
-  "home": {
-    "calendar": "Calendar",
-    "noGames": "Could not load games.",
-    "seeDetails": "View Details",
-    "selectDate": "Select date",
-    "status": {
-      "ended": "Ended",
-      "inProgress": "In Progress",
-      "starting": "Starting",
-      "preparing": "Preparing"
+  "errors": {
+    "timeout": "The server took too long. Try again.",
+    "offline": "No internet connection.",
+    "network": "Couldn't reach the server.",
+    "rate_limit_exceeded": "Too many requests. Wait a moment.",
+    "internal_error": "Something went wrong. Try again.",
+    "invalid_mlb_data": "MLB didn't respond properly. Try again shortly.",
+    "upstream_timeout": "MLB took too long to respond.",
+    "game_not_found": "That game doesn't exist.",
+    "invalid_game": "The game link isn't valid.",
+    "schedule": "Couldn't load the schedule.",
+    "standings": "Couldn't load the standings.",
+    "leaders": "Couldn't load the leaders."
+  },
+  "games": {
+    "title": "Games",
+    "today": "Today",
+    "selectDate": "Choose day",
+    "count_one": "{{count}} game",
+    "count_other": "{{count}} games",
+    "liveCount_one": "{{count}} live",
+    "liveCount_other": "{{count}} live",
+    "none": "No games this day",
+    "nextDay": "Next games: {{date}}",
+    "noneInRange": "No games scheduled in this range.",
+    "playMini": "Play Flappy Ball meanwhile"
+  },
+  "card": {
+    "pitching": "P: {{name}}",
+    "batting": "AB: {{name}}",
+    "win": "W: {{name}}",
+    "loss": "L: {{name}}",
+    "save": "S: {{name}}",
+    "notifying": "We'll notify you"
+  },
+  "teams": {
+    "favorite": "Your team",
+    "addFavorite": "Make {{name}} your team",
+    "removeFavorite": "Remove {{name}} as your team"
+  },
+  "game": {
+    "back": "Games",
+    "scoreboard": "Scoreboard",
+    "sections": "Game sections",
+    "tabs": {
+      "live": "Live",
+      "summary": "Recap",
+      "preview": "Preview",
+      "plays": "Plays",
+      "box": "Box score"
     },
-    "notifyOff": "Turn off notification",
-    "notifyOn": "Turn on notification",
-    "notifyOffAria": "Turn off notification for this game",
-    "notifyOnAria": "Turn on notification for this game",
-    "removeFavorite": "Remove {{name}} from favorites",
-    "addFavorite": "Mark {{name}} as favorite",
-    "atBat": "At Bat",
+    "situation": "Situation",
+    "inning": "Inning",
+    "batting": "{{team}} batting",
+    "betweenInnings": "Between innings",
+    "countAria": "Count: {{balls}} balls, {{strikes}} strikes, {{outs}} outs",
+    "ballShort": "B",
+    "strikeShort": "S",
+    "outShort": "O",
+    "matchup": "Matchup",
+    "pitcher": "Pitcher",
+    "batter": "Batter",
+    "throwsR": "Right-handed",
+    "throwsL": "Left-handed",
+    "batsR": "Bats right",
+    "batsL": "Bats left",
+    "batsS": "Switch hitter",
+    "pitchCount": "Pitches",
+    "today": "Today",
+    "seasonEra": "Season ERA: {{era}}",
+    "onDeck": "On deck: {{name}}",
+    "atBatNow": "At bat"
+  },
+  "zone": {
+    "title": "Strike zone",
+    "aria_one": "Strike zone with {{count}} pitch",
+    "aria_other": "Strike zone with {{count}} pitches",
+    "ball": "Ball",
+    "strike": "Strike",
+    "inPlay": "In play",
+    "catcherView": "Catcher's view",
+    "noTracking_one": "{{count}} without location",
+    "noTracking_other": "{{count}} without location",
+    "waiting": "Waiting for the first pitch…",
+    "sequence": "Pitch sequence",
+    "exitVelo": "{{mph}} mph off the bat",
+    "empty": "No pitches in this game yet.",
+    "currentAtBat": "At bat now",
+    "previousAtBat": "Previous at-bat · {{result}}",
+    "mode": "What to show",
+    "modeAtBat": "At-bat",
+    "modePitcher": "Pitcher",
+    "facing": "vs",
+    "pitchesToday_one": "{{count}} pitch today",
+    "pitchesToday_other": "{{count}} pitches today",
+    "arsenal": "Pitch mix",
+    "pitchType": "Pitch",
+    "avgMph": "mph",
+    "whiffs": "Whiffs"
+  },
+  "plays": {
+    "title": "Play by play",
+    "recent": "Latest plays",
+    "filter": "Filter plays",
+    "all": "All",
+    "scoring": "Scoring",
+    "none": "No plays yet.",
+    "noScoring": "No runs scored.",
+    "inProgress": "At bat",
+    "atBatNow": "{{batter}} batting against {{pitcher}}",
+    "pitches_one": "{{count}} pitch",
+    "pitches_other": "{{count}} pitches"
+  },
+  "box": {
+    "team": "Team",
+    "batting": "Batting",
     "pitching": "Pitching",
-    "standingsError": "Could not load standings.",
-    "leadersError": "Could not load leaders."
+    "player": "Batter",
+    "pitcher": "Pitcher",
+    "totals": "Totals",
+    "lob_one": "{{count}} runner left on base",
+    "lob_other": "{{count}} runners left on base",
+    "noData": "No data yet."
+  },
+  "stats": {
+    "ab": "AB",
+    "r": "R",
+    "h": "H",
+    "rbi": "RBI",
+    "bb": "BB",
+    "k": "K",
+    "avg": "AVG",
+    "ip": "IP",
+    "er": "ER",
+    "hr": "HR",
+    "pitches": "P-S",
+    "era": "ERA"
+  },
+  "lineScore": {
+    "title": "Line score",
+    "team": "Team",
+    "runs": "R",
+    "hits": "H",
+    "errors": "E"
+  },
+  "summary": {
+    "decisions": "Decisions",
+    "win": "W",
+    "loss": "L",
+    "save": "S",
+    "saves_one": "{{count}} save",
+    "saves_other": "{{count}} saves",
+    "topPerformers": "Top performers",
+    "scoringPlays": "Scoring plays"
+  },
+  "preview": {
+    "probables": "Probable starters",
+    "details": "Details",
+    "tbd": "TBD",
+    "notifyOn": "Notify me when it starts",
+    "notifyOff": "Remove notification"
   },
   "standings": {
     "title": "Standings",
-    "titleWBC": "Standings - WBC",
-    "titleSDC": "Standings - Caribbean Series",
-    "noData": "No data available",
-    "regular": "Regular",
-    "roundRobin": "Round Robin",
-    "final": "Final",
+    "noData": "No standings yet.",
     "team": "Team",
-    "g": "G",
-    "p": "P",
+    "w": "W",
+    "l": "L",
     "pct": "PCT",
-    "dif": "GB"
+    "gb": "GB",
+    "last10": "L10",
+    "streak": "Strk",
+    "wonShort": "W",
+    "lostShort": "L",
+    "phase": "Phase",
+    "regular": "Regular season",
+    "roundRobin": "Round Robin",
+    "final": "Final series",
+    "previousSeason": "The new season hasn't started yet: these are last season's standings.",
+    "regularNote": "Top four advance to the Round Robin.",
+    "roundRobinNote": "Each team plays {{games}} games; the top two reach the final.",
+    "finalNote": "First to 4 wins takes the series."
   },
   "leaders": {
     "title": "Leaders",
-    "homeRuns": "Home Runs",
-    "battingAverage": "Batting",
-    "runsBattedIn": "RBI",
+    "group": "Leader type",
+    "hitting": "Hitting",
+    "pitching": "Pitching",
+    "previousSeason": "The new season hasn't started yet: these are last season's leaders.",
+    "qualifiedNote": "AVG, OPS, ERA and WHIP only count qualified players.",
+    "noData": "No data.",
+    "homeRuns": "Home runs",
+    "homeRunsShort": "HR",
+    "battingAverage": "Batting average",
+    "battingAverageShort": "AVG",
+    "runsBattedIn": "Runs batted in",
+    "runsBattedInShort": "RBI",
     "ops": "OPS",
+    "opsShort": "OBP + SLG",
     "hits": "Hits",
-    "stolenBases": "Steals"
-  },
-  "errors": {
-    "schedule": "Could not load games.",
-    "standings": "Error loading standings",
-    "leaders": "Error loading leaders",
-    "timeout": "Request timeout - server unavailable",
-    "rate_limit_exceeded": "Too many requests. Try again in a few minutes.",
-    "internal_error": "Internal Server Error",
-    "invalid_mlb_data": "Received invalid data from MLB API",
-    "notifications_not_supported": "This browser does not support notifications."
-  },
-  "leagues": {
-    "lidom": { "name": "LIDOM", "fullName": "Dominican Baseball League" },
-    "wbc": { "name": "WBC", "fullName": "World Baseball Classic" },
-    "sdc": { "name": "SDC", "fullName": "Caribbean Series" }
+    "hitsShort": "H",
+    "stolenBases": "Stolen bases",
+    "stolenBasesShort": "SB",
+    "era": "ERA",
+    "eraShort": "ERA",
+    "strikeouts": "Strikeouts",
+    "strikeoutsShort": "K",
+    "wins": "Wins",
+    "winsShort": "W",
+    "saves": "Saves",
+    "savesShort": "SV",
+    "whip": "WHIP",
+    "whipShort": "BB+H / IP"
   },
   "notifications": {
     "gameStarting": "Game starting soon!",
     "gameStartingBody": "{{away}} vs {{home}} starts in 10 minutes.",
-    "playball": "Playball!",
-    "playballBody": "The game between {{away}} and {{home}} has started."
-  },
-  "game": {
-    "back": "Back",
-    "summary": "Summary",
-    "live": "Live",
-    "stats": "Statistics",
-    "lastPitch": "Last Pitch",
-    "playHistory": "Play History",
-    "noPlays": "No recent plays.",
-    "pitcher": "Pitcher",
-    "batter": "Batter",
-    "atBat": "At Bat",
-    "pitching": "Pitching",
-    "vs": "VS"
-  },
-  "gameSummary": {
-    "final": "Final",
-    "bestPerformances": "Top Performances",
-    "teamComparison": "Team Comparison",
-    "team": "Team",
-    "g": "G",
-    "p": "P",
-    "s": "S",
-    "decisionsG": "W",
-    "decisionsP": "L",
-    "decisionsS": "S",
-    "era": "ERA",
-    "runs": "R",
-    "hits": "H",
-    "hr": "HR",
-    "bt": "BT",
-    "br": "BR",
-    "lob": "LOB",
-    "e": "E"
-  },
-  "boxScore": {
-    "batting": "Batting",
-    "pitching": "Pitching",
-    "player": "Player"
-  },
-  "lineScore": {
-    "team": "Team"
-  },
-  "scoreboard": {
-    "hits": "Hits",
-    "errors": "Errors"
+    "playball": "Play ball!",
+    "playballBody": "{{away}} vs {{home}} has started."
   },
   "minigame": {
     "title": "Flappy Ball",
     "avoidBats": "Avoid the bats",
-    "record": "Record",
+    "record": "Best",
     "tapToFly": "Tap to fly and avoid the bats",
     "play": "▶ PLAY",
-    "tapOrSpace": "Tap screen or press SPACE",
+    "tapOrSpace": "Tap the screen or press SPACE",
     "gameOver": "GAME OVER",
     "score": "Score",
     "newRecord": "NEW RECORD!",
     "retry": "🔄 RETRY",
-    "instructions": "📱 Tap screen • ⌨️ Space / ↑ to jump"
+    "instructions": "📱 Tap the screen • ⌨️ Space / ↑ to jump"
   },
-  "a11y": {
-    "selectLanguage": "Select language"
+  "splash": {
+    "loading": "Loading El Play",
+    "tagline": "Live baseball"
   }
 }

@@ -1,130 +1,171 @@
 import React from 'react';
-import { Pitch } from '../../types';
+import { useTranslation } from 'react-i18next';
+import type { Pitch } from '../../types';
+import { RESULT_COLORS, pitchCallName, pitchTypeColor, pitchTypeName } from '../../lib/baseball';
+
+// Zona de strike en pies reales, vista del receptor (pX > 0 = lado de primera base).
+// 1 pie = 100 unidades del viewBox; el suelo (pZ = 0) está en y = 520.
+const UNIT = 100;
+const HALF_WIDTH = 2.0; // pies visibles a cada lado del centro del plato
+const TOP_FT = 4.7;
+const GROUND = TOP_FT * UNIT + 20;
+const VIEW_W = HALF_WIDTH * 2 * UNIT;
+const VIEW_H = GROUND + 40;
+const HALF_PLATE = 17 / 12 / 2; // 8.5 pulgadas
+const BALL_R = 0.145 * UNIT; // un poco mayor que la bola real (0.121 ft) para que se lea el número
+const STD_TOP = 3.4;
+const STD_BOT = 1.6;
+
+const sx = (pX: number) => VIEW_W / 2 + pX * UNIT;
+const sy = (pZ: number) => GROUND - pZ * UNIT;
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 interface StrikeZoneProps {
-    pitches?: Pitch[];
+    pitches: Pitch[];
+    /** 'sequence': numerados y por resultado; 'types': todos los del lanzador por tipo */
+    mode?: 'sequence' | 'types';
+    batterSide?: string | null;
+    selected?: number | null;
+    onSelect?: (index: number | null) => void;
+    className?: string;
+    showLegend?: boolean;
 }
 
-export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches = [] }) => {
-    // Constants for scaling (in feet)
-    const SCALE = 60; // pixels per foot
-    const WIDTH = 200; // SVG width
-    const HEIGHT = 300; // SVG height
+const median = (values: number[], fallback: number) => {
+    const list = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
+    return list.length ? list[Math.floor(list.length / 2)] : fallback;
+};
 
-    // Center of the SVG horizontally
-    const CX = WIDTH / 2;
-    // Ground level in SVG coordinates (bottom of SVG)
-    const GROUND_Y = HEIGHT;
+export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches, mode = 'sequence', batterSide, selected = null, onSelect, className = '', showLegend = true }) => {
+    const { t, i18n } = useTranslation();
+    const byType = mode === 'types';
 
-    // Plate width in feet (17 inches)
-    const PLATE_WIDTH = 17 / 12;
-    const HALF_PLATE = PLATE_WIDTH / 2;
+    // En "sequence" es un solo bateador: su zona. En "types" hay muchos bateadores: se normaliza cada
+    // pitcheo a una zona estándar (como los mapas de Statcast) para que sean comparables.
+    const top = byType ? STD_TOP : median(pitches.map((p) => p.top ?? NaN), STD_TOP);
+    const bot = byType ? STD_BOT : median(pitches.map((p) => p.bot ?? NaN), STD_BOT);
+    const zoneLeft = sx(-HALF_PLATE);
+    const zoneWidth = HALF_PLATE * 2 * UNIT;
+    const zoneTop = sy(top);
+    const zoneHeight = (top - bot) * UNIT;
 
-    // Use the last pitch to determine the strike zone limits (usually consistent per batter)
-    const lastPitch = pitches.length > 0 ? pitches[pitches.length - 1] : null;
-    const szTop = lastPitch?.strikeZoneTop || 3.5;
-    const szBottom = lastPitch?.strikeZoneBottom || 1.5;
+    const located = pitches
+        .map((pitch, index) => ({ pitch, index }))
+        .filter(({ pitch }) => pitch.x !== null && pitch.z !== null)
+        .map(({ pitch, index }) => {
+            let z = pitch.z as number;
+            if (byType && pitch.top && pitch.bot && pitch.top > pitch.bot) {
+                z = STD_BOT + ((z - pitch.bot) / (pitch.top - pitch.bot)) * (STD_TOP - STD_BOT);
+            }
+            const x = pitch.x as number;
+            const outside = Math.abs(x) > HALF_WIDTH - 0.15 || z < 0.15 || z > TOP_FT - 0.15;
+            return {
+                pitch,
+                index,
+                cx: sx(clamp(x, -HALF_WIDTH + 0.15, HALF_WIDTH - 0.15)),
+                cy: sy(clamp(z, 0.15, TOP_FT - 0.15)),
+                outside
+            };
+        });
 
-    // Calculate zone rectangle in SVG coordinates
-    const zoneX = CX - (HALF_PLATE * SCALE);
-    const zoneY = GROUND_Y - (szTop * SCALE);
-    const zoneWidth = PLATE_WIDTH * SCALE;
-    const zoneHeight = (szTop - szBottom) * SCALE;
+    const lastIndex = located.length ? located[located.length - 1].index : -1;
+    const missing = pitches.length - located.length;
+    const side = batterSide === 'L' ? 'L' : batterSide === 'R' ? 'R' : null;
+    // Derecho se para del lado de tercera: a la izquierda en la vista del receptor
+    const batterX = side === 'R' ? sx(-2.02) : side === 'L' ? sx(2.02) : null;
 
-    const getPitchColor = (code: string) => {
-        if (['S', 'C', 'W'].includes(code)) { // Strike, Called Strike, Whiff
-            return 'fill-red-600';
-        } else if (['B'].includes(code)) { // Ball
-            return 'fill-green-500';
-        } else if (['X', 'D', 'E'].includes(code)) { // In Play
-            return 'fill-blue-500';
-        }
-        return 'fill-zinc-400';
-    };
+    const label = (pitch: Pitch) =>
+        `${pitch.n ?? ''} ${pitchTypeName(pitch, i18n.language)} ${pitch.mph ? `${pitch.mph} mph` : ''} — ${pitchCallName(pitch, i18n.language)}`;
 
     return (
-        <div className="flex flex-col items-center">
-            <div className="relative border border-zinc-800 bg-zinc-900/50 rounded-xl p-4 shadow-inner">
-                <svg width={WIDTH} height={HEIGHT} className="overflow-visible">
-                    {/* Home Plate (Visual reference at bottom) */}
-                    <path
-                        d={`
-                            M ${CX - (HALF_PLATE * SCALE)} ${GROUND_Y} 
-                            L ${CX + (HALF_PLATE * SCALE)} ${GROUND_Y} 
-                            L ${CX + (HALF_PLATE * SCALE)} ${GROUND_Y - 10} 
-                            L ${CX} ${GROUND_Y - 20} 
-                            L ${CX - (HALF_PLATE * SCALE)} ${GROUND_Y - 10} 
-                            Z
-                        `}
-                        fill="#fff"
-                        opacity="0.2"
-                    />
+        <figure className={`flex flex-col items-center ${className}`}>
+            <svg
+                viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+                className="h-auto w-full max-w-[340px] select-none"
+                role="img"
+                aria-label={t('zone.aria', { count: pitches.length })}
+            >
+                {/* Silueta del bateador */}
+                {batterX !== null && (
+                    <g opacity={0.1} fill="rgb(var(--ink))">
+                        <circle cx={batterX} cy={sy(4.3)} r={17} />
+                        <rect x={batterX - 18} y={sy(4.0)} width={36} height={3.5 * UNIT} rx={18} />
+                    </g>
+                )}
 
-                    {/* Strike Zone Box */}
-                    <rect
-                        x={zoneX}
-                        y={zoneY}
-                        width={zoneWidth}
-                        height={zoneHeight}
-                        fill="rgba(255, 255, 255, 0.05)"
-                        stroke="rgba(255, 255, 255, 0.3)"
-                        strokeWidth="2"
-                        strokeDasharray="4 2"
-                    />
+                {/* Borde de la zona (una bola por fuera) */}
+                <rect
+                    x={zoneLeft - BALL_R}
+                    y={zoneTop - BALL_R}
+                    width={zoneWidth + BALL_R * 2}
+                    height={zoneHeight + BALL_R * 2}
+                    rx={10}
+                    fill="rgb(var(--zone-bg) / 0.03)"
+                    stroke="rgb(var(--zone-bg) / 0.12)"
+                    strokeDasharray="6 6"
+                />
+                {/* Zona reglamentaria 3x3 */}
+                <rect x={zoneLeft} y={zoneTop} width={zoneWidth} height={zoneHeight} fill="rgb(var(--zone-bg) / 0.05)" stroke="rgb(var(--zone-bg) / 0.55)" strokeWidth={3} />
+                {[1, 2].map((step) => (
+                    <g key={step} stroke="rgb(var(--zone-bg) / 0.18)" strokeWidth={1.5}>
+                        <line x1={zoneLeft + (zoneWidth * step) / 3} y1={zoneTop} x2={zoneLeft + (zoneWidth * step) / 3} y2={zoneTop + zoneHeight} />
+                        <line x1={zoneLeft} y1={zoneTop + (zoneHeight * step) / 3} x2={zoneLeft + zoneWidth} y2={zoneTop + (zoneHeight * step) / 3} />
+                    </g>
+                ))}
 
-                    {/* Inner Grid Lines (3x3) */}
-                    <line x1={zoneX + zoneWidth / 3} y1={zoneY} x2={zoneX + zoneWidth / 3} y2={zoneY + zoneHeight} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-                    <line x1={zoneX + 2 * zoneWidth / 3} y1={zoneY} x2={zoneX + 2 * zoneWidth / 3} y2={zoneY + zoneHeight} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-                    <line x1={zoneX} y1={zoneY + zoneHeight / 3} x2={zoneX + zoneWidth} y2={zoneY + zoneHeight / 3} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-                    <line x1={zoneX} y1={zoneY + 2 * zoneHeight / 3} x2={zoneX + zoneWidth} y2={zoneY + 2 * zoneHeight / 3} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                {/* Plato */}
+                <path
+                    d={`M ${sx(-HALF_PLATE)} ${GROUND + 6} L ${sx(HALF_PLATE)} ${GROUND + 6} L ${sx(HALF_PLATE)} ${GROUND + 16} L ${sx(0)} ${GROUND + 28} L ${sx(-HALF_PLATE)} ${GROUND + 16} Z`}
+                    fill="rgb(var(--zone-bg) / 0.18)"
+                />
 
-                    {/* Pitches */}
-                    {pitches.map((pitch, index) => {
-                        const pitchCx = CX + (pitch.coordinates.pX * SCALE);
-                        const pitchCy = GROUND_Y - (pitch.coordinates.pZ * SCALE);
-                        const isLast = index === pitches.length - 1;
-                        const colorClass = getPitchColor(pitch.code);
-
-                        return (
-                            <g key={index}>
-                                {/* Pitch Circle */}
-                                <circle
-                                    cx={pitchCx}
-                                    cy={pitchCy}
-                                    r="10"
-                                    className={`${colorClass} stroke-white stroke-2`}
-                                />
-                                {/* Pitch Number */}
-                                <text
-                                    x={pitchCx}
-                                    y={pitchCy}
-                                    dy="0.3em"
-                                    textAnchor="middle"
-                                    className="text-[10px] font-bold fill-white pointer-events-none"
-                                >
-                                    {pitch.id}
+                {/* Pitcheos: el más reciente encima */}
+                {located.map(({ pitch, index, cx, cy, outside }) => {
+                    const isLast = index === lastIndex && !byType;
+                    const isSelected = selected === index;
+                    const color = byType ? pitchTypeColor(pitch.type) : RESULT_COLORS[pitch.r];
+                    const radius = byType ? BALL_R * 0.72 : BALL_R;
+                    return (
+                        <g
+                            key={`${index}-${pitch.n}-${pitch.mph}`}
+                            className={isLast ? 'animate-pitch-in' : undefined}
+                            style={{ transformOrigin: `${cx}px ${cy}px`, cursor: onSelect ? 'pointer' : undefined }}
+                            onClick={onSelect ? () => onSelect(isSelected ? null : index) : undefined}
+                            opacity={selected !== null && !isSelected ? 0.35 : outside ? 0.7 : byType ? 0.85 : 1}
+                        >
+                            <title>{label(pitch)}</title>
+                            {(isLast || isSelected) && <circle cx={cx} cy={cy} r={radius + 9} fill="none" stroke={color} strokeWidth={3} opacity={0.55} />}
+                            <circle cx={cx} cy={cy} r={radius} fill={color} stroke="rgb(var(--surface))" strokeWidth={3} />
+                            {!byType && (
+                                <text x={cx} y={cy} dy="0.36em" textAnchor="middle" fontSize={radius * 1.15} fontWeight={700} fill="#fff" fontFamily="Inter, system-ui">
+                                    {pitch.n ?? index + 1}
                                 </text>
+                            )}
+                        </g>
+                    );
+                })}
+            </svg>
 
-                                {/* Halo for last pitch */}
-                                {isLast && (
-                                    <circle
-                                        cx={pitchCx}
-                                        cy={pitchCy}
-                                        r="14"
-                                        fill="none"
-                                        stroke="white"
-                                        strokeOpacity="0.5"
-                                        className="animate-pulse"
-                                    />
-                                )}
-                            </g>
-                        );
-                    })}
-                </svg>
-
-
-            </div>
-            <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-3">Zona de Strike</h3>
-        </div>
+            {showLegend && (
+                <figcaption className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-muted">
+                    {!byType && (
+                        <>
+                            <Legend color={RESULT_COLORS.ball} label={t('zone.ball')} />
+                            <Legend color={RESULT_COLORS.strike} label={t('zone.strike')} />
+                            <Legend color={RESULT_COLORS.inplay} label={t('zone.inPlay')} />
+                        </>
+                    )}
+                    <span className="text-faint">{t('zone.catcherView')}</span>
+                    {missing > 0 && <span className="text-faint">· {t('zone.noTracking', { count: missing })}</span>}
+                </figcaption>
+            )}
+        </figure>
     );
 };
+
+const Legend: React.FC<{ color: string; label: string }> = ({ color, label }) => (
+    <span className="inline-flex items-center gap-1">
+        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+        {label}
+    </span>
+);

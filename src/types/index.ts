@@ -1,38 +1,22 @@
-export interface Team {
+// Contrato de la API v2 (api/utils/transformers.js)
+
+export type LeagueId = 'lidom' | 'wbc' | 'sdc';
+export type GameState = 'preview' | 'live' | 'final';
+export type PitchResult = 'ball' | 'strike' | 'inplay' | 'hbp';
+
+export interface PersonRef {
     id: number;
     name: string;
-    abbreviation: string;
+}
+
+export interface TeamBase {
+    id: number;
+    name: string;
+    abbrev: string;
     logo: string;
     color: string;
-    runs: number;
-    hits: number;
-    errors: number;
-    isWinner?: boolean;
-    players?: Player[];
-    teamStats?: TeamStats;
-}
-
-export interface Player {
-    id: number;
-    name: string;
-    position: string;
-    battingOrder?: string;
-    stats: {
-        batting: Record<string, any>;
-        pitching: Record<string, any>;
-    };
-}
-
-export interface Inning {
-    num: number;
-    away: number;
-    home: number;
-}
-
-export interface Count {
-    balls: number;
-    strikes: number;
-    outs: number;
+    flag?: string | null;
+    record: { wins: number; losses: number } | null;
 }
 
 export interface Runners {
@@ -41,123 +25,211 @@ export interface Runners {
     third: boolean;
 }
 
-export interface Matchup {
-    pitcher: string;
-    batter: string;
+export interface ScheduleTeam extends TeamBase {
+    score: number | null;
+    isWinner: boolean;
+    probable: PersonRef | null;
 }
 
-export interface Play {
-    event: string;
-    description: string;
-    inning: string;
-    time?: string;
-}
-
-export interface Pitch {
-    id: number;
-    coordinates: {
-        pX: number;
-        pZ: number;
-    };
-    strikeZoneTop: number;
-    strikeZoneBottom: number;
-    call: string;
-    code: string;
-    speed: number;
-    type: string;
-}
-
-export interface GameData {
-    status: string;
-    gameDate: string;
-    venue: string;
-    isTopInning: boolean;
-    inning: string;
-    home: Team;
-    away: Team;
-    count: Count;
-    runners: Runners;
-    matchup: Matchup;
-    lastPlay: string;
-    playHistory: Play[];
-    currentPitches: Pitch[];
-    innings: Inning[];
-    decisions?: {
-        winner?: { name: string; record: string; era: string };
-        loser?: { name: string; record: string; era: string };
-        save?: { name: string; record: string; era: string };
-    };
-    topPerformers?: {
-        id: number;
-        name: string;
-        teamLogo: string;
-        stats: string;
-        type: string;
-    }[];
-}
-
-export interface TeamStats {
-    batting: {
-        runs?: number;
-        hits?: number;
-        homeRuns?: number;
-        rbi?: number;
-        baseOnBalls?: number;
-        strikeOuts?: number;
-        leftOnBase?: number;
-        avg?: string;
-        ops?: string;
-    };
-    pitching: {
-        runs?: number;
-        hits?: number;
-        baseOnBalls?: number;
-        strikeOuts?: number;
-        era?: string;
-    };
-    fielding: {
-        errors?: number;
-    };
-}
-
-export interface ScheduleItem {
+export interface ScheduleGame {
     gamePk: number;
-    status: string;
+    league: LeagueId;
     date: string;
+    state: GameState;
+    detailedState: string;
+    gameType: string | null;
+    description: string | null;
     venue: string;
-    league?: string; // lidom | wbc | sdc - para filtrar por liga activa
-    away: {
-        id: number;
-        name: string;
-        abbrev: string;
-        logo: string;
-        color: string;
-        score: number;
-        isWinner?: boolean;
-    };
-    home: {
-        id: number;
-        name: string;
-        abbrev: string;
-        logo: string;
-        color: string;
-        score: number;
-        isWinner?: boolean;
-    };
-    liveData?: {
-        inning: string;
-        isTopInning: boolean;
+    scheduledInnings: number;
+    inningsPlayed: number | null;
+    away: ScheduleTeam;
+    home: ScheduleTeam;
+    live: {
+        inning: number | null;
+        ordinal: string | null;
+        isTop: boolean;
+        inningState: string | null;
         balls: number;
         strikes: number;
         outs: number;
         runners: Runners;
-        batter?: {
-            id: number;
-            name: string;
-        };
-        pitcher?: {
-            id: number;
-            name: string;
-        };
-    };
+        batter: PersonRef | null;
+        pitcher: PersonRef | null;
+    } | null;
+    decisions: { winner: PersonRef | null; loser: PersonRef | null; save: PersonRef | null } | null;
+}
+
+export interface Schedule {
+    league: LeagueId;
+    timeZone: string;
+    startDate: string;
+    endDate: string;
+    games: ScheduleGame[];
+}
+
+export interface Pitch {
+    n: number | null;
+    x: number | null;
+    z: number | null;
+    top: number | null;
+    bot: number | null;
+    r: PitchResult;
+    code: string | null;
+    call: string;
+    type: string | null;
+    typeDesc: string | null;
+    mph: number | null;
+    spin: number | null;
+    zone: number | null;
+    b: number | null;
+    s: number | null;
+    hit?: { ev: number | null; la: number | null; dist: number | null };
+}
+
+export interface AtBat {
+    i: number;
+    inning: number;
+    top: boolean;
+    complete: boolean;
+    scoring: boolean;
+    batter: PersonRef & { side: string | null };
+    pitcher: PersonRef & { hand: string | null };
+    event: string | null;
+    eventLabel: string | null;
+    desc: string;
+    rbi: number;
+    away: number | null;
+    home: number | null;
+    outs: number | null;
+    pitches: Pitch[];
+    actions: { event: string | null; desc: string }[];
+}
+
+export interface GameTeam extends TeamBase {
+    teamName: string;
+    runs: number;
+    hits: number;
+    errors: number;
+    lob: number;
+    isWinner: boolean;
+}
+
+export interface BatterLine {
+    id: number;
+    name: string;
+    pos: string;
+    sub: boolean;
+    ab: number;
+    r: number;
+    h: number;
+    rbi: number;
+    bb: number;
+    k: number;
+    hr: number;
+    avg: string | null;
+}
+
+export interface PitcherLine {
+    id: number;
+    name: string;
+    note: string | null;
+    ip: string;
+    h: number;
+    r: number;
+    er: number;
+    bb: number;
+    k: number;
+    hr: number;
+    np: number | null;
+    st: number | null;
+    era: string | null;
+}
+
+export interface BoxTeam {
+    batters: BatterLine[];
+    pitchers: PitcherLine[];
+    totals: { ab: number | null; r: number | null; h: number | null; rbi: number | null; bb: number | null; k: number | null; hr: number | null; lob: number | null; avg: string | null };
+}
+
+export interface Decision extends PersonRef {
+    wins: number | null;
+    losses: number | null;
+    saves?: number | null;
+    era: string | null;
+}
+
+export type TopPerformer =
+    | ({ kind: 'hitter'; teamId: number } & BatterLine)
+    | ({ kind: 'pitcher'; teamId: number } & PitcherLine);
+
+export interface GameDetail {
+    gamePk: number | null;
+    league: LeagueId;
+    state: GameState;
+    detailedState: string;
+    reason: string | null;
+    date: string | null;
+    venue: string;
+    weather: { condition: string; temp: string | null } | null;
+    description: string | null;
+    scheduledInnings: number;
+    away: GameTeam;
+    home: GameTeam;
+    inning: { n: number; ordinal: string; isTop: boolean; state: string } | null;
+    count: { balls: number; strikes: number; outs: number };
+    runners: { first: PersonRef | null; second: PersonRef | null; third: PersonRef | null };
+    matchup: {
+        pitcher: PersonRef & { hand: string | null; pitches: number | null; ip: string | null; k: number | null; era: string | null };
+        batter: PersonRef & { side: string | null; h: number | null; ab: number | null; avg: string | null };
+        onDeck: PersonRef | null;
+    } | null;
+    probables: { away: Decision | null; home: Decision | null };
+    linescore: { n: number; away: number | null; home: number | null }[];
+    atBats: AtBat[];
+    currentAtBat: number | null;
+    box: { away: BoxTeam; home: BoxTeam };
+    decisions: { winner: Decision | null; loser: Decision | null; save: Decision | null };
+    topPerformers: TopPerformer[];
+    updatedAt: string | null;
+}
+
+export interface StandingRow {
+    rank: number;
+    team: { id: number; name: string; shortName: string; abbrev: string; logo: string; color: string; flag: string | null };
+    wins: number;
+    losses: number;
+    gamesPlayed: number;
+    pct: string;
+    gamesBack: string;
+    streak: string;
+    lastTen: { wins: number; losses: number } | null;
+}
+
+interface SeasonInfo {
+    season: number;
+    isPreviousSeason: boolean;
+}
+
+export type Standings = SeasonInfo &
+    (
+        | { type: 'lidom'; regular: StandingRow[]; roundRobin: StandingRow[]; final: StandingRow[]; activePhase: 'regular' | 'roundRobin' | 'final'; roundRobinInfo: { games: number; advance: number } | null }
+        | { type: 'wbc'; pools: Record<string, StandingRow[]> }
+        | { type: 'sdc'; teams: StandingRow[] }
+    );
+
+export interface Leader {
+    rank: number;
+    id: number;
+    name: string;
+    teamId: number | null;
+    teamName: string;
+    teamAbbrev: string;
+    logo: string | null;
+    color: string | null;
+    value: string | number | null;
+}
+
+export interface Leaders extends SeasonInfo {
+    league: LeagueId;
+    categories: { id: string; group: 'hitting' | 'pitching'; leaders: Leader[]; error?: boolean }[];
 }

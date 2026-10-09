@@ -1,154 +1,274 @@
 {
   "common": {
     "retry": "Reintentar",
-    "loading": "Cargando...",
-    "error": "Error",
-    "back": "Volver",
-    "backHome": "Volver al Inicio",
-    "toggleMenu": "Abrir/cerrar menú",
-    "live": "Live",
-    "el": "EL",
-    "play": "PLAY"
+    "close": "Cerrar",
+    "seeAll": "Ver todo",
+    "season": "Temporada {{season}}"
   },
-  "sidebar": {
-    "selectLeague": "Selecciona Liga",
-    "chooseTournament": "Elige qué torneo quieres ver",
-    "yourBaseballApp": "Tu app de béisbol"
+  "nav": {
+    "label": "Secciones",
+    "home": "Inicio",
+    "games": "Juegos",
+    "standings": "Posiciones",
+    "leaders": "Líderes"
   },
-  "offline": {
-    "title": "Sin conexión",
-    "message": "Revisa tu conexión e inténtalo de nuevo."
+  "leagues": {
+    "choose": "Elegir liga",
+    "lidom": {
+      "name": "LIDOM",
+      "fullName": "Liga Dominicana de Béisbol"
+    },
+    "wbc": {
+      "name": "Clásico Mundial",
+      "fullName": "Clásico Mundial de Béisbol"
+    },
+    "sdc": {
+      "name": "Serie del Caribe",
+      "fullName": "Serie del Caribe"
+    }
   },
-  "installPWA": {
-    "installApp": "Instalar App",
-    "installOnIOS": "Instalar en iPhone/iPad",
-    "step1": "Toca el botón Compartir abajo.",
-    "share": "Compartir",
-    "step2": "Desliza y selecciona Agregar a Inicio.",
-    "addToHome": "Agregar a Inicio",
+  "theme": {
+    "label": "Tema: {{mode}}",
+    "system": "automático",
+    "light": "claro",
+    "dark": "oscuro"
+  },
+  "a11y": {
+    "selectLanguage": "Change language to English"
+  },
+  "install": {
+    "button": "Instalar la app",
+    "iosTitle": "Instalar en iPhone",
+    "step1": "Toca Compartir",
+    "step2": "Elige «Agregar a inicio»",
     "gotIt": "Entendido"
   },
-  "updateModal": {
-    "title": "Nueva actualización disponible",
-    "body": "Se ha detectado una nueva versión de la aplicación. Por favor, reinicia para aplicar los cambios y obtener las últimas mejoras.",
-    "later": "Más tarde",
-    "restartNow": "Reiniciar ahora"
+  "offline": {
+    "banner": "Sin conexión: estás viendo lo último que cargó"
   },
-  "pullToRefresh": {},
-  "splash": {
-    "logoAlt": "El Play Logo"
+  "update": {
+    "available": "Hay una versión nueva de El Play",
+    "reload": "Actualizar"
   },
-  "home": {
-    "calendar": "Calendario",
-    "noGames": "No se pudieron cargar los partidos.",
-    "seeDetails": "Ver Detalles",
-    "selectDate": "Seleccionar fecha",
-    "status": {
-      "ended": "Ended",
-      "inProgress": "En curso",
-      "starting": "Starting",
-      "preparing": "Preparing"
+  "errors": {
+    "timeout": "El servidor tardó demasiado. Intenta de nuevo.",
+    "offline": "Sin conexión a internet.",
+    "network": "No se pudo conectar con el servidor.",
+    "rate_limit_exceeded": "Demasiadas peticiones. Espera un momento.",
+    "internal_error": "Algo salió mal. Intenta de nuevo.",
+    "invalid_mlb_data": "MLB no respondió bien. Intenta en un momento.",
+    "upstream_timeout": "MLB tardó demasiado en responder.",
+    "game_not_found": "Ese juego no existe.",
+    "invalid_game": "El enlace del juego no es válido.",
+    "schedule": "No se pudo cargar el calendario.",
+    "standings": "No se pudo cargar la tabla.",
+    "leaders": "No se pudieron cargar los líderes."
+  },
+  "games": {
+    "title": "Juegos",
+    "today": "Hoy",
+    "selectDate": "Elegir día",
+    "count_one": "{{count}} juego",
+    "count_other": "{{count}} juegos",
+    "liveCount_one": "{{count}} en vivo",
+    "liveCount_other": "{{count}} en vivo",
+    "none": "No hay juegos este día",
+    "nextDay": "Próximos juegos: {{date}}",
+    "noneInRange": "No hay juegos programados en estas fechas.",
+    "playMini": "Jugar Flappy Ball mientras tanto"
+  },
+  "card": {
+    "pitching": "L: {{name}}",
+    "batting": "B: {{name}}",
+    "win": "G: {{name}}",
+    "loss": "P: {{name}}",
+    "save": "S: {{name}}",
+    "notifying": "Te avisaremos"
+  },
+  "teams": {
+    "favorite": "Tu equipo",
+    "addFavorite": "Marcar {{name}} como tu equipo",
+    "removeFavorite": "Quitar {{name}} como tu equipo"
+  },
+  "game": {
+    "back": "Juegos",
+    "scoreboard": "Marcador",
+    "sections": "Secciones del juego",
+    "tabs": {
+      "live": "En vivo",
+      "summary": "Resumen",
+      "preview": "Previa",
+      "plays": "Jugadas",
+      "box": "Box score"
     },
-    "notifyOff": "Desactivar notificación",
-    "notifyOn": "Activar notificación",
-    "notifyOffAria": "Desactivar notificación para este partido",
-    "notifyOnAria": "Activar notificación para este partido",
-    "removeFavorite": "Quitar {{name}} de favoritos",
-    "addFavorite": "Marcar {{name}} como favorito",
-    "atBat": "Al Bate",
-    "pitching": "Lanzando",
-    "standingsError": "No se pudo cargar la tabla de posiciones.",
-    "leadersError": "No se pudieron cargar los líderes."
+    "situation": "Situación",
+    "inning": "Entrada",
+    "batting": "Batea {{team}}",
+    "betweenInnings": "Cambio de entrada",
+    "countAria": "Conteo: {{balls}} bolas, {{strikes}} strikes, {{outs}} outs",
+    "ballShort": "B",
+    "strikeShort": "S",
+    "outShort": "O",
+    "matchup": "Duelo",
+    "pitcher": "Lanzador",
+    "batter": "Bateador",
+    "throwsR": "Derecho",
+    "throwsL": "Zurdo",
+    "batsR": "Batea a la derecha",
+    "batsL": "Batea a la zurda",
+    "batsS": "Ambidiestro",
+    "pitchCount": "Pitcheos",
+    "today": "Hoy",
+    "seasonEra": "EFE en la temporada: {{era}}",
+    "onDeck": "En círculo: {{name}}",
+    "atBatNow": "Al bate"
+  },
+  "zone": {
+    "title": "Zona de strike",
+    "aria_one": "Zona de strike con {{count}} pitcheo",
+    "aria_other": "Zona de strike con {{count}} pitcheos",
+    "ball": "Bola",
+    "strike": "Strike",
+    "inPlay": "En juego",
+    "catcherView": "Vista del receptor",
+    "noTracking_one": "{{count}} sin ubicación",
+    "noTracking_other": "{{count}} sin ubicación",
+    "waiting": "Esperando el primer pitcheo…",
+    "sequence": "Secuencia de pitcheos",
+    "exitVelo": "salió a {{mph}} mph",
+    "empty": "Todavía no hay pitcheos en este juego.",
+    "currentAtBat": "Turno en curso",
+    "previousAtBat": "Turno anterior · {{result}}",
+    "mode": "Qué mostrar",
+    "modeAtBat": "Turno",
+    "modePitcher": "Lanzador",
+    "facing": "contra",
+    "pitchesToday_one": "{{count}} pitcheo hoy",
+    "pitchesToday_other": "{{count}} pitcheos hoy",
+    "arsenal": "Repertorio del lanzador",
+    "pitchType": "Lanzamiento",
+    "avgMph": "mph",
+    "whiffs": "Abanicos"
+  },
+  "plays": {
+    "title": "Jugada a jugada",
+    "recent": "Últimas jugadas",
+    "filter": "Filtrar jugadas",
+    "all": "Todas",
+    "scoring": "Anotadoras",
+    "none": "Todavía no hay jugadas.",
+    "noScoring": "Nadie ha anotado.",
+    "inProgress": "Al bate",
+    "atBatNow": "{{batter}} al bate contra {{pitcher}}",
+    "pitches_one": "{{count}} pitcheo",
+    "pitches_other": "{{count}} pitcheos"
+  },
+  "box": {
+    "team": "Equipo",
+    "batting": "Bateo",
+    "pitching": "Pitcheo",
+    "player": "Bateador",
+    "pitcher": "Lanzador",
+    "totals": "Totales",
+    "lob_one": "{{count}} corredor dejado en base",
+    "lob_other": "{{count}} corredores dejados en base",
+    "noData": "Sin datos todavía."
+  },
+  "stats": {
+    "ab": "VB",
+    "r": "C",
+    "h": "H",
+    "rbi": "CI",
+    "bb": "BB",
+    "k": "K",
+    "avg": "AVG",
+    "ip": "IP",
+    "er": "CL",
+    "hr": "HR",
+    "pitches": "P-S",
+    "era": "EFE"
+  },
+  "lineScore": {
+    "title": "Marcador por entradas",
+    "team": "Equipo",
+    "runs": "C",
+    "hits": "H",
+    "errors": "E"
+  },
+  "summary": {
+    "decisions": "Decisiones",
+    "win": "G",
+    "loss": "P",
+    "save": "S",
+    "saves_one": "{{count}} salvado",
+    "saves_other": "{{count}} salvados",
+    "topPerformers": "Figuras del juego",
+    "scoringPlays": "Carreras del juego"
+  },
+  "preview": {
+    "probables": "Abridores probables",
+    "details": "Detalles",
+    "tbd": "Por anunciar",
+    "notifyOn": "Avisarme cuando empiece",
+    "notifyOff": "Quitar aviso"
   },
   "standings": {
-    "title": "Tabla de Posiciones",
-    "titleWBC": "Tabla de Posiciones - WBC",
-    "titleSDC": "Tabla de Posiciones - Serie del Caribe",
-    "noData": "No hay datos disponibles",
-    "regular": "Regular",
-    "roundRobin": "Round Robin",
-    "final": "Final",
+    "title": "Posiciones",
+    "noData": "No hay posiciones todavía.",
     "team": "Equipo",
-    "g": "G",
-    "p": "P",
+    "w": "G",
+    "l": "P",
     "pct": "PCT",
-    "dif": "DIF"
+    "gb": "JD",
+    "last10": "Últ. 10",
+    "streak": "Racha",
+    "wonShort": "G",
+    "lostShort": "P",
+    "phase": "Fase",
+    "regular": "Serie regular",
+    "roundRobin": "Round Robin",
+    "final": "Serie final",
+    "previousSeason": "La temporada nueva aún no empieza: estas son las posiciones de la anterior.",
+    "regularNote": "Los cuatro primeros pasan al Round Robin.",
+    "roundRobinNote": "Cada equipo juega {{games}} partidos; los dos primeros van a la final.",
+    "finalNote": "Gana la serie el primero en llegar a 4 victorias."
   },
   "leaders": {
     "title": "Líderes",
+    "group": "Tipo de líderes",
+    "hitting": "Bateo",
+    "pitching": "Pitcheo",
+    "previousSeason": "La temporada nueva aún no empieza: estos son los líderes de la anterior.",
+    "qualifiedNote": "Promedio, OPS, EFE y WHIP cuentan solo a jugadores con suficientes turnos o entradas.",
+    "noData": "Sin datos.",
     "homeRuns": "Jonrones",
-    "battingAverage": "Bateo",
-    "runsBattedIn": "Remolcadas",
+    "homeRunsShort": "HR",
+    "battingAverage": "Promedio de bateo",
+    "battingAverageShort": "AVG",
+    "runsBattedIn": "Carreras impulsadas",
+    "runsBattedInShort": "CI",
     "ops": "OPS",
+    "opsShort": "OBP + SLG",
     "hits": "Hits",
-    "stolenBases": "Robos"
-  },
-  "errors": {
-    "schedule": "No se pudieron cargar los partidos.",
-    "standings": "Error al cargar tabla",
-    "leaders": "Error al cargar líderes",
-    "timeout": "Request timeout - servidor no disponible",
-    "rate_limit_exceeded": "Demasiadas peticiones. Intenta de nuevo en unos minutos.",
-    "internal_error": "Internal Server Error",
-    "invalid_mlb_data": "Received invalid data from MLB API",
-    "notifications_not_supported": "Este navegador no admite notificaciones."
-  },
-  "leagues": {
-    "lidom": { "name": "LIDOM", "fullName": "Liga Dominicana de Béisbol" },
-    "wbc": { "name": "WBC", "fullName": "World Baseball Classic" },
-    "sdc": { "name": "SDC", "fullName": "Serie del Caribe" }
+    "hitsShort": "H",
+    "stolenBases": "Bases robadas",
+    "stolenBasesShort": "BR",
+    "era": "Efectividad",
+    "eraShort": "EFE",
+    "strikeouts": "Ponches",
+    "strikeoutsShort": "K",
+    "wins": "Victorias",
+    "winsShort": "G",
+    "saves": "Salvados",
+    "savesShort": "SV",
+    "whip": "WHIP",
+    "whipShort": "BB+H / IP"
   },
   "notifications": {
-    "gameStarting": "¡El juego va a comenzar!",
-    "gameStartingBody": "{{away}} vs {{home}} comienza en 10 minutos.",
+    "gameStarting": "¡El juego va a empezar!",
+    "gameStartingBody": "{{away}} vs {{home}} empieza en 10 minutos.",
     "playball": "¡Playball!",
-    "playballBody": "El juego entre {{away}} y {{home}} ha comenzado."
-  },
-  "game": {
-    "back": "Volver",
-    "summary": "Resumen",
-    "live": "En Vivo",
-    "stats": "Estadísticas",
-    "lastPitch": "Último Lanzamiento",
-    "playHistory": "Historial de Jugadas",
-    "noPlays": "No hay jugadas recientes.",
-    "pitcher": "Lanzador",
-    "batter": "Bateador",
-    "atBat": "Al Bate",
-    "pitching": "Lanzando",
-    "vs": "VS"
-  },
-  "gameSummary": {
-    "final": "Final",
-    "bestPerformances": "Mejores Actuaciones",
-    "teamComparison": "Comparación de Equipos",
-    "team": "Equipo",
-    "g": "G",
-    "p": "P",
-    "s": "S",
-    "decisionsG": "G",
-    "decisionsP": "P",
-    "decisionsS": "S",
-    "era": "EFE",
-    "runs": "C",
-    "hits": "H",
-    "hr": "HR",
-    "bt": "BT",
-    "br": "BR",
-    "lob": "DEB",
-    "e": "E"
-  },
-  "boxScore": {
-    "batting": "Bateo",
-    "pitching": "Pitcheo",
-    "player": "Jugador"
-  },
-  "lineScore": {
-    "team": "Eq"
-  },
-  "scoreboard": {
-    "hits": "Hits",
-    "errors": "Errors"
+    "playballBody": "Empezó {{away}} vs {{home}}."
   },
   "minigame": {
     "title": "Flappy Ball",
@@ -163,7 +283,8 @@
     "retry": "🔄 REINTENTAR",
     "instructions": "📱 Toca la pantalla • ⌨️ Espacio / ↑ para saltar"
   },
-  "a11y": {
-    "selectLanguage": "Seleccionar idioma"
+  "splash": {
+    "loading": "Cargando El Play",
+    "tagline": "Béisbol en vivo"
   }
 }
