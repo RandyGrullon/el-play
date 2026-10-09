@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, CalendarX2, Gamepad2 } from 'lucide-react';
@@ -13,7 +13,9 @@ import { GameCard, GameCardSkeleton } from '../components/game/GameCard';
 import { StandingsTable } from '../components/standings/StandingsTable';
 import { EmptyState, ErrorState } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
-import MiniGame from '../components/game/MiniGame';
+
+// Solo se baja si el usuario quiere jugar mientras no hay juegos
+const MiniGame = lazy(() => import('../components/game/MiniGame'));
 
 const ORDER = { live: 0, preview: 1, final: 2 } as const;
 
@@ -105,7 +107,11 @@ export const GamesPage: React.FC = () => {
                                     </button>
                                 )}
                             </EmptyState>
-                            {playing && <MiniGame leagueColor={leagueConfig.color} leagueName={leagueConfig.shortName} />}
+                            {playing && (
+                                <Suspense fallback={<div className="skeleton h-[280px] rounded-card" />}>
+                                    <MiniGame leagueColor={leagueConfig.color} leagueName={leagueConfig.shortName} />
+                                </Suspense>
+                            )}
                         </div>
                     )}
                 </div>

@@ -78,7 +78,7 @@ const TeamSide: React.FC<{ team: HeaderModel['away']; align: 'start' | 'end'; sh
 
     const identity = (
         <div className={`flex min-w-0 flex-col ${end ? 'items-end text-right' : 'items-start'}`}>
-            <TeamLogo team={team} size={44} />
+            <TeamLogo team={team} size={44} loading="eager" />
             <span className="display mt-1 text-2xl leading-none">{team.abbrev}</span>
             <span className="mt-0.5 hidden max-w-full truncate text-xs text-muted sm:block">{teamDisplayName(team, i18n.language)}</span>
             <span className={`mt-1 flex items-center gap-1 text-[11px] text-faint ${end ? 'flex-row-reverse' : ''}`}>
