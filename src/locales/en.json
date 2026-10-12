@@ -286,5 +286,10 @@
   "splash": {
     "loading": "Loading El Play",
     "tagline": "Live baseball"
+  },
+  "pull": {
+    "pull": "Pull to refresh",
+    "release": "Release to refresh",
+    "loading": "Refreshing…"
   }
 }

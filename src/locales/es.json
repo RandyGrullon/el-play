@@ -286,5 +286,10 @@
   "splash": {
     "loading": "Cargando El Play",
     "tagline": "Béisbol en vivo"
+  },
+  "pull": {
+    "pull": "Desliza para recargar",
+    "release": "Suelta para recargar",
+    "loading": "Recargando…"
   }
 }

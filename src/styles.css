@@ -69,6 +69,10 @@
     html {
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-x: none;
+        /* Sin zoom: solo desplazamiento (quita el pellizco y el doble toque) */
+        touch-action: pan-x pan-y;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
     }
 
     body {

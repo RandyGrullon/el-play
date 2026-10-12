@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Ball } from '../brand/Logo';
 
 interface PullToRefreshProps {
     onRefresh: () => Promise<void> | void;
@@ -7,6 +8,7 @@ interface PullToRefreshProps {
 }
 
 export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, children }) => {
+    const { t } = useTranslation();
     const [refreshing, setRefreshing] = useState(false);
     const [currentY, setCurrentY] = useState(0);
 
@@ -134,16 +136,34 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
 
     return (
         <div ref={containerRef} className="relative">
-            {/* Loader Indicator */}
+            {/* Indicador: una pelota que gira con el jalón y da vueltas mientras recarga */}
             <div
-                className="fixed top-0 left-0 w-full flex justify-center pointer-events-none z-50 transition-transform duration-200 ease-out"
+                className="pointer-events-none fixed left-0 top-0 z-50 flex w-full justify-center transition-transform duration-200 ease-out"
                 style={{
-                    transform: `translateY(${currentY > 0 ? currentY - 40 : -50}px)`,
+                    transform: `translateY(${currentY > 0 ? currentY - 44 : -60}px)`,
                     opacity: currentY > 0 ? Math.min(currentY / PULL_THRESHOLD, 1) : 0
                 }}
+                role="status"
+                aria-live="polite"
             >
-                <div className="rounded-full border border-line/15 bg-surface p-2 shadow-xl">
-                    <Loader2 className={`h-6 w-6 text-accent-ink ${refreshing ? 'animate-spin' : ''}`} style={{ transform: `rotate(${currentY * 2}deg)` }} />
+                <div className="flex items-center gap-2 rounded-full border border-line/15 bg-surface py-1.5 pl-1.5 pr-3 shadow-xl">
+                    <svg
+                        width="30"
+                        height="30"
+                        viewBox="19 13.7 26 26"
+                        aria-hidden="true"
+                        className={refreshing ? 'animate-spin' : ''}
+                        style={{
+                            transform: refreshing ? undefined : `rotate(${currentY * 3}deg) scale(${currentY >= PULL_THRESHOLD ? 1.12 : 1})`,
+                            transition: 'transform 0.15s ease-out',
+                            animationDuration: '0.7s'
+                        }}
+                    >
+                        <Ball />
+                    </svg>
+                    <span className="text-xs font-semibold text-muted">
+                        {refreshing ? t('pull.loading') : currentY >= PULL_THRESHOLD ? t('pull.release') : t('pull.pull')}
+                    </span>
                 </div>
             </div>
 
