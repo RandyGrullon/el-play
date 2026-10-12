@@ -3,7 +3,7 @@ const http = require('./http');
 const { getLiveFeed } = require('./liveFeed');
 const { getSeasonInfo } = require('./season');
 const { transformGame, transformScheduleGame } = require('../utils/transformers');
-const { teamLogo, teamColor, teamAbbrev, teamFlag, findTeam } = require('../utils/teams');
+const { teamLogo, teamColor, teamColor2, teamAbbrev, teamFlag, findTeam } = require('../utils/teams');
 
 const leagueOf = (leagueKey) => LEAGUES[leagueKey] || LEAGUES.lidom;
 
@@ -260,6 +260,11 @@ const LEADER_CATEGORIES = [
     { id: 'whip', group: 'pitching', sortStat: 'walksAndHitsPerInningPitched', stat: 'whip', qualified: true, order: 'asc' }
 ];
 
+const pickExtra = (stat = {}, group) =>
+    group === 'pitching'
+        ? { ip: stat.inningsPitched ?? null, k: stat.strikeOuts ?? null, w: stat.wins ?? null, l: stat.losses ?? null, g: stat.gamesPlayed ?? null }
+        : { ab: stat.atBats ?? null, h: stat.hits ?? null, hr: stat.homeRuns ?? null, rbi: stat.rbi ?? null, g: stat.gamesPlayed ?? null };
+
 const loadLeaders = async (league, season) => {
     const categories = await Promise.all(
         LEADER_CATEGORIES.map(async (category) => {
@@ -284,11 +289,14 @@ const loadLeaders = async (league, season) => {
                         id: split.player?.id,
                         name: split.player?.fullName || '',
                         teamId: split.team?.id ?? null,
-                        teamName: split.team?.name || '',
+                        teamName: findTeam(split.team?.id, league.id)?.name || split.team?.name || '',
                         teamAbbrev: split.team ? teamAbbrev(split.team.id, league.id, split.team.abbreviation, split.team.name) : '',
                         logo: split.team ? teamLogo(split.team.id) : null,
                         color: split.team ? teamColor(split.team.id, league.id) : null,
-                        value: split.stat?.[category.stat] ?? null
+                        color2: split.team ? teamColor2(split.team.id, league.id) : null,
+                        value: split.stat?.[category.stat] ?? null,
+                        // Números de apoyo para las tarjetas y los posts ("50 H en 136 VB", "46.1 IP")
+                        extra: pickExtra(split.stat, category.group)
                     }))
                 };
             } catch (error) {

@@ -228,7 +228,9 @@ export interface Leader {
     teamAbbrev: string;
     logo: string | null;
     color: string | null;
+    color2?: string | null;
     value: string | number | null;
+    extra?: { ab?: number | null; h?: number | null; hr?: number | null; rbi?: number | null; ip?: string | null; k?: number | null; w?: number | null; l?: number | null; g?: number | null };
 }
 
 export interface Leaders extends SeasonInfo {

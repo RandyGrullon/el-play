@@ -633,12 +633,16 @@ const stats = (params = {}) => {
     const random = rng([...String(params.sortStat)].reduce((acc, char) => acc + char.charCodeAt(0), 0));
     const generators = {
         homeRuns: () => ({ homeRuns: 3 + Math.floor(random() * 9) }),
-        battingAverage: () => ({ avg: (0.28 + random() * 0.08).toFixed(3).replace(/^0/, '') }),
+        battingAverage: () => {
+            const atBats = 120 + Math.floor(random() * 80);
+            const hits = Math.round(atBats * (0.28 + random() * 0.08));
+            return { avg: (hits / atBats).toFixed(3).replace(/^0/, ''), atBats, hits };
+        },
         runsBattedIn: () => ({ rbi: 10 + Math.floor(random() * 20) }),
         onBasePlusSlugging: () => ({ ops: (0.78 + random() * 0.25).toFixed(3).replace(/^0/, '') }),
         hits: () => ({ hits: 20 + Math.floor(random() * 25) }),
         stolenBases: () => ({ stolenBases: 3 + Math.floor(random() * 12) }),
-        earnedRunAverage: () => ({ era: (1.2 + random() * 2.2).toFixed(2) }),
+        earnedRunAverage: () => ({ era: (1.2 + random() * 2.2).toFixed(2), inningsPitched: `${30 + Math.floor(random() * 25)}.${Math.floor(random() * 3)}`, strikeOuts: 20 + Math.floor(random() * 35) }),
         strikeouts: () => ({ strikeOuts: 20 + Math.floor(random() * 30) }),
         wins: () => ({ wins: 2 + Math.floor(random() * 5) }),
         saves: () => ({ saves: 3 + Math.floor(random() * 10) }),

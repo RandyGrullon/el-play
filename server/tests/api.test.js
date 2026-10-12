@@ -222,7 +222,7 @@ describe('posiciones y líderes con datos reales de LIDOM 2025', () => {
         expect(pools.earnedRunAverage).toBe('QUALIFIED');
         expect(pools.homeRuns).toBe('ALL');
         const avg = leaders.categories.find((category) => category.id === 'battingAverage');
-        expect(avg.leaders[0]).toMatchObject({ name: 'Ismael Munguia', value: '.368' });
+        expect(avg.leaders[0]).toMatchObject({ name: 'Ismael Munguia', value: '.368', extra: { ab: 136, h: 50 } });
     });
 });
 
@@ -330,5 +330,17 @@ describe('diffPatch con los casos reales de producción (juego 867717)', () => {
         expect(skipped).toBe(1);
         expect(doc.a).toBe(2);
         expect(() => applyPatch(doc, [{ op: 'replace', path: '/b/c', value: 1 }], { ignorable: () => false })).toThrow();
+    });
+});
+
+describe('jugada del juego con datos reales', () => {
+    it('detecta el grand slam de Valdez en la novena', async () => {
+        const { keyPlayOf } = await import('../../src/lib/baseball');
+        const game = transformGame(fixture('feed-826279'));
+        const key = keyPlayOf(game.atBats, 'es');
+        expect(key.headline).toBe('Grand slam de Enmanuel Valdez');
+        expect(key.detail).toContain('Alta 9');
+        expect(key.detail).toContain('102.2 mph');
+        expect(key.detail).toContain('4 CI');
     });
 });
