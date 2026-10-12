@@ -1,11 +1,25 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { readFileSync } from 'node:fs'
 
 const API_PORT = process.env.API_PORT || 5001
 
+// Versión de este build: la misma que escribe generate-version.js en public/version.json (se corre antes de vite build).
+// La app la compara con la que hay en el servidor para saber si lo que está corriendo quedó viejo.
+const APP_VERSION = (() => {
+  try {
+    return JSON.parse(readFileSync('./public/version.json', 'utf8')).version || 'dev'
+  } catch {
+    return 'dev'
+  }
+})()
+
 // https://vitejs.dev/config/
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION)
+  },
   server: {
     port: Number(process.env.WEB_PORT) || 5173,
     // La app llama siempre a /api (mismo origen, como en Vercel); en desarrollo Vite lo pasa al backend
@@ -15,12 +29,14 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo.svg', 'apple-touch-icon.png'],
+      includeAssets: ['logo.svg', 'icons/logo-v2.svg', 'icons/apple-touch-icon-v2.png'],
       workbox: {
+        // Recarga las pantallas que siguen con la primera versión (ver public/sw-legacy.js)
+        importScripts: ['sw-legacy.js'],
         // Evita "Unexpected early exit" de terser en build (race con rollup)
         mode: 'development',
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        navigateFallbackDenylist: [/^\/api/],
+        navigateFallbackDenylist: [/^\/api/, /^\/version\.json/, /^\/sw-legacy\.js/],
         runtimeCaching: [
           {
             // Sin conexión se muestra lo último que cargó (la red siempre tiene prioridad)
@@ -57,24 +73,14 @@ export default defineConfig({
         background_color: '#f6f6f9',
         display: 'standalone',
         orientation: 'portrait',
+        // Mismo id que tenían las instalaciones viejas (sin id se usaba start_url): así se actualizan, no se duplican
+        id: '/',
         start_url: '/',
+        // Íconos con nombre nuevo para que las apps ya instaladas cambien al logo nuevo
         icons: [
-          {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
+          { src: '/icons/icon-192-v2.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-512-v2.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-maskable-512-v2.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       }
     })

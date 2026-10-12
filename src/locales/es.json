@@ -50,7 +50,11 @@
   },
   "update": {
     "available": "Hay una versión nueva de El Play",
-    "reload": "Actualizar"
+    "reload": "Actualizar",
+    "updating": "Actualizando El Play…",
+    "iconTitle": "El Play tiene logo nuevo",
+    "iconBody": "El iPhone no cambia solo el ícono de la pantalla de inicio. Si todavía ves el viejo, borra la app y vuelve a agregarla desde Safari (Compartir → Agregar a inicio). Después vuelve a marcar tu equipo favorito.",
+    "iconOk": "Entendido"
   },
   "errors": {
     "timeout": "El servidor tardó demasiado. Intenta de nuevo.",

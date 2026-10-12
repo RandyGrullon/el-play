@@ -1,3 +1,5 @@
+// Primero: revisa si la instalación ya tenía datos (aviso del logo nuevo en iPhone) antes de que se guarde nada
+import './lib/appUpdate';
 import './i18n';
 import React from 'react';
 import ReactDOM from 'react-dom/client';

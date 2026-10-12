@@ -39,7 +39,7 @@ export const useGameAlerts = (games: ScheduleGame[] | undefined) => {
                     const key = notifiedKey(kind, game.gamePk);
                     if (alreadyNotified(key)) return;
                     try {
-                        new Notification(title, { body, icon: '/pwa-192x192.png', tag: key });
+                        new Notification(title, { body, icon: '/icons/icon-192-v2.png', tag: key });
                     } catch {
                         /* algunos móviles solo permiten notificar desde el service worker */
                     }

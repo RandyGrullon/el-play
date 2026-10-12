@@ -143,7 +143,7 @@ export const GamesPage: React.FC = () => {
             <div className="space-y-4 pt-5">
                 <header className="flex items-start justify-between gap-3 px-4">
                     <div className="min-w-0">
-                        <p className="text-sm font-semibold capitalize text-muted">{formatLongDate(day, i18n.language)}</p>
+                        <p className="text-sm font-semibold text-muted first-letter:uppercase">{formatLongDate(day, i18n.language)}</p>
                         <h1 className="display truncate text-[32px] leading-tight">
                             {day === today ? t('games.todayIn', { league: leagueName }) : leagueName}
                         </h1>

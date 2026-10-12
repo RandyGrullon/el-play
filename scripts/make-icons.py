@@ -83,7 +83,17 @@ def draw_icon(size, padding, background):
 
 
 if __name__ == '__main__':
+    # Nombres con versión: si el archivo cambia de nombre, Android y los navegadores ven el ícono nuevo
+    # en las apps ya instaladas (con el mismo nombre se quedaban con el viejo).
+    icons = PUBLIC / 'icons'
+    icons.mkdir(exist_ok=True)
+    draw_icon(192, 22, BG).convert('RGB').save(icons / 'icon-192-v2.png')
+    draw_icon(512, 64, BG).convert('RGB').save(icons / 'icon-512-v2.png')
+    # maskable: el plato dentro del círculo seguro (80 %) para launchers que recortan en círculo
+    draw_icon(512, 124, BG).convert('RGB').save(icons / 'icon-maskable-512-v2.png')
+    draw_icon(180, 22, BG).convert('RGB').save(icons / 'apple-touch-icon-v2.png')
+    # Los nombres viejos siguen existiendo (con el logo nuevo) para quien aún los pida
     draw_icon(192, 22, BG).convert('RGB').save(PUBLIC / 'pwa-192x192.png')
-    draw_icon(512, 64, BG).convert('RGB').save(PUBLIC / 'pwa-512x512.png')  # margen seguro para "maskable"
+    draw_icon(512, 64, BG).convert('RGB').save(PUBLIC / 'pwa-512x512.png')
     draw_icon(180, 22, BG).convert('RGB').save(PUBLIC / 'apple-touch-icon.png')
     print('íconos generados en', PUBLIC)

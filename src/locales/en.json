@@ -50,7 +50,11 @@
   },
   "update": {
     "available": "A new version of El Play is available",
-    "reload": "Update"
+    "reload": "Update",
+    "updating": "Updating El Play…",
+    "iconTitle": "El Play has a new logo",
+    "iconBody": "iPhone doesn't change Home Screen icons by itself. If you still see the old one, remove the app and add it again from Safari (Share → Add to Home Screen). Then pick your favorite team again.",
+    "iconOk": "Got it"
   },
   "errors": {
     "timeout": "The server took too long. Try again.",
