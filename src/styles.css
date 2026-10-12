@@ -5,14 +5,14 @@
 /* Tokens en RGB para usar con opacidad: bg-surface/80, border-line/10 … */
 :root {
     color-scheme: light;
-    --bg: 244 242 237;
+    --bg: 246 246 249;
     --surface: 255 255 255;
-    --raised: 236 233 226;
-    --ink: 16 20 27;
-    --muted: 88 99 114;
-    --faint: 146 154 166;
-    --line: 15 23 42;
-    --live: 225 29 72;
+    --raised: 236 238 243;
+    --ink: 20 21 26;
+    --muted: 107 111 123;
+    --faint: 154 157 176;
+    --line: 20 21 26;
+    --live: 255 59 92;
     --ball: 22 163 74;
     --strike: 220 38 38;
     --inplay: 37 99 235;
@@ -22,20 +22,22 @@
     --accent-ink-light: 29 78 216;
     --accent-ink-dark: 122 167 255;
     --accent-ink: var(--accent-ink-light);
-    --zone-bg: 15 23 42;
+    --zone-bg: 20 21 26;
+    --nav: 20 21 26;
+    --nav-ink: 154 157 176;
 }
 
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme='light']) {
         color-scheme: dark;
-        --bg: 9 12 17;
-        --surface: 17 22 30;
-        --raised: 27 34 45;
-        --ink: 236 241 247;
-        --muted: 145 157 173;
-        --faint: 92 104 120;
+        --bg: 11 12 16;
+        --surface: 22 24 31;
+        --raised: 32 35 44;
+        --ink: 241 242 246;
+        --muted: 154 157 176;
+        --faint: 99 103 120;
         --line: 226 232 240;
-        --live: 255 77 99;
+        --live: 255 77 106;
         --ball: 52 199 120;
         --strike: 255 90 95;
         --inplay: 96 152 255;
@@ -43,19 +45,21 @@
         --gold: 242 184 75;
         --accent-ink: var(--accent-ink-dark);
         --zone-bg: 226 232 240;
+        --nav: 32 35 44;
+        --nav-ink: 154 157 176;
     }
 }
 
 :root[data-theme='dark'] {
     color-scheme: dark;
-    --bg: 9 12 17;
-    --surface: 17 22 30;
-    --raised: 27 34 45;
-    --ink: 236 241 247;
-    --muted: 145 157 173;
-    --faint: 92 104 120;
+    --bg: 11 12 16;
+    --surface: 22 24 31;
+    --raised: 32 35 44;
+    --ink: 241 242 246;
+    --muted: 154 157 176;
+    --faint: 99 103 120;
     --line: 226 232 240;
-    --live: 255 77 99;
+    --live: 255 77 106;
     --ball: 52 199 120;
     --strike: 255 90 95;
     --inplay: 96 152 255;
@@ -63,6 +67,24 @@
     --gold: 242 184 75;
     --accent-ink: var(--accent-ink-dark);
     --zone-bg: 226 232 240;
+    --nav: 32 35 44;
+    --nav-ink: 154 157 176;
+}
+
+/* Paneles claros dentro del tema oscuro (zona de strikes sobre blanco en el resumen) */
+.light-scope {
+    color-scheme: light;
+    --surface: 255 255 255;
+    --raised: 236 238 243;
+    --ink: 20 21 26;
+    --muted: 107 111 123;
+    --faint: 154 157 176;
+    --line: 20 21 26;
+    --ball: 22 163 74;
+    --strike: 220 38 38;
+    --inplay: 37 99 235;
+    --hbp: 202 138 4;
+    --zone-bg: 20 21 26;
 }
 
 @layer base {
@@ -93,7 +115,7 @@
 
 @layer components {
     .card {
-        @apply rounded-card border border-line/10 bg-surface shadow-card;
+        @apply rounded-card bg-surface shadow-card;
     }
 
     .eyebrow {
@@ -105,7 +127,17 @@
     }
 
     .display {
-        @apply font-display font-bold tracking-tight;
+        @apply font-display font-extrabold tracking-tight;
+    }
+
+    .pill {
+        @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold;
+    }
+
+    /* Carruseles horizontales con imán */
+    .snap-row {
+        @apply flex snap-x snap-mandatory gap-3 overflow-x-auto scrollbar-none;
+        scroll-padding-inline: 16px;
     }
 
     .skeleton {

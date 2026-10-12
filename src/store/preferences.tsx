@@ -5,6 +5,7 @@ export type ThemePreference = 'system' | 'light' | 'dark';
 
 interface Preferences {
     theme: ThemePreference;
+    setTheme: (theme: ThemePreference) => void;
     cycleTheme: () => void;
     favoriteTeamId: number | null;
     toggleFavoriteTeam: (teamId: number) => void;
@@ -24,7 +25,7 @@ const applyTheme = (theme: ThemePreference) => {
     if (theme === 'system') root.removeAttribute('data-theme');
     else root.setAttribute('data-theme', theme);
     const dark = theme === 'dark' || (theme === 'system' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#090c11' : '#f4f2ed');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0b0c10' : '#f6f6f9');
 };
 
 export const PreferencesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -67,7 +68,7 @@ export const PreferencesProvider: React.FC<{ children: ReactNode }> = ({ childre
     );
 
     const value = useMemo(
-        () => ({ theme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription }),
+        () => ({ theme, setTheme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription }),
         [theme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription]
     );
 

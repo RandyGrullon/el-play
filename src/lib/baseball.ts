@@ -362,3 +362,28 @@ export const arsenal = (pitches: Pitch[], lang: string): ArsenalRow[] => {
 };
 
 export type { Lang };
+
+// ------------------------------------------------------------------ Jugada del juego
+
+export interface KeyPlay {
+    atBat: AtBat;
+    headline: string;
+    detail: string;
+}
+
+/** La jugada que más pesó: la anotadora con más impulsadas; a igualdad, jonrón y luego la más tardía */
+export const keyPlayOf = (atBats: AtBat[], lang: string): KeyPlay | null => {
+    const scoring = atBats.filter((atBat) => atBat.complete && atBat.scoring);
+    if (!scoring.length) return null;
+    const weight = (atBat: AtBat) => atBat.rbi * 10 + (atBat.event === 'home_run' ? 5 : 0) + atBat.inning * 0.1 + atBat.i * 0.0001;
+    const best = scoring.reduce((top, atBat) => (weight(atBat) > weight(top) ? atBat : top));
+    const es = isEs(lang);
+    const grandSlam = best.event === 'home_run' && best.rbi === 4;
+    const name = grandSlam ? 'Grand slam' : eventName(best, lang) || (es ? 'Jugada' : 'Play');
+    const headline = es ? `${name} de ${best.batter.name}` : `${best.batter.name}: ${name}`;
+    const hit = best.pitches[best.pitches.length - 1]?.hit;
+    const parts = [inningName({ n: best.inning, isTop: best.top }, lang)];
+    if (hit?.ev) parts.push(es ? `${hit.ev} mph de salida` : `${hit.ev} mph exit velo`);
+    if (best.rbi > 0) parts.push(es ? `${best.rbi} CI` : `${best.rbi} RBI`);
+    return { atBat: best, headline, detail: parts.join(' · ') };
+};

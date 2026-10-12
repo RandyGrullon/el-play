@@ -10,7 +10,9 @@
     "home": "Home",
     "games": "Games",
     "standings": "Standings",
-    "leaders": "Leaders"
+    "leaders": "Leaders",
+    "more": "More",
+    "live": "Live games"
   },
   "leagues": {
     "choose": "Choose league",
@@ -75,7 +77,11 @@
     "none": "No games this day",
     "nextDay": "Next games: {{date}}",
     "noneInRange": "No games scheduled in this range.",
-    "playMini": "Play Flappy Ball meanwhile"
+    "playMini": "Play Flappy Ball meanwhile",
+    "todayIn": "Today in {{league}}",
+    "yesterday": "Yesterday",
+    "tomorrow": "Tomorrow",
+    "noneForTeam": "That team doesn't play this day"
   },
   "card": {
     "pitching": "P: {{name}}",
@@ -121,7 +127,9 @@
     "today": "Today",
     "seasonEra": "Season ERA: {{era}}",
     "onDeck": "On deck: {{name}}",
-    "atBatNow": "At bat"
+    "atBatNow": "At bat",
+    "outsCount_one": "{{count}} out",
+    "outsCount_other": "{{count}} outs"
   },
   "zone": {
     "title": "Strike zone",
@@ -148,7 +156,9 @@
     "arsenal": "Pitch mix",
     "pitchType": "Pitch",
     "avgMph": "mph",
-    "whiffs": "Whiffs"
+    "whiffs": "Whiffs",
+    "open": "Open the full strike zone",
+    "full": "Zone"
   },
   "plays": {
     "title": "Play by play",
@@ -210,7 +220,8 @@
     "details": "Details",
     "tbd": "TBD",
     "notifyOn": "Notify me when it starts",
-    "notifyOff": "Remove notification"
+    "notifyOff": "Remove notification",
+    "notifyShort": "Notify me"
   },
   "standings": {
     "title": "Standings",
@@ -231,7 +242,10 @@
     "previousSeason": "The new season hasn't started yet: these are last season's standings.",
     "regularNote": "Top four advance to the Round Robin.",
     "roundRobinNote": "Each team plays {{games}} games; the top two reach the final.",
-    "finalNote": "First to 4 wins takes the series."
+    "finalNote": "First to 4 wins takes the series.",
+    "cutRoundRobin": "Advance to the Round Robin",
+    "cutFinal": "Advance to the final",
+    "cutNext": "Advance"
   },
   "leaders": {
     "title": "Leaders",
@@ -262,7 +276,8 @@
     "saves": "Saves",
     "savesShort": "SV",
     "whip": "WHIP",
-    "whipShort": "BB+H / IP"
+    "whipShort": "BB+H / IP",
+    "rank": "No. {{rank}}"
   },
   "notifications": {
     "gameStarting": "Game starting soon!",
@@ -291,5 +306,76 @@
     "pull": "Pull to refresh",
     "release": "Release to refresh",
     "loading": "Refreshing…"
+  },
+  "live": {
+    "title": "Live now",
+    "noneTitle": "Nothing live",
+    "next": "Here are the next games:",
+    "nothing": "No games in the next few days."
+  },
+  "more": {
+    "title": "More",
+    "look": "Appearance",
+    "theme": "Theme",
+    "language": "Language",
+    "tagline": "Live Dominican baseball"
+  },
+  "stories": {
+    "label": "Teams",
+    "live": "playing now",
+    "final": "already played",
+    "later": "plays later",
+    "none": "doesn't play this day"
+  },
+  "timeline": {
+    "atBat": "At bat:",
+    "more_one": "See {{count}} more play",
+    "more_other": "See {{count}} more plays"
+  },
+  "recap": {
+    "story": "story",
+    "title": "Game recap",
+    "slides": "Recap parts",
+    "key": "Play of the game",
+    "stars": "Top performers",
+    "score": "Line score",
+    "decisions": "Decisions",
+    "previous": "Previous",
+    "next": "Next",
+    "win": "Winner",
+    "loss": "Loser",
+    "save": "Save"
+  },
+  "share": {
+    "title": "Share",
+    "short": "Share",
+    "live": "LIVE",
+    "upcoming": "NEXT GAME",
+    "keyPlay": "Play of the game",
+    "hitsInAtBats": "{{h}} H in {{ab}} AB",
+    "innings": "{{ip}} IP · {{k}} K",
+    "rankIn": "No. {{rank}} · {{league}} {{season}}",
+    "performer": "Player of the game",
+    "versus": "vs {{rival}} · {{date}}",
+    "shareResult": "Share the result",
+    "sharePlayer": "Share {{name}}",
+    "shareTable": "Share the standings",
+    "previewAlt": "Post preview",
+    "error": "Couldn't create the image.",
+    "format": "Format",
+    "story": "Story",
+    "post": "Post",
+    "style": "Style",
+    "styles": {
+      "color": "Team color",
+      "noche": "Night",
+      "papel": "Paper"
+    },
+    "usePhoto": "Use my photo",
+    "changePhoto": "Change photo",
+    "removePhoto": "Remove",
+    "save": "Save",
+    "share": "Share",
+    "hint": "On your phone, pick Instagram, then Story or Post."
   }
 }

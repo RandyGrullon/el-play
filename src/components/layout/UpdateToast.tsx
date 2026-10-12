@@ -37,7 +37,7 @@ export const UpdateToast: React.FC = () => {
 
     if (!visible) return null;
     return (
-        <div role="status" className="fixed inset-x-4 bottom-[calc(76px+env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-md animate-fade-up items-center gap-3 rounded-2xl bg-ink p-3 pl-4 text-bg shadow-xl md:bottom-6">
+        <div role="status" className="fixed inset-x-4 bottom-[calc(96px+env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-md animate-fade-up items-center gap-3 rounded-2xl bg-ink p-3 pl-4 text-bg shadow-xl">
             <p className="flex-1 text-sm font-medium">{t('update.available')}</p>
             <button type="button" onClick={() => window.location.reload()} className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-white">
                 <RefreshCw className="h-4 w-4" />

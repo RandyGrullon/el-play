@@ -1,63 +1,204 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft } from 'lucide-react';
-import type { GameDetail, ScheduleGame } from '../types';
+import { Bell, BellRing, CloudSun, ListOrdered, MapPin, Share2, Table2, Target } from 'lucide-react';
+import type { GameDetail, ScheduleGame, TopPerformer } from '../types';
 import { findScheduledGame, useGame } from '../lib/queries';
+import { atBatForZone, isNotPlayed } from '../lib/baseball';
+import { formatCountdown, formatShortDate, formatTime } from '../lib/format';
+import { teamDisplayName } from '../lib/teams';
 import { useAnalytics } from '../hooks/useAnalytics';
-import { GameHeader, type HeaderModel } from '../components/game/GameHeader';
+import { useLeague } from '../store/LeagueContext';
+import { usePreferences } from '../store/preferences';
+import { useShare } from '../share/ShareSheet';
+import { playerFromPerformer, resultFromGame } from '../share/subjects';
+import { GameHero, type HeroModel } from '../components/gamecast/GameHero';
+import { Timeline } from '../components/gamecast/Timeline';
+import { StoryRecap } from '../components/gamecast/StoryRecap';
+import { StrikeZone } from '../components/game/StrikeZone';
 import { StrikeZonePanel } from '../components/game/StrikeZonePanel';
-import { Situation } from '../components/game/Situation';
+import { uniformColors } from '../components/game/BatterFigure';
 import { Matchup } from '../components/game/Matchup';
-import { LineScore } from '../components/game/LineScore';
 import { PlayByPlay } from '../components/game/PlayByPlay';
 import { BoxScore } from '../components/game/BoxScore';
-import { Summary } from '../components/game/Summary';
-import { Preview } from '../components/game/Preview';
-import { Segmented } from '../components/ui/Segmented';
+import { Bases, OutsDots } from '../components/game/Bases';
+import { BottomSheet } from '../components/ui/BottomSheet';
+import { PlayerPhoto } from '../components/ui/PlayerPhoto';
 import { ErrorState, Skeleton } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 
-type Tab = 'live' | 'summary' | 'preview' | 'plays' | 'box';
+type Sheet = 'zone' | 'plays' | 'box' | null;
 
-const fromDetail = (game: GameDetail): HeaderModel => ({
+const fromDetail = (game: GameDetail): HeroModel => ({
     state: game.state,
     detailedState: game.detailedState,
     date: game.date,
-    venue: game.venue,
     scheduledInnings: game.scheduledInnings,
     inningsPlayed: game.linescore.length,
     inning: game.inning ? { n: game.inning.n, isTop: game.inning.isTop, state: game.inning.state } : null,
     outs: game.count.outs,
-    runners: game.runners,
     away: { ...game.away, score: game.away.runs },
     home: { ...game.home, score: game.home.runs }
 });
 
-const fromSchedule = (game: ScheduleGame): HeaderModel => ({
+const fromSchedule = (game: ScheduleGame): HeroModel => ({
     state: game.state,
     detailedState: game.detailedState,
     date: game.date,
-    venue: game.venue,
     scheduledInnings: game.scheduledInnings,
     inningsPlayed: game.inningsPlayed ?? 0,
     inning: game.live ? { n: game.live.inning, isTop: game.live.isTop, state: game.live.inningState } : null,
     outs: game.live?.outs ?? 0,
-    runners: game.live?.runners ?? { first: false, second: false, third: false },
     away: game.away,
     home: game.home
 });
 
-export const GamePage: React.FC = () => {
+const ActionButton: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void; primary?: boolean }> = ({ icon, label, onClick, primary }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        className={`inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-sm font-bold ${primary ? 'bg-ink text-bg' : 'bg-surface shadow-card'}`}
+    >
+        {icon}
+        {label}
+    </button>
+);
+
+// En vivo (diseño D2): situación + mini zona flotando sobre la cabecera, cronología tipo chat
+const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onShare: () => void }> = ({ game, open, onShare }) => {
     const { t } = useTranslation();
+    const { atBat } = atBatForZone(game);
+    const batting = game.inning?.isTop ? game.away : game.home;
+    const between = game.inning?.state === 'Middle' || game.inning?.state === 'End';
+
+    return (
+        <>
+            <div className="relative z-10 -mt-5 flex gap-3 px-4">
+                <div className="flex flex-1 items-center justify-around gap-2 rounded-[24px] bg-surface px-3 py-3.5 shadow-float">
+                    <Bases runners={game.runners} size={48} color={batting.color} />
+                    <div className="text-center">
+                        <div className="text-[28px] font-extrabold leading-none tabular-nums">{between ? '—' : `${game.count.balls}-${game.count.strikes}`}</div>
+                        <OutsDots outs={game.count.outs} className="mt-1.5" />
+                    </div>
+                    {game.matchup && (
+                        <div className="min-w-0 text-center text-xs font-semibold text-muted">
+                            <b className="block truncate text-sm text-ink">{game.matchup.batter.name.split(' ').slice(-1)[0]}</b>
+                            {t('zone.facing')} {game.matchup.pitcher.name.split(' ').slice(-1)[0]}
+                        </div>
+                    )}
+                </div>
+                <button type="button" onClick={() => open('zone')} className="w-[104px] shrink-0 rounded-[24px] bg-surface p-1.5 shadow-float" aria-label={t('zone.open')}>
+                    {atBat ? (
+                        <StrikeZone pitches={atBat.pitches} batterSide={atBat.batter.side} uniform={uniformColors(atBat.top ? game.away : game.home, !atBat.top)} showLegend={false} />
+                    ) : (
+                        <Target className="mx-auto my-6 h-8 w-8 text-faint" />
+                    )}
+                </button>
+            </div>
+
+            <div className="px-4 pt-5">
+                <Timeline game={game} onMore={() => open('plays')} />
+            </div>
+
+            <div className="flex gap-2 px-4 pt-5">
+                <ActionButton icon={<Table2 className="h-4 w-4" />} label={t('game.tabs.box')} onClick={() => open('box')} />
+                <ActionButton icon={<Target className="h-4 w-4" />} label={t('zone.full')} onClick={() => open('zone')} />
+                <ActionButton icon={<Share2 className="h-4 w-4" />} label={t('share.short')} onClick={onShare} primary />
+            </div>
+        </>
+    );
+};
+
+const FinalView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onShare: () => void; onSharePerformer: (performer: TopPerformer) => void }> = ({ game, open, onShare, onSharePerformer }) => {
+    const { t } = useTranslation();
+    return (
+        <div className="space-y-4 px-4 pt-4">
+            <StoryRecap game={game} onSharePerformer={onSharePerformer} />
+            <div className="flex gap-2">
+                <ActionButton icon={<ListOrdered className="h-4 w-4" />} label={t('game.tabs.plays')} onClick={() => open('plays')} />
+                <ActionButton icon={<Table2 className="h-4 w-4" />} label={t('game.tabs.box')} onClick={() => open('box')} />
+                <ActionButton icon={<Share2 className="h-4 w-4" />} label={t('share.short')} onClick={onShare} primary />
+            </div>
+        </div>
+    );
+};
+
+const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game, onShare }) => {
+    const { t, i18n } = useTranslation();
+    const { subscribedGames, toggleGameSubscription } = usePreferences();
+    const gamePk = game.gamePk ?? 0;
+    const subscribed = subscribedGames.includes(gamePk);
+    const notPlayed = isNotPlayed(game.detailedState);
+    const startsIn = game.date ? new Date(game.date).getTime() - Date.now() : 0;
+
+    return (
+        <div className="space-y-3 px-4 pt-4">
+            <section className="card p-4" aria-label={t('preview.probables')}>
+                <h2 className="eyebrow mb-3">{t('preview.probables')}</h2>
+                <ul className="space-y-3">
+                    {(['away', 'home'] as const).map((side) => {
+                        const pitcher = game.probables[side];
+                        return (
+                            <li key={side} className="flex items-center gap-3">
+                                <PlayerPhoto personId={pitcher?.id} name={pitcher?.name ?? game[side].abbrev} size={56} background={`${game[side].color}33`} />
+                                <span className="min-w-0 flex-1">
+                                    <span className="block truncate font-extrabold">{pitcher?.name ?? t('preview.tbd')}</span>
+                                    <span className="block truncate text-sm text-muted">{teamDisplayName(game[side], i18n.language)}</span>
+                                </span>
+                                {pitcher && (
+                                    <span className="text-right text-sm tabular-nums">
+                                        <span className="block font-bold">{pitcher.wins !== null ? `${pitcher.wins}-${pitcher.losses ?? 0}` : '—'}</span>
+                                        <span className="block text-xs text-muted">{t('stats.era')} {pitcher.era ?? '—'}</span>
+                                    </span>
+                                )}
+                            </li>
+                        );
+                    })}
+                </ul>
+            </section>
+
+            <section className="card space-y-2.5 p-4" aria-label={t('preview.details')}>
+                {game.date && (
+                    <p className="font-bold capitalize">
+                        {formatShortDate(game.date, i18n.language)} · {formatTime(game.date, i18n.language)}
+                        {startsIn > 0 && !notPlayed && <span className="ml-2 font-semibold normal-case text-muted">{formatCountdown(startsIn, i18n.language)}</span>}
+                    </p>
+                )}
+                {game.venue && <p className="flex items-center gap-2 text-sm text-muted"><MapPin className="h-4 w-4" /> {game.venue}</p>}
+                {game.weather && (
+                    <p className="flex items-center gap-2 text-sm text-muted">
+                        <CloudSun className="h-4 w-4" /> {game.weather.condition}
+                        {game.weather.temp ? ` · ${game.weather.temp}°F` : ''}
+                    </p>
+                )}
+            </section>
+
+            <div className="flex gap-2">
+                {!notPlayed && 'Notification' in window && (
+                    <ActionButton
+                        icon={subscribed ? <BellRing className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                        label={subscribed ? t('preview.notifyOff') : t('preview.notifyOn')}
+                        onClick={() => toggleGameSubscription(gamePk)}
+                    />
+                )}
+                <ActionButton icon={<Share2 className="h-4 w-4" />} label={t('share.short')} onClick={onShare} primary />
+            </div>
+        </div>
+    );
+};
+
+export const GamePage: React.FC = () => {
+    const { t, i18n } = useTranslation();
     const { gamePk } = useParams<{ gamePk: string }>();
     const client = useQueryClient();
     const query = useGame(gamePk);
     const game = query.data;
     const scheduled = useMemo(() => findScheduledGame(client, gamePk), [client, gamePk]);
-    const [params, setParams] = useSearchParams();
-    const { trackGameView, trackTabChange } = useAnalytics();
+    const { leagueConfig } = useLeague();
+    const share = useShare();
+    const [sheet, setSheet] = useState<Sheet>(null);
+    const { trackGameView } = useAnalytics();
     const tracked = useRef<string | null>(null);
 
     useEffect(() => {
@@ -74,77 +215,61 @@ export const GamePage: React.FC = () => {
         };
     }, [game?.away.runs, game?.home.runs, game?.away.abbrev, game?.home.abbrev]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const state = game?.state ?? scheduled?.state ?? 'preview';
-    const tabs: { value: Tab; label: string }[] = [
-        state === 'live' ? { value: 'live', label: t('game.tabs.live') } : state === 'final' ? { value: 'summary', label: t('game.tabs.summary') } : { value: 'preview', label: t('game.tabs.preview') },
-        ...(state !== 'preview' ? ([{ value: 'plays', label: t('game.tabs.plays') }, { value: 'box', label: t('game.tabs.box') }] as const) : [])
-    ];
-    const requested = params.get('tab') as Tab | null;
-    const tab: Tab = tabs.some((item) => item.value === requested) ? (requested as Tab) : tabs[0].value;
+    const leagueName = t(`leagues.${game?.league ?? leagueConfig.id}.name`);
+    const shareGame = () =>
+        game &&
+        share({
+            data: resultFromGame(game, leagueName, t, i18n.language),
+            fileName: `el-play-${game.away.abbrev}-${game.home.abbrev}`.toLowerCase(),
+            text: `${game.away.name} ${game.away.runs} - ${game.home.runs} ${game.home.name} · El Play`
+        });
+    const sharePerformer = (performer: TopPerformer) =>
+        game &&
+        share({
+            data: playerFromPerformer(performer, game, leagueName, t, i18n.language),
+            fileName: `el-play-${performer.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            text: `${performer.name} · El Play`
+        });
 
-    const changeTab = (value: Tab) => {
-        setParams(value === tabs[0].value ? {} : { tab: value }, { replace: true });
-        if (gamePk) trackTabChange(gamePk, value);
-    };
-
-    const header = game ? fromDetail(game) : scheduled ? fromSchedule(scheduled) : null;
+    const model = game ? fromDetail(game) : scheduled ? fromSchedule(scheduled) : null;
 
     return (
         <PullToRefresh onRefresh={async () => { await query.refetch(); }}>
-            <div className="space-y-4">
-                <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-ink">
-                    <ArrowLeft className="h-4 w-4" />
-                    {t('game.back')}
-                </Link>
+            {model ? <GameHero model={model} onShare={game ? shareGame : undefined} /> : <Skeleton className="h-[230px] rounded-none sm:mx-4 sm:mt-4 sm:rounded-card" />}
 
-                {header ? <GameHeader model={header} /> : <Skeleton className="h-[150px] rounded-card" />}
-
-                {query.isError && !game ? (
+            {query.isError && !game ? (
+                <div className="px-4 pt-4">
                     <ErrorState error={query.error} onRetry={() => query.refetch()} />
-                ) : !game ? (
-                    <div className="grid gap-4 lg:grid-cols-2">
-                        <Skeleton className="h-[420px] rounded-card" />
-                        <Skeleton className="h-[260px] rounded-card" />
-                    </div>
-                ) : (
-                    <>
-                        {tabs.length > 1 && (
-                            <div className="sticky top-14 z-20 -mx-4 bg-bg/85 px-4 py-2 backdrop-blur-md">
-                                <Segmented<Tab> label={t('game.sections')} value={tab} onChange={changeTab} options={tabs} />
-                            </div>
-                        )}
-                        <div key={tab} className="animate-fade-up">
-                            {tab === 'live' && <LiveView game={game} />}
-                            {tab === 'summary' && <Summary game={game} />}
-                            {tab === 'preview' && <Preview game={game} />}
-                            {tab === 'plays' && <PlayByPlay game={game} />}
-                            {tab === 'box' && <BoxScore game={game} />}
-                        </div>
-                    </>
-                )}
-            </div>
-        </PullToRefresh>
-    );
-};
+                </div>
+            ) : !game ? (
+                <div className="space-y-3 px-4 pt-4">
+                    <Skeleton className="h-[110px] rounded-card" />
+                    <Skeleton className="h-[260px] rounded-card" />
+                </div>
+            ) : game.state === 'live' ? (
+                <LiveView game={game} open={setSheet} onShare={shareGame} />
+            ) : game.state === 'final' ? (
+                <FinalView game={game} open={setSheet} onShare={shareGame} onSharePerformer={sharePerformer} />
+            ) : (
+                <PreviewView game={game} onShare={shareGame} />
+            )}
 
-const LiveView: React.FC<{ game: GameDetail }> = ({ game }) => {
-    const { t } = useTranslation();
-    return (
-        <div className="space-y-4">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-                <div className="order-2 lg:order-1">
-                    <StrikeZonePanel game={game} />
-                </div>
-                <div className="order-1 space-y-4 lg:order-2">
-                    <Situation game={game} />
-                    <Matchup game={game} />
-                </div>
-            </div>
-            <LineScore game={game} />
-            <section className="card overflow-hidden" aria-label={t('plays.recent')}>
-                <h2 className="eyebrow border-b border-line/10 px-4 py-3">{t('plays.recent')}</h2>
-                <PlayByPlay game={game} limit={6} compact />
-            </section>
-        </div>
+            {game && (
+                <>
+                    <BottomSheet open={sheet === 'zone'} onClose={() => setSheet(null)} title={t('zone.title')} tall>
+                        <div className="space-y-3">
+                            <StrikeZonePanel game={game} />
+                            <Matchup game={game} />
+                        </div>
+                    </BottomSheet>
+                    <BottomSheet open={sheet === 'plays'} onClose={() => setSheet(null)} title={t('plays.title')} tall>
+                        <PlayByPlay game={game} />
+                    </BottomSheet>
+                    <BottomSheet open={sheet === 'box'} onClose={() => setSheet(null)} title={t('game.tabs.box')} tall>
+                        <BoxScore game={game} />
+                    </BottomSheet>
+                </>
+            )}
+        </PullToRefresh>
     );
 };

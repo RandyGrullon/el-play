@@ -20,17 +20,21 @@ export default {
                 strike: token('strike'),
                 inplay: token('inplay'),
                 hbp: token('hbp'),
-                gold: token('gold')
+                gold: token('gold'),
+                nav: token('nav'),
+                'nav-ink': token('nav-ink')
             },
             fontFamily: {
-                sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
-                display: ['"Barlow Condensed"', 'Inter', 'system-ui', 'sans-serif']
+                sans: ['Outfit', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+                display: ['Outfit', 'system-ui', 'sans-serif'],
+                condensed: ['"Barlow Condensed"', 'Outfit', 'sans-serif']
             },
             borderRadius: {
-                card: '14px'
+                card: '24px'
             },
             boxShadow: {
-                card: '0 1px 0 rgb(var(--line) / 0.04), 0 1px 3px rgb(0 0 0 / 0.06)'
+                card: '0 1px 3px rgb(20 21 26 / 0.08)',
+                float: '0 8px 24px rgb(20 21 26 / 0.14)'
             },
             keyframes: {
                 'fade-up': { from: { opacity: '0', transform: 'translateY(6px)' }, to: { opacity: '1', transform: 'none' } },

@@ -28,7 +28,8 @@ describe('App', () => {
                 <App />
             </QueryClientProvider>
         );
-        expect(screen.getAllByText('EL').length).toBeGreaterThan(0);
+        expect(screen.getByRole('navigation', { name: 'Secciones' })).toBeTruthy();
+        expect(await screen.findByText('Hoy en LIDOM')).toBeTruthy();
         expect(await screen.findByText('No hay juegos este día')).toBeTruthy();
         expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/v2/schedule?league=lidom'), expect.anything());
     });

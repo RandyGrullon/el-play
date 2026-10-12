@@ -10,7 +10,9 @@
     "home": "Inicio",
     "games": "Juegos",
     "standings": "Posiciones",
-    "leaders": "Líderes"
+    "leaders": "Líderes",
+    "more": "Más",
+    "live": "Juegos en vivo"
   },
   "leagues": {
     "choose": "Elegir liga",
@@ -75,7 +77,11 @@
     "none": "No hay juegos este día",
     "nextDay": "Próximos juegos: {{date}}",
     "noneInRange": "No hay juegos programados en estas fechas.",
-    "playMini": "Jugar Flappy Ball mientras tanto"
+    "playMini": "Jugar Flappy Ball mientras tanto",
+    "todayIn": "Hoy en {{league}}",
+    "yesterday": "Ayer",
+    "tomorrow": "Mañana",
+    "noneForTeam": "Ese equipo no juega este día"
   },
   "card": {
     "pitching": "L: {{name}}",
@@ -121,7 +127,9 @@
     "today": "Hoy",
     "seasonEra": "EFE en la temporada: {{era}}",
     "onDeck": "En círculo: {{name}}",
-    "atBatNow": "Al bate"
+    "atBatNow": "Al bate",
+    "outsCount_one": "{{count}} out",
+    "outsCount_other": "{{count}} outs"
   },
   "zone": {
     "title": "Zona de strike",
@@ -148,7 +156,9 @@
     "arsenal": "Repertorio del lanzador",
     "pitchType": "Lanzamiento",
     "avgMph": "mph",
-    "whiffs": "Abanicos"
+    "whiffs": "Abanicos",
+    "open": "Abrir la zona de strike completa",
+    "full": "Zona"
   },
   "plays": {
     "title": "Jugada a jugada",
@@ -210,7 +220,8 @@
     "details": "Detalles",
     "tbd": "Por anunciar",
     "notifyOn": "Avisarme cuando empiece",
-    "notifyOff": "Quitar aviso"
+    "notifyOff": "Quitar aviso",
+    "notifyShort": "Avisarme"
   },
   "standings": {
     "title": "Posiciones",
@@ -231,7 +242,10 @@
     "previousSeason": "La temporada nueva aún no empieza: estas son las posiciones de la anterior.",
     "regularNote": "Los cuatro primeros pasan al Round Robin.",
     "roundRobinNote": "Cada equipo juega {{games}} partidos; los dos primeros van a la final.",
-    "finalNote": "Gana la serie el primero en llegar a 4 victorias."
+    "finalNote": "Gana la serie el primero en llegar a 4 victorias.",
+    "cutRoundRobin": "Pasan al Round Robin",
+    "cutFinal": "Pasan a la final",
+    "cutNext": "Clasifican"
   },
   "leaders": {
     "title": "Líderes",
@@ -262,7 +276,8 @@
     "saves": "Salvados",
     "savesShort": "SV",
     "whip": "WHIP",
-    "whipShort": "BB+H / IP"
+    "whipShort": "BB+H / IP",
+    "rank": "N.º {{rank}}"
   },
   "notifications": {
     "gameStarting": "¡El juego va a empezar!",
@@ -291,5 +306,76 @@
     "pull": "Desliza para recargar",
     "release": "Suelta para recargar",
     "loading": "Recargando…"
+  },
+  "live": {
+    "title": "En vivo ahora",
+    "noneTitle": "Nada en vivo",
+    "next": "Estos son los próximos juegos:",
+    "nothing": "No hay juegos en los próximos días."
+  },
+  "more": {
+    "title": "Más",
+    "look": "Apariencia",
+    "theme": "Tema",
+    "language": "Idioma",
+    "tagline": "Béisbol dominicano en vivo"
+  },
+  "stories": {
+    "label": "Equipos",
+    "live": "jugando ahora",
+    "final": "ya jugó",
+    "later": "juega más tarde",
+    "none": "no juega este día"
+  },
+  "timeline": {
+    "atBat": "Al bate:",
+    "more_one": "Ver {{count}} jugada más",
+    "more_other": "Ver {{count}} jugadas más"
+  },
+  "recap": {
+    "story": "historia",
+    "title": "Resumen del juego",
+    "slides": "Partes del resumen",
+    "key": "Jugada del juego",
+    "stars": "Figuras",
+    "score": "Marcador",
+    "decisions": "Decisiones",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "win": "Ganador",
+    "loss": "Perdedor",
+    "save": "Salvado"
+  },
+  "share": {
+    "title": "Compartir",
+    "short": "Compartir",
+    "live": "EN VIVO",
+    "upcoming": "PRÓXIMO JUEGO",
+    "keyPlay": "La jugada del juego",
+    "hitsInAtBats": "{{h}} H en {{ab}} VB",
+    "innings": "{{ip}} IP · {{k}} K",
+    "rankIn": "N.º {{rank}} · {{league}} {{season}}",
+    "performer": "Figura del juego",
+    "versus": "vs {{rival}} · {{date}}",
+    "shareResult": "Compartir el resultado",
+    "sharePlayer": "Compartir a {{name}}",
+    "shareTable": "Compartir la tabla",
+    "previewAlt": "Vista previa del post",
+    "error": "No se pudo crear la imagen.",
+    "format": "Formato",
+    "story": "Historia",
+    "post": "Post",
+    "style": "Estilo",
+    "styles": {
+      "color": "Color del equipo",
+      "noche": "Noche",
+      "papel": "Papel"
+    },
+    "usePhoto": "Usar mi foto",
+    "changePhoto": "Cambiar foto",
+    "removePhoto": "Quitar",
+    "save": "Guardar",
+    "share": "Compartir",
+    "hint": "En el teléfono, elige Instagram y luego Historia o Publicación."
   }
 }
