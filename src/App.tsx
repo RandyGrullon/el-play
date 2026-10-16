@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
@@ -9,6 +9,7 @@ import { Splash } from './components/brand/Splash';
 import { Skeleton } from './components/ui/States';
 import { GamesPage } from './pages/GamesPage';
 import { ShareProvider } from './share/ShareSheet';
+import { getInstallMode, openInstallSheet } from './lib/install';
 
 // La portada va en el bundle principal; el resto se baja al entrar (o mientras corre la animación de entrada)
 const loadGame = () => import('./pages/GamePage');
@@ -30,6 +31,14 @@ if (typeof window !== 'undefined') {
 const LegacyGameRedirect: React.FC = () => {
     const { gamePk } = useParams();
     return <Navigate to={`/juego/${gamePk}`} replace />;
+};
+
+// Enlace para compartir (bio de Instagram, WhatsApp): el-play.vercel.app/instalar abre la guía sobre la portada
+const InstallLink: React.FC = () => {
+    useEffect(() => {
+        if (getInstallMode() !== 'installed') openInstallSheet();
+    }, []);
+    return <Navigate to="/" replace />;
 };
 
 const PageFallback: React.FC = () => (
@@ -55,6 +64,8 @@ const App: React.FC = () => (
                             <Route path="/posiciones" element={<StandingsPage />} />
                             <Route path="/lideres" element={<LeadersPage />} />
                             <Route path="/mas" element={<MorePage />} />
+                            <Route path="/instalar" element={<InstallLink />} />
+                            <Route path="/install" element={<InstallLink />} />
                             <Route path="*" element={<Navigate to="/" replace />} />
                         </Routes>
                     </Suspense>

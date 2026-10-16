@@ -1,5 +1,7 @@
 // Primero: revisa si la instalación ya tenía datos (aviso del logo nuevo en iPhone) antes de que se guarde nada
 import './lib/appUpdate';
+// Antes de React: Chrome lanza el aviso de instalación una sola vez y muy temprano
+import './lib/install';
 import './i18n';
 import React from 'react';
 import ReactDOM from 'react-dom/client';

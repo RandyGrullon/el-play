@@ -5,7 +5,7 @@ import { useLeague } from '../store/LeagueContext';
 import { usePreferences, type ThemePreference } from '../store/preferences';
 import { LogoMark } from '../components/brand/Logo';
 import { Segmented } from '../components/ui/Segmented';
-import { InstallPWA } from '../components/common/InstallPWA';
+import { InstallRow } from '../components/install/InstallCard';
 
 // "Más": liga, tema, idioma e instalación (antes estaban en la barra de arriba)
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -74,13 +74,14 @@ export const MorePage: React.FC = () => {
                 </div>
             </section>
 
+            <InstallRow />
+
             <section className="card flex items-center gap-3 p-4">
                 <LogoMark size={44} />
                 <div className="flex-1">
                     <p className="font-extrabold">El Play</p>
                     <p className="text-sm text-muted">{t('more.tagline')}</p>
                 </div>
-                <InstallPWA />
             </section>
         </div>
     );

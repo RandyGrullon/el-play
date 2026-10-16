@@ -13,6 +13,7 @@ import { LogoMark } from '../components/brand/Logo';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { EmptyState, ErrorState } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
+import { InstallBanner } from '../components/install/InstallCard';
 
 // Solo se baja si el usuario quiere jugar mientras no hay juegos
 const MiniGame = lazy(() => import('../components/game/MiniGame'));
@@ -153,6 +154,7 @@ export const GamesPage: React.FC = () => {
                     </button>
                 </header>
 
+                <InstallBanner />
                 {schedule.data && <TeamStories allGames={schedule.data.games} dayGames={dayGames} selected={team} onSelect={setTeam} />}
                 {days.length > 0 && <DayChips days={days} selected={day} today={today} counts={counts} onSelect={setSelected} />}
 

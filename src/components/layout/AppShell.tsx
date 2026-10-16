@@ -10,6 +10,7 @@ import { BottomSheet } from '../ui/BottomSheet';
 import { TeamLogo } from '../ui/TeamLogo';
 import { OfflineBanner } from './OfflineBanner';
 import { UpdateToast } from './UpdateToast';
+import { InstallSheet } from '../install/InstallSheet';
 
 // Barra inferior flotante (diseño D): Inicio · Tabla · [En vivo] · Líderes · Más
 const BottomNav: React.FC<{ onLive: () => void; liveCount: number }> = ({ onLive, liveCount }) => {
@@ -102,6 +103,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
             <UpdateToast />
             <BottomNav onLive={() => setLiveOpen(true)} liveCount={liveCount} />
             <LiveSheet open={liveOpen} onClose={() => setLiveOpen(false)} />
+            <InstallSheet />
         </div>
     );
 };

@@ -76,6 +76,14 @@ export default defineConfig({
         // Mismo id que tenían las instalaciones viejas (sin id se usaba start_url): así se actualizan, no se duplican
         id: '/',
         start_url: '/',
+        categories: ['sports'],
+        // Con capturas, Chrome en Android muestra la instalación como ficha de tienda (descripción + fotos).
+        // Son .jpg: quedan fuera del precache (globPatterns) y solo se bajan al abrir esa ficha.
+        screenshots: [
+          { src: '/screenshots/inicio.jpg', sizes: '780x1688', type: 'image/jpeg', form_factor: 'narrow', label: 'Los juegos del día en vivo' },
+          { src: '/screenshots/juego.jpg', sizes: '780x1688', type: 'image/jpeg', form_factor: 'narrow', label: 'Pitcheo a pitcheo con la zona de strike' },
+          { src: '/screenshots/posiciones.jpg', sizes: '780x1688', type: 'image/jpeg', form_factor: 'narrow', label: 'Tabla de posiciones' }
+        ],
         // Íconos con nombre nuevo para que las apps ya instaladas cambien al logo nuevo
         icons: [
           { src: '/icons/icon-192-v2.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
