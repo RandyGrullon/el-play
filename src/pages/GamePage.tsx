@@ -17,6 +17,7 @@ import { GameHero, type HeroModel } from '../components/gamecast/GameHero';
 import { Timeline } from '../components/gamecast/Timeline';
 import { StoryRecap } from '../components/gamecast/StoryRecap';
 import { StrikeZone } from '../components/game/StrikeZone';
+import { SprayChart } from '../components/game/SprayChart';
 import { StrikeZonePanel } from '../components/game/StrikeZonePanel';
 import { uniformColors } from '../components/game/BatterFigure';
 import { Matchup } from '../components/game/Matchup';
@@ -102,6 +103,10 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
                 <Timeline game={game} onMore={() => open('plays')} />
             </div>
 
+            <div className="px-4 pt-4">
+                <SprayChart game={game} />
+            </div>
+
             <div className="flex gap-2 px-4 pt-5">
                 <ActionButton icon={<Table2 className="h-4 w-4" />} label={t('game.tabs.box')} onClick={() => open('box')} />
                 <ActionButton icon={<Target className="h-4 w-4" />} label={t('zone.full')} onClick={() => open('zone')} />
@@ -116,6 +121,7 @@ const FinalView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSh
     return (
         <div className="space-y-4 px-4 pt-4">
             <StoryRecap game={game} onSharePerformer={onSharePerformer} />
+            <SprayChart game={game} />
             <div className="flex gap-2">
                 <ActionButton icon={<ListOrdered className="h-4 w-4" />} label={t('game.tabs.plays')} onClick={() => open('plays')} />
                 <ActionButton icon={<Table2 className="h-4 w-4" />} label={t('game.tabs.box')} onClick={() => open('box')} />

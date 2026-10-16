@@ -410,5 +410,34 @@
     "save": "Save",
     "share": "Share",
     "hint": "On your phone, pick Instagram, then Story or Post."
+  },
+  "spray": {
+    "title": "Spray chart",
+    "filter": "Batting team",
+    "both": "Both",
+    "aria_one": "Chart with {{count}} batted ball",
+    "aria_other": "Chart with {{count}} batted balls",
+    "hits_one": "{{count}} hit",
+    "hits_other": "{{count}} hits",
+    "homeRuns_one": "{{count}} home run",
+    "homeRuns_other": "{{count}} home runs",
+    "outs_one": "{{count}} no hit",
+    "outs_other": "{{count}} no hit",
+    "tap": "Tap a dot",
+    "feet": "{{ft}} ft",
+    "traj": {
+      "ground_ball": "Grounder",
+      "line_drive": "Line drive",
+      "fly_ball": "Fly ball",
+      "popup": "Pop-up",
+      "bunt_grounder": "Bunt",
+      "bunt_popup": "Bunt pop-up",
+      "bunt_line_drive": "Bunt line drive"
+    },
+    "hard": {
+      "soft": "soft",
+      "medium": "medium",
+      "hard": "hard"
+    }
   }
 }

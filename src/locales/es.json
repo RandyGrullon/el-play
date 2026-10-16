@@ -410,5 +410,34 @@
     "save": "Guardar",
     "share": "Compartir",
     "hint": "En el teléfono, elige Instagram y luego Historia o Publicación."
+  },
+  "spray": {
+    "title": "Mapa de batazos",
+    "filter": "Equipo al bate",
+    "both": "Ambos",
+    "aria_one": "Mapa con {{count}} batazo",
+    "aria_other": "Mapa con {{count}} batazos",
+    "hits_one": "{{count}} hit",
+    "hits_other": "{{count}} hits",
+    "homeRuns_one": "{{count}} jonrón",
+    "homeRuns_other": "{{count}} jonrones",
+    "outs_one": "{{count}} sin hit",
+    "outs_other": "{{count}} sin hit",
+    "tap": "Toca un punto",
+    "feet": "{{ft}} pies",
+    "traj": {
+      "ground_ball": "Rodado",
+      "line_drive": "Línea",
+      "fly_ball": "Elevado",
+      "popup": "Globito",
+      "bunt_grounder": "Toque",
+      "bunt_popup": "Toque elevado",
+      "bunt_line_drive": "Toque de línea"
+    },
+    "hard": {
+      "soft": "suave",
+      "medium": "medio",
+      "hard": "fuerte"
+    }
   }
 }

@@ -208,6 +208,13 @@ const simulate = (gamePk, awayId, homeId) => {
             } else {
                 const roll = random();
                 const hitBoost = (batter.avg - 0.25) * 0.6;
+                // Dónde cae la bola (coordenadas de Gameday): ángulo desde el jardín central y distancia en unidades (~2,5 pies)
+                const ANGLE = { 'left field': -28, 'center field': 0, 'right field': 28 };
+                const spot = (angle, min, max, trajectory, hardness = 'medium') => {
+                    const a = ((angle + between(random, -12, 12)) * Math.PI) / 180;
+                    const d = between(random, min, max);
+                    return { coordinates: { coordX: round(125.42 + d * Math.sin(a), 2), coordY: round(198.27 - d * Math.cos(a), 2) }, trajectory, hardness };
+                };
                 const fields = ['left field', 'center field', 'right field'];
                 const field = pick(random, fields);
                 const last = events[events.length - 1];
@@ -216,7 +223,7 @@ const simulate = (gamePk, awayId, homeId) => {
                     label = 'Home Run';
                     description = `${batter.fullName} homers on a fly ball to ${field}.`;
                     advance(4, ref);
-                    last.hitData = { launchSpeed: round(between(random, 101, 112), 1), launchAngle: Math.round(between(random, 24, 34)), totalDistance: Math.round(between(random, 375, 445)) };
+                    last.hitData = { launchSpeed: round(between(random, 101, 112), 1), launchAngle: Math.round(between(random, 24, 34)), totalDistance: Math.round(between(random, 375, 445)), ...spot(ANGLE[field], 160, 176, 'fly_ball', 'hard') };
                 } else if (roll < 0.25 + hitBoost) {
                     const kind = random();
                     if (kind < 0.72) {
@@ -238,7 +245,8 @@ const simulate = (gamePk, awayId, homeId) => {
                     last.details.call = { code: scorers.length ? 'E' : 'D', description: scorers.length ? 'In play, run(s)' : 'In play, no out' };
                     last.details.code = last.details.call.code;
                     last.details.description = last.details.call.description;
-                    last.hitData = { launchSpeed: round(between(random, 88, 106), 1), launchAngle: Math.round(between(random, 5, 22)), totalDistance: Math.round(between(random, 150, 330)) };
+                    const far = eventType === 'single' ? [62, 108] : [118, 152];
+                    last.hitData = { launchSpeed: round(between(random, 88, 106), 1), launchAngle: Math.round(between(random, 5, 22)), totalDistance: Math.round(between(random, 150, 330)), ...spot(ANGLE[field], far[0], far[1], eventType === 'double' ? 'fly_ball' : 'line_drive', 'hard') };
                 } else {
                     const kind = random();
                     isOut = true;
@@ -264,7 +272,8 @@ const simulate = (gamePk, awayId, homeId) => {
                         description = `${batter.fullName} lines out to second baseman.`;
                     }
                     outs += 1;
-                    last.hitData = { launchSpeed: round(between(random, 70, 102), 1), launchAngle: Math.round(between(random, -10, 45)), totalDistance: Math.round(between(random, 20, 340)) };
+                    const where = label === 'Groundout' ? spot(-14, 34, 58, 'ground_ball') : label === 'Lineout' ? spot(14, 50, 62, 'line_drive') : spot(ANGLE[field], 95, 140, 'fly_ball');
+                    last.hitData = { launchSpeed: round(between(random, 70, 102), 1), launchAngle: Math.round(between(random, -10, 45)), totalDistance: Math.round(between(random, 20, 340)), ...where };
                 }
                 if (eventType !== 'field_out') rbi = scorers.length;
             }

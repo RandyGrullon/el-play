@@ -361,6 +361,29 @@ export const arsenal = (pitches: Pitch[], lang: string): ArsenalRow[] => {
         .sort((a, b) => b.count - a.count);
 };
 
+// ------------------------------------------------------------------ Mapa de batazos
+
+export type BattedKind = 'hr' | 'hit' | 'out';
+export interface BattedBall {
+    atBat: AtBat;
+    pitch: Pitch;
+    x: number;
+    y: number;
+    kind: BattedKind;
+    side: 'away' | 'home';
+}
+
+const HIT_EVENTS = new Set(['single', 'double', 'triple']);
+
+/** Cada bola puesta en juego con el lugar donde cayó (el anotador lo marca en todos los estadios) */
+export const battedBalls = (atBats: AtBat[]): BattedBall[] =>
+    atBats.flatMap((atBat) => {
+        const pitch = [...atBat.pitches].reverse().find((p) => p.r === 'inplay' && typeof p.hit?.x === 'number' && typeof p.hit?.y === 'number');
+        if (!pitch) return [];
+        const kind: BattedKind = atBat.event === 'home_run' ? 'hr' : HIT_EVENTS.has(atBat.event ?? '') ? 'hit' : 'out';
+        return [{ atBat, pitch, x: pitch.hit!.x as number, y: pitch.hit!.y as number, kind, side: atBat.top ? 'away' : 'home' }];
+    });
+
 export type { Lang };
 
 // ------------------------------------------------------------------ Jugada del juego

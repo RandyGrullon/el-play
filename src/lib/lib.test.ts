@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { gameInterval, scheduleInterval } from './polling';
-import { atBatForZone, arsenal, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName } from './baseball';
+import { atBatForZone, arsenal, battedBalls, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName } from './baseball';
 import { dayKey, dayRange, seasonLabel } from './format';
 import { nameKey, photoSources } from './photos';
 import type { AtBat, GameDetail, Pitch, Schedule, ScheduleGame } from '../types';
@@ -121,5 +121,25 @@ describe('fotos de peloteros', () => {
     it('misma clave que el servidor', () => {
         expect(nameKey('Bryan De La Cruz')).toBe('bryandelacruz');
         expect(nameKey('Rudy Martin Jr.')).toBe('rudymartin');
+    });
+});
+
+describe('mapa de batazos', () => {
+    const pitch = (r: Pitch['r'], hit?: Pitch['hit']): Pitch => ({ n: 1, x: null, z: null, top: null, bot: null, r, code: null, call: '', type: null, typeDesc: null, mph: null, spin: null, zone: null, b: 0, s: 0, hit });
+    const atBat = (i: number, event: string, top: boolean, pitches: Pitch[]) => ({ i, event, top, pitches }) as unknown as AtBat;
+
+    it('una bola por turno, con su tipo y el equipo que batea', () => {
+        const balls = battedBalls([
+            atBat(0, 'home_run', true, [pitch('ball'), pitch('inplay', { ev: 104, la: 28, dist: 410, x: 60, y: 50 })]),
+            atBat(1, 'single', false, [pitch('inplay', { ev: null, la: null, dist: null, x: 130, y: 120 })]),
+            atBat(2, 'field_out', false, [pitch('inplay', { ev: null, la: null, dist: null, x: 110, y: 150 })]),
+            atBat(3, 'strikeout', true, [pitch('strike'), pitch('strike'), pitch('strike')]),
+            atBat(4, 'single', true, [pitch('inplay', { ev: 90, la: 10, dist: 200 })]) // sin coordenadas: no se pinta
+        ]);
+        expect(balls.map((ball) => [ball.atBat.i, ball.kind, ball.side])).toEqual([
+            [0, 'hr', 'away'],
+            [1, 'hit', 'home'],
+            [2, 'out', 'home']
+        ]);
     });
 });

@@ -56,10 +56,17 @@ const toPitch = (event) => {
         s: event.count?.strikes ?? null
     };
     if (event.hitData) {
+        const spot = event.hitData.coordinates || {};
         pitch.hit = {
             ev: num(event.hitData.launchSpeed, 1),
             la: num(event.hitData.launchAngle, 0),
-            dist: int(event.hitData.totalDistance)
+            dist: int(event.hitData.totalDistance),
+            // Dónde cayó (cuadro de Gameday de 250×250, home ≈ 125,198): lo anota el anotador, así que viene
+            // en todos los estadios, también en los que no tienen rastreo de lanzamientos
+            x: num(spot.coordX, 1),
+            y: num(spot.coordY, 1),
+            traj: event.hitData.trajectory || null,
+            hard: event.hitData.hardness || null
         };
     }
     return pitch;

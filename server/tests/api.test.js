@@ -374,3 +374,24 @@ describe('fotos con el uniforme del equipo (roster de los Toros 2026-27)', () =>
         expect(nameKey('Rudy Martin Jr.')).toBe('rudymartin');
     });
 });
+
+describe('mapa de batazos: dónde cayó cada bola en juego', () => {
+    for (const [name, total] of [['feed-826279', 59], ['feed-826244-sin-rastreo', 50]]) {
+        it(`${name}: todas las bolas en juego traen coordenadas, trayectoria y fuerza`, () => {
+            const game = transformGame(fixture(name));
+            const inPlay = game.atBats.flatMap((atBat) => atBat.pitches).filter((pitch) => pitch.hit);
+            expect(inPlay).toHaveLength(total);
+            expect(inPlay.every((pitch) => typeof pitch.hit.x === 'number' && typeof pitch.hit.y === 'number')).toBe(true);
+            expect(inPlay.every((pitch) => pitch.hit.traj && pitch.hit.hard)).toBe(true);
+        });
+    }
+
+    it('el simulador también las genera (para desarrollar con dev:mock)', () => {
+        const mock = require('../mock');
+        const [game] = mock.gamesForDay('2026-10-15'); // día pasado: juego completo
+        const feed = mock.buildFeed(game);
+        const hits = feed.liveData.plays.allPlays.flatMap((play) => play.playEvents).filter((event) => event.hitData);
+        expect(hits.length).toBeGreaterThan(0);
+        expect(hits.every((event) => typeof event.hitData.coordinates?.coordX === 'number')).toBe(true);
+    });
+});

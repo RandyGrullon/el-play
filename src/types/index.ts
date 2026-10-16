@@ -85,7 +85,8 @@ export interface Pitch {
     zone: number | null;
     b: number | null;
     s: number | null;
-    hit?: { ev: number | null; la: number | null; dist: number | null };
+    /** x/y: dónde cayó, en el cuadro de Gameday (250×250, home ≈ 125,198); traj/hard: trayectoria y fuerza */
+    hit?: { ev: number | null; la: number | null; dist: number | null; x?: number | null; y?: number | null; traj?: string | null; hard?: string | null };
 }
 
 export interface AtBat {
