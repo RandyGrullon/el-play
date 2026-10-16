@@ -36,7 +36,11 @@ const ES: Section[] = [
     },
     {
         title: 'Publicidad',
-        body: ['El Play no muestra anuncios ni vende tus datos.']
+        body: [
+            'Algunas pantallas pueden mostrar un banner. Los de patrocinadores son imágenes con un enlace; al tocarlo, la página del patrocinador sabe que llegaste desde El Play.',
+            'Otros banners los sirve Google AdSense. Google y sus socios usan cookies para mostrar anuncios según tus visitas a este y otros sitios. Puedes desactivar los anuncios personalizados en la Configuración de anuncios de Google (adssettings.google.com) o en aboutads.info.',
+            'Si nos visitas desde la Unión Europea, el Reino Unido o Suiza, Google te pide el consentimiento antes de usar esas cookies. El Play no vende tus datos.'
+        ]
     },
     {
         title: 'Datos del béisbol',
@@ -69,7 +73,11 @@ const EN: Section[] = [
     },
     {
         title: 'Advertising',
-        body: ["El Play doesn't show ads or sell your data."]
+        body: [
+            "Some screens may show a banner. Sponsor banners are images with a link; when you tap one, the sponsor's site knows you came from El Play.",
+            "Other banners are served by Google AdSense. Google and its partners use cookies to show ads based on your visits to this and other sites. You can turn off personalized ads in Google's Ad Settings (adssettings.google.com) or at aboutads.info.",
+            "If you visit from the European Union, the United Kingdom or Switzerland, Google asks for your consent before using those cookies. El Play doesn't sell your data."
+        ]
     },
     {
         title: 'Baseball data',

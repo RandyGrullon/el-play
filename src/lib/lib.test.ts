@@ -3,6 +3,7 @@ import { gameInterval, scheduleInterval } from './polling';
 import { atBatForZone, arsenal, battedBalls, battersFaced, inningBreak, isOnHold, isWhiff, pitchesByPitcher, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName, weatherName, weatherTemp } from './baseball';
 import { dayKey, dayRange, seasonLabel, surname } from './format';
 import { nameKey, photoSources } from './photos';
+import { activeSponsors, pickSponsor, sponsorHref, type Sponsor } from './ads';
 import { forMode, newPlayEvents, outVariant, titleClinch } from './playEvents';
 import { canAdd, creditsLeft, effectiveEntry, entryCost, perTeamLimit, fantasyInterval, gameStarted, getStore, isLocked, lockTime, nextLockAt, pickPoints, replaceStore, setPick, setStoreOwner, takeLegacyStore, teamPoints, unsettledDays, type DayEntry, type EntryHistory, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
 import { SORTS, normalize, sortPlayers, type PlayerRow } from './stats';
@@ -1099,5 +1100,36 @@ describe('fantasy: desglose de puntos y logros', () => {
         expect(list.streak7).toMatchObject({ done: false, progress: { value: 3, goal: 7 } });
         expect(list.perfectPicks.done).toBe(true);
         expect(list.tenDays.progress).toEqual({ value: 4, goal: 10 });
+    });
+});
+
+describe('banners de patrocinadores', () => {
+    const base = { image: '/patrocinadores/a.jpg', url: 'https://ejemplo.com/' };
+    const sponsors: Sponsor[] = [
+        { id: 'todo', name: 'Todo', ...base },
+        { id: 'tabla', name: 'Tabla', placements: ['tabla'], ...base },
+        { id: 'octubre', name: 'Octubre', from: '2026-10-20', until: '2026-10-31', ...base },
+        { id: 'sin-imagen', name: 'Sin imagen', image: '', url: 'https://ejemplo.com/' }
+    ];
+    const at = (iso: string) => Date.parse(iso);
+
+    it('solo los del espacio, vigentes (días completos en hora de RD) y con imagen', () => {
+        expect(activeSponsors(sponsors, 'portada', at('2026-10-16T12:00:00-04:00')).map((s) => s.id)).toEqual(['todo']);
+        expect(activeSponsors(sponsors, 'tabla', at('2026-10-16T12:00:00-04:00')).map((s) => s.id)).toEqual(['todo', 'tabla']);
+        expect(activeSponsors(sponsors, 'portada', at('2026-10-20T00:30:00-04:00')).map((s) => s.id)).toEqual(['todo', 'octubre']);
+        expect(activeSponsors(sponsors, 'portada', at('2026-10-31T23:30:00-04:00')).map((s) => s.id)).toEqual(['todo', 'octubre']);
+        expect(activeSponsors(sponsors, 'portada', at('2026-11-01T00:30:00-04:00')).map((s) => s.id)).toEqual(['todo']);
+    });
+
+    it('reparte por peso y sin patrocinadores no hay banner', () => {
+        const list: Sponsor[] = [{ id: 'a', name: 'A', weight: 3, ...base }, { id: 'b', name: 'B', ...base }];
+        expect(pickSponsor(list, 0)?.id).toBe('a');
+        expect(pickSponsor(list, 0.74)?.id).toBe('a');
+        expect(pickSponsor(list, 0.76)?.id).toBe('b');
+        expect(pickSponsor([], 0.5)).toBeNull();
+    });
+
+    it('marca la visita para el patrocinador', () => {
+        expect(sponsorHref('https://ejemplo.com/oferta?x=1', 'tabla')).toBe('https://ejemplo.com/oferta?x=1&utm_source=el-play&utm_medium=banner&utm_campaign=tabla');
     });
 });

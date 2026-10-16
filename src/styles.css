@@ -447,3 +447,12 @@ html.text-large body {
 .cmp-bar { display: flex; height: 8px; overflow: hidden; border-radius: 9999px; background: rgb(var(--raised)); }
 .cmp-bar > span { display: block; height: 100%; transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .cmp-bar > span + span { margin-left: 2px; }
+
+/* Imagen de patrocinador con versión clara y oscura (sigue el mismo tema que la app) */
+.only-dark { display: none; }
+:root[data-theme='dark'] .only-dark { display: block; }
+:root[data-theme='dark'] .only-light { display: none; }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .only-dark { display: block; }
+    :root:not([data-theme='light']) .only-light { display: none; }
+}

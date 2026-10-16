@@ -14,6 +14,7 @@ import { BottomSheet } from '../components/ui/BottomSheet';
 import { EmptyState, ErrorState, OfflineState, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { InstallBanner, InstallIconButton } from '../components/install/InstallCard';
+import { AdSlot } from '../components/ads/AdSlot';
 
 // Solo se baja si el usuario quiere jugar mientras no hay juegos
 const MiniGame = lazy(() => import('../components/game/MiniGame'));
@@ -180,10 +181,14 @@ export const GamesPage: React.FC = () => {
                         <ErrorState error={schedule.error} onRetry={() => schedule.refetch()} />
                     ) : games.length > 0 ? (
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            {games.map((game) => (
-                                <div key={game.gamePk} className={game.state === 'live' ? 'sm:col-span-2' : ''}>
-                                    <GameFeedCard game={game} />
-                                </div>
+                            {games.map((game, index) => (
+                                <React.Fragment key={game.gamePk}>
+                                    <div className={game.state === 'live' ? 'sm:col-span-2' : ''}>
+                                        <GameFeedCard game={game} />
+                                    </div>
+                                    {/* Un solo banner, después del segundo juego (o del último si hay menos) */}
+                                    {index === Math.min(1, games.length - 1) && <AdSlot placement="portada" className="sm:col-span-2" />}
+                                </React.Fragment>
                             ))}
                         </div>
                     ) : (

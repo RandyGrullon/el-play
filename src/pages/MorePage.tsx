@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check } from 'lucide-react';
+import { Check, ChevronRight, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLeague } from '../store/LeagueContext';
 import { usePreferences, type AnimationMode, type ThemePreference } from '../store/preferences';
@@ -124,10 +124,13 @@ export const MorePage: React.FC = () => {
                     <p className="font-extrabold">El Play</p>
                     <p className="text-sm text-muted">{t('more.tagline')}</p>
                 </div>
-                <Link to="/privacidad" className="text-sm font-semibold text-accent-ink">
-                    {t('privacy.title')}
-                </Link>
             </section>
+
+            <Link to="/privacidad" className="card flex items-center gap-3 p-4">
+                <ShieldCheck className="h-5 w-5 text-muted" />
+                <span className="flex-1 font-semibold">{t('privacy.title')}</span>
+                <ChevronRight className="h-5 w-5 text-muted" />
+            </Link>
         </div>
     );
 };

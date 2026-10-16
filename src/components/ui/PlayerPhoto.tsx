@@ -55,11 +55,8 @@ export const PlayerPhoto: React.FC<PlayerPhotoProps> = ({ personId, name, size =
                     style={{ background: source.kind === 'mlb' ? background : undefined, objectPosition: source.kind === 'team' ? '50% 18%' : undefined }}
                 />
             ) : (
-                <span
-                    className="flex h-full w-full items-center justify-center rounded-full font-extrabold"
-                    style={{ background: team?.color ? `${team.color}33` : background, color: team?.color ?? undefined, fontSize: size * 0.32 }}
-                    aria-hidden="true"
-                >
+                // Fondo y color neutros: en la tarjeta del líder el fondo ya es el color del equipo
+                <span className="flex h-full w-full items-center justify-center rounded-full font-extrabold text-muted" style={{ background, fontSize: size * 0.32 }} aria-hidden="true">
                     {initials(name)}
                 </span>
             )}

@@ -1753,5 +1753,9 @@
     "fantasy": "Fantasy",
     "points": "Puntos",
     "perGame": "Puntos por juego"
+  },
+  "ads": {
+    "label": "Publicidad",
+    "sponsored": "Patrocinado"
   }
 }

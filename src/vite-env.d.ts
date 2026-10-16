@@ -7,4 +7,7 @@ interface ImportMetaEnv {
     /** Supabase: cuentas opcionales (sin ellas la app guarda todo en el teléfono) */
     readonly VITE_SUPABASE_URL?: string;
     readonly VITE_SUPABASE_ANON_KEY?: string;
+    /** Google AdSense: «ca-pub-…» y el id del bloque de anuncio (si faltan, no hay AdSense) */
+    readonly VITE_ADSENSE_CLIENT?: string;
+    readonly VITE_ADSENSE_SLOT?: string;
 }

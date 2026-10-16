@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { readFileSync } from 'node:fs'
@@ -15,8 +15,18 @@ const APP_VERSION = (() => {
   }
 })()
 
+// ads.txt de Google AdSense: se genera solo si el build tiene VITE_ADSENSE_CLIENT (variable de entorno en Vercel)
+const adsTxt = (client) => ({
+  name: 'ads-txt',
+  generateBundle() {
+    if (!client) return
+    this.emitFile({ type: 'asset', fileName: 'ads.txt', source: `google.com, ${client.replace(/^ca-/, '')}, DIRECT, f08c47fec0942fa0
+` })
+  }
+})
+
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   define: {
     __APP_VERSION__: JSON.stringify(APP_VERSION)
   },
@@ -27,6 +37,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    adsTxt(loadEnv(mode, process.cwd(), 'VITE_').VITE_ADSENSE_CLIENT),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['logo.svg', 'icons/logo-v2.svg', 'icons/apple-touch-icon-v2.png'],
@@ -36,6 +47,8 @@ export default defineConfig({
         // Evita "Unexpected early exit" de terser en build (race con rollup)
         mode: 'development',
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Los banners de patrocinadores se bajan al mostrarse, no van en la instalación
+        globIgnores: ['**/node_modules/**/*', 'patrocinadores/**'],
         navigateFallbackDenylist: [/^\/api/, /^\/version\.json/, /^\/sw-legacy\.js/],
         runtimeCaching: [
           {
@@ -93,4 +106,4 @@ export default defineConfig({
       }
     })
   ],
-})
+}))

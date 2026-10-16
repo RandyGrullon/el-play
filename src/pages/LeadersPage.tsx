@@ -14,6 +14,7 @@ import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../compon
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { StatsTabs } from '../components/layout/StatsTabs';
 import { ProBadge } from '../components/pro/ProBadge';
+import { AdSlot } from '../components/ads/AdSlot';
 
 const detailOf = (leader: Leader, t: (key: string, options?: Record<string, unknown>) => string) => {
     const extra = leader.extra || {};
@@ -145,6 +146,7 @@ export const LeadersPage: React.FC = () => {
                 ) : data ? (
                     <>
                         <CategoryCarousel data={data} group="hitting" season={season} />
+                        <AdSlot placement="lideres" className="px-4" />
                         <CategoryCarousel data={data} group="pitching" season={season} />
                         <p className="px-4 text-xs text-muted">{t('leaders.qualifiedNote')}</p>
                     </>

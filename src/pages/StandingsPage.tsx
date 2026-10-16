@@ -20,6 +20,7 @@ import { ProBadge } from '../components/pro/ProBadge';
 import { useIsPro } from '../lib/pro';
 import { raceStatus, type RaceStatus } from '../lib/standings';
 import { RaceChart } from '../components/standings/RaceChart';
+import { AdSlot } from '../components/ads/AdSlot';
 
 type Phase = 'regular' | 'roundRobin' | 'final';
 
@@ -227,6 +228,8 @@ export const StandingsPage: React.FC = () => {
                         <StandingCards rows={data.teams} cutoff={4} cutoffLabel={t('standings.cutNext')} />
                     )
                 ) : null}
+
+                {data && <AdSlot placement="tabla" />}
             </div>
         </PullToRefresh>
     );
