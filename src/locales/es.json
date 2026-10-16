@@ -185,12 +185,15 @@
     "whiffs": "Abanicos",
     "open": "Abrir la zona de strike completa",
     "full": "Zona",
-    "untracked": "Este estadio no tiene rastreo de lanzamientos: MLB no da la ubicación ni la velocidad, solo el resultado de cada pitcheo.",
-    "untrackedPitcher": "Este estadio no tiene rastreo: los tipos de pitcheo y la velocidad no están disponibles.",
+    "untracked": "MLB todavía no trae la ubicación de estos pitcheos: aquí va el resultado y el conteo de cada uno.",
+    "untrackedPitcher": "Sin rastreo en este juego: no hay tipos de pitcheo ni velocidad.",
     "sumPitches": "Pitcheos",
     "sumStrikes": "Strikes",
     "sumBalls": "Bolas",
-    "sumFouls": "Fouls"
+    "sumFouls": "Fouls",
+    "estimated": "Ubicación marcada por el anotador (aproximada): MLB todavía no trae el rastreo de estos pitcheos.",
+    "estimatedSome_one": "{{count}} pitcheo con ubicación aproximada del anotador (su rastreo llega en segundos).",
+    "estimatedSome_other": "{{count}} pitcheos con ubicación aproximada del anotador (su rastreo llega en segundos)."
   },
   "plays": {
     "title": "Jugada a jugada",

@@ -185,12 +185,15 @@
     "whiffs": "Whiffs",
     "open": "Open the full strike zone",
     "full": "Zone",
-    "untracked": "This ballpark has no pitch tracking: MLB doesn't provide location or velocity, only the result of each pitch.",
-    "untrackedPitcher": "This ballpark has no pitch tracking: pitch types and velocity aren't available.",
+    "untracked": "MLB hasn't sent the location of these pitches yet: here is the result and count of each one.",
+    "untrackedPitcher": "No tracking in this game: pitch types and velocity aren't available.",
     "sumPitches": "Pitches",
     "sumStrikes": "Strikes",
     "sumBalls": "Balls",
-    "sumFouls": "Fouls"
+    "sumFouls": "Fouls",
+    "estimated": "Location marked by the official scorer (approximate): MLB hasn't sent tracking for these pitches yet.",
+    "estimatedSome_one": "{{count}} pitch with the scorer's approximate location (tracking arrives in seconds).",
+    "estimatedSome_other": "{{count}} pitches with the scorer's approximate location (tracking arrives in seconds)."
   },
   "plays": {
     "title": "Play by play",

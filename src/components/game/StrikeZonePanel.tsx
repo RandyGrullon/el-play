@@ -30,7 +30,8 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
     const pitcherPitches = useMemo(() => pitchesByPitcher(game.atBats, pitcher?.id), [game.atBats, pitcher?.id]);
     const rows = useMemo(() => arsenal(pitcherPitches, i18n.language), [pitcherPitches, i18n.language]);
     // Sin rastreo no hay tipos de pitcheo: el resumen sale de los resultados, que siempre vienen
-    const tracked = pitcherPitches.some((pitch) => pitch.type || (pitch.x !== null && pitch.z !== null));
+    const typed = pitcherPitches.some((pitch) => pitch.type);
+    const located = pitcherPitches.some((pitch) => pitch.x !== null && pitch.z !== null);
     const summary = useMemo(() => {
         const count = (test: (code: string | null, r: string) => boolean) => pitcherPitches.filter((p) => test(p.code, p.r)).length;
         const strikes = count((_, r) => r === 'strike' || r === 'inplay');
@@ -104,8 +105,9 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
                         <PitchList pitches={atBat.pitches} selected={selected} onSelect={setSelected} />
                     </div>
                 </div>
-            ) : !tracked ? (
-                <div className="p-4">
+            ) : !typed ? (
+                <div className="space-y-3 p-4">
+                    {located && <StrikeZone pitches={pitcherPitches} mode="types" />}
                     <dl className="grid grid-cols-3 gap-2">
                         {summary.map((item) => (
                             <div key={item.label} className="rounded-2xl bg-raised p-3 text-center">
@@ -114,7 +116,7 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
                             </div>
                         ))}
                     </dl>
-                    <p className="mt-3 text-center text-[11px] text-faint">{t('zone.untrackedPitcher')}</p>
+                    <p className="text-center text-[11px] text-faint">{t('zone.untrackedPitcher')}</p>
                 </div>
             ) : (
                 <div className="grid gap-4 p-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] sm:items-start">

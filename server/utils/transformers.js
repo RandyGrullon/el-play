@@ -34,27 +34,45 @@ const classifyPitch = (details = {}) => {
     return 'ball';
 };
 
+// Sin rastreo (pX/pZ), MLB igual manda dónde marcó el anotador el pitcheo sobre el dibujo de la zona de Gameday
+// (coordinates.x/y, en píxeles). Se pasa a pies con un ajuste lineal contra juegos de LIDOM 2025-26 que traen las
+// dos cosas: error medio ~0,02 pies de lado y ~0,07 de alto; dentro/fuera de la zona coincide en ~97%.
+const GAMEDAY_TO_FEET = { x: [3.076, -0.02636], y: [8.4462, -0.03496] };
+
+const pitchLocation = (coordinates) => {
+    if (typeof coordinates.pX === 'number' && typeof coordinates.pZ === 'number') return { x: num(coordinates.pX), z: num(coordinates.pZ), est: false };
+    if (typeof coordinates.x === 'number' && typeof coordinates.y === 'number') {
+        const [bx, ax] = GAMEDAY_TO_FEET.x;
+        const [bz, az] = GAMEDAY_TO_FEET.y;
+        return { x: num(bx + ax * coordinates.x), z: num(bz + az * coordinates.y), est: true };
+    }
+    return { x: null, z: null, est: false };
+};
+
 const toPitch = (event) => {
     const details = event.details || {};
     const pitchData = event.pitchData || {};
-    const coordinates = pitchData.coordinates || {};
+    const location = pitchLocation(pitchData.coordinates || {});
     const pitch = {
         n: event.pitchNumber ?? null,
-        x: num(coordinates.pX),
-        z: num(coordinates.pZ),
+        x: location.x,
+        z: location.z,
         top: num(pitchData.strikeZoneTop, 2),
         bot: num(pitchData.strikeZoneBottom, 2),
         r: classifyPitch(details),
         code: details.call?.code || details.code || null,
         call: details.call?.description || details.description || '',
         type: details.type?.code || null,
-        typeDesc: details.type?.description || null,
+        // Mientras MLB no clasifica el pitcheo manda code "" y description "Unknown": mejor no mostrar nada
+        typeDesc: (details.type?.code && details.type?.description) || null,
         mph: num(pitchData.startSpeed, 1),
         spin: int(pitchData.breaks?.spinRate),
         zone: int(pitchData.zone),
         b: event.count?.balls ?? null,
         s: event.count?.strikes ?? null
     };
+    // Solo cuando la ubicación es la del anotador (aproximada): la app lo aclara bajo la zona
+    if (location.est) pitch.est = true;
     if (event.hitData) {
         const spot = event.hitData.coordinates || {};
         pitch.hit = {

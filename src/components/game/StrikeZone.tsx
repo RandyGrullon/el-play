@@ -72,14 +72,18 @@ export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches, mode = 'sequenc
         });
 
     const lastIndex = located.length ? located[located.length - 1].index : -1;
+    // Sin tipos (estadio o juego sin rastreo) la vista del lanzador se colorea por resultado
+    const anyType = pitches.some((pitch) => pitch.type);
+    // Ubicación del anotador (aproximada): en todo el turno/juego, o solo en los pitcheos a los que aún no les llega el rastreo
+    const estimated = located.filter(({ pitch }) => pitch.est).length;
     const missing = pitches.length - located.length;
     const side = batterSide === 'L' ? 'L' : batterSide === 'R' ? 'R' : null;
 
     const label = (pitch: Pitch) =>
         `${pitch.n ?? ''} ${pitchTypeName(pitch, i18n.language)} ${pitch.mph ? `${pitch.mph} mph` : ''} — ${pitchCallName(pitch, i18n.language)}`;
 
-    // Estadios sin rastreo (en LIDOM: Francisco Micheli y Julián Javier): MLB no trae ubicación, velocidad ni tipo.
-    // En vez de una zona vacía se muestra la secuencia del turno con el resultado y el conteo de cada pitcheo.
+    // Si un pitcheo no trae ni la ubicación del rastreo ni la del anotador (a veces llega unos segundos después),
+    // en vez de una zona vacía se muestra la secuencia del turno con el resultado y el conteo de cada pitcheo.
     if (!byType && pitches.length > 0 && located.length === 0) {
         return (
             <figure className={`flex flex-col items-center ${className}`}>
@@ -168,7 +172,7 @@ export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches, mode = 'sequenc
                 {located.map(({ pitch, index, cx, cy, outside }) => {
                     const isLast = index === lastIndex && !byType;
                     const isSelected = selected === index;
-                    const color = byType ? pitchTypeColor(pitch.type) : RESULT_COLORS[pitch.r];
+                    const color = byType && anyType ? pitchTypeColor(pitch.type) : RESULT_COLORS[pitch.r];
                     const radius = byType ? BALL_R * 0.72 : BALL_R;
                     return (
                         <g
@@ -193,7 +197,7 @@ export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches, mode = 'sequenc
 
             {showLegend && (
                 <figcaption className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-muted">
-                    {!byType && (
+                    {(!byType || !anyType) && (
                         <>
                             <Legend color={RESULT_COLORS.ball} label={t('zone.ball')} />
                             <Legend color={RESULT_COLORS.strike} label={t('zone.strike')} />
@@ -202,6 +206,9 @@ export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches, mode = 'sequenc
                     )}
                     <span className="text-faint">{t('zone.catcherView')}</span>
                     {missing > 0 && <span className="text-faint">· {t('zone.noTracking', { count: missing })}</span>}
+                    {estimated > 0 && (
+                        <span className="w-full text-center text-faint">{estimated === located.length ? t('zone.estimated') : t('zone.estimatedSome', { count: estimated })}</span>
+                    )}
                 </figcaption>
             )}
         </figure>

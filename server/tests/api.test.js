@@ -349,9 +349,12 @@ describe('juego en un estadio sin rastreo (826244, Francisco Micheli)', () => {
     const game = transformGame(fixture('feed-826244-sin-rastreo'));
     const pitches = game.atBats.flatMap((atBat) => atBat.pitches);
 
-    it('trae cada pitcheo con su resultado y conteo, pero sin ubicación, velocidad ni tipo', () => {
+    it('sin velocidad ni tipo, pero con la ubicación aproximada del anotador', () => {
         expect(pitches.length).toBeGreaterThan(250);
-        expect(pitches.every((pitch) => pitch.x === null && pitch.mph === null && pitch.type === null)).toBe(true);
+        expect(pitches.every((pitch) => pitch.mph === null && pitch.type === null)).toBe(true);
+        const located = pitches.filter((pitch) => pitch.x !== null && pitch.z !== null);
+        expect(located.length).toBeGreaterThanOrEqual(pitches.length - 5);
+        expect(located.every((pitch) => pitch.est === true)).toBe(true);
         expect(pitches.every((pitch) => ['ball', 'strike', 'inplay', 'hbp'].includes(pitch.r))).toBe(true);
         expect(pitches.filter((pitch) => pitch.b !== null && pitch.s !== null).length).toBe(pitches.length);
     });
@@ -393,5 +396,47 @@ describe('mapa de batazos: dónde cayó cada bola en juego', () => {
         const hits = feed.liveData.plays.allPlays.flatMap((play) => play.playEvents).filter((event) => event.hitData);
         expect(hits.length).toBeGreaterThan(0);
         expect(hits.every((event) => typeof event.hitData.coordinates?.coordX === 'number')).toBe(true);
+    });
+});
+
+describe('ubicación del pitcheo sin rastreo (coordenadas del anotador en Gameday)', () => {
+    it('en un juego con rastreo, la conversión cae a centímetros de la medida real', () => {
+        const feed = fixture('feed-826279');
+        const real = transformGame(feed).atBats.flatMap((atBat) => atBat.pitches);
+        // El mismo juego sin pX/pZ: solo queda lo que marca el anotador
+        for (const play of feed.liveData.plays.allPlays) {
+            for (const event of play.playEvents) {
+                if (event.pitchData?.coordinates) {
+                    delete event.pitchData.coordinates.pX;
+                    delete event.pitchData.coordinates.pZ;
+                }
+            }
+        }
+        const approx = transformGame(feed).atBats.flatMap((atBat) => atBat.pitches);
+        let dx = 0, dz = 0, agree = 0, n = 0;
+        const inZone = (p) => Math.abs(p.x) <= 0.83 && p.z >= p.bot && p.z <= p.top;
+        real.forEach((pitch, i) => {
+            const guess = approx[i];
+            if (pitch.x === null || guess.x === null) return;
+            n += 1;
+            dx += Math.abs(pitch.x - guess.x);
+            dz += Math.abs(pitch.z - guess.z);
+            if (inZone(pitch) === inZone(guess)) agree += 1;
+            expect(guess.est).toBe(true);
+            expect(pitch.est).toBeUndefined();
+        });
+        expect(n).toBeGreaterThan(270);
+        expect(dx / n).toBeLessThan(0.05);
+        expect(dz / n).toBeLessThan(0.12);
+        expect(agree / n).toBeGreaterThan(0.93);
+    });
+
+    it('juego en vivo de LIDOM 2026-27 sin rastreo (851491, Quisqueya): todos los pitcheos tienen ubicación', () => {
+        const game = transformGame(fixture('feed-851491-vivo-sin-rastreo'));
+        const pitches = game.atBats.flatMap((atBat) => atBat.pitches);
+        expect(game.state).toBe('live');
+        expect(pitches.length).toBeGreaterThan(15);
+        expect(pitches.every((pitch) => pitch.x !== null && pitch.z !== null && pitch.est)).toBe(true);
+        expect(pitches.every((pitch) => Math.abs(pitch.x) < 4 && pitch.z > -1 && pitch.z < 7)).toBe(true);
     });
 });
