@@ -1,9 +1,10 @@
 // Genera las imágenes para Instagram dibujando en un <canvas> a tamaño real.
 // Historia 1080×1920 (9:16) y Post 1080×1350 (4:5). Tres estilos: color del equipo, noche y papel.
-// Fotos y logos vienen de mlbstatic, que permite usarlos en canvas (Access-Control-Allow-Origin: *).
+// Fotos y logos vienen de mlbstatic, que permite usarlos en canvas (Access-Control-Allow-Origin: *); las fotos con
+// uniforme de LIDOM las sirve nuestra API (mismo origen).
 
 import { PLATE_PATH, SEAM_LEFT, SEAM_RIGHT } from '../components/brand/Logo';
-import { playerPhotoUrl } from '../components/ui/PlayerPhoto';
+import { loadPhotoIndex, photoSources } from '../lib/photos';
 
 export type ShareFormat = 'story' | 'post';
 export type ShareStyle = 'color' | 'noche' | 'papel';
@@ -36,6 +37,8 @@ export interface PlayerPost {
     kind: 'player';
     personId: number | null;
     name: string;
+    /** Para buscar su foto con el uniforme del equipo */
+    teamId?: number | null;
     teamName: string;
     teamAbbrev: string;
     color: string;
@@ -106,6 +109,17 @@ const loadImage = (src: string, timeout = 6000): Promise<HTMLImageElement | null
         };
         img.src = src;
     });
+
+/** La mejor foto que cargue: uniforme del equipo, MLB o MiLB (ver lib/photos.ts) */
+const loadPlayerPhoto = async (data: PlayerPost) => {
+    if (!data.personId) return null;
+    const sources = photoSources(data.personId, data.name, data.teamId, await loadPhotoIndex(), 720);
+    for (const source of sources) {
+        const img = await loadImage(source.url);
+        if (img) return img;
+    }
+    return null;
+};
 
 export const ensureFonts = async () => {
     if (typeof document === 'undefined' || !document.fonts) return;
@@ -456,7 +470,8 @@ const drawPlayer = async (ctx: CanvasRenderingContext2D, data: PlayerPost, H: nu
 
     let y = top + (story ? 60 : 30);
     if (!hasPhoto) {
-        const size = story ? 760 : 560;
+        // En historia, con 760 el detalle (p. ej. «46.1 IP · 34 K») caía encima del pie con la dirección
+        const size = story ? 680 : 560;
         const cx = W / 2;
         const cy = y + size / 2 + 20;
         seams(ctx, cx, cy, size * 0.62, pal.seam, 9);
@@ -464,13 +479,17 @@ const drawPlayer = async (ctx: CanvasRenderingContext2D, data: PlayerPost, H: nu
         ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
         ctx.fillStyle = opts.style === 'color' ? 'rgba(255,255,255,0.18)' : alpha(data.color, opts.style === 'papel' ? 0.18 : 0.28);
         ctx.fill();
-        const photo = data.personId ? await loadImage(playerPhotoUrl(data.personId, 720)) : null;
+        const photo = await loadPlayerPhoto(data);
         if (photo) {
+            // Cuadrado centrado y un poco hacia arriba (las fotos de los equipos son verticales: la cara va arriba)
+            const side = Math.min(photo.naturalWidth, photo.naturalHeight);
+            const sxp = (photo.naturalWidth - side) / 2;
+            const syp = (photo.naturalHeight - side) * 0.15;
             ctx.save();
             ctx.beginPath();
             ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
             ctx.clip();
-            ctx.drawImage(photo, cx - size / 2, cy - size / 2, size, size);
+            ctx.drawImage(photo, sxp, syp, side, side, cx - size / 2, cy - size / 2, size, size);
             ctx.restore();
         }
         y = cy + size / 2 + (story ? 40 : 10);

@@ -75,7 +75,7 @@ const CategoryCarousel: React.FC<{ data: Leaders; group: 'hitting' | 'pitching';
                                 </div>
                                 <div className="mt-3 flex items-end justify-between gap-2">
                                     <span className={`font-extrabold leading-none tracking-tight tabular-nums ${first ? 'text-[64px]' : 'text-[48px]'}`}>{leader.value ?? '—'}</span>
-                                    <PlayerPhoto personId={leader.id} name={leader.name} size={first ? 96 : 72} background={first ? 'rgba(255,255,255,0.25)' : `${color}26`} />
+                                    <PlayerPhoto personId={leader.id} name={leader.name} size={first ? 96 : 72} background={first ? 'rgba(255,255,255,0.25)' : `${color}26`} team={{ id: leader.teamId, logo: leader.logo, color: leader.color }} />
                                 </div>
                                 <p className={`mt-3 truncate font-extrabold ${first ? 'text-2xl' : 'text-lg'}`}>{leader.name}</p>
                                 <p className={`truncate text-sm font-semibold ${first ? 'opacity-80' : 'text-muted'}`}>{detailOf(leader, t) || leader.teamName}</p>

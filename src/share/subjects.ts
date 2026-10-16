@@ -88,6 +88,7 @@ export const playerFromLeader = (leader: Leader, categoryId: string, seasonLabel
         kind: 'player',
         personId: leader.id,
         name: leader.name,
+        teamId: leader.teamId,
         teamName: leader.teamName,
         teamAbbrev: leader.teamAbbrev,
         color: leader.color || '#2563eb',
@@ -116,6 +117,7 @@ export const playerFromPerformer = (
     return {
         kind: 'player',
         personId: performer.id,
+        teamId: performer.teamId,
         name: performer.name.includes(',') ? performer.name.split(',').reverse().join(' ').trim() : performer.name,
         teamName: teamDisplayName(team, lang),
         teamAbbrev: team.abbrev,

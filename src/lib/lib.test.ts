@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { gameInterval, scheduleInterval } from './polling';
 import { atBatForZone, arsenal, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName } from './baseball';
 import { dayKey, dayRange, seasonLabel } from './format';
+import { nameKey, photoSources } from './photos';
 import type { AtBat, GameDetail, Pitch, Schedule, ScheduleGame } from '../types';
 
 const NOW = Date.parse('2026-11-20T23:00:00Z');
@@ -99,5 +100,26 @@ describe('fechas', () => {
         expect(dayRange('2026-11-29', '2026-12-02')).toEqual(['2026-11-29', '2026-11-30', '2026-12-01', '2026-12-02']);
         expect(seasonLabel(2026, 'lidom')).toBe('2026-27');
         expect(seasonLabel(2026, 'wbc')).toBe('2026');
+    });
+});
+
+describe('fotos de peloteros', () => {
+    const index = { teams: { '668': { jhonnunez: '/api/v2/photos/668/jhon-nunez.jpg' } } };
+
+    it('primero la foto con uniforme del equipo, después MLB y MiLB', () => {
+        const sources = photoSources(660000, 'Núñez, Jhon', 668, index, 120);
+        expect(sources.map((source) => source.kind)).toEqual(['team', 'mlb', 'milb']);
+        expect(sources[0].url).toBe('/api/v2/photos/668/jhon-nunez.jpg');
+        expect(sources[1].url).not.toContain('d_people'); // sin silueta genérica: si falta, 404 y pasa a MiLB
+    });
+
+    it('la foto del equipo solo se usa con ese equipo', () => {
+        expect(photoSources(660000, 'Jhon Núñez', 669, index, 120).map((source) => source.kind)).toEqual(['mlb', 'milb']);
+        expect(photoSources(null, 'Jhon Núñez', null, index, 120)).toEqual([]);
+    });
+
+    it('misma clave que el servidor', () => {
+        expect(nameKey('Bryan De La Cruz')).toBe('bryandelacruz');
+        expect(nameKey('Rudy Martin Jr.')).toBe('rudymartin');
     });
 });

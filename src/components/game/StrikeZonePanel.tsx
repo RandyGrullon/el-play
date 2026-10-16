@@ -29,6 +29,20 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
     const pitcher = atBat?.pitcher ?? null;
     const pitcherPitches = useMemo(() => pitchesByPitcher(game.atBats, pitcher?.id), [game.atBats, pitcher?.id]);
     const rows = useMemo(() => arsenal(pitcherPitches, i18n.language), [pitcherPitches, i18n.language]);
+    // Sin rastreo no hay tipos de pitcheo: el resumen sale de los resultados, que siempre vienen
+    const tracked = pitcherPitches.some((pitch) => pitch.type || (pitch.x !== null && pitch.z !== null));
+    const summary = useMemo(() => {
+        const count = (test: (code: string | null, r: string) => boolean) => pitcherPitches.filter((p) => test(p.code, p.r)).length;
+        const strikes = count((_, r) => r === 'strike' || r === 'inplay');
+        return [
+            { label: t('zone.sumPitches'), value: String(pitcherPitches.length) },
+            { label: t('zone.sumStrikes'), value: pitcherPitches.length ? `${strikes} · ${Math.round((strikes / pitcherPitches.length) * 100)}%` : '0' },
+            { label: t('zone.sumBalls'), value: String(count((_, r) => r === 'ball' || r === 'hbp')) },
+            { label: t('zone.whiffs'), value: String(count((code) => code === 'S' || code === 'W' || code === 'M' || code === 'Q')) },
+            { label: t('zone.sumFouls'), value: String(count((code) => code === 'F' || code === 'T' || code === 'L' || code === 'O' || code === 'R')) },
+            { label: t('zone.inPlay'), value: String(count((_, r) => r === 'inplay')) }
+        ];
+    }, [pitcherPitches, t]);
 
     if (!atBat) {
         return (
@@ -89,6 +103,18 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
                     <div className="max-h-[360px] overflow-y-auto">
                         <PitchList pitches={atBat.pitches} selected={selected} onSelect={setSelected} />
                     </div>
+                </div>
+            ) : !tracked ? (
+                <div className="p-4">
+                    <dl className="grid grid-cols-3 gap-2">
+                        {summary.map((item) => (
+                            <div key={item.label} className="rounded-2xl bg-raised p-3 text-center">
+                                <dd className="num font-display text-xl font-bold leading-none">{item.value}</dd>
+                                <dt className="mt-1 text-[11px] font-semibold text-muted">{item.label}</dt>
+                            </div>
+                        ))}
+                    </dl>
+                    <p className="mt-3 text-center text-[11px] text-faint">{t('zone.untrackedPitcher')}</p>
                 </div>
             ) : (
                 <div className="grid gap-4 p-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] sm:items-start">

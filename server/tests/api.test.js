@@ -344,3 +344,33 @@ describe('jugada del juego con datos reales', () => {
         expect(key.detail).toContain('4 CI');
     });
 });
+
+describe('juego en un estadio sin rastreo (826244, Francisco Micheli)', () => {
+    const game = transformGame(fixture('feed-826244-sin-rastreo'));
+    const pitches = game.atBats.flatMap((atBat) => atBat.pitches);
+
+    it('trae cada pitcheo con su resultado y conteo, pero sin ubicación, velocidad ni tipo', () => {
+        expect(pitches.length).toBeGreaterThan(250);
+        expect(pitches.every((pitch) => pitch.x === null && pitch.mph === null && pitch.type === null)).toBe(true);
+        expect(pitches.every((pitch) => ['ball', 'strike', 'inplay', 'hbp'].includes(pitch.r))).toBe(true);
+        expect(pitches.filter((pitch) => pitch.b !== null && pitch.s !== null).length).toBe(pitches.length);
+    });
+});
+
+describe('fotos con el uniforme del equipo (roster de los Toros 2026-27)', () => {
+    const { parseTeam, nameKey, SOURCES } = require('../services/teamPhotos');
+    const html = gunzipSync(readFileSync(path.join(dir, 'fixtures', 'toros-roster-2026.html.gz'))).toString('utf8');
+    const files = parseTeam(html, SOURCES[668]);
+
+    it('lee las 88 fotos del roster con la clave del nombre', () => {
+        expect(Object.keys(files)).toHaveLength(88);
+        expect(files.jhonnunez).toBe('jhon-nunez.jpg');
+        expect(files.bryandelacruz).toBeDefined();
+    });
+
+    it('la clave ignora acentos, mayúsculas, espacios y Jr.', () => {
+        expect(nameKey('Jhon Núñez')).toBe('jhonnunez');
+        expect(nameKey('Bryan De La Cruz')).toBe('bryandelacruz');
+        expect(nameKey('Rudy Martin Jr.')).toBe('rudymartin');
+    });
+});

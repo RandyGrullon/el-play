@@ -184,7 +184,13 @@
     "avgMph": "mph",
     "whiffs": "Whiffs",
     "open": "Open the full strike zone",
-    "full": "Zone"
+    "full": "Zone",
+    "untracked": "This ballpark has no pitch tracking: MLB doesn't provide location or velocity, only the result of each pitch.",
+    "untrackedPitcher": "This ballpark has no pitch tracking: pitch types and velocity aren't available.",
+    "sumPitches": "Pitches",
+    "sumStrikes": "Strikes",
+    "sumBalls": "Balls",
+    "sumFouls": "Fouls"
   },
   "plays": {
     "title": "Play by play",
@@ -247,7 +253,8 @@
     "tbd": "TBD",
     "notifyOn": "Notify me when it starts",
     "notifyOff": "Remove notification",
-    "notifyShort": "Notify me"
+    "notifyShort": "Notify me",
+    "probablesLater": "Starters aren't in the official data yet (LIDOM rarely posts them ahead of time): you'll see them here as soon as the game starts."
   },
   "standings": {
     "title": "Standings",

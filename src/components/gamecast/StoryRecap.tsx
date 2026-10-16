@@ -25,10 +25,11 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
     const slide = slides[Math.min(index, slides.length - 1)];
     const go = (step: number) => setIndex((current) => Math.max(0, Math.min(slides.length - 1, current + step)));
 
-    const decision = (tag: string, person: Decision | null, extra: string) =>
+    const loser = winner === game.home ? game.away : game.home;
+    const decision = (tag: string, person: Decision | null, extra: string, team: typeof winner) =>
         person && (
             <li className="flex items-center gap-3 rounded-2xl px-3 py-2.5" style={{ background: soft }}>
-                <PlayerPhoto personId={person.id} name={person.name} size={48} background="rgba(255,255,255,0.85)" />
+                <PlayerPhoto personId={person.id} name={person.name} size={48} background="rgba(255,255,255,0.85)" team={team} />
                 <span className="flex-1">
                     <span className="block text-xs font-bold opacity-80">{tag}</span>
                     <span className="block font-extrabold">{person.name}</span>
@@ -72,7 +73,7 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
                         <ul className="mt-4 flex flex-col gap-3">
                             {game.topPerformers.map((player) => (
                                 <li key={`${player.kind}-${player.id}`} className="flex items-center gap-3 rounded-3xl px-3 py-3" style={{ background: soft }}>
-                                    <PlayerPhoto personId={player.id} name={player.name} size={64} background="rgba(255,255,255,0.85)" />
+                                    <PlayerPhoto personId={player.id} name={player.name} size={64} background="rgba(255,255,255,0.85)" team={player.teamId === game.home.id ? game.home : game.away} />
                                     <span className="min-w-0 flex-1">
                                         <span className="block truncate text-lg font-extrabold">{shortName(player.name)}</span>
                                         <span className="block text-sm font-semibold opacity-85">
@@ -130,9 +131,9 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
                     <div className="animate-fade-up">
                         <span className="pill px-3 py-1.5 text-[13px]" style={{ background: soft }}>{t('summary.decisions')}</span>
                         <ul className="mt-4 flex flex-col gap-2.5">
-                            {decision(t('recap.win'), game.decisions.winner, game.decisions.winner?.wins !== null ? `${game.decisions.winner?.wins}-${game.decisions.winner?.losses ?? 0} · ${game.decisions.winner?.era ?? ''}` : '')}
-                            {decision(t('recap.loss'), game.decisions.loser, game.decisions.loser?.wins !== null ? `${game.decisions.loser?.wins}-${game.decisions.loser?.losses ?? 0} · ${game.decisions.loser?.era ?? ''}` : '')}
-                            {decision(t('recap.save'), game.decisions.save, game.decisions.save?.saves !== null && game.decisions.save?.saves !== undefined ? t('summary.saves', { count: game.decisions.save.saves }) : '')}
+                            {decision(t('recap.win'), game.decisions.winner, game.decisions.winner?.wins !== null ? `${game.decisions.winner?.wins}-${game.decisions.winner?.losses ?? 0} · ${game.decisions.winner?.era ?? ''}` : '', winner)}
+                            {decision(t('recap.loss'), game.decisions.loser, game.decisions.loser?.wins !== null ? `${game.decisions.loser?.wins}-${game.decisions.loser?.losses ?? 0} · ${game.decisions.loser?.era ?? ''}` : '', loser)}
+                            {decision(t('recap.save'), game.decisions.save, game.decisions.save?.saves !== null && game.decisions.save?.saves !== undefined ? t('summary.saves', { count: game.decisions.save.saves }) : '', winner)}
                         </ul>
                     </div>
                 )}

@@ -21,7 +21,8 @@ const BUBBLE: Record<Pitch['r'], string> = {
 
 const PitchBubble: React.FC<{ pitch: Pitch; last: boolean }> = ({ pitch, last }) => {
     const { i18n } = useTranslation();
-    const text = `${pitch.n ?? ''} · ${pitchCallName(pitch, i18n.language)} · ${pitchTypeName(pitch, i18n.language)}${pitch.mph ? ` ${pitch.mph.toFixed(1)}` : ''}`;
+    const kind = pitch.type || pitch.typeDesc ? ` · ${pitchTypeName(pitch, i18n.language)}` : '';
+    const text = `${pitch.n ?? ''} · ${pitchCallName(pitch, i18n.language)}${kind}${pitch.mph ? ` ${pitch.mph.toFixed(1)}` : ''}`;
     const solid = { ball: 'bg-ball', strike: 'bg-strike', inplay: 'bg-inplay', hbp: 'bg-hbp' }[pitch.r];
     return <span className={`max-w-[85%] rounded-[18px] px-3.5 py-2 text-[13px] font-semibold ${last ? `${solid} rounded-br-md text-white` : BUBBLE[pitch.r]}`}>{text}</span>;
 };

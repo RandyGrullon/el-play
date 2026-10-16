@@ -78,6 +78,45 @@ export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches, mode = 'sequenc
     const label = (pitch: Pitch) =>
         `${pitch.n ?? ''} ${pitchTypeName(pitch, i18n.language)} ${pitch.mph ? `${pitch.mph} mph` : ''} — ${pitchCallName(pitch, i18n.language)}`;
 
+    // Estadios sin rastreo (en LIDOM: Francisco Micheli y Julián Javier): MLB no trae ubicación, velocidad ni tipo.
+    // En vez de una zona vacía se muestra la secuencia del turno con el resultado y el conteo de cada pitcheo.
+    if (!byType && pitches.length > 0 && located.length === 0) {
+        return (
+            <figure className={`flex flex-col items-center ${className}`}>
+                <ol className="flex flex-wrap justify-center gap-x-2 gap-y-3 py-4" aria-label={t('zone.sequence')}>
+                    {pitches.map((pitch, index) => {
+                        const isSelected = selected === index;
+                        const color = RESULT_COLORS[pitch.r];
+                        return (
+                            <li key={`${index}-${pitch.n}`} className="flex flex-col items-center gap-1">
+                                <button
+                                    type="button"
+                                    title={label(pitch)}
+                                    onClick={onSelect ? () => onSelect(isSelected ? null : index) : undefined}
+                                    className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white ${index === pitches.length - 1 ? 'animate-pitch-in' : ''}`}
+                                    style={{ backgroundColor: color, boxShadow: isSelected ? `0 0 0 3px rgb(var(--surface)), 0 0 0 6px ${color}` : undefined, opacity: selected !== null && !isSelected ? 0.4 : 1 }}
+                                >
+                                    {pitch.n ?? index + 1}
+                                </button>
+                                <span className="num text-[11px] text-muted">{pitch.b !== null && pitch.s !== null && pitch.r !== 'inplay' ? `${pitch.b}-${pitch.s}` : '·'}</span>
+                            </li>
+                        );
+                    })}
+                </ol>
+                {showLegend && (
+                    <figcaption className="flex flex-col items-center gap-1.5 text-center text-[11px] text-muted">
+                        <span className="flex flex-wrap justify-center gap-x-3">
+                            <Legend color={RESULT_COLORS.ball} label={t('zone.ball')} />
+                            <Legend color={RESULT_COLORS.strike} label={t('zone.strike')} />
+                            <Legend color={RESULT_COLORS.inplay} label={t('zone.inPlay')} />
+                        </span>
+                        <span className="max-w-[300px] text-faint">{t('zone.untracked')}</span>
+                    </figcaption>
+                )}
+            </figure>
+        );
+    }
+
     return (
         <figure className={`flex flex-col items-center ${className}`}>
             <svg

@@ -33,15 +33,21 @@ export const PitchList: React.FC<PitchListProps> = ({ pitches, selected = null, 
                             </span>
                             <span className="min-w-0">
                                 <span className="block truncate text-sm font-semibold">{pitchCallName(pitch, i18n.language)}</span>
-                                <span className="block truncate text-xs text-muted">
-                                    {pitchTypeName(pitch, i18n.language)}
-                                    {pitch.hit?.ev ? ` · ${t('zone.exitVelo', { mph: pitch.hit.ev })}` : ''}
+                                {/* Sin rastreo no hay tipo ni velocidad: no se pintan guiones */}
+                                {(pitch.type || pitch.typeDesc || pitch.hit?.ev) && (
+                                    <span className="block truncate text-xs text-muted">
+                                        {[pitch.type || pitch.typeDesc ? pitchTypeName(pitch, i18n.language) : '', pitch.hit?.ev ? t('zone.exitVelo', { mph: pitch.hit.ev }) : ''].filter(Boolean).join(' · ')}
+                                    </span>
+                                )}
+                            </span>
+                            {pitch.mph ? (
+                                <span className="text-right">
+                                    <span className="num block font-display text-base font-bold leading-none">{pitch.mph.toFixed(1)}</span>
+                                    <span className="num block text-[11px] text-faint">{pitch.b !== null && pitch.s !== null && pitch.r !== 'inplay' ? `${pitch.b}-${pitch.s}` : 'mph'}</span>
                                 </span>
-                            </span>
-                            <span className="text-right">
-                                <span className="num block font-display text-base font-bold leading-none">{pitch.mph ? pitch.mph.toFixed(1) : '—'}</span>
-                                <span className="num block text-[11px] text-faint">{pitch.b !== null && pitch.s !== null && pitch.r !== 'inplay' ? `${pitch.b}-${pitch.s}` : 'mph'}</span>
-                            </span>
+                            ) : (
+                                <span className="num text-right font-display text-base font-bold leading-none text-muted">{pitch.b !== null && pitch.s !== null && pitch.r !== 'inplay' ? `${pitch.b}-${pitch.s}` : ''}</span>
+                            )}
                         </button>
                     </li>
                 );

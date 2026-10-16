@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { photoSources, usePhotoIndex } from '../../lib/photos';
 
-// Foto oficial del pelotero desde MLB (recorte sin fondo). Si no tiene, MLB devuelve una silueta;
-// si la imagen no carga, se muestran sus iniciales.
-export const playerPhotoUrl = (personId: number, size = 360) =>
-    `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:silo:current.png/r_max,c_pad,ar_1:1,w_${size},q_auto:best/v1/people/${personId}/headshot/silo/current`;
+// Foto del pelotero con respaldos (ver lib/photos.ts): uniforme del equipo LIDOM si lo publica, MLB, MiLB
+// y por último sus iniciales. Con `team` lleva el logo del equipo LIDOM en una esquina.
 
 const initials = (name: string) =>
     name
@@ -19,31 +18,57 @@ interface PlayerPhotoProps {
     name: string;
     size?: number;
     className?: string;
-    /** Fondo detrás del recorte */
+    /** Fondo detrás del recorte de MLB */
     background?: string;
+    /** Equipo con el que juega aquí: su foto con uniforme (si existe) y su logo */
+    team?: { id: number | null; logo?: string | null; color?: string | null } | null;
 }
 
-export const PlayerPhoto: React.FC<PlayerPhotoProps> = ({ personId, name, size = 56, className = '', background = 'rgb(var(--raised))' }) => {
-    const [failed, setFailed] = useState(false);
-    const style = { width: size, height: size, background };
-    if (!personId || failed) {
-        return (
-            <span className={`inline-flex shrink-0 items-center justify-center rounded-full font-extrabold text-muted ${className}`} style={{ ...style, fontSize: size * 0.32 }} aria-hidden="true">
-                {initials(name)}
-            </span>
-        );
-    }
+export const PlayerPhoto: React.FC<PlayerPhotoProps> = ({ personId, name, size = 56, className = '', background = 'rgb(var(--raised))', team }) => {
+    const index = usePhotoIndex();
+    const px = Math.min(480, Math.round(size * 2));
+    const sources = useMemo(() => photoSources(personId, name, team?.id, index, px), [personId, name, team?.id, index, px]);
+    const [step, setStep] = useState(0);
+    // Si llega la foto del equipo (o cambia el pelotero) se empieza otra vez por la mejor
+    useEffect(() => setStep(0), [sources[0]?.url]);
+
+    const source = sources[step];
+    const badge = team?.logo && size >= 44 ? Math.round(size * 0.36) : 0;
+
     return (
-        <img
-            src={playerPhotoUrl(personId, Math.min(480, Math.round(size * 2)))}
-            alt=""
-            width={size}
-            height={size}
-            loading="lazy"
-            decoding="async"
-            onError={() => setFailed(true)}
-            className={`shrink-0 rounded-full object-cover ${className}`}
-            style={style}
-        />
+        <span className={`relative inline-block shrink-0 ${className}`} style={{ width: size, height: size }}>
+            {source ? (
+                <img
+                    key={source.url}
+                    src={source.url}
+                    alt=""
+                    width={size}
+                    height={size}
+                    loading="lazy"
+                    decoding="async"
+                    onError={() => setStep((current) => current + 1)}
+                    className="h-full w-full rounded-full object-cover"
+                    // El recorte de MLB no tiene fondo; las otras son fotos completas, encuadradas en la cara
+                    style={{ background: source.kind === 'mlb' ? background : undefined, objectPosition: source.kind === 'team' ? '50% 18%' : undefined }}
+                />
+            ) : (
+                <span
+                    className="flex h-full w-full items-center justify-center rounded-full font-extrabold"
+                    style={{ background: team?.color ? `${team.color}33` : background, color: team?.color ?? undefined, fontSize: size * 0.32 }}
+                    aria-hidden="true"
+                >
+                    {initials(name)}
+                </span>
+            )}
+            {badge > 0 && (
+                <span
+                    className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full bg-white shadow-card"
+                    style={{ width: badge, height: badge, padding: Math.max(2, badge * 0.1) }}
+                    aria-hidden="true"
+                >
+                    <img src={team!.logo!} alt="" className="h-full w-full object-contain" loading="lazy" decoding="async" />
+                </span>
+            )}
+        </span>
     );
 };

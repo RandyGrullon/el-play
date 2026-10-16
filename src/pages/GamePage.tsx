@@ -25,6 +25,7 @@ import { BoxScore } from '../components/game/BoxScore';
 import { Bases, OutsDots } from '../components/game/Bases';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
+import { TeamLogo } from '../components/ui/TeamLogo';
 import { ErrorState, Skeleton } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 
@@ -141,7 +142,13 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                         const pitcher = game.probables[side];
                         return (
                             <li key={side} className="flex items-center gap-3">
-                                <PlayerPhoto personId={pitcher?.id} name={pitcher?.name ?? game[side].abbrev} size={56} background={`${game[side].color}33`} />
+                                {pitcher ? (
+                                    <PlayerPhoto personId={pitcher.id} name={pitcher.name} size={56} background={`${game[side].color}33`} team={game[side]} />
+                                ) : (
+                                    <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full" style={{ background: `${game[side].color}22` }}>
+                                        <TeamLogo team={game[side]} size={38} />
+                                    </span>
+                                )}
                                 <span className="min-w-0 flex-1">
                                     <span className="block truncate font-extrabold">{pitcher?.name ?? t('preview.tbd')}</span>
                                     <span className="block truncate text-sm text-muted">{teamDisplayName(game[side], i18n.language)}</span>
@@ -156,6 +163,8 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                         );
                     })}
                 </ul>
+                {/* MLB no recibe los abridores de LIDOM (0 de 185 juegos en 2025-26): se dice en vez de dejar el hueco */}
+                {!game.probables.away && !game.probables.home && <p className="mt-3 text-sm text-muted">{t('preview.probablesLater')}</p>}
             </section>
 
             <section className="card space-y-2.5 p-4" aria-label={t('preview.details')}>

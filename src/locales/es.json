@@ -184,7 +184,13 @@
     "avgMph": "mph",
     "whiffs": "Abanicos",
     "open": "Abrir la zona de strike completa",
-    "full": "Zona"
+    "full": "Zona",
+    "untracked": "Este estadio no tiene rastreo de lanzamientos: MLB no da la ubicación ni la velocidad, solo el resultado de cada pitcheo.",
+    "untrackedPitcher": "Este estadio no tiene rastreo: los tipos de pitcheo y la velocidad no están disponibles.",
+    "sumPitches": "Pitcheos",
+    "sumStrikes": "Strikes",
+    "sumBalls": "Bolas",
+    "sumFouls": "Fouls"
   },
   "plays": {
     "title": "Jugada a jugada",
@@ -247,7 +253,8 @@
     "tbd": "Por anunciar",
     "notifyOn": "Avisarme cuando empiece",
     "notifyOff": "Quitar aviso",
-    "notifyShort": "Avisarme"
+    "notifyShort": "Avisarme",
+    "probablesLater": "Los abridores todavía no están en los datos oficiales (LIDOM casi nunca los publica antes): los verás aquí apenas empiece el juego."
   },
   "standings": {
     "title": "Posiciones",
