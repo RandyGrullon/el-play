@@ -1,5 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { readStorage, writeStorage } from './storage';
+import { isIOS, isStandalone } from '../lib/install';
+
+export type AlertResult = 'on' | 'off' | 'blocked' | 'needs-install' | 'unsupported';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 
@@ -10,10 +13,11 @@ interface Preferences {
     favoriteTeamId: number | null;
     toggleFavoriteTeam: (teamId: number) => void;
     subscribedGames: number[];
-    toggleGameSubscription: (gamePk: number) => Promise<boolean>;
+    toggleGameSubscription: (gamePk: number) => Promise<AlertResult>;
     /** Animaciones de jugada en el juego en vivo (hit, jonrón, ponche, fin de entrada) */
     playAnimations: boolean;
-    setPlayAnimations: (on: boolean) => void;
+    animationMode: AnimationMode;
+    setAnimationMode: (mode: AnimationMode) => void;
 }
 
 const PreferencesContext = createContext<Preferences | undefined>(undefined);
@@ -23,6 +27,10 @@ const FAVORITE_KEY = 'el-play-favorite-team';
 const SUBSCRIBED_KEY = 'el-play-subscribed-games';
 const THEME_KEY = 'el-play-theme';
 const ANIMATIONS_KEY = 'el-play-play-animations';
+const ANIMATION_MODE_KEY = 'el-play-animation-mode';
+
+/** all: todas; smart: todas en los juegos de tu equipo y solo las grandes en los demás; off: ninguna */
+export type AnimationMode = 'all' | 'smart' | 'off';
 
 const applyTheme = (theme: ThemePreference) => {
     const root = document.documentElement;
@@ -39,7 +47,9 @@ export const PreferencesProvider: React.FC<{ children: ReactNode }> = ({ childre
         return stored === null ? null : Number(stored) || null;
     });
     const [subscribedGames, setSubscribed] = useState<number[]>(() => readStorage<number[]>(SUBSCRIBED_KEY, []));
-    const [playAnimations, setPlayAnimations] = useState<boolean>(() => readStorage<boolean>(ANIMATIONS_KEY, true));
+    // Antes era un interruptor (sí/no): quien las había apagado las sigue teniendo apagadas
+    const [animationMode, setAnimationMode] = useState<AnimationMode>(() => readStorage<AnimationMode | null>(ANIMATION_MODE_KEY, null) ?? (readStorage<boolean>(ANIMATIONS_KEY, true) ? 'smart' : 'off'));
+    const playAnimations = animationMode !== 'off';
 
     useEffect(() => {
         applyTheme(theme);
@@ -53,29 +63,31 @@ export const PreferencesProvider: React.FC<{ children: ReactNode }> = ({ childre
 
     useEffect(() => writeStorage(FAVORITE_KEY, favoriteTeamId), [favoriteTeamId]);
     useEffect(() => writeStorage(SUBSCRIBED_KEY, subscribedGames), [subscribedGames]);
-    useEffect(() => writeStorage(ANIMATIONS_KEY, playAnimations), [playAnimations]);
+    useEffect(() => writeStorage(ANIMATION_MODE_KEY, animationMode), [animationMode]);
 
     const cycleTheme = useCallback(() => setTheme((current) => (current === 'system' ? 'dark' : current === 'dark' ? 'light' : 'system')), []);
     const toggleFavoriteTeam = useCallback((teamId: number) => setFavorite((current) => (current === teamId ? null : teamId)), []);
 
+    /** 'on' / 'off' si cambió; si no, por qué no se pudo (la pantalla lo explica) */
     const toggleGameSubscription = useCallback(
-        async (gamePk: number) => {
+        async (gamePk: number): Promise<AlertResult> => {
             if (subscribedGames.includes(gamePk)) {
                 setSubscribed((current) => current.filter((id) => id !== gamePk));
-                return false;
+                return 'off';
             }
-            if (!('Notification' in window)) return false;
-            const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
-            if (permission !== 'granted') return false;
+            // iPhone: los avisos web solo existen con la app instalada en la pantalla de inicio
+            if (!('Notification' in window)) return isIOS() && !isStandalone() ? 'needs-install' : 'unsupported';
+            const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission().catch(() => 'denied' as NotificationPermission);
+            if (permission !== 'granted') return 'blocked';
             setSubscribed((current) => [...current.filter((id) => id !== gamePk), gamePk].slice(-30));
-            return true;
+            return 'on';
         },
         [subscribedGames]
     );
 
     const value = useMemo(
-        () => ({ theme, setTheme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription, playAnimations, setPlayAnimations }),
-        [theme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription, playAnimations]
+        () => ({ theme, setTheme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription, playAnimations, animationMode, setAnimationMode }),
+        [theme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription, playAnimations, animationMode]
     );
 
     return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;

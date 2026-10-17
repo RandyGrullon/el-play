@@ -18,6 +18,7 @@ const loadLeaders = () => import('./pages/LeadersPage');
 const loadMore = () => import('./pages/MorePage');
 const loadFantasy = () => import('./pages/FantasyPage');
 const loadStats = () => import('./pages/StatsPage');
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage').then((module) => ({ default: module.PrivacyPage })));
 const GamePage = lazy(() => loadGame().then((module) => ({ default: module.GamePage })));
 const StandingsPage = lazy(() => loadStandings().then((module) => ({ default: module.StandingsPage })));
 const LeadersPage = lazy(() => loadLeaders().then((module) => ({ default: module.LeadersPage })));
@@ -70,6 +71,7 @@ const App: React.FC = () => (
                             <Route path="/mas" element={<MorePage />} />
                             <Route path="/fantasy" element={<FantasyPage />} />
                             <Route path="/estadisticas" element={<StatsPage />} />
+                            <Route path="/privacidad" element={<PrivacyPage />} />
                             <Route path="/instalar" element={<InstallLink />} />
                             <Route path="/install" element={<InstallLink />} />
                             <Route path="*" element={<Navigate to="/" replace />} />

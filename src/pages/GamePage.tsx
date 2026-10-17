@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Bell, BellRing, CloudSun, ListOrdered, MapPin, Share2, Table2, Target } from 'lucide-react';
+import { Bell, BellRing, CloudSun, ListOrdered, MapPin, SearchX, Share2, Table2, Target } from 'lucide-react';
 import type { GameDetail, ScheduleGame, TopPerformer } from '../types';
 import { findScheduledGame, useGame } from '../lib/queries';
+import { ApiError } from '../lib/api';
+import { alertsAvailable, useAlertToggle } from '../hooks/useAlertToggle';
 import { atBatForZone, isNotPlayed } from '../lib/baseball';
 import { formatCountdown, formatShortDate, formatTime } from '../lib/format';
 import { teamDisplayName } from '../lib/teams';
@@ -19,7 +21,7 @@ import { StoryRecap } from '../components/gamecast/StoryRecap';
 import { StrikeZone } from '../components/game/StrikeZone';
 import { SprayChart } from '../components/game/SprayChart';
 import { PlayAnimation } from '../components/gamecast/PlayAnimation';
-import { newPlayEvents, type PlayEvent } from '../lib/playEvents';
+import { forMode, newPlayEvents, type PlayEvent } from '../lib/playEvents';
 import { StrikeZonePanel } from '../components/game/StrikeZonePanel';
 import { uniformColors } from '../components/game/BatterFigure';
 import { Matchup } from '../components/game/Matchup';
@@ -29,7 +31,7 @@ import { Bases, OutsDots } from '../components/game/Bases';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
 import { TeamLogo } from '../components/ui/TeamLogo';
-import { ErrorState, Skeleton } from '../components/ui/States';
+import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 
 type Sheet = 'zone' | 'plays' | 'box' | null;
@@ -135,7 +137,8 @@ const FinalView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSh
 
 const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game, onShare }) => {
     const { t, i18n } = useTranslation();
-    const { subscribedGames, toggleGameSubscription } = usePreferences();
+    const { subscribedGames } = usePreferences();
+    const toggleAlert = useAlertToggle();
     const gamePk = game.gamePk ?? 0;
     const subscribed = subscribedGames.includes(gamePk);
     const notPlayed = isNotPlayed(game.detailedState);
@@ -177,7 +180,7 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
 
             <section className="card space-y-2.5 p-4" aria-label={t('preview.details')}>
                 {game.date && (
-                    <p className="font-bold capitalize">
+                    <p className="font-bold first-letter:uppercase">
                         {formatShortDate(game.date, i18n.language)} · {formatTime(game.date, i18n.language)}
                         {startsIn > 0 && !notPlayed && <span className="ml-2 font-semibold normal-case text-muted">{formatCountdown(startsIn, i18n.language)}</span>}
                     </p>
@@ -192,11 +195,11 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
             </section>
 
             <div className="flex gap-2">
-                {!notPlayed && 'Notification' in window && (
+                {!notPlayed && alertsAvailable() && (
                     <ActionButton
                         icon={subscribed ? <BellRing className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
                         label={subscribed ? t('preview.notifyOff') : t('preview.notifyOn')}
-                        onClick={() => toggleGameSubscription(gamePk)}
+                        onClick={() => toggleAlert(gamePk)}
                     />
                 )}
                 <ActionButton icon={<Share2 className="h-4 w-4" />} label={t('share.short')} onClick={onShare} primary />
@@ -217,7 +220,7 @@ export const GamePage: React.FC = () => {
     const [sheet, setSheet] = useState<Sheet>(null);
     const { trackGameView } = useAnalytics();
     const tracked = useRef<string | null>(null);
-    const { playAnimations } = usePreferences();
+    const { animationMode, favoriteTeamId } = usePreferences();
     const previous = useRef<GameDetail | null>(null);
     const shown = useRef(new Set<string>());
     const [plays, setPlays] = useState<PlayEvent[]>([]);
@@ -225,12 +228,12 @@ export const GamePage: React.FC = () => {
     // Jugadas nuevas entre una lectura del juego y la siguiente → animación (en cola si llegan juntas)
     useEffect(() => {
         if (!game) return;
-        const fresh = playAnimations ? newPlayEvents(previous.current, game).filter((play) => !shown.current.has(play.key)) : [];
+        const fresh = forMode(newPlayEvents(previous.current, game), animationMode, favoriteTeamId, [game.away.id, game.home.id]).filter((play) => !shown.current.has(play.key));
         previous.current = game;
         if (!fresh.length) return;
         fresh.forEach((play) => shown.current.add(play.key));
         setPlays((queue) => [...queue, ...fresh].slice(-4));
-    }, [game, playAnimations]);
+    }, [game, animationMode, favoriteTeamId]);
 
     useEffect(() => {
         if (game && gamePk && tracked.current !== gamePk) {
@@ -265,12 +268,31 @@ export const GamePage: React.FC = () => {
         });
 
     const model = game ? fromDetail(game) : scheduled ? fromSchedule(scheduled) : null;
+    // Juego que no existe o enlace roto: se dice claro y se ofrece volver (antes salía una previa vacía)
+    const notFoundCode = !game && query.error instanceof ApiError && ['game_not_found', 'invalid_game'].includes(query.error.code) ? query.error.code : null;
 
     return (
         <PullToRefresh onRefresh={async () => { await query.refetch(); }}>
-            {model ? <GameHero model={model} onShare={game ? shareGame : undefined} /> : <Skeleton className="h-[230px] rounded-none sm:mx-4 sm:mt-4 sm:rounded-card" />}
+            {model ? <GameHero model={model} onShare={game ? shareGame : undefined} /> : notFoundCode ? null : <Skeleton className="h-[230px] rounded-none sm:mx-4 sm:mt-4 sm:rounded-card" />}
 
-            {query.isError && !game ? (
+            {notFoundCode ? (
+                <div className="px-4 pt-6">
+                    <div className="card flex flex-col items-center gap-3 px-6 py-10 text-center" role="alert">
+                        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-raised">
+                            <SearchX className="h-6 w-6 text-muted" aria-hidden="true" />
+                        </span>
+                        <p className="text-lg font-extrabold">{t(`errors.${notFoundCode}`)}</p>
+                        <p className="max-w-xs text-sm text-muted">{t('game.notFoundHint')}</p>
+                        <Link to="/" className="mt-1 inline-flex h-11 items-center rounded-full bg-accent px-5 text-sm font-bold text-white">
+                            {t('game.backToGames')}
+                        </Link>
+                    </div>
+                </div>
+            ) : waitingForNetwork(query) && !game ? (
+                <div className="px-4 pt-4">
+                    <OfflineState />
+                </div>
+            ) : query.isError && !game ? (
                 <div className="px-4 pt-4">
                     <ErrorState error={query.error} onRetry={() => query.refetch()} />
                 </div>

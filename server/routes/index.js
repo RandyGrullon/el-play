@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { LEAGUES } = require('../config/constants');
 
 const { getGame, getGameData } = require('../controllers/gameController');
 const { getSchedule, getScheduleV2 } = require('../controllers/scheduleController');
@@ -7,6 +8,9 @@ const { getStandings, getLeaders, getLeadersV2 } = require('../controllers/stats
 const { getPhotos, getPhoto } = require('../controllers/photoController');
 const { getFantasyDay } = require('../controllers/fantasyController');
 const { getPlayers, getPlayer } = require('../controllers/playersController');
+
+// Una liga que no existe es un error (antes se respondía LIDOM sin avisar); sin `league` sigue siendo LIDOM
+router.use((req, res, next) => (req.query.league && !LEAGUES[req.query.league] ? res.status(400).json({ error: 'invalid_league' }) : next()));
 
 // v2: formato actual de la app
 router.get('/v2/game/:gamePk', getGame);

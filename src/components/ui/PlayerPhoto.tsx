@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { photoSources, usePhotoIndex } from '../../lib/photos';
+import { photoSources, rememberMiss, usePhotoIndex } from '../../lib/photos';
 
 // Foto del pelotero con respaldos (ver lib/photos.ts): uniforme del equipo LIDOM si lo publica, MLB, MiLB
 // y por último sus iniciales. Con `team` lleva el logo del equipo LIDOM en una esquina.
@@ -46,7 +46,10 @@ export const PlayerPhoto: React.FC<PlayerPhotoProps> = ({ personId, name, size =
                     height={size}
                     loading="lazy"
                     decoding="async"
-                    onError={() => setStep((current) => current + 1)}
+                    onError={() => {
+                        rememberMiss(source.kind, personId);
+                        setStep((current) => current + 1);
+                    }}
                     className="h-full w-full rounded-full object-cover"
                     // El recorte de MLB no tiene fondo; las otras son fotos completas, encuadradas en la cara
                     style={{ background: source.kind === 'mlb' ? background : undefined, objectPosition: source.kind === 'team' ? '50% 18%' : undefined }}

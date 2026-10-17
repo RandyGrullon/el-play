@@ -9,7 +9,7 @@ import { inkOn } from '../components/gamecast/GameHero';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
 import { TeamLogo } from '../components/ui/TeamLogo';
 import { Segmented } from '../components/ui/Segmented';
-import { ErrorState, Skeleton } from '../components/ui/States';
+import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { StatsTabs } from '../components/layout/StatsTabs';
 import { PlayerSheet } from '../components/stats/PlayerSheet';
@@ -150,7 +150,8 @@ export const StatsPage: React.FC = () => {
                     ))}
                 </div>
 
-                {query.isPending ? (
+                {waitingForNetwork(query) ? (
+<div className="px-4"><OfflineState /></div>) : query.isPending ? (
                     <div className="space-y-3 px-4">
                         <div className="grid grid-cols-3 gap-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-40 rounded-[24px]" />)}</div>
                         <Skeleton className="h-80 rounded-card" />

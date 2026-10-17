@@ -1,7 +1,7 @@
 # Prueba de usuario de El Play
 
-**Fecha:** viernes 16 de octubre de 2026, noche del primer día de la temporada 2026-27 de LIDOM.
-**Versión probada:** producción (el-play.vercel.app), commit `0ea3c30`.
+**Primera prueba:** viernes 16 de octubre de 2026, primer día de la temporada 2026-27 de LIDOM. Versión: producción, commit `0ea3c30`.
+**Re-prueba:** sábado 17 de octubre de 2026, después de arreglar todo lo encontrado y de sumar Fantasy, cuentas y Estadísticas.
 
 ## Cómo se probó
 
@@ -9,186 +9,177 @@
   - Portada, días, filtro por equipo y cambio de liga.
   - Juego en vivo, terminado y por empezar.
   - Zona de strike, jugadas, box score, mapa de batazos y compartir.
-  - Posiciones, Líderes y «Más».
+  - Posiciones, Líderes, Estadísticas, Fantasy y «Más».
   - Instalar y su tutorial.
-- Hubo tres juegos reales en vivo: Águilas–Gigantes (Julián Javier, sin rastreo), Licey–Escogido (Quisqueya) y Estrellas–Toros (Micheli).
+- Datos reales de MLB (tres juegos en vivo el 16) y datos simulados (`dev:mock`) para tener siempre un juego en vivo y otro por empezar.
 - Teléfonos y pantallas simulados con Playwright: Android con Chrome, iPhone con Safari 26, navegador de Instagram, 320 px (iPhone SE), 390 px y escritorio de 1440 px. También modo claro/oscuro, español/inglés y lectores de pantalla (nombres de botones).
 - Pruebas negativas:
-  - Enlaces rotos.
+  - Enlaces rotos y juegos que no existen.
   - API caída, lenta y con error 500.
-  - Sin conexión.
+  - Sin conexión, con y sin datos ya cargados.
   - Navegador sin almacenamiento.
   - Llamadas directas a la API con datos malos.
+  - Avisos bloqueados e iPhone sin instalar.
+  - Código de entrada equivocado, límites del Fantasy y búsquedas sin resultados.
+- Cuentas: con un Supabase falso en la PC (sin tocar datos reales) y en producción solo hasta la pantalla de entrar. El código del correo lo escribe el dueño de la cuenta.
 
 **Lo que no se pudo probar:**
 - Teléfonos de verdad: el «iPhone» es Chrome con la identificación de un iPhone, no Safari real.
-- La instalación real en la pantalla de inicio.
-- Las notificaciones con permiso concedido.
-- Las animaciones con una jugada real en vivo: se probaron simulando la llegada de cada jugada. Las verás en el próximo hit, ponche o cambio de entrada.
+- La instalación real en la pantalla de inicio y las notificaciones con permiso concedido.
+- Entrar con un correo real en producción: falta que el dueño entre con su correo (o el enlace) y confirme.
+- Las animaciones con una jugada real en vivo: se probaron simulando la llegada de cada jugada.
 
 ## Resumen
 
-82 comprobaciones: 72 bien y 10 marcadas mal. De esas 10, 4 eran fallos de mi script (no de la app) y 1 es una decisión tuya (el zoom). Quedan los problemas reales de abajo, más otros que encontré mirando las pantallas.
+**Primera prueba:** 82 comprobaciones, 72 bien. Los 10 problemas reales están abajo.
+**Re-prueba:** los 10 están arreglados (25 de 25 comprobaciones de los arreglos bien, sin errores en la página) y las pantallas nuevas pasaron sus pruebas.
 
-| Prioridad | Problema | Dónde |
-|---|---|---|
-| Alta | Un juego que no existe se muestra como una previa vacía | `/juego/999999999` |
-| Alta | Sin conexión, una pantalla que no habías abierto se queda cargando para siempre | Posiciones, Líderes |
-| Alta | En pantallas de 320 px la portada se mueve de lado | Tarjeta del juego en vivo |
-| Media | «Avisarme» no dice nada si el teléfono bloquea las notificaciones | Juego por empezar |
-| Media | Dice «la temporada nueva aún no empieza» cuando ya hay juegos | Posiciones, Líderes |
-| Media | Los enlaces compartidos salen sin imagen ni título en WhatsApp/Facebook | Toda la app |
-| Media | No se puede hacer zoom (decisión del 12 de octubre) | Toda la app |
-| Baja | Fecha de la previa con mayúscula en cada palabra | Juego por empezar |
-| Baja | La API responde una página HTML en rutas que no existen | `/api/v2/...` |
-| Baja | No hay `robots.txt` (devuelve la app) | SEO |
+| Prioridad | Problema | Dónde | Estado |
+|---|---|---|---|
+| Alta | Un juego que no existe se mostraba como una previa vacía | `/juego/999999999` | **Arreglado** |
+| Alta | Sin conexión, una pantalla que no habías abierto se quedaba cargando para siempre | Posiciones, Líderes, Estadísticas, Fantasy, juego | **Arreglado** |
+| Alta | En pantallas de 320 px la portada se movía de lado | Portada | **Arreglado** |
+| Media | «Avisarme» no decía nada si el teléfono bloquea las notificaciones | Juego por empezar | **Arreglado** |
+| Media | Decía «la temporada nueva aún no empieza» cuando ya había juegos | Posiciones, Líderes, Estadísticas | **Arreglado** |
+| Media | Los enlaces compartidos salían sin imagen ni título | Toda la app | **Arreglado** |
+| Media | No se podía hacer zoom | Toda la app | **Arreglado** |
+| Baja | Fecha de la previa con mayúscula en cada palabra | Juego por empezar | **Arreglado** |
+| Baja | La API respondía una página HTML en rutas que no existen | `/api/v2/...` | **Arreglado** |
+| Baja | No había `robots.txt` | SEO | **Arreglado** |
 
-## Lo que funciona bien
+## Qué se arregló y cómo
 
-- **Rápida:** la portada pinta en ~0,5 s (primer contenido 472 ms) con 24 peticiones, aun desde la red de la oficina.
-- **Juego en vivo completo:**
-  - Marcador, situación, zona de strike con la ubicación del anotador en el estadio sin rastreo.
-  - Jugadas en español («Sencillo», «Ponche», «Jonrón»), mapa de batazos, box score y hoja de compartir.
-- **Juego terminado:**
-  - El resumen tipo historia funciona («Grand slam de Enmanuel Valdez», figuras, decisiones).
-  - El título de la pestaña cambia a «EST 6-5 ESC · El Play».
-- **Errores bien manejados:**
-  - API con 500 o sin red muestra un mensaje y el botón «Reintentar».
-  - API lenta muestra esqueletos de carga.
-  - `/juego/abc` dice «El enlace del juego no es válido».
-  - Rutas viejas (`/game/...`) y rutas inventadas llevan a donde deben.
-- **Sin conexión con datos ya cargados:** sale el aviso «Sin conexión: estás viendo lo último que cargó» y se siguen viendo los juegos.
-- **Navegador sin almacenamiento** (modo privado estricto): la app carga igual.
-- **Instalar:**
-  - El ícono arriba solo sale si no está instalada.
-  - `/instalar` detecta iPhone, Android, Instagram y computadora, y muestra la guía correcta.
-- **Compartir en computadora:** WhatsApp y Facebook abren con el texto y el enlace del juego.
-- **Equipo favorito:** se guarda al recargar y su juego sale primero en la portada.
-- **Inglés y modo oscuro:** se aplican en toda la app; no quedan textos en español en la portada en inglés.
-- **Accesibilidad básica:** todos los botones tienen nombre, todas las imágenes tienen `alt` y el foco se ve con el teclado.
-- **Sin desborde:** a 390 px y en escritorio, ninguna pantalla se mueve de lado.
+### 1. Juego que no existe
 
-![Juego en vivo con datos reales](prueba-2026-10-16/juego-en-vivo.png)
+- **Antes:** «Abridores probables · Por anunciar» como si fuera un juego real. La API respondía `200` con `gamePk: 0`.
+- **Ahora:**
+  - La API responde `404 game_not_found` cuando MLB devuelve un juego sin equipos.
+  - La app dice «No encontramos ese juego» con el botón «Ver los juegos de hoy».
+  - `/juego/abc` sigue diciendo que el enlace no es válido.
 
-## Problemas encontrados
+![Juego inexistente](prueba-2026-10-16/arreglo-juego-inexistente.jpg)
 
-### 1. Un juego que no existe se muestra como una previa vacía (alta)
+### 2. Sin conexión en una pantalla nueva
 
-- **Cómo reproducir:** abre `el-play.vercel.app/juego/999999999`.
-- **Qué pasa:** sale «Abridores probables · Por anunciar · Por anunciar» y la nota de los abridores, como si fuera un juego real sin equipos. La API responde `200` con `gamePk: 0` y `detailedState: "Unknown"`.
-- **Qué esperaba:** «No encontramos ese juego» y un botón para volver a los juegos de hoy.
-- **Propuesta:**
-  - En el servidor, si el juego de MLB viene sin equipos, responder `404 game_not_found`; la app ya sabe mostrar ese error.
-  - Proteger la pantalla para que no pinte una previa si faltan los equipos.
+- **Antes:** cuadros grises de carga para siempre.
+- **Ahora:**
+  - Sale «Sin conexión: esta pantalla todavía no se había cargado. Cuando vuelva el internet se carga sola».
+  - Al volver la red, la pantalla carga sin tocar nada (probado).
+  - Aplica en Portada, Juego, Posiciones, Líderes, Estadísticas y Fantasy.
 
-![Juego inexistente](prueba-2026-10-16/juego-inexistente.png)
+![Sin conexión](prueba-2026-10-16/arreglo-sin-conexion.jpg)
 
-### 2. Sin conexión, las pantallas que no habías abierto se quedan cargando para siempre (alta)
+### 3. Portada a 320 px
 
-- **Cómo reproducir:** abre la portada, quita el internet y toca «Posiciones».
-- **Qué pasa:** se queda con los cuadros grises de carga sin decir nada, aunque arriba diga «Sin conexión».
-- **Qué esperaba:** «Sin conexión: esta pantalla todavía no se había cargado. Conéctate y desliza para recargar».
-- **Propuesta:** si la consulta está pausada por falta de red y no tiene datos, mostrar ese mensaje en lugar del esqueleto. Pasa en Posiciones, Líderes y en un juego que nunca abriste.
+- **Antes:** la portada se pasaba 11 px de la pantalla (37 px con un juego por empezar al lado de uno en vivo).
+- **Causa:** la columna de la cuadrícula tomaba el ancho del contenido más largo, y el nombre del bateador no se podía cortar.
+- **Ahora:** la columna se ajusta a la pantalla y el nombre se corta con «…». 0 px de desborde en Portada, Estadísticas, Fantasy, Posiciones y Más.
 
-![Sin conexión en Posiciones](prueba-2026-10-16/sin-conexion-posiciones.png)
+![Portada a 320 px](prueba-2026-10-16/arreglo-portada-320px.jpg)
 
-### 3. En pantallas de 320 px la portada se mueve de lado (alta)
+### 4. «Avisarme» con avisos bloqueados
 
-- **Cómo reproducir:** portada en un teléfono de 320 px de ancho (iPhone SE, Android pequeños) con un juego en vivo.
-- **Qué pasa:** la tarjeta del juego en vivo mide 331 px, 11 px más que la pantalla, y la página se puede arrastrar de lado.
-- **Propuesta:** dejar que el nombre del equipo se corte o achique en la tarjeta en vivo (`min-width: 0` y `truncate` en la fila del nombre) y revisar el ancho fijo de la cajita del conteo.
+- **Ahora siempre dice qué pasó:**
+  - Activado: «Listo: te avisamos cuando empiece».
+  - Quitado: «Quitamos el aviso de este juego».
+  - Bloqueado: «Tienes los avisos bloqueados. Actívalos para El Play en la configuración del navegador».
+  - **iPhone sin instalar:** antes el botón ni salía. Ahora sale y explica que en iPhone los avisos solo funcionan con la app instalada, con el botón «Ver cómo» que abre el tutorial.
 
-![Portada a 320 px](prueba-2026-10-16/portada-320px.png)
+![Avisos bloqueados](prueba-2026-10-16/arreglo-avisos-bloqueados.jpg)
 
-### 4. «Avisarme» no dice nada si el teléfono bloquea las notificaciones (media)
+### 5. Texto de la temporada
 
-- **Cómo reproducir:** en un juego por empezar toca «Avisarme cuando empiece» con las notificaciones bloqueadas.
-- **Qué pasa:** el botón no cambia y no aparece ningún mensaje.
-- **Propuesta:**
-  - Mostrar «Activa las notificaciones de El Play en la configuración del navegador».
-  - En iPhone, decir que los avisos solo funcionan con la app instalada, con un enlace al tutorial.
+Ahora dice «Todavía no hay juegos terminados de la temporada nueva: estas son las posiciones de la pasada» (igual en Líderes y Estadísticas).
 
-### 5. «La temporada nueva aún no empieza» cuando ya hay juegos (media)
+### 6. Vista previa al compartir
 
-- **Qué pasa:** hoy, con tres juegos en vivo, Posiciones y Líderes dicen que la temporada no ha empezado y muestran la 2025-26.
-- **Propuesta:** el texto debería ser «Todavía no hay juegos terminados de la 2026-27: estos son los de la temporada pasada». A partir de mañana se arregla solo, cuando MLB tenga posiciones de la temporada nueva.
+- Etiquetas Open Graph y de X/Twitter con título, descripción e imagen de 1200×630 (`public/og-image.jpg`, 53 KB) con el logo y «Béisbol dominicano en vivo, pitcheo a pitcheo».
+- Una imagen distinta por juego, con el marcador, queda como idea para más adelante: necesita generarla en el servidor.
 
-### 6. Los enlaces compartidos salen sin imagen ni título (media)
+### 7. Zoom
 
-- **Qué pasa:** la página no tiene etiquetas Open Graph. En WhatsApp y Facebook el enlace sale pelado, sin la imagen del juego ni el marcador. Ahora que hay botones de WhatsApp y Facebook, esto se nota más.
-- **Propuesta:**
-  - Etiquetas `og:title`, `og:description` y `og:image` generales con el logo.
-  - Más adelante, una imagen por juego con el marcador generada en el servidor.
+- Ya se puede ampliar con dos dedos (box score, jugadas, tablas).
+- Solo se evita el zoom por doble toque, que se disparaba sin querer al tocar rápido el marcador.
 
-### 7. No se puede hacer zoom (media, decisión tuya)
+### 8. Fecha de la previa
 
-- Desde el 12 de octubre la app bloquea el zoom (`maximum-scale=1, user-scalable=no`) para que se sienta como app.
-- Quien ve poco no puede ampliar el box score ni las jugadas, y las reglas de accesibilidad piden permitirlo.
-- **Propuesta:** permitir el zoom y mantener el bloqueo solo del doble toque.
+Ahora dice «Sáb, 17 oct · 7:30 p. m.»: solo la primera letra en mayúscula.
 
-### 8. Fecha de la previa con mayúscula en cada palabra (baja)
+### 9. API
 
-- **Qué pasa:** en los detalles del juego por empezar dice «Sáb, 17 Oct · 5:00 P. M.» porque a todo el renglón se le aplica `capitalize`.
-- **Propuesta:** solo la primera letra en mayúscula, como en la cabecera («sáb, 17 oct · 5:00 p. m.»).
+- Ruta que no existe → `404 {"error":"not_found"}` en JSON.
+- Liga que no existe (`?league=zzz`) → `400 invalid_league`. Sin `league` sigue siendo LIDOM.
+- **Fotos:** las que MLB no tiene se recuerdan una semana en el teléfono. Así no se vuelven a pedir en cada pantalla y la consola deja de llenarse de `404`. La primera vez de cada pelotero el `404` es inevitable: MLB no dice antes si tiene la foto.
 
-![Previa](prueba-2026-10-16/previa.png)
+### 10. `robots.txt` y `sitemap.xml`
 
-### 9. Detalles de la API (baja)
+Archivos reales. La API queda fuera de los buscadores.
 
-- `/api/v2/<algo que no existe>` responde la página HTML de Express («Cannot GET») en lugar de `{"error":"not_found"}`.
-- `/api/v2/schedule?league=zzz` devuelve LIDOM sin avisar. Para la app está bien; si algún día la API es pública, mejor un `400`.
-- La consola muestra `404` de fotos: es el respaldo de MLB a MiLB funcionando. No afecta al usuario, pero ensucia la consola.
-- `robots.txt` y `sitemap.xml` devuelven la app. Conviene un `robots.txt` real.
+## Lo que se pulió
 
-## Lo que funciona pero se puede pulir
+- **Instalar:** antes salían a la vez la tarjeta grande y el ícono de arriba. Ahora la tarjeta sale solo en la primera visita y después queda solo el ícono. Probado con Android: 1.ª visita solo la tarjeta, 2.ª solo el ícono.
+- **Instagram en computadora:** al descargar la imagen dice «Se guardó la imagen: súbela desde Instagram en tu teléfono».
+- **Tutorial de Android:** detecta Samsung Internet (menú ≡ abajo → «Agregar página a» → «Pantalla de inicio») y Firefox (menú ⋮ → «Instalar»). Chrome sigue igual.
+- **Animaciones:** en «Más» hay tres modos:
+  - **Grandes** (por defecto): en los juegos de tu equipo favorito salen todas; en los demás, solo jonrones, ponches, fin de entrada y victorias.
+  - **Todas**.
+  - **Apagadas**.
+  - Quien las tenía apagadas las sigue teniendo apagadas.
+- **Días vacíos:** ya no salen en el selector los días de antes del primer juego de la temporada («Hoy» siempre sale).
+- **Privacidad:** página `/privacidad`, con enlace en «Más» y en la tarjeta de la cuenta. Explica qué se guarda sin cuenta, qué guarda la cuenta del Fantasy (correo, nombre, equipos y ligas en Supabase), que no hay anuncios y cómo borrar la cuenta.
+- **Borrar la cuenta:** «Más → Tu cuenta → Borrar mi cuenta», con confirmación. Borra perfil, equipos, pronósticos y ligas creadas. La App Store lo exige para la app móvil.
 
-- **Dos llamados a instalar en la portada:** la tarjeta «Ten El Play en tu teléfono» y el ícono azul de arriba piden lo mismo. Propongo dejar solo el ícono una vez que la persona cierre la tarjeta (ya pasa 14 días) o desde la segunda visita.
-- **Instagram en computadora:** el botón descarga la imagen sin decir nada. Mejor un mensaje: «Se guardó la imagen: súbela desde Instagram en tu teléfono».
-- **Tutorial de Android:** los pasos son los de Chrome. En Samsung Internet y Firefox el menú cambia; se puede detectar el navegador como ya se hace en iPhone.
-- **Animaciones:** salen con cada hit, así que en una entrada de muchos hits pueden cansar.
-  - Opción: solo jonrón, ponche y fin de entrada para los juegos de otros equipos, y todas para tu equipo favorito.
-  - Ya se pueden apagar en «Más».
-- **Días sin juegos en el selector:** «Mar 13», «Mié 14» y «Ayer» no tienen juegos (la temporada empezó hoy). Se podrían esconder los días vacíos antes del primer juego.
-- **Página de privacidad:** está en la rama `feat/banners-publicidad`, no en producción. Conviene subirla sola aunque los anuncios esperen.
+## Pantallas nuevas probadas (17 de octubre)
 
-![Las 6 animaciones en la app](prueba-2026-10-16/animaciones.png)
+### Fantasy y cuentas
+
+![Entrar al Fantasy](prueba-2026-10-16/fantasy-entrar.jpg)
+
+| Prueba | Resultado |
+|---|---|
+| Sin Supabase configurado: el Fantasy dice «abre muy pronto» y no deja jugar | Bien |
+| Producción con Supabase: pide entrar con correo | Bien |
+| Código equivocado | Bien: «Ese código no sirve o ya venció» |
+| Código bueno → entra al Fantasy | Bien |
+| Lo armado sin cuenta en la versión anterior pasa a la cuenta | Bien |
+| La copia del teléfono es por usuario (dos cuentas en el mismo teléfono no se mezclan) | Bien (prueba automática) |
+| Salir de la cuenta → vuelve a pedir entrar | Bien |
+| Tercer pelotero del mismo equipo | Bien: «Ya tienes 2 de este equipo» |
+| Pelotero cuyo juego empezó | Bien: candado, no se puede agregar ni quitar |
+| Pronóstico de un juego que empezó | Bien: bloqueado |
+| Tabla del día y nombre para la tabla | Bien |
+| Supabase: tablas, permisos y crear liga sin cuenta (debe fallar) | Bien: `not_signed_in` |
+| Entrar con el enlace del correo (plantilla de fábrica de Supabase) | Bien: la app toma la sesión del enlace y lo dice |
+| 320 px | Bien: 0 px de desborde |
+
+### Estadísticas y ficha del pelotero
+
+![Estadísticas](prueba-2026-10-16/estadisticas.jpg) ![Ficha](prueba-2026-10-16/ficha-pelotero.jpg)
+
+| Prueba | Resultado |
+|---|---|
+| 168 peloteros de la temporada (con los del roster que aún no juegan) y 448 de la pasada | Bien |
+| Buscar «zzzz» | Bien: «No encontramos a nadie con «zzzz»» |
+| Ordenar por AVG: un 1-1 sin turnos suficientes va al final | Bien |
+| Cambiar a 2025-26 y abrir la ficha de ese año | Bien |
+| Atrás cierra la ficha; un juego del juego a juego abre el juego | Bien |
+| Ficha desde Líderes y desde el selector del Fantasy (con botón «Agregar») | Bien |
+| Pelotero sin juegos este año: ofrece «Ver la temporada 2025-26» | Bien |
+| `/api/v2/player/abc` → 400; `season=xx` → 400 | Bien |
+| Modo oscuro y 320 px | Bien |
+
+## Pendiente del dueño (fuera del código)
+
+- **Correo con código y con el estilo de El Play:** Supabase no deja editar las plantillas sin SMTP propio. Conectar Resend (gratis) con grullonb.com o Gmail; los pasos están en la conversación. Mientras tanto el correo de fábrica trae un enlace y la app ya lo acepta.
+- **Borrar cuenta:** correr en Supabase la parte nueva de `supabase/fantasy.sql` (función `delete_my_account`).
+- **Contacto en la privacidad:** las tiendas de apps piden un correo de contacto. Falta decidir cuál.
 
 ## Ideas para la próxima versión
 
 | Idea | Por qué | Esfuerzo |
 |---|---|---|
-| Avisos de tu equipo favorito aunque la app esté cerrada (notificaciones push) | Hoy los avisos solo salen con la app abierta | Alto (servidor de push) |
-| Imagen del juego en los enlaces compartidos (Open Graph por juego) | Más clics desde WhatsApp | Medio |
-| Página de cada pelotero (foto, temporada, últimos juegos) | Hoy los nombres no llevan a ningún lado | Medio |
+| Avisos de tu equipo aunque la app esté cerrada (push) | Hoy los avisos solo salen con la app abierta | Alto (servidor de push) |
+| Imagen por juego al compartir (marcador en la vista previa) | Más clics desde WhatsApp | Medio |
 | Calendario de tu equipo con «Agregar al calendario» | Saber cuándo juega sin abrir la app | Bajo |
 | Modo «solo mi equipo» en la portada | Menos ruido para el fanático de un equipo | Bajo |
-
-## Detalle de las pruebas
-
-| Área | Prueba | Resultado |
-|---|---|---|
-| Portada | Carga hasta ver los juegos | Bien (670 ms) |
-| Portada | Fecha, liga, ícono y tarjeta de instalar | Bien |
-| Portada | Juegos del día (3 en vivo) | Bien |
-| Portada | Días «Ayer» y «Mañana» | Bien («No hay juegos este día» ayer; 3 juegos mañana) |
-| Portada | Filtrar por equipo | Bien (queda 1 juego) |
-| Portada | Cambiar a Serie del Caribe | Bien |
-| Portada | 320 px | **Mal**: se mueve 9–11 px de lado |
-| Juego en vivo | Marcador, zona, jugadas, box score, mapa, compartir | Bien |
-| Juego terminado | Historia, diapositivas, jugadas, título de la pestaña | Bien |
-| Juego por empezar | Previa, «Avisarme», equipo favorito | Bien, salvo «Avisarme» sin aviso |
-| Posiciones | Serie regular, Round Robin, Serie final | Bien |
-| Líderes | Categorías y fotos (MLB 7, Toros 2, MiLB 1) | Bien |
-| Más | Instalar, paso a paso, animaciones, tema oscuro, inglés | Bien |
-| Instalar | iPhone Safari, Instagram, computadora | Bien |
-| Negativa | `/juego/999999999` | **Mal**: previa vacía |
-| Negativa | `/juego/abc`, `/game/...`, `/no-existe`, `/juego/` | Bien |
-| Negativa | API con 500 / sin red / lenta | Bien |
-| Negativa | Sin conexión con datos cargados | Bien |
-| Negativa | Sin conexión en pantalla nueva | **Mal**: carga infinita |
-| Negativa | Navegador sin almacenamiento | Bien |
-| Negativa | Escritorio 1440 px | Bien |
-| API | `game/abc` → 400, `photos/../..` → 404 | Bien |
-| API | `game/999999999` → 200 | **Mal**: debería ser 404 |
-| Accesibilidad | Nombres de botones, `alt`, foco visible | Bien |
-| Accesibilidad | Zoom | Bloqueado (decisión) |
+| Validar el cierre de cada pelotero del Fantasy en el servidor | Hoy lo cuida la app; alguien con conocimientos podría cambiar su equipo después de empezar un juego | Medio |

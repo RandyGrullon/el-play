@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, Check, Download, ExternalLink } from 'lucide-rea
 import { BottomSheet } from '../ui/BottomSheet';
 import { Segmented } from '../ui/Segmented';
 import { TutorialArt, type SceneKind } from './TutorialArt';
-import { closeInstallSheet, isAndroid, isIOS, isIOSSafari, openInBrowserUrl, promptInstall, safariVersion, useInstallMode, useInstallSheet } from '../../lib/install';
+import { androidBrowser, closeInstallSheet, isAndroid, isIOS, isIOSSafari, openInBrowserUrl, promptInstall, safariVersion, useInstallMode, useInstallSheet } from '../../lib/install';
 
 type Platform = 'ios' | 'android';
 interface Step {
@@ -41,8 +41,9 @@ export const InstallSheet: React.FC = () => {
             return mode === 'prompt'
                 ? [{ scene: 'app-button', text: t('install.tutorial.tapInstall') }, { scene: 'android-dialog', text: t('install.androidConfirm') }, finish]
                 : [
-                      { scene: 'chrome-android-bar', text: t('install.androidMenu') },
-                      { scene: 'chrome-menu', text: t('install.androidInstall') },
+                      // Samsung Internet y Firefox tienen el menú en otro lugar y otras palabras
+                      { scene: 'chrome-android-bar', text: t(`install.androidMenuBy.${isAndroid() ? androidBrowser() : 'chrome'}`) },
+                      { scene: 'chrome-menu', text: t(`install.androidInstallBy.${isAndroid() ? androidBrowser() : 'chrome'}`) },
                       { scene: 'android-dialog', text: t('install.androidConfirm') },
                       finish
                   ];

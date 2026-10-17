@@ -32,6 +32,8 @@ app.use(
 
 app.get('/api', (req, res) => res.json({ status: 'ok', service: 'el-play-api', mock: process.env.MLB_MOCK === '1' }));
 app.use('/api', routes);
+// Ruta de la API que no existe: JSON como el resto (antes salía la página HTML de Express)
+app.use('/api', (req, res) => res.status(404).json({ error: 'not_found' }));
 app.use(errorHandler);
 
 module.exports = app;

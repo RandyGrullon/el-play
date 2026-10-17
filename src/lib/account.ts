@@ -97,8 +97,51 @@ const toSession = (data: { access_token: string; refresh_token: string; expires_
     name
 });
 
-/** Paso 1: Supabase manda un código de 6 dígitos al correo (sirve igual en la app instalada que en el navegador) */
-export const sendCode = (email: string) => authFetch('otp', { email, create_user: true });
+/**
+ * Paso 1: Supabase manda el correo para entrar. Con la plantilla propia (SMTP configurado) trae un código de 6 dígitos;
+ * con la de fábrica trae un enlace que vuelve a esta misma pantalla con la sesión (ver consumeAuthRedirect).
+ */
+export const sendCode = (email: string) => {
+    const back = typeof window !== 'undefined' ? `?redirect_to=${encodeURIComponent(window.location.origin + window.location.pathname)}` : '';
+    return authFetch(`otp${back}`, { email, create_user: true });
+};
+
+const decodeJwt = (token: string): { sub?: string; email?: string } | null => {
+    try {
+        const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const text = decodeURIComponent(
+            Array.from(atob(part))
+                .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`)
+                .join('')
+        );
+        return JSON.parse(text);
+    } catch {
+        return null;
+    }
+};
+
+/**
+ * Al tocar el enlace del correo, Supabase vuelve a la app con la sesión en la dirección (#access_token=…&refresh_token=…)
+ * o con el error si el enlace venció (#error=…). Se guarda la sesión y se limpia la dirección.
+ */
+export const consumeAuthRedirect = (): { result: 'signed-in'; email: string } | { result: 'expired' } | null => {
+    if (typeof window === 'undefined' || !accountEnabled()) return null;
+    const hash = window.location.hash.slice(1);
+    if (!/(^|&)(access_token|error)=/.test(hash)) return null;
+    const params = new URLSearchParams(hash);
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    if (params.get('error')) return { result: 'expired' };
+    const access = params.get('access_token');
+    const refresh = params.get('refresh_token');
+    const claims = access ? decodeJwt(access) : null;
+    if (!access || !refresh || !claims?.sub) return null;
+    const expiresIn = Number(params.get('expires_in')) || 3600;
+    writeSession({ accessToken: access, refreshToken: refresh, expiresAt: Date.now() + (expiresIn - 60) * 1000, user: { id: claims.sub, email: claims.email || '' }, name: null });
+    loadProfile()
+        .then(() => syncFantasy())
+        .catch(() => undefined);
+    return { result: 'signed-in', email: claims.email || '' };
+};
 
 /** Paso 2: con el código queda la sesión abierta; luego se sube lo que había en el teléfono */
 export const verifyCode = async (email: string, token: string) => {
@@ -107,6 +150,19 @@ export const verifyCode = async (email: string, token: string) => {
     await loadProfile().catch(() => undefined);
     await syncFantasy().catch(() => undefined);
     return readSession();
+};
+
+/** Borra la cuenta y todo lo suyo en Supabase (perfil, equipos, ligas creadas) y la copia del teléfono */
+export const deleteAccount = async () => {
+    const current = readSession();
+    if (!current) return;
+    await rest('rpc/delete_my_account', { method: 'POST', body: '{}' });
+    try {
+        localStorage.removeItem(`el-play-fantasy-v1:${current.user.id}`);
+    } catch {
+        /* sin almacenamiento */
+    }
+    writeSession(null);
 };
 
 export const signOut = async () => {

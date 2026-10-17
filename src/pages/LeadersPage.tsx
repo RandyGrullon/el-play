@@ -9,7 +9,7 @@ import { useShare } from '../share/ShareSheet';
 import { playerFromLeader } from '../share/subjects';
 import { inkOn } from '../components/gamecast/GameHero';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
-import { ErrorState, Skeleton } from '../components/ui/States';
+import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { StatsTabs } from '../components/layout/StatsTabs';
 import { PlayerSheet } from '../components/stats/PlayerSheet';
@@ -130,7 +130,8 @@ export const LeadersPage: React.FC = () => {
                     </p>
                 )}
 
-                {leaders.isPending ? (
+                {waitingForNetwork(leaders) ? (
+<div className="px-4"><OfflineState /></div>) : leaders.isPending ? (
                     <div className="flex gap-3 overflow-hidden px-4">
                         <Skeleton className="h-[300px] w-[78%] shrink-0 rounded-[28px]" />
                         <Skeleton className="h-[300px] w-[62%] shrink-0 rounded-[28px]" />

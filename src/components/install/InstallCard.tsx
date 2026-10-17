@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle2, ChevronRight, Download, X } from 'lucide-react';
 import { LogoMark } from '../brand/Logo';
-import { bannerDismissed, dismissBanner, openInstallSheet, requestInstall, useInstallMode, type InstallMode } from '../../lib/install';
+import { dismissBanner, openInstallSheet, requestInstall, useBannerVisible, useInstallMode, type InstallMode } from '../../lib/install';
 
 const canInstall = (mode: InstallMode) => mode !== 'installed' && mode !== 'unsupported';
 
@@ -10,14 +10,11 @@ const canInstall = (mode: InstallMode) => mode !== 'installed' && mode !== 'unsu
 export const InstallBanner: React.FC = () => {
     const { t } = useTranslation();
     const mode = useInstallMode();
-    const [hidden, setHidden] = useState(bannerDismissed);
+    const visible = useBannerVisible();
 
-    if (hidden || !canInstall(mode)) return null;
+    if (!visible || !canInstall(mode)) return null;
 
-    const close = () => {
-        dismissBanner();
-        setHidden(true);
-    };
+    const close = () => dismissBanner();
 
     return (
         <section aria-labelledby="install-banner-title" className="mx-4 flex animate-fade-up items-center gap-3 rounded-card bg-surface p-3 pr-2 shadow-card">
@@ -41,7 +38,9 @@ export const InstallBanner: React.FC = () => {
 export const InstallIconButton: React.FC = () => {
     const { t } = useTranslation();
     const mode = useInstallMode();
-    if (!canInstall(mode)) return null;
+    const banner = useBannerVisible();
+    // Mientras la tarjeta de la portada está a la vista, el ícono sobra
+    if (!canInstall(mode) || banner) return null;
     return (
         <button
             type="button"

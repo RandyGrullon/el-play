@@ -8,6 +8,7 @@ import { formatCountdown, formatTime } from '../../lib/format';
 import { usePrefetchGame } from '../../lib/queries';
 import { teamDisplayName } from '../../lib/teams';
 import { usePreferences } from '../../store/preferences';
+import { alertsAvailable, useAlertToggle } from '../../hooks/useAlertToggle';
 import { useLeague } from '../../store/LeagueContext';
 import { useShare } from '../../share/ShareSheet';
 import { resultFromSchedule } from '../../share/subjects';
@@ -34,8 +35,8 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
     return (
         <>
             <div className="flex">{half(game.away, 'start')}{half(game.home, 'end')}</div>
-            <div className="flex items-center gap-3 bg-surface px-4 py-3">
-                <span className="pill bg-live text-white">
+            <div className="flex min-w-0 items-center gap-3 bg-surface px-4 py-3">
+                <span className="pill shrink-0 bg-live text-white">
                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
                     {live.inning ? inningName({ n: live.inning, isTop: live.isTop, state: live.inningState }, i18n.language, true) : stateName(game.detailedState, i18n.language)}
                 </span>
@@ -44,7 +45,7 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                         <Bases runners={live.runners} size={26} color={(live.isTop ? game.away : game.home).color} />
                         <OutsDots outs={live.outs} />
                         <span className="text-sm font-semibold text-muted tabular-nums">{live.balls}-{live.strikes}</span>
-                        {live.batter && <span className="ml-auto truncate text-xs font-semibold text-muted">{t('card.batting', { name: live.batter.name })}</span>}
+                        {live.batter && <span className="ml-auto min-w-0 truncate text-xs font-semibold text-muted">{t('card.batting', { name: live.batter.name })}</span>}
                     </>
                 ) : (
                     <span className="text-sm font-semibold text-muted">{t('game.betweenInnings')}</span>
@@ -74,7 +75,8 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
     const prefetch = usePrefetchGame();
     const share = useShare();
     const { leagueConfig } = useLeague();
-    const { subscribedGames, toggleGameSubscription } = usePreferences();
+    const { subscribedGames } = usePreferences();
+    const toggleAlert = useAlertToggle();
     const notPlayed = isNotPlayed(game.detailedState);
     const final = game.state === 'final';
     const subscribed = subscribedGames.includes(game.gamePk);
@@ -119,12 +121,12 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                             <Share2 className="h-4 w-4" />
                         </button>
                     )}
-                    {game.state === 'preview' && !notPlayed && 'Notification' in window && (
+                    {game.state === 'preview' && !notPlayed && alertsAvailable() && (
                         <button
                             type="button"
                             onClick={(event) => {
                                 event.preventDefault();
-                                toggleGameSubscription(game.gamePk);
+                                toggleAlert(game.gamePk);
                             }}
                             className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-xs font-bold ${subscribed ? 'bg-raised text-ink' : 'bg-ink text-bg'}`}
                             aria-pressed={subscribed}

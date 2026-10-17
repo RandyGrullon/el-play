@@ -57,6 +57,8 @@ const fetchGame = async (gamePk) => {
     let data = previous && previous.version === version ? previous.data : null;
     if (!data) {
         data = transformGame(doc);
+        // MLB responde 200 con un documento vacío para un juego que no existe: se trata como 404
+        if (!data?.gamePk || !data.away?.id || !data.home?.id) throw Object.assign(new Error(`game ${gamePk} not found`), { response: { status: 404 } });
         transformed.set(key, { version, data });
         if (transformed.size > 50) transformed.delete(transformed.keys().next().value);
     }

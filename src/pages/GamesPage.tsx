@@ -11,7 +11,7 @@ import { GameFeedCard, GameFeedCardSkeleton } from '../components/feed/GameFeedC
 import { TeamStories } from '../components/feed/TeamStories';
 import { LogoMark } from '../components/brand/Logo';
 import { BottomSheet } from '../components/ui/BottomSheet';
-import { EmptyState, ErrorState } from '../components/ui/States';
+import { EmptyState, ErrorState, OfflineState, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { InstallBanner, InstallIconButton } from '../components/install/InstallCard';
 
@@ -110,8 +110,6 @@ export const GamesPage: React.FC = () => {
         setTeam(null);
     }, [activeLeague]);
 
-    const days = useMemo(() => (schedule.data ? dayRange(schedule.data.startDate, schedule.data.endDate) : []), [schedule.data]);
-
     const byDay = useMemo(() => {
         const map: Record<string, ScheduleGame[]> = {};
         for (const game of schedule.data?.games ?? []) {
@@ -122,6 +120,13 @@ export const GamesPage: React.FC = () => {
         }
         return map;
     }, [schedule.data, timeZone, today]);
+
+    // Al empezar la temporada no se muestran los días vacíos de antes del primer juego (hoy siempre)
+    const days = useMemo(() => {
+        if (!schedule.data) return [];
+        const first = Object.keys(byDay).sort()[0];
+        return dayRange(schedule.data.startDate, schedule.data.endDate).filter((key) => key === today || !first || key >= first);
+    }, [schedule.data, byDay, today]);
 
     const counts = useMemo(
         () => Object.fromEntries(Object.entries(byDay).map(([key, games]) => [key, { total: games.length, live: games.filter((g) => g.state === 'live').length }])),
@@ -162,12 +167,13 @@ export const GamesPage: React.FC = () => {
                 {days.length > 0 && <DayChips days={days} selected={day} today={today} counts={counts} onSelect={setSelected} />}
 
                 <div className="px-4">
-                    {schedule.isPending ? (
-                        <div className="grid gap-3 sm:grid-cols-2">{[0, 1, 2].map((index) => <GameFeedCardSkeleton key={index} />)}</div>
+                    {waitingForNetwork(schedule) ? (
+<OfflineState />) : schedule.isPending ? (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{[0, 1, 2].map((index) => <GameFeedCardSkeleton key={index} />)}</div>
                     ) : schedule.isError && !schedule.data ? (
                         <ErrorState error={schedule.error} onRetry={() => schedule.refetch()} />
                     ) : games.length > 0 ? (
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             {games.map((game) => (
                                 <div key={game.gamePk} className={game.state === 'live' ? 'sm:col-span-2' : ''}>
                                     <GameFeedCard game={game} />

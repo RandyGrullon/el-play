@@ -8,7 +8,7 @@ import { PlayerPhoto } from '../components/ui/PlayerPhoto';
 import { TeamLogo } from '../components/ui/TeamLogo';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { Segmented } from '../components/ui/Segmented';
-import { ErrorState, Skeleton } from '../components/ui/States';
+import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { AccountCard } from '../components/account/AccountCard';
 import { PlayerSheet } from '../components/stats/PlayerSheet';
 import { formatLongDate, formatTime } from '../lib/format';
@@ -186,7 +186,9 @@ export const FantasyPage: React.FC = () => {
                         ]}
                     />
 
-                    {query.isPending ? (
+                    {waitingForNetwork(query) ? (
+                        <OfflineState />
+                    ) : query.isPending ? (
                         <div className="grid gap-3 sm:grid-cols-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[88px] rounded-card" />)}</div>
                     ) : query.isError && !day ? (
                         <ErrorState error={query.error as Error} onRetry={() => query.refetch()} />

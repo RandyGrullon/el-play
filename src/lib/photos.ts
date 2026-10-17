@@ -42,14 +42,47 @@ export const loadPhotoIndex = (): Promise<PhotoIndex> =>
 export const usePhotoIndex = () =>
     useQuery({ queryKey: ['photos'], queryFn: loadPhotoIndex, staleTime: 6 * 60 * 60 * 1000, gcTime: Infinity, retry: false }).data;
 
+// Fotos que MLB no tiene (respondió 404): se recuerdan una semana para no pedirlas de nuevo en cada pantalla
+const MISS_KEY = 'el-play-photo-miss';
+const MISS_MS = 7 * 24 * 60 * 60 * 1000;
+let misses: Record<string, number> | null = null;
+
+const loadMisses = () => {
+    if (misses) return misses;
+    try {
+        const saved = JSON.parse(localStorage.getItem(MISS_KEY) || '{}') as Record<string, number>;
+        const now = Date.now();
+        misses = Object.fromEntries(Object.entries(saved).filter(([, at]) => now - at < MISS_MS));
+    } catch {
+        misses = {};
+    }
+    return misses;
+};
+
+export const rememberMiss = (kind: PhotoKind, personId: number | null | undefined) => {
+    if (!personId || kind === 'team') return;
+    const all = loadMisses();
+    const key = `${kind}:${personId}`;
+    if (all[key]) return;
+    all[key] = Date.now();
+    try {
+        const recent = Object.entries(all).sort((a, b) => b[1] - a[1]).slice(0, 3000);
+        localStorage.setItem(MISS_KEY, JSON.stringify(Object.fromEntries(recent)));
+    } catch {
+        /* sin almacenamiento: solo se recuerda mientras la app esté abierta */
+    }
+};
+
+const missing = (kind: PhotoKind, personId: number) => !!loadMisses()[`${kind}:${personId}`];
+
 export const photoSources = (personId: number | null | undefined, name: string, teamId: number | null | undefined, index: PhotoIndex | undefined, size: number): PhotoSource[] => {
     const list: PhotoSource[] = [];
     const team = teamId ? index?.teams[String(teamId)]?.[nameKey(name)] : undefined;
     if (team) list.push({ url: team, kind: 'team' });
     if (personId) {
         // Sin imagen por defecto (d_…): si MLB no tiene la foto responde 404 y se pasa a la siguiente
-        list.push({ url: `${MLB}/r_max,c_pad,ar_1:1,w_${size},q_auto:best/v1/people/${personId}/headshot/silo/current`, kind: 'mlb' });
-        list.push({ url: `${MLB}/c_fill,g_face,ar_1:1,w_${size},q_auto:best/v1/people/${personId}/headshot/milb/current`, kind: 'milb' });
+        if (!missing('mlb', personId)) list.push({ url: `${MLB}/r_max,c_pad,ar_1:1,w_${size},q_auto:best/v1/people/${personId}/headshot/silo/current`, kind: 'mlb' });
+        if (!missing('milb', personId)) list.push({ url: `${MLB}/c_fill,g_face,ar_1:1,w_${size},q_auto:best/v1/people/${personId}/headshot/milb/current`, kind: 'milb' });
     }
     return list;
 };

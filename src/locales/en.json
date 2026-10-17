@@ -102,10 +102,22 @@
       "tapInstall": "Tap “Install app”: your phone asks if you want to install it.",
       "done": "Done! El Play is on your home screen. Open it from there, full screen.",
       "seeSteps": "See the step-by-step guide"
+    },
+    "androidMenuBy": {
+      "chrome": "Tap the three-dot menu at the top right",
+      "samsung": "Tap the ≡ menu at the bottom right",
+      "firefox": "Tap the ⋮ menu (top or bottom right)"
+    },
+    "androidInstallBy": {
+      "chrome": "Tap “Install app” or “Add to Home screen”",
+      "samsung": "Tap “Add page to” and then “Home screen”",
+      "firefox": "Tap “Install” or “Add to Home screen”"
     }
   },
   "offline": {
-    "banner": "Offline: showing the last data loaded"
+    "banner": "Offline: showing the last data loaded",
+    "title": "You're offline",
+    "notLoaded": "This screen hadn't loaded yet. It will load by itself when you're back online."
   },
   "update": {
     "available": "A new version of El Play is available",
@@ -123,11 +135,13 @@
     "internal_error": "Something went wrong. Try again.",
     "invalid_mlb_data": "MLB didn't respond properly. Try again shortly.",
     "upstream_timeout": "MLB took too long to respond.",
-    "game_not_found": "That game doesn't exist.",
+    "game_not_found": "We couldn't find that game.",
     "invalid_game": "The game link isn't valid.",
     "schedule": "Couldn't load the schedule.",
     "standings": "Couldn't load the standings.",
-    "leaders": "Couldn't load the leaders."
+    "leaders": "Couldn't load the leaders.",
+    "not_found": "We couldn't find what you were looking for.",
+    "invalid_league": "That league doesn't exist."
   },
   "games": {
     "title": "Games",
@@ -192,7 +206,9 @@
     "onDeck": "On deck: {{name}}",
     "atBatNow": "At bat",
     "outsCount_one": "{{count}} out",
-    "outsCount_other": "{{count}} outs"
+    "outsCount_other": "{{count}} outs",
+    "notFoundHint": "The link may be wrong or MLB may have removed the game.",
+    "backToGames": "See today's games"
   },
   "zone": {
     "title": "Strike zone",
@@ -316,7 +332,7 @@
     "regular": "Regular season",
     "roundRobin": "Round Robin",
     "final": "Final series",
-    "previousSeason": "The new season hasn't started yet: these are last season's standings.",
+    "previousSeason": "No games finished yet this season: these are last season's standings.",
     "regularNote": "Top four advance to the Round Robin.",
     "roundRobinNote": "Each team plays {{games}} games; the top two reach the final.",
     "finalNote": "First to 4 wins takes the series.",
@@ -329,7 +345,7 @@
     "group": "Leader type",
     "hitting": "Hitting",
     "pitching": "Pitching",
-    "previousSeason": "The new season hasn't started yet: these are last season's leaders.",
+    "previousSeason": "No games finished yet this season: these are last season's leaders.",
     "qualifiedNote": "AVG, OPS, ERA and WHIP only count qualified players.",
     "noData": "No data.",
     "homeRuns": "Home runs",
@@ -398,7 +414,17 @@
     "tagline": "Live Dominican baseball",
     "playAnimations": "Play animations",
     "playAnimationsHint": "Hits, outs, ponches, emergentes, fin de entrada, victoria y campeonato en el juego en vivo",
-    "account": "Account"
+    "account": "Account",
+    "animationMode": {
+      "smart": "Big ones",
+      "all": "All",
+      "off": "Off"
+    },
+    "animationHint": {
+      "smart": "Every play in your team's games; in the rest, only homers, strikeouts, inning changes and wins.",
+      "all": "An animation for every play in any game.",
+      "off": "No animations: just the score."
+    }
   },
   "stories": {
     "label": "Teams",
@@ -458,7 +484,8 @@
     "share": "Share",
     "hint": "Pick where to share: on your phone, your app list opens with the image ready.",
     "more": "More options",
-    "pick": "In the list that opens, tap {{app}}."
+    "pick": "In the list that opens, tap {{app}}.",
+    "instagramSaved": "Image saved: post it from Instagram on your phone."
   },
   "spray": {
     "title": "Spray chart",
@@ -647,7 +674,7 @@
     "email": "Email",
     "emailPlaceholder": "you@example.com",
     "code": "Code",
-    "codeSent": "We sent a code to {{email}}. Type it here.",
+    "codeSent": "We sent an email to {{email}}. Type the code here, or tap the link in the email from this same phone.",
     "sendCode": "Send me the code",
     "enter": "Sign in",
     "back": "Change email",
@@ -662,7 +689,13 @@
       "invalid_code": "That code is wrong or expired.",
       "rate_limit": "Wait a minute before asking for another code.",
       "unknown": "Something went wrong. Try again."
-    }
+    },
+    "linkSignedIn": "You're in! Signed in as {{email}}.",
+    "linkExpired": "That link expired or was already used. Ask for a new one from Fantasy.",
+    "delete": "Delete my account",
+    "deleteConfirm": "Sure? Your account, teams, picks and the leagues you created will be deleted. This can't be undone.",
+    "deleteYes": "Yes, delete",
+    "deleteNo": "Cancel"
   },
   "statsPage": {
     "title": "Stats",
@@ -717,7 +750,7 @@
     "count_one": "{{count}} player",
     "count_other": "{{count}} players",
     "qualifiedNote": "Rate stats (AVG, OPS, ERA, WHIP) only rank players with enough plate appearances or innings; the rest go last.",
-    "previousSeason": "The new season hasn't started yet: these are last season's stats.",
+    "previousSeason": "No games finished yet this season: these are last season's stats.",
     "viewPlayer": "Open {{name}}'s profile",
     "noGamesShort": "no games yet",
     "noGames": "Hasn't played this season yet.",
@@ -773,5 +806,17 @@
     "open": "Stats",
     "info": "Profile",
     "seePrevious": "See the {{season}} season"
+  },
+  "alerts": {
+    "on": "Done: we'll let you know when it starts.",
+    "off": "Alert removed for this game.",
+    "blocked": "Notifications are blocked. Turn them on for El Play in your browser settings.",
+    "needsInstall": "On iPhone, alerts only work with El Play installed on your home screen.",
+    "howToInstall": "How",
+    "unsupported": "This browser doesn't support alerts."
+  },
+  "privacy": {
+    "title": "Privacy",
+    "updated": "Updated {{date}}"
   }
 }

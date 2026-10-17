@@ -3,10 +3,26 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>El Play · Béisbol en vivo</title>
   <meta name="description" content="LIDOM, Serie del Caribe y Clásico Mundial en vivo: marcador, zona de strike pitcheo a pitcheo, jugadas, box score, posiciones y líderes.">
   <meta name="theme-color" content="#090c11">
+  <!-- Vista previa al compartir el enlace (WhatsApp, Facebook, X, iMessage) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="El Play">
+  <meta property="og:locale" content="es_DO">
+  <meta property="og:title" content="El Play · Béisbol dominicano en vivo">
+  <meta property="og:description" content="LIDOM en vivo pitcheo a pitcheo: marcador, zona de strike, jugadas, box score, posiciones, estadísticas y Fantasy.">
+  <meta property="og:url" content="https://el-play.vercel.app/">
+  <meta property="og:image" content="https://el-play.vercel.app/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="El Play: béisbol dominicano en vivo, pitcheo a pitcheo">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="El Play · Béisbol dominicano en vivo">
+  <meta name="twitter:description" content="LIDOM en vivo pitcheo a pitcheo: marcador, zona de strike, jugadas, posiciones, estadísticas y Fantasy.">
+  <meta name="twitter:image" content="https://el-play.vercel.app/og-image.jpg">
+  <link rel="canonical" href="https://el-play.vercel.app/">
   <link rel="icon" type="image/svg+xml" href="/icons/logo-v2.svg" />
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png">
   <!-- Nombre corto bajo el ícono del iPhone (si no, usa el <title> completo y lo corta) -->
@@ -17,7 +33,7 @@
   <link rel="preconnect" href="https://www.mlbstatic.com" crossorigin>
   <style>
     /* Fondo inmediato mientras carga el JS (la animación de entrada la pinta React) */
-    html { background: #f6f6f9; }
+    html { background: #f6f6f9; touch-action: manipulation; /* sin zoom por doble toque; el pellizco sí amplía */ }
     @media (prefers-color-scheme: dark) { html:not([data-theme='light']) { background: #0b0c10; } }
     html[data-theme='dark'] { background: #0b0c10; }
   </style>

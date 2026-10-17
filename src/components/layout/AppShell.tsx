@@ -10,6 +10,7 @@ import { BottomSheet } from '../ui/BottomSheet';
 import { TeamLogo } from '../ui/TeamLogo';
 import { OfflineBanner } from './OfflineBanner';
 import { UpdateToast } from './UpdateToast';
+import { Toast } from './Toast';
 import { InstallSheet } from '../install/InstallSheet';
 
 // Barra inferior flotante (diseño D): Inicio · Tabla · [En vivo] · Líderes · Más
@@ -102,6 +103,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
             <OfflineBanner />
             <main className="mx-auto max-w-3xl">{children}</main>
             <UpdateToast />
+            <Toast />
             <BottomNav onLive={() => setLiveOpen(true)} liveCount={liveCount} />
             <LiveSheet open={liveOpen} onClose={() => setLiveOpen(false)} />
             <InstallSheet />

@@ -11,7 +11,7 @@ import { useShare } from '../share/ShareSheet';
 import { standingsPost } from '../share/subjects';
 import { inkOn } from '../components/gamecast/GameHero';
 import { TeamLogo } from '../components/ui/TeamLogo';
-import { ErrorState, Skeleton } from '../components/ui/States';
+import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { StatsTabs } from '../components/layout/StatsTabs';
 
@@ -145,7 +145,8 @@ export const StandingsPage: React.FC = () => {
                     </p>
                 )}
 
-                {standings.isPending ? (
+                {waitingForNetwork(standings) ? (
+<OfflineState />) : standings.isPending ? (
                     <div className="space-y-2">
                         <Skeleton className="h-[96px] rounded-card" />
                         {[0, 1, 2, 3].map((index) => <Skeleton key={index} className="h-[56px] rounded-[20px]" />)}

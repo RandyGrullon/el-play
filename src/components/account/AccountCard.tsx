@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LogOut, Mail, Sparkles, User as UserRound } from 'lucide-react';
-import { AccountError, accountEnabled, saveName, sendCode, signOut, useSession, verifyCode } from '../../lib/account';
+import { Link } from 'react-router-dom';
+import { AccountError, accountEnabled, deleteAccount, saveName, sendCode, signOut, useSession, verifyCode } from '../../lib/account';
 
 // Cuenta: entrar con un código que llega al correo (sin contraseñas). Solo el Fantasy la pide; lo demás funciona sin ella.
 // `purpose="fantasy"` cambia los textos para la puerta de entrada del Fantasy.
@@ -14,6 +15,7 @@ export const AccountCard: React.FC<{ compact?: boolean; purpose?: 'fantasy' }> =
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [name, setName] = useState('');
+    const [confirmDelete, setConfirmDelete] = useState(false);
 
     const fantasy = purpose === 'fantasy';
 
@@ -77,6 +79,35 @@ export const AccountCard: React.FC<{ compact?: boolean; purpose?: 'fantasy' }> =
                         </button>
                     </form>
                 )}
+                {!compact &&
+                    (confirmDelete ? (
+                        <div className="space-y-2 rounded-2xl bg-live/10 p-3" role="alert">
+                            <p className="text-sm font-semibold text-live">{t('account.deleteConfirm')}</p>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={async () => {
+                                        setBusy(true);
+                                        await deleteAccount().catch(fail);
+                                        setBusy(false);
+                                        setConfirmDelete(false);
+                                    }}
+                                    className="h-10 flex-1 rounded-full bg-live text-sm font-extrabold text-white disabled:opacity-50"
+                                >
+                                    {t('account.deleteYes')}
+                                </button>
+                                <button type="button" onClick={() => setConfirmDelete(false)} className="h-10 flex-1 rounded-full bg-surface text-sm font-bold">
+                                    {t('account.deleteNo')}
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button type="button" onClick={() => setConfirmDelete(true)} className="text-sm font-semibold text-muted underline-offset-2 hover:underline">
+                            {t('account.delete')}
+                        </button>
+                    ))}
+                {error && <p className="text-sm font-semibold text-live">{error}</p>}
             </div>
         );
     }
@@ -156,7 +187,12 @@ export const AccountCard: React.FC<{ compact?: boolean; purpose?: 'fantasy' }> =
                     {busy ? '…' : step === 'email' ? t('account.sendCode') : t('account.enter')}
                 </button>
             </div>
-            <p className="text-xs text-muted">{t('account.optional')}</p>
+            <p className="text-xs text-muted">
+                {t('account.optional')}{' '}
+                <Link to="/privacidad" className="font-semibold text-accent-ink">
+                    {t('privacy.title')}
+                </Link>
+            </p>
         </form>
     );
 };

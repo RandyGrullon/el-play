@@ -2,16 +2,22 @@
 import './lib/appUpdate';
 // Antes de React: Chrome lanza el aviso de instalación una sola vez y muy temprano
 import './lib/install';
-import './i18n';
+import i18n from './i18n';
+import { consumeAuthRedirect } from './lib/account';
+import { showToast } from './lib/toast';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import App from './App';
-import { blockZoom } from './lib/noZoom';
+import { blockDoubleTapZoom } from './lib/noZoom';
 import './styles.css';
 
-blockZoom();
+blockDoubleTapZoom();
+
+// Vuelta desde el enlace del correo de Supabase: la sesión queda abierta y se dice
+const auth = consumeAuthRedirect();
+if (auth) showToast(auth.result === 'signed-in' ? i18n.t('account.linkSignedIn', { email: auth.email }) : i18n.t('account.linkExpired'), undefined, 7000);
 
 const queryClient = new QueryClient({
     defaultOptions: {

@@ -48,7 +48,7 @@ export const isAndroid = () => /Android/i.test(ua());
 // Las redes sociales abren los enlaces en su propio navegador; en Android cualquier WebView lleva "; wv)"
 const isInApp = () => /Instagram|FBAN|FBAV|FB_IAB|FBIOS|Messenger|BytedanceWebview|musical_ly|TikTok|Snapchat|LinkedInApp|\bLine\/|Pinterest/i.test(ua()) || (isAndroid() && /; wv\)/.test(ua()));
 export const isIOSSafari = () => isIOS() && /Safari\//.test(ua()) && !/CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|YaBrowser|GSA\//.test(ua());
-const isStandalone = () =>
+export const isStandalone = () =>
     window.matchMedia?.('(display-mode: standalone)').matches || window.matchMedia?.('(display-mode: fullscreen)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
 
 /** Safari 26 movió Compartir al botón «•••» junto a la dirección (el UA congela la versión de iOS; la de Safari sí cambia) */
@@ -113,4 +113,27 @@ const BANNER_KEY = 'el-play-install-banner';
 const BANNER_PAUSE_MS = 14 * 24 * 60 * 60 * 1000;
 
 export const bannerDismissed = () => Date.now() - readStorage<number>(BANNER_KEY, 0) < BANNER_PAUSE_MS;
-export const dismissBanner = () => writeStorage(BANNER_KEY, Date.now());
+
+// La tarjeta grande solo en la primera visita; después queda solo el ícono de arriba (antes salían los dos)
+const VISITS_KEY = 'el-play-visits';
+let visits = 1;
+if (typeof window !== 'undefined') {
+    try {
+        if (!sessionStorage.getItem(VISITS_KEY)) {
+            sessionStorage.setItem(VISITS_KEY, '1');
+            visits = readStorage<number>(VISITS_KEY, 0) + 1;
+            writeStorage(VISITS_KEY, visits);
+        } else visits = Math.max(1, readStorage<number>(VISITS_KEY, 1));
+    } catch {
+        visits = 1;
+    }
+}
+const bannerVisible = () => visits <= 1 && !bannerDismissed();
+export const useBannerVisible = () => useSyncExternalStore(subscribe, bannerVisible, () => false);
+
+/** Navegador de Android, para dar los pasos de su menú (Chrome, Samsung Internet o Firefox) */
+export const androidBrowser = (): 'chrome' | 'samsung' | 'firefox' => (/SamsungBrowser/i.test(ua()) ? 'samsung' : /Firefox\//i.test(ua()) ? 'firefox' : 'chrome');
+export const dismissBanner = () => {
+    writeStorage(BANNER_KEY, Date.now());
+    emit();
+};

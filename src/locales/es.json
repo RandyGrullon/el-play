@@ -102,10 +102,22 @@
       "tapInstall": "Toca «Instalar la app»: tu teléfono te pregunta si la quieres instalar.",
       "done": "¡Listo! El Play queda en tu pantalla de inicio. Ábrela desde ahí, a pantalla completa.",
       "seeSteps": "Ver el paso a paso"
+    },
+    "androidMenuBy": {
+      "chrome": "Toca el menú de los tres puntos, arriba a la derecha",
+      "samsung": "Toca el menú ≡ abajo a la derecha",
+      "firefox": "Toca el menú ⋮ (arriba o abajo a la derecha)"
+    },
+    "androidInstallBy": {
+      "chrome": "Toca «Instalar app» o «Agregar a la pantalla principal»",
+      "samsung": "Toca «Agregar página a» y luego «Pantalla de inicio»",
+      "firefox": "Toca «Instalar» o «Añadir a la pantalla de inicio»"
     }
   },
   "offline": {
-    "banner": "Sin conexión: estás viendo lo último que cargó"
+    "banner": "Sin conexión: estás viendo lo último que cargó",
+    "title": "Sin conexión",
+    "notLoaded": "Esta pantalla todavía no se había cargado. Cuando vuelva el internet se carga sola."
   },
   "update": {
     "available": "Hay una versión nueva de El Play",
@@ -123,11 +135,13 @@
     "internal_error": "Algo salió mal. Intenta de nuevo.",
     "invalid_mlb_data": "MLB no respondió bien. Intenta en un momento.",
     "upstream_timeout": "MLB tardó demasiado en responder.",
-    "game_not_found": "Ese juego no existe.",
+    "game_not_found": "No encontramos ese juego.",
     "invalid_game": "El enlace del juego no es válido.",
     "schedule": "No se pudo cargar el calendario.",
     "standings": "No se pudo cargar la tabla.",
-    "leaders": "No se pudieron cargar los líderes."
+    "leaders": "No se pudieron cargar los líderes.",
+    "not_found": "No encontramos lo que buscabas.",
+    "invalid_league": "Esa liga no existe."
   },
   "games": {
     "title": "Juegos",
@@ -192,7 +206,9 @@
     "onDeck": "En círculo: {{name}}",
     "atBatNow": "Al bate",
     "outsCount_one": "{{count}} out",
-    "outsCount_other": "{{count}} outs"
+    "outsCount_other": "{{count}} outs",
+    "notFoundHint": "Puede que el enlace esté mal o que MLB lo haya quitado.",
+    "backToGames": "Ver los juegos de hoy"
   },
   "zone": {
     "title": "Zona de strike",
@@ -316,7 +332,7 @@
     "regular": "Serie regular",
     "roundRobin": "Round Robin",
     "final": "Serie final",
-    "previousSeason": "La temporada nueva aún no empieza: estas son las posiciones de la anterior.",
+    "previousSeason": "Todavía no hay juegos terminados de la temporada nueva: estas son las posiciones de la pasada.",
     "regularNote": "Los cuatro primeros pasan al Round Robin.",
     "roundRobinNote": "Cada equipo juega {{games}} partidos; los dos primeros van a la final.",
     "finalNote": "Gana la serie el primero en llegar a 4 victorias.",
@@ -329,7 +345,7 @@
     "group": "Tipo de líderes",
     "hitting": "Bateo",
     "pitching": "Pitcheo",
-    "previousSeason": "La temporada nueva aún no empieza: estos son los líderes de la anterior.",
+    "previousSeason": "Todavía no hay juegos terminados de la temporada nueva: estos son los líderes de la pasada.",
     "qualifiedNote": "Promedio, OPS, EFE y WHIP cuentan solo a jugadores con suficientes turnos o entradas.",
     "noData": "Sin datos.",
     "homeRuns": "Jonrones",
@@ -398,7 +414,17 @@
     "tagline": "Béisbol dominicano en vivo",
     "playAnimations": "Animaciones de jugadas",
     "playAnimationsHint": "Hits, outs, ponches, emergentes, fin de entrada, victoria y campeonato en el juego en vivo",
-    "account": "Cuenta"
+    "account": "Cuenta",
+    "animationMode": {
+      "smart": "Grandes",
+      "all": "Todas",
+      "off": "Apagadas"
+    },
+    "animationHint": {
+      "smart": "En los juegos de tu equipo, todas; en los demás, solo jonrones, ponches, fin de entrada y victorias.",
+      "all": "Una animación con cada jugada de cualquier juego.",
+      "off": "Sin animaciones: solo el marcador."
+    }
   },
   "stories": {
     "label": "Equipos",
@@ -458,7 +484,8 @@
     "share": "Compartir",
     "hint": "Elige dónde compartir: en el teléfono se abre tu lista de apps con la imagen lista.",
     "more": "Más opciones",
-    "pick": "En la lista que se abre, toca {{app}}."
+    "pick": "En la lista que se abre, toca {{app}}.",
+    "instagramSaved": "Se guardó la imagen: súbela desde Instagram en tu teléfono."
   },
   "spray": {
     "title": "Mapa de batazos",
@@ -647,7 +674,7 @@
     "email": "Correo",
     "emailPlaceholder": "tucorreo@ejemplo.com",
     "code": "Código",
-    "codeSent": "Te mandamos un código a {{email}}. Escríbelo aquí.",
+    "codeSent": "Te mandamos un correo a {{email}}. Escribe aquí el código, o toca el enlace del correo desde este mismo teléfono.",
     "sendCode": "Mandarme el código",
     "enter": "Entrar",
     "back": "Cambiar correo",
@@ -662,7 +689,13 @@
       "invalid_code": "Ese código no sirve o ya venció.",
       "rate_limit": "Espera un minuto antes de pedir otro código.",
       "unknown": "Algo salió mal. Intenta de nuevo."
-    }
+    },
+    "linkSignedIn": "¡Listo! Entraste como {{email}}.",
+    "linkExpired": "Ese enlace ya venció o ya se usó. Pide otro desde Fantasy.",
+    "delete": "Borrar mi cuenta",
+    "deleteConfirm": "¿Seguro? Se borran tu cuenta, tus equipos, tus pronósticos y las ligas que creaste. No se puede deshacer.",
+    "deleteYes": "Sí, borrar",
+    "deleteNo": "Cancelar"
   },
   "statsPage": {
     "title": "Estadísticas",
@@ -717,7 +750,7 @@
     "count_one": "{{count}} pelotero",
     "count_other": "{{count}} peloteros",
     "qualifiedNote": "En promedios (AVG, OPS, EFE, WHIP) solo entran quienes tienen turnos o entradas suficientes; los demás van al final.",
-    "previousSeason": "La temporada nueva aún no empieza: estas son las estadísticas de la anterior.",
+    "previousSeason": "Todavía no hay juegos terminados de la temporada nueva: estas son las estadísticas de la pasada.",
     "viewPlayer": "Ver la ficha de {{name}}",
     "noGamesShort": "sin juegos todavía",
     "noGames": "Todavía no ha jugado esta temporada.",
@@ -773,5 +806,17 @@
     "open": "Estadísticas",
     "info": "Ver ficha",
     "seePrevious": "Ver la temporada {{season}}"
+  },
+  "alerts": {
+    "on": "Listo: te avisamos cuando empiece.",
+    "off": "Quitamos el aviso de este juego.",
+    "blocked": "Tienes los avisos bloqueados. Actívalos para El Play en la configuración del navegador.",
+    "needsInstall": "En iPhone los avisos solo funcionan con El Play instalada en tu pantalla de inicio.",
+    "howToInstall": "Ver cómo",
+    "unsupported": "Este navegador no permite avisos."
+  },
+  "privacy": {
+    "title": "Privacidad",
+    "updated": "Actualizada el {{date}}"
   }
 }

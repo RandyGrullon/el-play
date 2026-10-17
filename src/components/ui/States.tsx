@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { RotateCw } from 'lucide-react';
+import { RotateCw, WifiOff } from 'lucide-react';
 import { ApiError } from '../../lib/api';
 
 export const ErrorState: React.FC<{ error: unknown; onRetry?: () => void; compact?: boolean }> = ({ error, onRetry, compact }) => {
@@ -26,5 +26,20 @@ export const EmptyState: React.FC<{ icon?: React.ReactNode; title: string; child
         {children && <div className="text-sm text-muted">{children}</div>}
     </div>
 );
+
+/** La consulta no tiene datos y está esperando internet (react-query la pausa sin red) */
+export const waitingForNetwork = (query: { isPending: boolean; fetchStatus: string }) => query.isPending && query.fetchStatus === 'paused';
+
+/** En vez de cargar para siempre: esta pantalla no se había abierto y no hay internet */
+export const OfflineState: React.FC = () => {
+    const { t } = useTranslation();
+    return (
+        <div className="card flex flex-col items-center justify-center gap-2 px-6 py-10 text-center" role="status">
+            <WifiOff className="h-7 w-7 text-faint" aria-hidden="true" />
+            <p className="font-semibold">{t('offline.title')}</p>
+            <p className="max-w-xs text-sm text-muted">{t('offline.notLoaded')}</p>
+        </div>
+    );
+};
 
 export const Skeleton: React.FC<{ className?: string }> = ({ className = '' }) => <div className={`skeleton ${className}`} aria-hidden="true" />;

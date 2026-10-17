@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://el-play.vercel.app/</loc><changefreq>always</changefreq><priority>1.0</priority></url>
+  <url><loc>https://el-play.vercel.app/posiciones</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://el-play.vercel.app/lideres</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://el-play.vercel.app/estadisticas</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://el-play.vercel.app/fantasy</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://el-play.vercel.app/instalar</loc><changefreq>monthly</changefreq></url>
+  <url><loc>https://el-play.vercel.app/privacidad</loc><changefreq>yearly</changefreq></url>
+</urlset>

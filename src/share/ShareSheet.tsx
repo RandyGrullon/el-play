@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { showToast } from '../lib/toast';
 import { Download, Facebook, ImagePlus, Instagram, MessageCircle, Share2, X } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { BottomSheet } from '../components/ui/BottomSheet';
@@ -127,7 +128,10 @@ const ShareSheet: React.FC<{ request: ShareRequest; onClose: () => void }> = ({ 
         // Sin compartir archivos: WhatsApp y Facebook con el texto y el enlace; Instagram solo recibe imágenes desde el teléfono
         if (destination === 'whatsapp') window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
         else if (destination === 'facebook') window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`, '_blank', 'noopener');
-        else await download();
+        else {
+            await download();
+            if (destination === 'instagram') showToast(t('share.instagramSaved'), undefined, 7000);
+        }
     };
 
     const pickPhoto = (event: React.ChangeEvent<HTMLInputElement>) => {

@@ -168,3 +168,13 @@ export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDet
     }
     return events;
 };
+
+/** Las que siempre salen aunque el juego no sea de tu equipo */
+const BIG: PlayKind[] = ['hr', 'k', 'inning', 'win', 'champion'];
+
+/** Filtra las animaciones según lo elegido en «Más» (en «smart», tu equipo las ve todas) */
+export const forMode = (events: PlayEvent[], mode: 'all' | 'smart' | 'off', favoriteTeamId: number | null, teamIds: number[]) => {
+    if (mode === 'off') return [];
+    if (mode === 'all' || (favoriteTeamId !== null && teamIds.includes(favoriteTeamId))) return events;
+    return events.filter((event) => BIG.includes(event.kind));
+};

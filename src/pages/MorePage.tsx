@@ -1,8 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useLeague } from '../store/LeagueContext';
-import { usePreferences, type ThemePreference } from '../store/preferences';
+import { usePreferences, type AnimationMode, type ThemePreference } from '../store/preferences';
 import { LogoMark } from '../components/brand/Logo';
 import { Segmented } from '../components/ui/Segmented';
 import { InstallRow } from '../components/install/InstallCard';
@@ -14,7 +15,7 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 export const MorePage: React.FC = () => {
     const { t, i18n } = useTranslation();
     const { leagues, activeLeague, setActiveLeague } = useLeague();
-    const { theme, setTheme, playAnimations, setPlayAnimations } = usePreferences();
+    const { theme, setTheme, animationMode, setAnimationMode } = usePreferences();
     const lang = i18n.language.startsWith('en') ? 'en' : 'es';
 
     return (
@@ -80,21 +81,22 @@ export const MorePage: React.FC = () => {
                         ]}
                     />
                 </div>
-                <div className="card flex items-center justify-between gap-3 p-4">
-                    <span className="min-w-0">
+                <div className="card space-y-3 p-4">
+                    <span className="block min-w-0">
                         <span className="block font-semibold">{t('more.playAnimations')}</span>
-                        <span className="block text-sm text-muted">{t('more.playAnimationsHint')}</span>
+                        <span className="block text-sm text-muted">{t(`more.animationHint.${animationMode}`)}</span>
                     </span>
-                    <button
-                        type="button"
-                        role="switch"
-                        aria-checked={playAnimations}
-                        aria-label={t('more.playAnimations')}
-                        onClick={() => setPlayAnimations(!playAnimations)}
-                        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${playAnimations ? 'bg-accent' : 'bg-raised'}`}
-                    >
-                        <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-card transition-all ${playAnimations ? 'left-[22px]' : 'left-0.5'}`} />
-                    </button>
+                    <Segmented<AnimationMode>
+                        size="sm"
+                        label={t('more.playAnimations')}
+                        value={animationMode}
+                        onChange={setAnimationMode}
+                        options={[
+                            { value: 'smart', label: t('more.animationMode.smart') },
+                            { value: 'all', label: t('more.animationMode.all') },
+                            { value: 'off', label: t('more.animationMode.off') }
+                        ]}
+                    />
                 </div>
             </section>
 
@@ -104,6 +106,9 @@ export const MorePage: React.FC = () => {
                     <p className="font-extrabold">El Play</p>
                     <p className="text-sm text-muted">{t('more.tagline')}</p>
                 </div>
+                <Link to="/privacidad" className="text-sm font-semibold text-accent-ink">
+                    {t('privacy.title')}
+                </Link>
             </section>
         </div>
     );

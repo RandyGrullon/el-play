@@ -1,23 +1,8 @@
-// Bloquea el zoom en el teléfono. La etiqueta viewport (user-scalable=no) basta en Android, pero
-// Safari de iOS la ignora desde iOS 10: ahí se cancelan sus gestos de pellizco y el doble toque.
-export const blockZoom = () => {
+// El zoom con dos dedos está permitido (accesibilidad: ampliar el box score o las jugadas). Solo se evita el
+// zoom por doble toque, que en un marcador en vivo se dispara sin querer al tocar rápido. En navegadores nuevos
+// lo hace `touch-action: manipulation` (index.html); esto cubre Safari viejos de iOS.
+export const blockDoubleTapZoom = () => {
     if (typeof document === 'undefined') return;
-
-    const cancel = (event: Event) => event.preventDefault();
-    for (const name of ['gesturestart', 'gesturechange', 'gestureend']) {
-        document.addEventListener(name, cancel, { passive: false });
-    }
-
-    // Dos dedos moviéndose = pellizco
-    document.addEventListener(
-        'touchmove',
-        (event) => {
-            if (event.touches.length > 1) event.preventDefault();
-        },
-        { passive: false }
-    );
-
-    // Doble toque rápido fuera de controles = zoom en iOS
     let lastTouchEnd = 0;
     document.addEventListener(
         'touchend',
@@ -25,7 +10,8 @@ export const blockZoom = () => {
             const now = Date.now();
             const target = event.target as HTMLElement | null;
             const interactive = target?.closest('a, button, input, select, textarea, label, [role="tab"]');
-            if (!interactive && now - lastTouchEnd < 300) event.preventDefault();
+            // Solo un dedo: con dos es un pellizco y se deja pasar
+            if (!interactive && event.touches.length === 0 && event.changedTouches.length === 1 && now - lastTouchEnd < 300) event.preventDefault();
             lastTouchEnd = now;
         },
         { passive: false }
