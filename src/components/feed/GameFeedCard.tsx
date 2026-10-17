@@ -94,7 +94,8 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
         share({
             data: resultFromSchedule(game, t(`leagues.${leagueConfig.id}.name`), t, i18n.language),
             fileName: `el-play-${game.away.abbrev}-${game.home.abbrev}`.toLowerCase(),
-            text: `${game.away.name} ${game.away.score ?? ''} - ${game.home.score ?? ''} ${game.home.name}`
+            text: `${game.away.name} ${game.away.score ?? ''} - ${game.home.score ?? ''} ${game.home.name} · El Play`,
+            url: `/juego/${game.gamePk}`
         });
     };
 

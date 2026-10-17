@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Download, ImagePlus, Instagram, Share2, X } from 'lucide-react';
+import { Download, Facebook, ImagePlus, Instagram, MessageCircle, Share2, X } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { Segmented } from '../components/ui/Segmented';
@@ -14,7 +14,20 @@ interface ShareRequest {
     /** Nombre del archivo y texto que acompaña al compartir */
     fileName: string;
     text: string;
+    /** Enlace que va con el texto (si falta, la página actual) */
+    url?: string;
 }
+
+type Destination = 'whatsapp' | 'facebook' | 'instagram' | 'more';
+
+// Botones de destino: la web no puede abrir WhatsApp o Facebook directo con una imagen, así que en el teléfono
+// se abre la lista de apps con la imagen lista (y se le dice cuál tocar). Donde no se puede compartir archivos
+// (computadora), WhatsApp y Facebook abren su página con el texto y el enlace.
+const DESTINATIONS: { id: Exclude<Destination, 'more'>; label: string; color: string; Icon: typeof Share2 }[] = [
+    { id: 'whatsapp', label: 'WhatsApp', color: '#25D366', Icon: MessageCircle },
+    { id: 'facebook', label: 'Facebook', color: '#1877F2', Icon: Facebook },
+    { id: 'instagram', label: 'Instagram', color: 'linear-gradient(135deg, #feda75, #d62976 50%, #4f5bd5)', Icon: Instagram }
+];
 
 const ShareContext = createContext<{ share: (request: ShareRequest) => void } | undefined>(undefined);
 
@@ -50,6 +63,7 @@ const ShareSheet: React.FC<{ request: ShareRequest; onClose: () => void }> = ({ 
     const [preview, setPreview] = useState<string | null>(null);
     const [busy, setBusy] = useState(true);
     const [error, setError] = useState(false);
+    const [picked, setPicked] = useState<Destination | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const input = useRef<HTMLInputElement>(null);
 
@@ -94,20 +108,26 @@ const ShareSheet: React.FC<{ request: ShareRequest; onClose: () => void }> = ({ 
         track('share_download', { kind: request.data.kind, format, style });
     };
 
-    const shareNow = async () => {
+    const link = new URL(request.url ?? window.location.pathname, window.location.origin).toString();
+    const message = `${request.text}\n${link}`;
+
+    const shareTo = async (destination: Destination) => {
+        setPicked(destination);
         const result = await file();
         if (!result) return;
-        const payload = { files: [result], title: 'El Play', text: request.text };
+        track('share', { kind: request.data.kind, format, style, to: destination });
         if (navigator.canShare?.({ files: [result] })) {
             try {
-                await navigator.share(payload);
-                track('share', { kind: request.data.kind, format, style });
+                await navigator.share({ files: [result], title: 'El Play', text: message });
+                return;
             } catch (shareError) {
-                if ((shareError as Error).name !== 'AbortError') await download();
+                if ((shareError as Error).name === 'AbortError') return;
             }
-        } else {
-            await download();
         }
+        // Sin compartir archivos: WhatsApp y Facebook con el texto y el enlace; Instagram solo recibe imágenes desde el teléfono
+        if (destination === 'whatsapp') window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
+        else if (destination === 'facebook') window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`, '_blank', 'noopener');
+        else await download();
     };
 
     const pickPhoto = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -168,17 +188,34 @@ const ShareSheet: React.FC<{ request: ShareRequest; onClose: () => void }> = ({ 
                     )}
                 </div>
 
+                <div className="grid grid-cols-3 gap-2">
+                    {DESTINATIONS.map(({ id, label, color, Icon }) => (
+                        <button
+                            key={id}
+                            type="button"
+                            onClick={() => shareTo(id)}
+                            disabled={busy || error}
+                            className="flex h-[68px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-bold text-white disabled:opacity-50"
+                            style={{ background: color }}
+                        >
+                            <Icon className="h-6 w-6" />
+                            {label}
+                        </button>
+                    ))}
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                     <button type="button" onClick={download} disabled={busy || error} className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-surface font-bold shadow-card disabled:opacity-50">
                         <Download className="h-5 w-5" />
                         {t('share.save')}
                     </button>
-                    <button type="button" onClick={shareNow} disabled={busy || error} className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-ink font-bold text-bg disabled:opacity-50">
-                        {format === 'story' ? <Instagram className="h-5 w-5" /> : <Share2 className="h-5 w-5" />}
-                        {t('share.share')}
+                    <button type="button" onClick={() => shareTo('more')} disabled={busy || error} className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-ink font-bold text-bg disabled:opacity-50">
+                        <Share2 className="h-5 w-5" />
+                        {t('share.more')}
                     </button>
                 </div>
-                <p className="text-center text-xs text-muted">{t('share.hint')}</p>
+                <p className="text-center text-xs text-muted" aria-live="polite">
+                    {picked && picked !== 'more' ? t('share.pick', { app: DESTINATIONS.find((d) => d.id === picked)?.label }) : t('share.hint')}
+                </p>
             </div>
         </BottomSheet>
     );

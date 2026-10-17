@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle2, ChevronRight, Download, X } from 'lucide-react';
 import { LogoMark } from '../brand/Logo';
-import { bannerDismissed, dismissBanner, requestInstall, useInstallMode, type InstallMode } from '../../lib/install';
+import { bannerDismissed, dismissBanner, openInstallSheet, requestInstall, useInstallMode, type InstallMode } from '../../lib/install';
 
 const canInstall = (mode: InstallMode) => mode !== 'installed' && mode !== 'unsupported';
 
@@ -76,15 +76,21 @@ export const InstallRow: React.FC = () => {
     if (!canInstall(mode)) return null;
 
     return (
-        <button type="button" onClick={requestInstall} className="card flex w-full items-center gap-3 p-4 text-left">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent text-white">
-                <Download className="h-5 w-5" />
-            </span>
-            <span className="min-w-0 flex-1">
-                <span className="block font-extrabold">{t('install.button')}</span>
-                <span className="block text-sm text-muted">{t('install.bannerBody')}</span>
-            </span>
-            <ChevronRight className="h-5 w-5 text-muted" />
-        </button>
+        <div className="card overflow-hidden">
+            <button type="button" onClick={requestInstall} className="flex w-full items-center gap-3 p-4 text-left">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent text-white">
+                    <Download className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                    <span className="block font-extrabold">{t('install.button')}</span>
+                    <span className="block text-sm text-muted">{t('install.bannerBody')}</span>
+                </span>
+                <ChevronRight className="h-5 w-5 text-muted" />
+            </button>
+            {/* El tutorial siempre a mano, aunque el teléfono permita instalar con un toque */}
+            <button type="button" onClick={openInstallSheet} className="w-full border-t border-line/10 px-4 py-3 text-left text-sm font-semibold text-accent-ink">
+                {t('install.tutorial.seeSteps')}
+            </button>
+        </div>
     );
 };

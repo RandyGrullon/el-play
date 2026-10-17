@@ -67,7 +67,41 @@
     "doneTitle": "¡Listo!",
     "doneBody": "El Play ya está en tu pantalla de inicio. Ábrela desde ahí.",
     "installedTitle": "El Play está instalada",
-    "installedBody": "La estás usando desde la pantalla de inicio."
+    "installedBody": "La estás usando desde la pantalla de inicio.",
+    "art": {
+      "share": "Compartir",
+      "bookmark": "Agregar a favoritos",
+      "find": "Buscar en la página",
+      "copy": "Copiar",
+      "addHome": "Agregar a inicio",
+      "cancel": "Cancelar",
+      "add": "Agregar",
+      "webApp": "Abrir como app web",
+      "newTab": "Nueva pestaña",
+      "history": "Historial",
+      "downloads": "Descargas",
+      "installApp": "Instalar app",
+      "settings": "Configuración",
+      "installQ": "¿Instalar app?",
+      "install": "Instalar"
+    },
+    "tutorial": {
+      "detectedIphone": "Detectamos un iPhone con {{browser}}: estos son los pasos para tu teléfono.",
+      "detectedAndroid": "Detectamos un Android: estos son los pasos para tu teléfono.",
+      "detectedInApp": "Estás dentro de otra app: primero ábrela en el navegador y después sigue los pasos.",
+      "detectedDesktop": "Estás en una computadora: abre el-play.vercel.app/instalar en tu teléfono y sigue los pasos.",
+      "otherBrowser": "otro navegador",
+      "platform": "Teléfono",
+      "step": "Paso {{n}} de {{total}}",
+      "steps": "Pasos",
+      "prev": "Paso anterior",
+      "next": "Paso siguiente",
+      "gotIt": "Entendido",
+      "oneTap": "Instalar con un toque",
+      "tapInstall": "Toca «Instalar la app»: tu teléfono te pregunta si la quieres instalar.",
+      "done": "¡Listo! El Play queda en tu pantalla de inicio. Ábrela desde ahí, a pantalla completa.",
+      "seeSteps": "Ver el paso a paso"
+    }
   },
   "offline": {
     "banner": "Sin conexión: estás viendo lo último que cargó"
@@ -418,7 +452,9 @@
     "removePhoto": "Quitar",
     "save": "Guardar",
     "share": "Compartir",
-    "hint": "En el teléfono, elige Instagram y luego Historia o Publicación."
+    "hint": "Elige dónde compartir: en el teléfono se abre tu lista de apps con la imagen lista.",
+    "more": "Más opciones",
+    "pick": "En la lista que se abre, toca {{app}}."
   },
   "spray": {
     "title": "Mapa de batazos",

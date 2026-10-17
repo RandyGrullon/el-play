@@ -236,14 +236,16 @@ export const GamePage: React.FC = () => {
         share({
             data: resultFromGame(game, leagueName, t, i18n.language),
             fileName: `el-play-${game.away.abbrev}-${game.home.abbrev}`.toLowerCase(),
-            text: `${game.away.name} ${game.away.runs} - ${game.home.runs} ${game.home.name} · El Play`
+            text: `${game.away.name} ${game.away.runs} - ${game.home.runs} ${game.home.name} · El Play`,
+            url: game.gamePk ? `/juego/${game.gamePk}` : undefined
         });
     const sharePerformer = (performer: TopPerformer) =>
         game &&
         share({
             data: playerFromPerformer(performer, game, leagueName, t, i18n.language),
             fileName: `el-play-${performer.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-            text: `${performer.name} · El Play`
+            text: `${performer.name} · El Play`,
+            url: game.gamePk ? `/juego/${game.gamePk}` : undefined
         });
 
     const model = game ? fromDetail(game) : scheduled ? fromSchedule(scheduled) : null;

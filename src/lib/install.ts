@@ -44,10 +44,10 @@ if (typeof window !== 'undefined') {
 
 const ua = () => navigator.userAgent;
 export const isIOS = () => /iPhone|iPad|iPod/.test(ua()) || (ua().includes('Macintosh') && navigator.maxTouchPoints > 1);
-const isAndroid = () => /Android/i.test(ua());
+export const isAndroid = () => /Android/i.test(ua());
 // Las redes sociales abren los enlaces en su propio navegador; en Android cualquier WebView lleva "; wv)"
 const isInApp = () => /Instagram|FBAN|FBAV|FB_IAB|FBIOS|Messenger|BytedanceWebview|musical_ly|TikTok|Snapchat|LinkedInApp|\bLine\/|Pinterest/i.test(ua()) || (isAndroid() && /; wv\)/.test(ua()));
-const isIOSSafari = () => isIOS() && /Safari\//.test(ua()) && !/CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|YaBrowser|GSA\//.test(ua());
+export const isIOSSafari = () => isIOS() && /Safari\//.test(ua()) && !/CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|YaBrowser|GSA\//.test(ua());
 const isStandalone = () =>
     window.matchMedia?.('(display-mode: standalone)').matches || window.matchMedia?.('(display-mode: fullscreen)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
 

@@ -67,7 +67,41 @@
     "doneTitle": "All set!",
     "doneBody": "El Play is on your home screen. Open it from there.",
     "installedTitle": "El Play is installed",
-    "installedBody": "You're using it from your home screen."
+    "installedBody": "You're using it from your home screen.",
+    "art": {
+      "share": "Share",
+      "bookmark": "Add Bookmark",
+      "find": "Find on Page",
+      "copy": "Copy",
+      "addHome": "Add to Home Screen",
+      "cancel": "Cancel",
+      "add": "Add",
+      "webApp": "Open as Web App",
+      "newTab": "New tab",
+      "history": "History",
+      "downloads": "Downloads",
+      "installApp": "Install app",
+      "settings": "Settings",
+      "installQ": "Install app?",
+      "install": "Install"
+    },
+    "tutorial": {
+      "detectedIphone": "We detected an iPhone with {{browser}}: these are the steps for your phone.",
+      "detectedAndroid": "We detected an Android phone: these are the steps for your phone.",
+      "detectedInApp": "You're inside another app: open it in your browser first, then follow the steps.",
+      "detectedDesktop": "You're on a computer: open el-play.vercel.app/instalar on your phone and follow the steps.",
+      "otherBrowser": "another browser",
+      "platform": "Phone",
+      "step": "Step {{n}} of {{total}}",
+      "steps": "Steps",
+      "prev": "Previous step",
+      "next": "Next step",
+      "gotIt": "Got it",
+      "oneTap": "Install with one tap",
+      "tapInstall": "Tap “Install app”: your phone asks if you want to install it.",
+      "done": "Done! El Play is on your home screen. Open it from there, full screen.",
+      "seeSteps": "See the step-by-step guide"
+    }
   },
   "offline": {
     "banner": "Offline: showing the last data loaded"
@@ -418,7 +452,9 @@
     "removePhoto": "Remove",
     "save": "Save",
     "share": "Share",
-    "hint": "On your phone, pick Instagram, then Story or Post."
+    "hint": "Pick where to share: on your phone, your app list opens with the image ready.",
+    "more": "More options",
+    "pick": "In the list that opens, tap {{app}}."
   },
   "spray": {
     "title": "Spray chart",
