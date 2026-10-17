@@ -19,6 +19,9 @@ export interface HittingLine {
     sb: number;
     cs: number;
     hbp: number;
+    sf?: number;
+    tb?: number;
+    gidp?: number;
     avg: string;
     obp: string;
     slg: string;
@@ -39,6 +42,9 @@ export interface PitchingLine {
     h: number;
     er: number;
     hr: number;
+    hbp?: number;
+    bf?: number;
+    np?: number;
     era: string;
     whip: string;
 }
@@ -199,11 +205,11 @@ export const SORTS: Record<'B' | 'P', SortOption[]> = {
 };
 
 /**
- * Mínimo para entrar en los promedios: 2 turnos por juego del equipo que más ha jugado (bateo)
- * o 0,8 entradas (pitcheo). Así un 1-1 no sale primero en AVG.
+ * Mínimo para entrar en los promedios: 2 apariciones por juego del equipo que más ha jugado (y al menos 5) para bateo,
+ * 0,8 entradas por juego (y al menos 3) para pitcheo. Así un 1-1 no sale primero en AVG ni en BABIP.
  */
 export const qualifies = (row: PlayerRow, teamGames: number) =>
-    row.role === 'P' ? (row.pitching?.outs ?? 0) >= Math.max(3, Math.floor(teamGames * 0.8 * 3)) : (row.hitting?.pa ?? 0) >= Math.max(2, Math.floor(teamGames * 2));
+    row.role === 'P' ? (row.pitching?.outs ?? 0) >= Math.max(9, Math.floor(teamGames * 0.8 * 3)) : (row.hitting?.pa ?? 0) >= Math.max(5, Math.floor(teamGames * 2));
 
 export const sortPlayers = (rows: PlayerRow[], option: SortOption, teamGames: number) => {
     const ranked = rows.map((row) => ({ row, value: option.rate && !qualifies(row, teamGames) ? null : option.value(row) }));

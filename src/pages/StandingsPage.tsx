@@ -14,6 +14,9 @@ import { TeamLogo } from '../components/ui/TeamLogo';
 import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { StatsTabs } from '../components/layout/StatsTabs';
+import { StandingsTable } from '../components/pro/StandingsTable';
+import { ProBadge } from '../components/pro/ProBadge';
+import { useIsPro } from '../lib/pro';
 
 type Phase = 'regular' | 'roundRobin' | 'final';
 
@@ -94,6 +97,7 @@ export const StandingsPage: React.FC = () => {
     const share = useShare();
     const data = standings.data;
     const [phase, setPhase] = useState<Phase | null>(null);
+    const pro = useIsPro();
     useEffect(() => setPhase(null), [activeLeague]);
 
     const leagueName = t(`leagues.${activeLeague}.name`);
@@ -129,7 +133,9 @@ export const StandingsPage: React.FC = () => {
                 <header className="flex items-start justify-between gap-3">
                     <div>
                         <p className="text-sm font-semibold text-muted">{leagueName}{season ? ` · ${t('common.season', { season })}` : ''}</p>
-                        <h1 className="display text-[32px] leading-tight">{t('standings.title')}</h1>
+                        <h1 className="display text-[32px] leading-tight">
+                            {t('standings.title')} <ProBadge auto />
+                        </h1>
                     </div>
                     {rows.length > 0 && (
                         <button type="button" onClick={() => shareTable(rows, `${phaseLabel || leagueName} · ${season}`)} className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface shadow-card" aria-label={t('share.shareTable')}>
@@ -158,11 +164,15 @@ export const StandingsPage: React.FC = () => {
                         <div role="tablist" aria-label={t('standings.phase')} className="-mx-4 flex gap-2 overflow-x-auto px-4 scrollbar-none">
                             {(['regular', 'roundRobin', 'final'] as const).map(pill)}
                         </div>
-                        <StandingCards
-                            rows={rows}
-                            cutoff={activePhase === 'regular' ? 4 : activePhase === 'roundRobin' ? data.roundRobinInfo?.advance ?? 2 : undefined}
-                            cutoffLabel={activePhase === 'regular' ? t('standings.cutRoundRobin') : t('standings.cutFinal')}
-                        />
+                        {pro ? (
+                            <StandingsTable rows={rows} cutoff={activePhase === 'regular' ? 4 : activePhase === 'roundRobin' ? data.roundRobinInfo?.advance ?? 2 : undefined} />
+                        ) : (
+                            <StandingCards
+                                rows={rows}
+                                cutoff={activePhase === 'regular' ? 4 : activePhase === 'roundRobin' ? data.roundRobinInfo?.advance ?? 2 : undefined}
+                                cutoffLabel={activePhase === 'regular' ? t('standings.cutRoundRobin') : t('standings.cutFinal')}
+                            />
+                        )}
                     </>
                 ) : data?.type === 'wbc' ? (
                     <div className="space-y-6">
@@ -176,13 +186,17 @@ export const StandingsPage: React.FC = () => {
                                             <Share2 className="h-4 w-4" />
                                         </button>
                                     </div>
-                                    <StandingCards rows={poolRows} cutoff={2} cutoffLabel={t('standings.cutNext')} />
+                                    {pro ? <StandingsTable rows={poolRows} cutoff={2} /> : <StandingCards rows={poolRows} cutoff={2} cutoffLabel={t('standings.cutNext')} />}
                                 </section>
                             );
                         })}
                     </div>
                 ) : data?.type === 'sdc' ? (
-                    <StandingCards rows={data.teams} cutoff={4} cutoffLabel={t('standings.cutNext')} />
+                    pro ? (
+                        <StandingsTable rows={data.teams} cutoff={4} />
+                    ) : (
+                        <StandingCards rows={data.teams} cutoff={4} cutoffLabel={t('standings.cutNext')} />
+                    )
                 ) : null}
             </div>
         </PullToRefresh>

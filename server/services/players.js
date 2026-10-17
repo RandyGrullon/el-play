@@ -39,6 +39,9 @@ const hittingOf = (s = {}) => ({
     sb: s.stolenBases ?? 0,
     cs: s.caughtStealing ?? 0,
     hbp: s.hitByPitch ?? 0,
+    sf: s.sacFlies ?? 0,
+    tb: s.totalBases ?? 0,
+    gidp: s.groundIntoDoublePlay ?? 0,
     avg: s.avg ?? '.000',
     obp: s.obp ?? '.000',
     slg: s.slg ?? '.000',
@@ -66,6 +69,9 @@ const pitchingOf = (s = {}) => ({
     h: s.hits ?? 0,
     er: s.earnedRuns ?? 0,
     hr: s.homeRuns ?? 0,
+    hbp: s.hitBatsmen ?? s.hitByPitch ?? 0,
+    bf: s.battersFaced ?? 0,
+    np: s.numberOfPitches ?? 0,
     era: s.era ?? '-.--',
     whip: s.whip ?? '-.--'
 });

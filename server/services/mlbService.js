@@ -107,6 +107,11 @@ const fetchSchedule = async (leagueKey = 'lidom') => {
 
 // ---------------------------------------------------------------- Posiciones
 
+const splitOf = (record, type) => {
+    const split = (record.records?.splitRecords || []).find((item) => item.type === type);
+    return split ? { wins: split.wins, losses: split.losses } : null;
+};
+
 const standingRow = (record, leagueKey) => ({
     rank: Number(record.rank || record.leagueRank || record.divisionRank) || 0,
     team: {
@@ -125,7 +130,14 @@ const standingRow = (record, leagueKey) => ({
     pct: record.winningPercentage || record.leagueRecord?.pct || '.000',
     gamesBack: '-',
     streak: record.streak?.streakCode || '-',
-    lastTen: (record.records?.splitRecords || []).find((split) => split.type === 'lastTen') || null
+    lastTen: (record.records?.splitRecords || []).find((split) => split.type === 'lastTen') || null,
+    // Para el modo PRO: carreras, casa/visita y juegos cerrados
+    runsScored: record.runsScored ?? null,
+    runsAllowed: record.runsAllowed ?? null,
+    home: splitOf(record, 'home'),
+    away: splitOf(record, 'away'),
+    oneRun: splitOf(record, 'oneRun'),
+    extraInning: splitOf(record, 'extraInning')
 });
 
 // gamesBack de /standings no es fiable (daba -9.5 al líder de LIDOM 2025): se calcula contra el primero

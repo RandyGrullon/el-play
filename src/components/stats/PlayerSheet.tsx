@@ -11,6 +11,9 @@ import { ErrorState, Skeleton } from '../ui/States';
 import { inkOn } from '../gamecast/GameHero';
 import { localeFor, seasonLabel } from '../../lib/format';
 import { gameLine, usePlayer, type CareerRow, type GameLogRow, type PlayerDetail } from '../../lib/stats';
+import { battingAdvanced, fmtDec, fmtPct, fmtRate, pitchingAdvanced } from '../../lib/advanced';
+import { useIsPro } from '../../lib/pro';
+import { ProBadge } from '../pro/ProBadge';
 
 interface PlayerSheetProps {
     id: number;
@@ -78,7 +81,10 @@ export const PlayerSheet: React.FC<PlayerSheetProps> = ({ id, name, team, season
                         )}
                         <FantasyCard player={player} />
                         {player.g > 0 ? (
-                            <SeasonGrid player={player} />
+                            <>
+                                <SeasonGrid player={player} />
+                                <AdvancedGrid player={player} />
+                            </>
                         ) : (
                             player.season > player.currentSeason - 2 && (
                                 <button type="button" onClick={() => setSeason(player.season - 1)} className="h-11 w-full rounded-full bg-surface text-sm font-bold shadow-card">
@@ -206,6 +212,53 @@ const SeasonGrid: React.FC<{ player: PlayerDetail }> = ({ player }) => {
             ) : (
                 <p className="card px-4 py-5 text-center text-sm text-muted">{t('statsPage.noGames')}</p>
             )}
+        </section>
+    );
+};
+
+/** Modo PRO: métricas avanzadas de la temporada */
+const AdvancedGrid: React.FC<{ player: PlayerDetail }> = ({ player }) => {
+    const { t } = useTranslation();
+    const pro = useIsPro();
+    if (!pro) return null;
+    const l = (key: string) => t(`pro.short.${key}`);
+    let tiles: [string, string][] = [];
+    if (player.role === 'P' && player.pitching) {
+        const a = pitchingAdvanced(player.pitching);
+        tiles = [
+            [l('fip'), fmtDec(a.fip)],
+            [l('k9'), fmtDec(a.k9)],
+            [l('bb9'), fmtDec(a.bb9)],
+            [l('kBb'), fmtDec(a.kBb)],
+            [l('h9'), fmtDec(a.h9)],
+            [l('hr9'), fmtDec(a.hr9)],
+            [l('kPct'), fmtPct(a.kPct)],
+            [l('ppi'), fmtDec(a.pitchesPerInning, 1)]
+        ];
+    } else if (player.hitting) {
+        const a = battingAdvanced(player.hitting);
+        tiles = [
+            [l('iso'), fmtRate(a.iso)],
+            [l('babip'), fmtRate(a.babip)],
+            [l('kPct'), fmtPct(a.kPct)],
+            [l('bbPct'), fmtPct(a.bbPct)],
+            [l('bbK'), fmtDec(a.bbK)],
+            [l('abHr'), fmtDec(a.abHr, 1)],
+            [l('xbh'), String(a.xbh)],
+            [l('slg'), player.hitting.slg]
+        ];
+    }
+    if (!tiles.length) return null;
+    return (
+        <section aria-label={t('pro.advanced')}>
+            <h4 className="eyebrow mb-2 flex items-center gap-2">
+                {t('pro.advanced')} <ProBadge />
+            </h4>
+            <div className="grid grid-cols-4 gap-2">
+                {tiles.map(([label, value]) => (
+                    <Tile key={label} label={label} value={value} />
+                ))}
+            </div>
         </section>
     );
 };

@@ -106,6 +106,31 @@ export const sendCode = (email: string) => {
     return authFetch(`otp${back}`, { email, create_user: true });
 };
 
+// ---------------------------------------------------------------- Google (y otros proveedores)
+
+let settingsPromise: Promise<{ google: boolean }> | null = null;
+
+/** Qué proveedores tiene activos el proyecto de Supabase (se pregunta una vez por sesión) */
+export const authProviders = () =>
+    (settingsPromise ||= (async () => {
+        if (!accountEnabled()) return { google: false };
+        try {
+            const response = await fetch(`${URL_BASE}/auth/v1/settings`, { headers: { apikey: ANON! } });
+            const data = await response.json();
+            return { google: !!data?.external?.google };
+        } catch {
+            settingsPromise = null;
+            return { google: false };
+        }
+    })());
+
+/** Entrar con Google: Supabase abre la pantalla de Google y vuelve aquí con la sesión (consumeAuthRedirect) */
+export const signInWithGoogle = () => {
+    if (!accountEnabled()) return;
+    const back = window.location.origin + window.location.pathname;
+    window.location.assign(`${URL_BASE}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(back)}`);
+};
+
 const decodeJwt = (token: string): { sub?: string; email?: string } | null => {
     try {
         const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');

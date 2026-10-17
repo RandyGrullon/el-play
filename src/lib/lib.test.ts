@@ -6,6 +6,7 @@ import { nameKey, photoSources } from './photos';
 import { newPlayEvents, outVariant, titleClinch } from './playEvents';
 import { canAdd, getStore, isLocked, pickPoints, replaceStore, setStoreOwner, takeLegacyStore, teamPoints, unsettledDays, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
 import { SORTS, normalize, sortPlayers, type PlayerRow } from './stats';
+import { battingAdvanced, fmtPct, fmtRate, pitchingAdvanced, pythagorean } from './advanced';
 import type { AtBat, GameDetail, Pitch, Schedule, ScheduleGame } from '../types';
 
 const NOW = Date.parse('2026-11-20T23:00:00Z');
@@ -341,5 +342,29 @@ describe('estadísticas: orden y búsqueda', () => {
 
     it('busca sin tildes ni mayúsculas', () => {
         expect(normalize('José Peña').includes(normalize('jose pena'))).toBe(true);
+    });
+});
+
+describe('modo PRO: métricas avanzadas', () => {
+    it('bateo: ISO, BABIP, K% y BB%', () => {
+        const a = battingAdvanced({ g: 10, pa: 44, ab: 40, r: 6, h: 12, d: 3, t: 0, hr: 2, rbi: 8, bb: 4, k: 10, sb: 1, cs: 0, hbp: 0, sf: 0, avg: '.300', obp: '.364', slg: '.525', ops: '.889' });
+        expect(fmtRate(a.iso)).toBe('.225'); // (12 + 3 + 6 − 12) / 40 = 9/40
+        expect(fmtRate(a.babip)).toBe('.357'); // (12 − 2) / (40 − 10 − 2)
+        expect(fmtPct(a.kPct)).toBe('22.7%');
+        expect(a.xbh).toBe(5);
+    });
+
+    it('pitcheo: K/9, BB/9 y FIP', () => {
+        const a = pitchingAdvanced({ g: 3, gs: 3, ip: '18.0', outs: 54, w: 2, l: 0, sv: 0, hld: 0, k: 20, bb: 5, h: 14, er: 4, hr: 1, hbp: 1, bf: 72, np: 280, era: '2.00', whip: '1.06' });
+        expect(a.k9).toBe(10);
+        expect(a.bb9).toBe(2.5);
+        expect(a.fip!.toFixed(2)).toBe(((13 + 3 * 6 - 40) / 18 + 3.1).toFixed(2));
+    });
+
+    it('récord esperado por carreras (Pitágoras)', () => {
+        const expected = pythagorean(256, 222, 49)!;
+        expect(expected.wins + expected.losses).toBe(49);
+        expect(expected.wins).toBe(28);
+        expect(pythagorean(null, null, 0)).toBeNull();
     });
 });

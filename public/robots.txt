@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://el-play.vercel.app/sitemap.xml
+Sitemap: https://elplay.grullonb.com/sitemap.xml

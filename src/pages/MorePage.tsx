@@ -8,6 +8,7 @@ import { LogoMark } from '../components/brand/Logo';
 import { Segmented } from '../components/ui/Segmented';
 import { InstallRow } from '../components/install/InstallCard';
 import { AccountCard } from '../components/account/AccountCard';
+import { ModeCard } from '../components/pro/ModeCard';
 
 // "Más": liga, tema, idioma e instalación (antes estaban en la barra de arriba)
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -29,6 +30,11 @@ export const MorePage: React.FC = () => {
             <section aria-labelledby="more-account">
                 <h2 id="more-account" className="eyebrow mb-2">{t('more.account')}</h2>
                 <AccountCard />
+            </section>
+
+            <section aria-labelledby="more-mode">
+                <h2 id="more-mode" className="eyebrow mb-2">{t('pro.section')}</h2>
+                <ModeCard />
             </section>
 
             <section aria-labelledby="more-league">

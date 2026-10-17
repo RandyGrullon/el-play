@@ -13,6 +13,9 @@ import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../compon
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { StatsTabs } from '../components/layout/StatsTabs';
 import { PlayerSheet } from '../components/stats/PlayerSheet';
+import { StatsTable } from '../components/pro/StatsTable';
+import { ProBadge } from '../components/pro/ProBadge';
+import { useIsPro } from '../lib/pro';
 
 const PAGE = 40;
 
@@ -29,6 +32,7 @@ export const StatsPage: React.FC = () => {
     const [search, setSearch] = useState('');
     const [limit, setLimit] = useState(PAGE);
     const query = usePlayers(activeLeague, season);
+    const pro = useIsPro();
     const data = query.data;
 
     useEffect(() => {
@@ -40,11 +44,11 @@ export const StatsPage: React.FC = () => {
     const sort = SORTS[role].find((option) => option.key === sortKey) ?? SORTS[role][0];
     const teams = useMemo(() => Object.values(data?.teams ?? {}).sort((a, b) => a.abbrev.localeCompare(b.abbrev)), [data?.teams]);
     const teamGames = useMemo(() => Math.max(0, ...(data?.players ?? []).map((row) => row.hitting?.g ?? 0)), [data?.players]);
-    const rows = useMemo(() => {
+    const filtered = useMemo(() => {
         const needle = normalize(search.trim());
-        const list = (data?.players ?? []).filter((row) => row.role === role && (teamId === null || row.teamId === teamId) && (!needle || normalize(row.name).includes(needle)));
-        return sortPlayers(list, sort, teamGames);
-    }, [data?.players, role, teamId, search, sort, teamGames]);
+        return (data?.players ?? []).filter((row) => row.role === role && (teamId === null || row.teamId === teamId) && (!needle || normalize(row.name).includes(needle)));
+    }, [data?.players, role, teamId, search]);
+    const rows = useMemo(() => sortPlayers(filtered, sort, teamGames), [filtered, sort, teamGames]);
 
     const viewingId = Number(params.get('jugador')) || null;
     const viewing = viewingId ? data?.players.find((row) => row.id === viewingId) : undefined;
@@ -73,7 +77,9 @@ export const StatsPage: React.FC = () => {
                         {t(`leagues.${activeLeague}.name`)}
                         {data ? ` · ${t('common.season', { season: seasonLabel(data.season, activeLeague) })}` : ''}
                     </p>
-                    <h1 className="display text-[32px] leading-tight">{t('statsPage.title')}</h1>
+                    <h1 className="display text-[32px] leading-tight">
+                        {t('statsPage.title')} <ProBadge auto />
+                    </h1>
                     <p className="mt-1 max-w-[52ch] text-sm text-muted">{t('statsPage.lead')}</p>
                 </header>
 
@@ -135,6 +141,7 @@ export const StatsPage: React.FC = () => {
                     </div>
                 )}
 
+                {!pro && (
                 <div className="flex gap-2 overflow-x-auto px-4 scrollbar-none" role="tablist" aria-label={t('statsPage.sortBy')}>
                     {SORTS[role].map((option) => (
                         <button
@@ -149,6 +156,7 @@ export const StatsPage: React.FC = () => {
                         </button>
                     ))}
                 </div>
+                )}
 
                 {waitingForNetwork(query) ? (
 <div className="px-4"><OfflineState /></div>) : query.isPending ? (
@@ -160,6 +168,12 @@ export const StatsPage: React.FC = () => {
                     <div className="px-4">
                         <ErrorState error={query.error as Error} onRetry={() => query.refetch()} />
                     </div>
+                ) : data && pro ? (
+                    filtered.length ? (
+                        <StatsTable rows={filtered} role={role} teams={data.teams} teamGames={teamGames} limit={limit} onOpen={open} onMore={() => setLimit((value) => value + PAGE)} />
+                    ) : (
+                        <p className="mx-4 rounded-card bg-surface px-4 py-8 text-center text-sm text-muted shadow-card">{search ? t('statsPage.noResults', { q: search.trim() }) : t('statsPage.empty')}</p>
+                    )
                 ) : data ? (
                     <>
                         {top.length > 0 && <Podium rows={top} teams={data.teams} show={sort.show} unit={t(`statsPage.unit.${sort.key}`)} onOpen={open} />}

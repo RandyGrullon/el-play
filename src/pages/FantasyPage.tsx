@@ -11,6 +11,9 @@ import { Segmented } from '../components/ui/Segmented';
 import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { AccountCard } from '../components/account/AccountCard';
 import { PlayerSheet } from '../components/stats/PlayerSheet';
+import { ProBadge } from '../components/pro/ProBadge';
+import { useIsPro } from '../lib/pro';
+import { usePlayers } from '../lib/stats';
 import { formatLongDate, formatTime } from '../lib/format';
 import { inningName } from '../lib/baseball';
 import {
@@ -134,7 +137,9 @@ export const FantasyPage: React.FC = () => {
             <header className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                     <p className="text-sm font-semibold text-muted first-letter:uppercase">{day ? formatLongDate(day.date, i18n.language) : t(`leagues.${activeLeague}.name`)}</p>
-                    <h1 className="display text-[32px] leading-tight">{t('fantasy.title')}</h1>
+                    <h1 className="display text-[32px] leading-tight">
+                        {t('fantasy.title')} <ProBadge auto />
+                    </h1>
                 </div>
                 <div className="flex shrink-0 gap-2">
                     <Link to="/estadisticas" className="flex h-12 items-center gap-1.5 rounded-2xl bg-surface px-3.5 text-sm font-bold shadow-card" aria-label={t('statsPage.title')}>
@@ -431,14 +436,24 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
     const [search, setSearch] = useState('');
     const [info, setInfo] = useState<FantasyPlayer | null>(null);
     const started = day.games.some((game) => game.state !== 'preview');
+    // PRO: puntos de fantasy por juego en la temporada, para escoger con datos
+    const pro = useIsPro();
+    const season = usePlayers(day.league);
+    const averages = useMemo(() => (pro ? new Map((season.data?.players ?? []).map((row) => [row.id, row])) : null), [pro, season.data]);
     const normalized = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
     const list = useMemo(
         () =>
             day.players
                 .filter((p) => p.role === role && (teamId === null || p.teamId === teamId) && (!search || normalized(p.name).includes(normalized(search))))
-                .sort((a, b) => (started ? b.points - a.points : 0) || Number(b.starter) - Number(a.starter) || a.name.localeCompare(b.name)),
-        [day.players, role, teamId, search, started]
+                .sort(
+                    (a, b) =>
+                        (started ? b.points - a.points : 0) ||
+                        (averages ? (averages.get(b.id)?.ppg ?? 0) - (averages.get(a.id)?.ppg ?? 0) : 0) ||
+                        Number(b.starter) - Number(a.starter) ||
+                        a.name.localeCompare(b.name)
+                ),
+        [day.players, role, teamId, search, started, averages]
     );
 
     const problemText = (problem: string | null) =>
@@ -447,6 +462,11 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
     return (
         <BottomSheet open onClose={onClose} title={role === 'P' ? t('fantasy.choosePitcher') : t('fantasy.chooseBatters')} tall>
             <div className="space-y-3 pb-2">
+                {pro && (
+                    <p className="flex items-center gap-2 text-xs font-semibold text-muted">
+                        <ProBadge /> {t('pro.fantasyHint')}
+                    </p>
+                )}
                 <Segmented<'B' | 'P'>
                     size="sm"
                     label={t('fantasy.role')}
@@ -491,6 +511,11 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
                                             {team?.abbrev} · {player.pos || '—'} · {gameStatus(day, player.gamePk, i18n.language, t)}
                                             {lineText(player, t) ? ` · ${lineText(player, t)}` : ''}
                                         </p>
+                                        {averages?.get(player.id) && (
+                                            <p className="text-[11px] font-bold text-accent-ink">
+                                                {t('pro.fantasyAvg', { ppg: averages.get(player.id)!.ppg, g: averages.get(player.id)!.g })}
+                                            </p>
+                                        )}
                                         {problem && problem !== 'already' && <p className="text-[11px] font-semibold text-faint">{problemText(problem)}</p>}
                                     </div>
                                 </button>

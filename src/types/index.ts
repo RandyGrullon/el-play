@@ -223,6 +223,12 @@ export interface StandingRow {
     gamesBack: string;
     streak: string;
     lastTen: { wins: number; losses: number } | null;
+    runsScored?: number | null;
+    runsAllowed?: number | null;
+    home?: { wins: number; losses: number } | null;
+    away?: { wins: number; losses: number } | null;
+    oneRun?: { wins: number; losses: number } | null;
+    extraInning?: { wins: number; losses: number } | null;
 }
 
 interface SeasonInfo {

@@ -10,6 +10,7 @@ import { useGameAlerts } from '../hooks/useGameAlerts';
 import { GameFeedCard, GameFeedCardSkeleton } from '../components/feed/GameFeedCard';
 import { TeamStories } from '../components/feed/TeamStories';
 import { LogoMark } from '../components/brand/Logo';
+import { ProBadge } from '../components/pro/ProBadge';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { EmptyState, ErrorState, OfflineState, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
@@ -149,7 +150,10 @@ export const GamesPage: React.FC = () => {
             <div className="space-y-4 pt-5">
                 <header className="flex items-start justify-between gap-3 px-4">
                     <div className="min-w-0">
-                        <p className="text-sm font-semibold text-muted first-letter:uppercase">{formatLongDate(day, i18n.language)}</p>
+                        <p className="flex items-center gap-2 text-sm font-semibold text-muted">
+                            <span className="first-letter:uppercase">{formatLongDate(day, i18n.language)}</span>
+                            <ProBadge auto />
+                        </p>
                         <h1 className="display truncate text-[32px] leading-tight">
                             {day === today ? t('games.todayIn', { league: leagueName }) : leagueName}
                         </h1>

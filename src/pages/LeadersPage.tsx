@@ -13,6 +13,7 @@ import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../compon
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { StatsTabs } from '../components/layout/StatsTabs';
 import { PlayerSheet } from '../components/stats/PlayerSheet';
+import { ProBadge } from '../components/pro/ProBadge';
 
 const detailOf = (leader: Leader, t: (key: string, options?: Record<string, unknown>) => string) => {
     const extra = leader.extra || {};
@@ -120,7 +121,9 @@ export const LeadersPage: React.FC = () => {
                 </div>
                 <header className="px-4">
                     <p className="text-sm font-semibold text-muted">{t(`leagues.${activeLeague}.name`)}{season ? ` · ${t('common.season', { season })}` : ''}</p>
-                    <h1 className="display text-[32px] leading-tight">{t('leaders.title')}</h1>
+                    <h1 className="display text-[32px] leading-tight">
+                        {t('leaders.title')} <ProBadge auto />
+                    </h1>
                 </header>
 
                 {data?.isPreviousSeason && (

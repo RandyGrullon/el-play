@@ -33,6 +33,8 @@ import { PlayerPhoto } from '../components/ui/PlayerPhoto';
 import { TeamLogo } from '../components/ui/TeamLogo';
 import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
+import { LiveProPanel } from '../components/pro/LiveProPanel';
+import { useIsPro } from '../lib/pro';
 
 type Sheet = 'zone' | 'plays' | 'box' | null;
 
@@ -77,6 +79,7 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
     const { atBat } = atBatForZone(game);
     const batting = game.inning?.isTop ? game.away : game.home;
     const between = game.inning?.state === 'Middle' || game.inning?.state === 'End';
+    const pro = useIsPro();
 
     return (
         <>
@@ -111,6 +114,12 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
                 <SprayChart game={game} />
             </div>
 
+            {pro && (
+                <div className="px-4 pt-4">
+                    <LiveProPanel game={game} />
+                </div>
+            )}
+
             <div className="flex gap-2 px-4 pt-5">
                 <ActionButton icon={<Table2 className="h-4 w-4" />} label={t('game.tabs.box')} onClick={() => open('box')} />
                 <ActionButton icon={<Target className="h-4 w-4" />} label={t('zone.full')} onClick={() => open('zone')} />
@@ -122,10 +131,12 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
 
 const FinalView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onShare: () => void; onSharePerformer: (performer: TopPerformer) => void }> = ({ game, open, onShare, onSharePerformer }) => {
     const { t } = useTranslation();
+    const pro = useIsPro();
     return (
         <div className="space-y-4 px-4 pt-4">
             <StoryRecap game={game} onSharePerformer={onSharePerformer} />
             <SprayChart game={game} />
+            {pro && <LiveProPanel game={game} />}
             <div className="flex gap-2">
                 <ActionButton icon={<ListOrdered className="h-4 w-4" />} label={t('game.tabs.plays')} onClick={() => open('plays')} />
                 <ActionButton icon={<Table2 className="h-4 w-4" />} label={t('game.tabs.box')} onClick={() => open('box')} />
