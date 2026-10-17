@@ -4,14 +4,15 @@ const { cached } = require('../utils/cache');
 
 // Créditos del fantasy: cada pelotero tiene un precio del día (de 4 a 12 créditos, de medio en medio) y el equipo
 // no puede pasar del presupuesto. El precio sale de sus puntos de fantasy por juego hasta el día anterior (esta
-// temporada, más media temporada pasada), comparado con los de su rol en la liga: así no cambia durante el día
-// y se puede volver a calcular igual para los días pasados.
+// temporada completa más las 3 anteriores de la liga, cada una con menos peso), comparado con los de su rol: así no
+// cambia durante el día y se puede volver a calcular igual para los días pasados.
 
 const CREDITS = { budget: 50, min: 4, max: 12, unknown: 5 };
 // Desde este día se juega con créditos (los días anteriores se puntúan como antes)
 const CREDITS_FROM = '2026-10-17';
-// La temporada pasada vale la mitad y cada pelotero arranca con 4 juegos «promedio bajo» (para que 1 juego no lo dispare)
-const PREV_WEIGHT = 0.5;
+// Temporadas anteriores que cuentan y su peso: la pasada vale la mitad, la de antes un cuarto y la otra un octavo.
+// Además cada pelotero arranca con 4 juegos «promedio bajo» (para que 1 juego no lo dispare).
+const PAST_WEIGHTS = [0.5, 0.25, 0.125];
 const PRIOR_GAMES = 4;
 const PRIOR_PERCENTILE = 0.35;
 // Con menos peloteros con datos que esto (p. ej. un torneo corto sin historia) no se juega con créditos
@@ -54,15 +55,20 @@ const tableOf = (splits, group, scoring) => {
 
 /**
  * Precios de un rol: puntos por juego regresados hacia un «promedio bajo» y pasados a percentil dentro del rol.
- * `current` y `previous` son tablas id → { points, games }. Devuelve id → precio.
+ * `weighted` es una lista de { table, weight } (tabla id → { points, games } de cada temporada con su peso).
+ * Devuelve id → precio.
  */
-const priceTable = (current, previous) => {
-    const ids = new Set([...current.keys(), ...previous.keys()]);
-    const rows = [...ids].map((id) => {
-        const cur = current.get(id) || { points: 0, games: 0 };
-        const prev = previous.get(id) || { points: 0, games: 0 };
-        return { id, points: cur.points + PREV_WEIGHT * prev.points, games: cur.games + PREV_WEIGHT * prev.games };
-    });
+const priceTable = (weighted) => {
+    const sums = new Map();
+    for (const { table, weight } of weighted) {
+        for (const [id, row] of table) {
+            const sum = sums.get(id) || { id, points: 0, games: 0 };
+            sum.points += weight * row.points;
+            sum.games += weight * row.games;
+            sums.set(id, sum);
+        }
+    }
+    const rows = [...sums.values()];
     const prices = new Map();
     if (!rows.length) return prices;
     // El «promedio bajo»: el percentil 35 de los puntos por juego de quienes jugaron al menos 3 juegos
@@ -80,6 +86,10 @@ const priceTable = (current, previous) => {
     }
     return prices;
 };
+
+/** Una temporada pasada completa de la liga (ya no cambia: una semana en caché) */
+const pastSeason = (league, season, group) =>
+    cached(`fantasy_past_${league.id}_${season}_${group}`, 7 * 86400, () => statsOf(league, { stats: 'season', group, season }), { staleSec: 7 * 86400 });
 
 const statsOf = (league, params) => http.mlbGet(`${MLB_API_BASE}/stats`, { gameType: 'R', leagueId: league.leagueId, playerPool: 'ALL', limit: 2000, ...params }).then((data) => data?.stats?.[0]?.splits || []);
 
@@ -99,10 +109,17 @@ const dayPrices = (leagueKey, date, scoring) => {
             const start = seasonStart(league.id, season);
             const end = shiftDay(date, -1);
             const range = (group) => (end >= start ? statsOf(league, { stats: 'byDateRange', group, season, startDate: start, endDate: end }) : Promise.resolve([]));
-            const full = (group) => statsOf(league, { stats: 'season', group, season: season - 1 });
-            const [hitNow, pitchNow, hitPrev, pitchPrev] = await Promise.all([range('hitting'), range('pitching'), full('hitting'), full('pitching')]);
-            const batters = priceTable(tableOf(hitNow, 'hitting', scoring), tableOf(hitPrev, 'hitting', scoring));
-            const pitchers = priceTable(tableOf(pitchNow, 'pitching', scoring), tableOf(pitchPrev, 'pitching', scoring));
+            const [hitNow, pitchNow, ...past] = await Promise.all([
+                range('hitting'),
+                range('pitching'),
+                ...PAST_WEIGHTS.flatMap((_, i) => [pastSeason(league, season - 1 - i, 'hitting'), pastSeason(league, season - 1 - i, 'pitching')])
+            ]);
+            const seasons = (now, offset, group) => [
+                { table: tableOf(now, group, scoring), weight: 1 },
+                ...PAST_WEIGHTS.map((weight, i) => ({ table: tableOf(past[i * 2 + offset], group, scoring), weight }))
+            ];
+            const batters = priceTable(seasons(hitNow, 0, 'hitting'));
+            const pitchers = priceTable(seasons(pitchNow, 1, 'pitching'));
             if (batters.size + pitchers.size < MIN_PLAYERS) return null;
             return { budget: CREDITS.budget, prices: { B: [...batters], P: [...pitchers] } };
         },

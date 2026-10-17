@@ -883,15 +883,25 @@ describe('fantasy con créditos: precio por pelotero y tope del equipo', () => {
         expect(effectiveEntry(day(), saved)).toMatchObject({ lineup: [1, 2, 3, 5, 6], captain: null });
     });
 
-    it('precio por percentil dentro del rol: de 4 a 12, de medio en medio, y la temporada pasada vale la mitad', () => {
+    it('precio por percentil dentro del rol: de 4 a 12, de medio en medio, y las temporadas pasadas pesan menos', () => {
         const current = new Map([[10, { points: 30, games: 3 }], [11, { points: 3, games: 3 }], [12, { points: 15, games: 3 }]]);
         const previous = new Map([[13, { points: 100, games: 40 }], [11, { points: 20, games: 40 }]]);
-        const table = prices.priceTable(current, previous);
+        const table = prices.priceTable([
+            { table: current, weight: 1 },
+            { table: previous, weight: 0.5 }
+        ]);
         expect(table.get(10)).toBe(12);
         expect(Math.min(...table.values())).toBe(4);
         expect([...table.values()].every((value) => value * 2 === Math.round(value * 2) && value >= 4 && value <= 12)).toBe(true);
         expect(table.get(10)).toBeGreaterThan(table.get(12));
         expect(table.get(12)).toBeGreaterThan(table.get(11));
+        // Un pelotero que solo jugó hace 3 temporadas cuenta, pero con poco peso: queda cerca del «promedio bajo»
+        const old = prices.priceTable([
+            { table: current, weight: 1 },
+            { table: new Map([[14, { points: 400, games: 40 }]]), weight: 0.125 }
+        ]);
+        expect(old.get(14)).toBe(12);
+        expect(old.get(10)).toBeLessThan(12);
     });
 
     it('precios del día con las estadísticas hasta ayer, y sin datos suficientes no hay créditos', async () => {
@@ -909,10 +919,13 @@ describe('fantasy con créditos: precio por pelotero y tope del equipo', () => {
             expect(table.budget).toBe(50);
             const range = calls.filter((c) => c.stats === 'byDateRange');
             expect(range.every((c) => c.startDate === '2026-09-01' && c.endDate === '2026-10-14' && c.season === 2026)).toBe(true);
-            expect(calls.filter((c) => c.stats === 'season').every((c) => c.season === 2025)).toBe(true);
+            // La temporada 2026 hasta ayer y las 3 anteriores completas
+            expect([...new Set(calls.filter((c) => c.stats === 'season').map((c) => c.season))].sort()).toEqual([2023, 2024, 2025]);
             expect(new Map(table.prices.B).get(129)).toBe(12);
             expect(new Map(table.prices.B).get(100)).toBe(4);
 
+            // Sin datos en ninguna temporada (la caché de las pasadas se vacía para la prueba)
+            clearCache();
             http.mlbGet = async () => ({ stats: [{ splits: [] }] });
             expect(await prices.dayPrices('lidom', '2026-10-16', { batterPoints: fantasy.batterPoints, pitcherPoints: fantasy.pitcherPoints })).toBe(null);
         } finally {
