@@ -10,7 +10,7 @@ import { PlayerSheet } from '../stats/PlayerSheet';
 import { formatTime, localeFor, seasonLabel, todayKey } from '../../lib/format';
 import { inningName } from '../../lib/baseball';
 import { useSession } from '../../lib/account';
-import { RULES, entryKey, isLocked, lineText, pickPoints, pickResult, playerScore, teamPoints, useFantasyDay, useFantasyStore, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
+import { RULES, entryKey, gameStarted, isLocked, lineText, pickPoints, pickResult, playerScore, teamPoints, useFantasyDay, useFantasyStore, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
 import { SEASON_TOP, useFanEntry, useFanProfile, useSeasonRanking, withRanks, type FanDay } from '../../lib/fans';
 
 export const FAN_GRADIENT = 'linear-gradient(135deg, #1e4fd8 0%, #6d28d9 55%, #e11d48 100%)';
@@ -272,7 +272,8 @@ const DayDetail: React.FC<DayDetailProps> = ({ userId, league, own, fanDay, date
     const hidden = (player: FantasyPlayer) => !own && !isLocked(day, player);
     const team = teamPoints(day, entry);
     const picks = picksKnown ? pickPoints(day, entry) : fanDay?.picks ?? 0;
-    const games = day.games.filter((game) => entry.picks[game.gamePk] || game.state !== 'preview');
+    // Los pronósticos de los demás se ven cuando empieza el juego (a su hora, como el equipo)
+    const games = day.games.filter((game) => entry.picks[game.gamePk] || gameStarted(game));
 
     return (
         <div className={`${box} space-y-3`}>
@@ -331,7 +332,7 @@ const DayDetail: React.FC<DayDetailProps> = ({ userId, league, own, fanDay, date
                     <ul className="space-y-2">
                         {games.map((game) => {
                             const pick = entry.picks[game.gamePk];
-                            const secret = !own && game.state === 'preview';
+                            const secret = !own && !gameStarted(game);
                             const result = pickResult(game, entry);
                             return (
                                 <li key={game.gamePk} className={`rounded-2xl p-2 ${flat ? 'bg-surface shadow-card' : 'border border-line/10'}`}>

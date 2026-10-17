@@ -420,6 +420,8 @@ const transformScheduleGame = (game, leagueKey) => {
         gamePk: game.gamePk,
         league: leagueKey,
         date: game.gameDate,
+        // Hora por definir (p. ej. el segundo de un doble juego): `date` trae una hora de relleno
+        startTimeTBD: !!game.status?.startTimeTBD,
         state,
         detailedState: game.status?.detailedState || '',
         gameType: game.gameType || null,

@@ -242,6 +242,7 @@ const RULES: [RegExp, string | ((...args: string[]) => string)][] = [
     [/\bon a throw\b/g, 'con un tiro'],
     [/\bassisted by\b/g, 'con asistencia de'],
     [/\bdeflected by\b/g, 'desviado por'],
+    [/\bfielded by\b/g, 'fildeado por'],
     [/\bfoul territory\b/g, 'territorio foul'],
     [/\bfirst base\b/g, 'primera base'],
     [/\bsecond base\b/g, 'segunda base'],

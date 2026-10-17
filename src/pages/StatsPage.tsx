@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Info, Search, X } from 'lucide-react';
 import { useLeague } from '../store/LeagueContext';
@@ -50,10 +50,12 @@ export const StatsPage: React.FC = () => {
     }, [data?.players, role, teamId, search]);
     const rows = useMemo(() => sortPlayers(filtered, sort, teamGames), [filtered, sort, teamGames]);
 
+    const navigate = useNavigate();
+    const location = useLocation();
     const viewingId = Number(params.get('jugador')) || null;
     const viewing = viewingId ? data?.players.find((row) => row.id === viewingId) : undefined;
-    const open = (row: PlayerRow) => setParams((current) => ({ ...Object.fromEntries(current), jugador: String(row.id) }), { replace: false });
-    const close = () =>
+    const open = (row: PlayerRow) => setParams((current) => ({ ...Object.fromEntries(current), jugador: String(row.id) }), { replace: false, state: { playerSheet: true } });
+    const dropPlayer = () =>
         setParams(
             (current) => {
                 const next = new URLSearchParams(current);
@@ -62,6 +64,11 @@ export const StatsPage: React.FC = () => {
             },
             { replace: true }
         );
+    // Si se abrió desde aquí se vuelve atrás (así no queda repetida en el historial); si llegó por enlace se quita
+    const close = () => {
+        if ((location.state as { playerSheet?: boolean } | null)?.playerSheet) navigate(-1);
+        else dropPlayer();
+    };
 
     const top = !search && rows.length >= 3 && rows[0].ranked ? rows.slice(0, 3).map((item) => item.row) : [];
     const rest = top.length ? rows.slice(3) : rows;
@@ -209,6 +216,8 @@ export const StatsPage: React.FC = () => {
                     team={viewing?.teamId && data?.teams[viewing.teamId] ? { id: viewing.teamId, logo: data.teams[viewing.teamId].logo, color: data.teams[viewing.teamId].color } : null}
                     season={data && data.season !== data.currentSeason ? data.season : undefined}
                     onClose={close}
+                    // Ir a un juego ya agrega su propia entrada: aquí no se vuelve atrás (chocaría con esa navegación)
+                    onOpenGame={dropPlayer}
                 />
             )}
         </PullToRefresh>

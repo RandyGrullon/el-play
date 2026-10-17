@@ -376,6 +376,21 @@ describe('fotos con el uniforme del equipo (roster de los Toros 2026-27)', () =>
         expect(nameKey('Bryan De La Cruz')).toBe('bryandelacruz');
         expect(nameKey('Rudy Martin Jr.')).toBe('rudymartin');
     });
+
+    it('las fotos se pueden mostrar desde otro origen (la app); el resto de la API sigue same-origin', async () => {
+        const app = require('../app');
+        const server = app.listen(0);
+        await new Promise((resolve) => server.once('listening', resolve));
+        const base = `http://127.0.0.1:${server.address().port}/api`;
+        try {
+            const photo = await fetch(`${base}/v2/photos/1/nadie.jpg`);
+            expect(photo.status).toBe(404);
+            expect(photo.headers.get('cross-origin-resource-policy')).toBe('cross-origin');
+            expect((await fetch(base)).headers.get('cross-origin-resource-policy')).toBe('same-origin');
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    });
 });
 
 describe('mapa de batazos: dónde cayó cada bola en juego', () => {

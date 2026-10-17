@@ -1,12 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { gameInterval, scheduleInterval } from './polling';
 import { atBatForZone, arsenal, battedBalls, battersFaced, pitchesByPitcher, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName } from './baseball';
 import { dayKey, dayRange, seasonLabel } from './format';
 import { nameKey, photoSources } from './photos';
 import { newPlayEvents, outVariant, titleClinch } from './playEvents';
-import { canAdd, getStore, isLocked, pickPoints, replaceStore, setStoreOwner, takeLegacyStore, teamPoints, unsettledDays, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
+import { canAdd, fantasyInterval, gameStarted, getStore, isLocked, nextLockAt, pickPoints, replaceStore, setPick, setStoreOwner, takeLegacyStore, teamPoints, unsettledDays, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
 import { SORTS, normalize, sortPlayers, type PlayerRow } from './stats';
 import { battingAdvanced, fmtPct, fmtRate, pitchingAdvanced, pythagorean } from './advanced';
+import { showAlert } from '../hooks/useGameAlerts';
 import type { AtBat, GameDetail, Pitch, Schedule, ScheduleGame } from '../types';
 
 const NOW = Date.parse('2026-11-20T23:00:00Z');
@@ -269,20 +270,80 @@ describe('tipos de out', () => {
 
 describe('fantasy: reglas del equipo del día', () => {
     const player = (id: number, teamId: number, role: 'B' | 'P', points: number, gamePk = 1): FantasyPlayer => ({ id, name: `P${id}`, teamId, gamePk, role, pos: role === 'P' ? 'P' : 'SS', starter: true, played: true, line: null, points });
-    const game = (gamePk: number, state: string, awayWins = false) =>
-        ({ gamePk, state, date: '2026-10-17T21:00:00Z', away: { id: 10, isWinner: awayWins }, home: { id: 20, isWinner: !awayWins && state === 'final' } }) as unknown as FantasyGame;
+    const game = (gamePk: number, state: string, awayWins = false, date = '2026-10-17T21:00:00Z') =>
+        ({ gamePk, state, detailedState: 'Scheduled', date, away: { id: 10, isWinner: awayWins }, home: { id: 20, isWinner: !awayWins && state === 'final' } }) as unknown as FantasyGame;
+    // Una hora antes de los juegos de prueba (las reglas miran la hora: no dependen del reloj de la máquina)
+    const BEFORE = Date.parse('2026-10-17T20:00:00Z');
     const day = (players: FantasyPlayer[], games: FantasyGame[]) => ({ league: 'lidom', date: '2026-10-17', games, teams: {}, players, scoring: { batter: {}, pitcher: {} } }) as unknown as FantasyDay;
     const entry = (lineup: number[], captain: number | null = null, picks: Record<string, number> = {}): DayEntry => ({ lineup, captain, picks, savedAt: 1 });
 
     it('5 bateadores, 1 lanzador, máximo 2 por equipo y cerrado si su juego empezó', () => {
         const players = [player(1, 10, 'B', 0), player(2, 10, 'B', 0), player(3, 10, 'B', 0), player(4, 20, 'P', 0), player(5, 20, 'P', 0), player(6, 30, 'B', 0, 2)];
         const d = day(players, [game(1, 'preview'), game(2, 'live')]);
-        expect(canAdd(d, entry([1, 2]), players[2])).toBe('team');
-        expect(canAdd(d, entry([4]), players[4])).toBe('full');
-        expect(canAdd(d, entry([]), players[5])).toBe('locked');
-        expect(canAdd(d, entry([1]), players[0])).toBe('already');
-        expect(canAdd(d, entry([1]), players[1])).toBeNull();
-        expect(isLocked(d, players[5])).toBe(true);
+        expect(canAdd(d, entry([1, 2]), players[2], BEFORE)).toBe('team');
+        expect(canAdd(d, entry([4]), players[4], BEFORE)).toBe('full');
+        expect(canAdd(d, entry([]), players[5], BEFORE)).toBe('locked');
+        expect(canAdd(d, entry([1]), players[0], BEFORE)).toBe('already');
+        expect(canAdd(d, entry([1]), players[1], BEFORE)).toBeNull();
+        expect(isLocked(d, players[5], BEFORE)).toBe(true);
+    });
+
+    it('se cierra al llegar la hora del juego aunque el servidor todavía diga «previa»', () => {
+        const players = [player(1, 10, 'B', 0), player(2, 20, 'B', 0, 2), player(3, 30, 'B', 0, 9)];
+        const d = day(players, [game(1, 'preview'), game(2, 'preview', false, '2026-10-17T23:30:00Z')]);
+        const start = Date.parse('2026-10-17T21:00:00Z');
+        expect(isLocked(d, players[0], start - 1000)).toBe(false);
+        expect(isLocked(d, players[0], start)).toBe(true);
+        expect(canAdd(d, entry([]), players[0], start + 60 * 1000)).toBe('locked');
+        // El de las 7:30 sigue abierto; uno cuyo juego no está en el día no se cierra
+        expect(isLocked(d, players[1], start + 60 * 1000)).toBe(false);
+        expect(isLocked(d, players[2], start + 60 * 1000)).toBe(false);
+        expect(gameStarted({ state: 'preview', date: '' }, start)).toBe(false);
+        expect(gameStarted({ state: 'live', date: '2026-10-18T00:00:00Z' }, start)).toBe(true);
+        // Hora por definir (segundo de un doble juego): la hora es de relleno y solo cuenta el estado
+        expect(gameStarted({ state: 'preview', date: '2026-10-17T21:00:00Z', startTimeTBD: true }, start + 60 * MIN)).toBe(false);
+        expect(gameStarted({ state: 'live', date: '2026-10-17T21:00:00Z', startTimeTBD: true }, start)).toBe(true);
+    });
+
+    it('el pronóstico también se cierra a la hora del juego aunque el servidor siga en «previa»', () => {
+        setStoreOwner('pronosticos');
+        const start = Date.parse('2026-10-17T21:00:00Z');
+        const d = day([], [game(1, 'preview'), game(2, 'live')]);
+        expect(setPick(d, d.games[0], 10, start - 1000)).toBe(true);
+        expect(setPick(d, d.games[0], 20, start + 5 * MIN)).toBe(false);
+        expect(setPick(d, d.games[1], 10, start - 1000)).toBe(false);
+        expect(getStore()['lidom:2026-10-17'].picks).toEqual({ 1: 10 });
+        localStorage.removeItem('el-play-fantasy-v1:pronosticos');
+        setStoreOwner(null);
+    });
+
+    it('el día se vuelve a pedir cada 30 s desde 15 min antes del primer juego', () => {
+        const start = Date.parse('2026-10-17T21:00:00Z');
+        const d = (...games: FantasyGame[]) => day([], games);
+        const today = d(game(1, 'preview'), game(2, 'preview', false, '2026-10-17T23:30:00Z'));
+        // Lejos: despierta al entrar en los 15 min (sin pasar de 15 min entre consultas)
+        expect(fantasyInterval(today, start - 20 * MIN)).toBe(5 * MIN);
+        expect(fantasyInterval(today, start - 3 * 60 * MIN)).toBe(15 * MIN);
+        expect(fantasyInterval(today, start - 15 * MIN)).toBe(30 * 1000);
+        expect(fantasyInterval(today, start - 2 * MIN)).toBe(30 * 1000);
+        // Ya pasó la hora y sigue en previa (retraso): se sigue mirando
+        expect(fantasyInterval(today, start + 5 * MIN)).toBe(30 * 1000);
+        expect(fantasyInterval(d(game(1, 'live'), game(2, 'preview')), start)).toBe(20 * 1000);
+        expect(fantasyInterval(d(game(1, 'final'), game(2, 'final')), start)).toBe(false);
+        // Un juego pospuesto que se quedó en previa no deja la página pidiendo cada 30 s
+        expect(fantasyInterval(d({ ...game(1, 'preview'), detailedState: 'Postponed' }), start + 60 * MIN)).toBe(false);
+        expect(fantasyInterval(undefined)).toBe(false);
+    });
+
+    it('la próxima hora de cierre es la del siguiente juego que no ha empezado', () => {
+        const start = Date.parse('2026-10-17T21:00:00Z');
+        const later = Date.parse('2026-10-17T23:30:00Z');
+        const d = day([], [game(1, 'preview'), game(2, 'preview', false, '2026-10-17T23:30:00Z'), game(3, 'live', false, '2026-10-17T19:00:00Z')]);
+        expect(nextLockAt(d, start - MIN)).toBe(start);
+        expect(nextLockAt(d, start)).toBe(later);
+        expect(nextLockAt(d, later)).toBeNull();
+        // Un juego con la hora por definir no pone hora de cierre
+        expect(nextLockAt(day([], [{ ...game(1, 'preview'), startTimeTBD: true }]), start - MIN)).toBeNull();
     });
 
     it('el capitán suma ×1,5 y cada pronóstico acertado +10', () => {
@@ -366,5 +427,183 @@ describe('modo PRO: métricas avanzadas', () => {
         expect(expected.wins + expected.losses).toBe(49);
         expect(expected.wins).toBe(28);
         expect(pythagorean(null, null, 0)).toBeNull();
+    });
+});
+
+describe('avisos de juegos: Android solo deja avisar desde el service worker', () => {
+    const shown: { title: string; options: NotificationOptions }[] = [];
+    const created: string[] = [];
+    const worker = (registration: unknown, ready: unknown = registration) =>
+        Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: { getRegistration: async () => registration, ready: Promise.resolve(ready) } });
+    const registration = (fails = false) => ({
+        active: {},
+        showNotification: async (title: string, options: NotificationOptions) => {
+            if (fails) throw new TypeError('No se pudo');
+            shown.push({ title, options });
+        }
+    });
+    // Como Chrome de Android: el constructor no existe para las páginas
+    const androidNotification = () =>
+        vi.stubGlobal('Notification', class {
+            constructor() {
+                throw new TypeError('Illegal constructor');
+            }
+        });
+
+    afterEach(() => {
+        shown.length = 0;
+        created.length = 0;
+        vi.unstubAllGlobals();
+        delete (navigator as { serviceWorker?: unknown }).serviceWorker;
+    });
+
+    it('con service worker avisa con showNotification y no usa new Notification', async () => {
+        androidNotification();
+        worker(registration());
+        expect(await showAlert('Playball', { body: 'Licey vs Águilas', tag: 'start-1' })).toBe(true);
+        expect(shown).toEqual([{ title: 'Playball', options: { body: 'Licey vs Águilas', tag: 'start-1' } }]);
+    });
+
+    it('si el service worker se está activando, espera a que esté listo', async () => {
+        androidNotification();
+        worker({ active: null }, registration());
+        expect(await showAlert('Playball', {})).toBe(true);
+        expect(shown).toHaveLength(1);
+    });
+
+    it('sin service worker usa el aviso de escritorio', async () => {
+        vi.stubGlobal('Notification', class {
+            constructor(title: string) {
+                created.push(title);
+            }
+        });
+        worker(undefined);
+        expect(await showAlert('Empieza pronto', {})).toBe(true);
+        expect(created).toEqual(['Empieza pronto']);
+    });
+
+    it('si no se pudo avisar lo dice (para no marcarlo como enviado)', async () => {
+        androidNotification();
+        worker(registration(true));
+        expect(await showAlert('Playball', {})).toBe(false);
+    });
+});
+
+describe('cuenta: renovar la sesión', () => {
+    const SESSION = { accessToken: 'viejo', refreshToken: 'r1', expiresAt: 1, user: { id: 'u1', email: 'ana@prueba.do' }, name: 'Ana' };
+    const stored = () => JSON.parse(localStorage.getItem('el-play-session') || 'null');
+    // account.ts lee la configuración y la sesión al cargar: se carga de nuevo en cada prueba
+    const load = async (fetchMock: ReturnType<typeof vi.fn>) => {
+        vi.resetModules();
+        vi.stubEnv('VITE_SUPABASE_URL', 'http://localhost:5999');
+        vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'prueba');
+        vi.stubGlobal('fetch', fetchMock);
+        localStorage.setItem('el-play-session', JSON.stringify(SESSION));
+        return import('./account');
+    };
+    const reply = (status: number, body: unknown = {}) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
+
+    const renewed = { access_token: 'nuevo', refresh_token: 'r2', expires_in: 3600, user: { id: 'u1', email: 'ana@prueba.do' } };
+    // Respuesta de /token que se suelta a mano (para hacer cosas mientras se renueva)
+    const held = () => {
+        let answer: (value: unknown) => void = () => undefined;
+        const fetchMock = vi.fn((url: string) => (url.includes('/token') ? new Promise((resolve) => (answer = resolve)) : Promise.resolve(reply(204))));
+        return { fetchMock, answer: (value: unknown) => answer(value) };
+    };
+
+    afterEach(() => {
+        vi.unstubAllEnvs();
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+        localStorage.clear();
+    });
+
+    it('sin red conserva la sesión y avisa sin conexión (no sigue como anónimo ni dice que venció)', async () => {
+        const { freshToken } = await load(vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+        await expect(freshToken()).rejects.toMatchObject({ code: 'network' });
+        expect(stored()).toMatchObject({ refreshToken: 'r1', user: { id: 'u1' } });
+    });
+
+    it('con Supabase caído (500) o limitando (429) no la cierra ni vuelve a pedir el token en 30 s', async () => {
+        const fetchMock = vi.fn().mockResolvedValueOnce(reply(500)).mockResolvedValueOnce(reply(429));
+        const { freshToken } = await load(fetchMock);
+        await expect(freshToken()).rejects.toMatchObject({ code: 'network' });
+        await expect(freshToken()).rejects.toMatchObject({ code: 'network' });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const now = Date.now();
+        vi.spyOn(Date, 'now').mockReturnValue(now + 31 * 1000);
+        await expect(freshToken()).rejects.toMatchObject({ code: 'network' });
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(stored()).toMatchObject({ refreshToken: 'r1' });
+    });
+
+    it('si no se pudo renovar, rest() avisa sin red en vez de pedir como anónimo', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(reply(503));
+        const { rest } = await load(fetchMock);
+        await expect(rest('fantasy_entries')).rejects.toMatchObject({ code: 'network' });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock.mock.calls[0][0]).toContain('/auth/v1/token');
+    });
+
+    it('si sale mientras se renueva, la respuesta no vuelve a abrir la sesión', async () => {
+        const { fetchMock, answer } = held();
+        const { freshToken, signOut } = await load(fetchMock);
+        const pending = freshToken();
+        await signOut();
+        answer(reply(200, renewed));
+        expect(await pending).toBeNull();
+        expect(stored()).toBeNull();
+    });
+
+    it('si mientras se renueva entra otra cuenta, se queda la nueva y la respuesta vieja se descarta', async () => {
+        const { fetchMock, answer } = held();
+        const { freshToken } = await load(fetchMock);
+        const pending = freshToken();
+        const beto = { ...SESSION, accessToken: 'de-beto', refreshToken: 'b1', expiresAt: Date.now() + 3600 * 1000, user: { id: 'u2', email: 'beto@prueba.do' } };
+        localStorage.setItem('el-play-session', JSON.stringify(beto));
+        expect(await freshToken()).toBe('de-beto');
+        answer(reply(200, renewed));
+        expect(await pending).toBe('de-beto');
+        expect(stored()).toMatchObject({ refreshToken: 'b1', user: { id: 'u2' } });
+    });
+
+    it('con otra pestaña que ya la renovó, el «ya usado» (400) no la cierra: usa la que dejó guardada', async () => {
+        const { fetchMock, answer } = held();
+        const { freshToken } = await load(fetchMock);
+        const pending = freshToken();
+        const other = { ...SESSION, accessToken: 'de-la-otra', refreshToken: 'r2', expiresAt: Date.now() + 3600 * 1000 };
+        localStorage.setItem('el-play-session', JSON.stringify(other));
+        answer(reply(400, { error_code: 'refresh_token_already_used' }));
+        expect(await pending).toBe('de-la-otra');
+        expect(stored()).toMatchObject({ refreshToken: 'r2' });
+    });
+
+    it('antes de renovar mira lo guardado: si otra pestaña ya la renovó no pide otro token', async () => {
+        const fetchMock = vi.fn();
+        const { freshToken } = await load(fetchMock);
+        localStorage.setItem('el-play-session', JSON.stringify({ ...SESSION, accessToken: 'de-la-otra', refreshToken: 'r2', expiresAt: Date.now() + 3600 * 1000 }));
+        expect(await freshToken()).toBe('de-la-otra');
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('si Supabase dice que el refresh token no sirve (400/401) la cierra', async () => {
+        const { freshToken } = await load(vi.fn().mockResolvedValue(reply(400, { error_code: 'refresh_token_not_found' })));
+        expect(await freshToken()).toBeNull();
+        expect(stored()).toBeNull();
+        const second = await load(vi.fn().mockResolvedValue(reply(401)));
+        expect(await second.freshToken()).toBeNull();
+        expect(stored()).toBeNull();
+    });
+
+    it('renueva una sola vez aunque la pidan dos a la vez y conserva el nombre', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(reply(200, renewed));
+        const { freshToken } = await load(fetchMock);
+        expect(await Promise.all([freshToken(), freshToken()])).toEqual(['nuevo', 'nuevo']);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock.mock.calls[0][0]).toBe('http://localhost:5999/auth/v1/token?grant_type=refresh_token');
+        expect(stored()).toMatchObject({ accessToken: 'nuevo', refreshToken: 'r2', name: 'Ana' });
+        // Con el token nuevo vigente ya no se vuelve a pedir
+        expect(await freshToken()).toBe('nuevo');
+        expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 });

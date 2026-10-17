@@ -2,7 +2,7 @@
 // equipo, un capitán que suma ×1,5) y pronosticas quién gana cada juego. Cada pelotero se cierra cuando empieza su
 // juego. Para jugar hace falta cuenta (Supabase): el equipo vive en la cuenta y el teléfono guarda una copia por usuario.
 import { useQuery } from '@tanstack/react-query';
-import { useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { LeagueId, ScheduleGame } from '../types';
 
 export interface FantasyLine {
@@ -54,14 +54,60 @@ export const fetchFantasyDay = async (league: LeagueId, date?: string, signal?: 
     return (await response.json()) as FantasyDay;
 };
 
-export const useFantasyDay = (league: LeagueId, date?: string) =>
-    useQuery({
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+const NOT_PLAYING = /postponed|cancel|suspended/i;
+
+/**
+ * Cada cuánto se vuelve a pedir el día: cada 20 s con juegos en vivo y cada 30 s desde 15 min antes del próximo juego
+ * (también si ya pasó su hora y sigue en previa), para que el cierre llegue a tiempo. Lejos del juego despierta al
+ * entrar en esos 15 min, sin pasar de 15 min entre consultas.
+ */
+export const fantasyInterval = (day: FantasyDay | undefined, now = Date.now()): number | false => {
+    if (!day) return false;
+    if (day.games.some((game) => game.state === 'live')) return 20 * SECOND;
+    const starts = day.games
+        .filter((game) => game.state === 'preview' && !NOT_PLAYING.test(game.detailedState ?? ''))
+        .map((game) => Date.parse(game.date))
+        .filter(Number.isFinite);
+    if (!starts.length) return false;
+    const startsIn = Math.min(...starts) - now;
+    if (startsIn <= 15 * MINUTE) return 30 * SECOND;
+    return Math.min(startsIn - 15 * MINUTE, 15 * MINUTE);
+};
+
+/** Próxima hora de inicio que todavía no llega (ahí se cierran los peloteros de ese juego) */
+export const nextLockAt = (day: FantasyDay | undefined, now = Date.now()) => {
+    const upcoming = (day?.games ?? [])
+        .filter((game) => !game.startTimeTBD && !gameStarted(game, now))
+        .map((game) => Date.parse(game.date))
+        .filter(Number.isFinite);
+    return upcoming.length ? Math.min(...upcoming) : null;
+};
+
+// Al llegar la hora de un juego se vuelve a pintar quien usa el día: sus peloteros se ven cerrados aunque los datos no cambien
+const useLockClock = (day: FantasyDay | undefined) => {
+    const [tick, setTick] = useState(0);
+    const next = nextLockAt(day);
+    useEffect(() => {
+        if (next === null) return;
+        // setTimeout no aguanta esperas de semanas: si falta mucho se vuelve a calcular a las 6 h
+        const timer = setTimeout(() => setTick((value) => value + 1), Math.min(Math.max(0, next - Date.now()) + 250, 6 * 60 * MINUTE));
+        return () => clearTimeout(timer);
+    }, [next, tick]);
+};
+
+export const useFantasyDay = (league: LeagueId, date?: string) => {
+    const query = useQuery({
         queryKey: ['fantasy', league, date ?? 'hoy'],
         queryFn: ({ signal }) => fetchFantasyDay(league, date, signal),
         staleTime: 15000,
-        refetchInterval: (query) => (query.state.data?.games.some((game) => game.state === 'live') ? 20000 : false),
+        refetchInterval: (query) => fantasyInterval(query.state.data),
         refetchOnWindowFocus: true
     });
+    useLockClock(query.data);
+    return query;
+};
 
 // ---------------------------------------------------------------- lo que eligió el usuario (copia en el teléfono de lo de su cuenta)
 
@@ -139,14 +185,28 @@ const update = (league: LeagueId, date: string, change: (entry: DayEntry) => Day
 
 const gameOf = (day: FantasyDay, gamePk: number) => day.games.find((game) => game.gamePk === gamePk);
 
+/**
+ * Un juego ya empezó si el servidor lo dice o si ya pasó su hora (el estado guardado puede tardar en cambiar).
+ * Con la hora por definir solo cuenta el estado: la hora que trae es de relleno.
+ */
+export const gameStarted = (game: Pick<FantasyGame, 'state' | 'date' | 'startTimeTBD'>, now = Date.now()) => {
+    if (game.state !== 'preview') return true;
+    if (game.startTimeTBD) return false;
+    const start = Date.parse(game.date);
+    return Number.isFinite(start) && start <= now;
+};
+
 /** Un pelotero se cierra cuando su juego empieza */
-export const isLocked = (day: FantasyDay, player: Pick<FantasyPlayer, 'gamePk'>) => (gameOf(day, player.gamePk)?.state ?? 'preview') !== 'preview';
+export const isLocked = (day: FantasyDay, player: Pick<FantasyPlayer, 'gamePk'>, now = Date.now()) => {
+    const game = gameOf(day, player.gamePk);
+    return !!game && gameStarted(game, now);
+};
 
 export type AddProblem = 'locked' | 'full' | 'team' | 'already' | null;
 
-export const canAdd = (day: FantasyDay, entry: DayEntry, player: FantasyPlayer): AddProblem => {
+export const canAdd = (day: FantasyDay, entry: DayEntry, player: FantasyPlayer, now = Date.now()): AddProblem => {
     if (entry.lineup.includes(player.id)) return 'already';
-    if (isLocked(day, player)) return 'locked';
+    if (isLocked(day, player, now)) return 'locked';
     const chosen = entry.lineup.map((id) => day.players.find((p) => p.id === id)).filter((p): p is FantasyPlayer => !!p);
     const sameRole = chosen.filter((p) => p.role === player.role).length;
     if (sameRole >= (player.role === 'P' ? RULES.pitchers : RULES.batters)) return 'full';
@@ -178,8 +238,9 @@ export const setCaptain = (day: FantasyDay, entry: DayEntry, player: FantasyPlay
     return true;
 };
 
-export const setPick = (day: FantasyDay, game: FantasyGame, teamId: number) => {
-    if (game.state !== 'preview') return false;
+/** El pronóstico se cierra cuando empieza el juego (como los peloteros) */
+export const setPick = (day: FantasyDay, game: FantasyGame, teamId: number, now = Date.now()) => {
+    if (gameStarted(game, now)) return false;
     update(day.league, day.date, (value) => ({ ...value, picks: { ...value.picks, [game.gamePk]: teamId } }));
     return true;
 };

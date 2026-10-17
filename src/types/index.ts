@@ -37,6 +37,8 @@ export interface ScheduleGame {
     gamePk: number;
     league: LeagueId;
     date: string;
+    /** Hora por definir (p. ej. el segundo de un doble juego): `date` trae una hora de relleno */
+    startTimeTBD?: boolean;
     state: GameState;
     detailedState: string;
     gameType: string | null;

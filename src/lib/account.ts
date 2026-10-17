@@ -21,6 +21,8 @@ export interface Session {
 
 const KEY = 'el-play-session';
 let session: Session | null | undefined;
+// Si no se pudo guardar, lo de memoria es lo único que vale (lo guardado quedó viejo)
+let persisted = true;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((listener) => listener());
 
@@ -40,14 +42,43 @@ const writeSession = (next: Session | null) => {
     try {
         if (next) localStorage.setItem(KEY, JSON.stringify(next));
         else localStorage.removeItem(KEY);
+        persisted = true;
     } catch {
         /* sin almacenamiento: la sesión dura mientras la app esté abierta */
+        persisted = false;
     }
     emit();
 };
 
+/**
+ * La sesión guardada, leída de nuevo: con dos pestañas (o la PWA y el navegador) la otra pudo renovarla, cerrarla o
+ * abrir otra cuenta, y el refresh token que hay en memoria ya no sirve.
+ */
+const reloadSession = (): Session | null => {
+    if (!persisted) return readSession();
+    let stored: Session | null;
+    try {
+        stored = JSON.parse(localStorage.getItem(KEY) || 'null') as Session | null;
+    } catch {
+        return readSession();
+    }
+    if (stored?.refreshToken !== readSession()?.refreshToken) {
+        session = stored;
+        setStoreOwner(stored?.user.id ?? null);
+        emit();
+    }
+    return session ?? null;
+};
+
 // El fantasy del teléfono es el de la cuenta abierta (antes de que nadie lo lea)
 setStoreOwner(readSession()?.user.id ?? null);
+
+// Otra pestaña cambió la sesión: esta se pone al día sin esperar a renovar
+if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (event) => {
+        if (event.key === KEY || event.key === null) reloadSession();
+    });
+}
 
 export const useSession = () =>
     useSyncExternalStore(
@@ -250,19 +281,60 @@ export const signOut = async () => {
     }
 };
 
-export const freshToken = async () => {
-    const current = readSession();
+// Un solo refresh a la vez por refresh token: dos con el mismo pueden hacer que Supabase rechace el segundo
+let refreshing: { token: string; promise: Promise<string | null> } | null = null;
+// Tras un 5xx/429 de Supabase no se vuelve a pedir el token en 30 s (si no, cada llamada lo pedía otra vez)
+let retryAt = 0;
+
+/**
+ * Token vigente de la cuenta (null sin cuenta; lo renueva si venció). La sesión solo se cierra si Supabase dice que el
+ * refresh token ya no sirve (400/401); sin red o con Supabase caído se queda abierta y se lanza AccountError('network'),
+ * así quien llama no sigue como anónimo ni dice que la sesión venció.
+ */
+export const freshToken = async (): Promise<string | null> => {
+    const current = reloadSession();
     if (!current) return null;
     if (current.expiresAt > Date.now()) return current.accessToken;
+    if (!accountEnabled()) return null;
+    if (Date.now() < retryAt) throw new AccountError('network');
+    if (refreshing?.token !== current.refreshToken) {
+        const promise = renewSession(current).finally(() => {
+            if (refreshing?.promise === promise) refreshing = null;
+        });
+        refreshing = { token: current.refreshToken, promise };
+    }
+    return refreshing.promise;
+};
+
+const renewSession = async (current: Session): Promise<string | null> => {
+    let response: Response;
     try {
-        const data = await authFetch('token?grant_type=refresh_token', { refresh_token: current.refreshToken });
-        const next = toSession(data, current.name);
+        response = await fetch(`${URL_BASE}/auth/v1/token?grant_type=refresh_token`, {
+            method: 'POST',
+            headers: { apikey: ANON!, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: current.refreshToken })
+        });
+    } catch {
+        // Sin red: la sesión se queda y se vuelve a intentar en la próxima llamada
+        throw new AccountError('network');
+    }
+    const data = await response.json().catch(() => ({}));
+    // Si mientras tanto se salió, entró otra cuenta u otra pestaña la renovó, esta respuesta ya no vale: sigue la de ahora
+    const latest = reloadSession();
+    if (latest?.refreshToken !== current.refreshToken) return latest ? freshToken() : null;
+    if (response.ok && data?.access_token) {
+        const next = toSession(data, latest.name);
         writeSession(next);
         return next.accessToken;
-    } catch {
+    }
+    // Vencido, ya usado o de una cuenta borrada: hay que volver a entrar
+    if (response.status === 400 || response.status === 401) {
         writeSession(null);
         return null;
     }
+    // Supabase caído o limitando: la sesión se queda (el texto de rate_limit habla de pedir códigos, aquí no aplica)
+    retryAt = Date.now() + 30 * 1000;
+    throw new AccountError('network');
 };
 
 /** PostgREST de Supabase con la sesión (o como anónimo) */

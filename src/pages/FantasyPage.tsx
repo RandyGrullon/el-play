@@ -24,6 +24,7 @@ import {
     canAdd,
     entryKey,
     fetchFantasyDay,
+    gameStarted,
     getStore,
     history,
     isLocked,
@@ -557,6 +558,8 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
                     {list.map((player) => {
                         const problem = canAdd(day, entry, player);
                         const inTeam = entry.lineup.includes(player.id);
+                        // Ya en el equipo y su juego empezó: no se puede quitar (como en la ficha)
+                        const lockedIn = inTeam && isLocked(day, player);
                         const team = day.teams[player.teamId];
                         return (
                             <li key={player.id} className="flex items-center gap-3 py-2.5">
@@ -582,13 +585,13 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
                                 {started && <span className="w-9 text-right font-display text-lg font-extrabold tabular-nums">{player.points}</span>}
                                 <button
                                     type="button"
-                                    disabled={!inTeam && !!problem}
+                                    disabled={inTeam ? lockedIn : !!problem}
                                     onClick={() => (inTeam ? removePlayer(day, player) : addPlayer(day, entry, player))}
-                                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${inTeam ? 'bg-accent text-white' : 'bg-raised text-ink disabled:opacity-30'}`}
+                                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${inTeam ? 'bg-accent text-white disabled:opacity-60' : 'bg-raised text-ink disabled:opacity-30'}`}
                                     aria-label={inTeam ? t('fantasy.remove', { name: player.name }) : t('fantasy.add', { name: player.name })}
                                     aria-pressed={inTeam}
                                 >
-                                    {inTeam ? <X className="h-4 w-4" /> : problem === 'locked' ? <Lock className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                    {lockedIn || (!inTeam && problem === 'locked') ? <Lock className="h-4 w-4" /> : inTeam ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                                 </button>
                             </li>
                         );
@@ -640,7 +643,8 @@ const PicksTab: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, entry }
             {day.games.map((game: FantasyGame) => {
                 const pick = entry.picks[game.gamePk];
                 const result = pickResult(game, entry);
-                const locked = game.state !== 'preview';
+                // Se cierra a su hora aunque el servidor todavía diga «previa»
+                const locked = gameStarted(game);
                 return (
                     <div key={game.gamePk} className="card p-3">
                         <div className="mb-2 flex items-center justify-between text-xs font-semibold text-muted">

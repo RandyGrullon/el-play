@@ -14,6 +14,11 @@ app.set('trust proxy', 1);
 app.set('etag', 'weak');
 
 app.use(helmet());
+// Las fotos de los equipos también se muestran desde la app (otro origen): con el same-origin de helmet el navegador las bloqueaba
+app.use('/api/v2/photos', (req, res, next) => {
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+});
 app.use(cors());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'));
 

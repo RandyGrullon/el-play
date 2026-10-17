@@ -117,10 +117,19 @@ export const StatsTable: React.FC<{
                     <tbody className="divide-y divide-line/10">
                         {sorted.slice(0, limit).map(({ row, ranked }, index) => {
                             const team = row.teamId ? teams[row.teamId] : undefined;
+                            // Toda la fila abre la ficha; el botón (teclado y lector) no deja subir su toque a la fila: una sola entrada en el historial
                             return (
                                 <tr key={row.id} className="cursor-pointer hover:bg-raised/60" onClick={() => onOpen(row)}>
                                     <th scope="row" className="sticky left-0 z-10 bg-surface px-3 py-2 text-left font-normal">
-                                        <button type="button" onClick={() => onOpen(row)} className="flex max-w-[150px] items-center gap-2 text-left" aria-label={t('statsPage.viewPlayer', { name: row.name })}>
+                                        <button
+                                            type="button"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                onOpen(row);
+                                            }}
+                                            className="flex max-w-[150px] items-center gap-2 text-left"
+                                            aria-label={t('statsPage.viewPlayer', { name: row.name })}
+                                        >
                                             <span className="w-5 shrink-0 text-center text-xs font-extrabold text-muted">{ranked ? index + 1 : '·'}</span>
                                             <PlayerPhoto personId={row.id} name={row.name} size={28} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
                                             <span className="min-w-0">

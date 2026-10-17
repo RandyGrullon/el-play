@@ -22,6 +22,8 @@ interface PlayerSheetProps {
     team?: { id: number | null; logo?: string | null; color?: string | null } | null;
     season?: number;
     onClose: () => void;
+    /** Al abrir un juego del juego a juego (por defecto se cierra la ficha con onClose) */
+    onOpenGame?: () => void;
     /** Botón extra (p. ej. «Agregar a mi equipo» desde el fantasy) */
     action?: React.ReactNode;
 }
@@ -32,7 +34,7 @@ const shortDay = (day: string, lang: string) => new Date(`${day}T12:00:00Z`).toL
 const FANTASY_GRADIENT = 'linear-gradient(135deg, #1e4fd8 0%, #6d28d9 55%, #e11d48 100%)';
 
 // Ficha del pelotero: quién es, cómo va en el fantasy, su temporada, juego a juego y su carrera en la liga.
-export const PlayerSheet: React.FC<PlayerSheetProps> = ({ id, name, team, season: initialSeason, onClose, action }) => {
+export const PlayerSheet: React.FC<PlayerSheetProps> = ({ id, name, team, season: initialSeason, onClose, onOpenGame, action }) => {
     const { t } = useTranslation();
     const { activeLeague } = useLeague();
     const [season, setSeason] = useState<number | undefined>(initialSeason);
@@ -92,7 +94,7 @@ export const PlayerSheet: React.FC<PlayerSheetProps> = ({ id, name, team, season
                                 </button>
                             )
                         )}
-                        <GameLog player={player} onOpen={onClose} />
+                        <GameLog player={player} onOpen={onOpenGame ?? onClose} />
                         <Career player={player} />
                     </>
                 ) : null}
