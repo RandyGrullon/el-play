@@ -671,6 +671,103 @@ const stats = (params = {}) => {
     return { stats: [{ splits }] };
 };
 
+// ------------------------------------------------------------------ Estadísticas de jugadores (página Estadísticas)
+
+const ipText = (outs) => `${Math.floor(outs / 3)}.${outs % 3}`;
+const rate = (num, den, digits = 3) => (den ? (num / den).toFixed(digits).replace(/^0(?=\.)/, '') : digits === 3 ? '.000' : '-.--');
+
+/** Línea de bateo inventada pero coherente (H ≤ VB, extra bases ≤ H) */
+const hittingLine = (random, player, games) => {
+    const ab = Math.round(games * between(random, 2.8, 4.2));
+    const h = Math.min(ab, Math.round(ab * player.avg * between(random, 0.85, 1.15)));
+    const hr = Math.min(h, Math.round(games * player.power * between(random, 0.05, 0.22)));
+    const d = Math.min(h - hr, Math.round(h * between(random, 0.12, 0.25)));
+    const t = Math.min(h - hr - d, random() < 0.3 ? 1 : 0);
+    const bb = Math.round(ab * between(random, 0.06, 0.14));
+    const hbp = random() < 0.4 ? 1 : 0;
+    const sf = random() < 0.4 ? 1 : 0;
+    const tb = h + d + 2 * t + 3 * hr;
+    const obp = (h + bb + hbp) / Math.max(1, ab + bb + hbp + sf);
+    const slg = tb / Math.max(1, ab);
+    return {
+        gamesPlayed: games, plateAppearances: ab + bb + hbp + sf, atBats: ab, runs: Math.round(h * between(random, 0.3, 0.6)), hits: h, doubles: d, triples: t, homeRuns: hr,
+        rbi: Math.round(h * between(random, 0.3, 0.7) + hr), baseOnBalls: bb, strikeOuts: Math.round(ab * between(random, 0.14, 0.28)), stolenBases: Math.floor(between(random, 0, games / 4)),
+        caughtStealing: random() < 0.3 ? 1 : 0, hitByPitch: hbp, sacFlies: sf, avg: rate(h, ab), obp: rate(obp * 1000, 1000), slg: rate(slg * 1000, 1000), ops: rate((obp + slg) * 1000, 1000)
+    };
+};
+
+const pitchingLine = (random, player, games, starter) => {
+    const outs = Math.round(games * (starter ? between(random, 13, 17) : between(random, 2, 4)));
+    const er = Math.round((outs / 27) * player.era);
+    const h = Math.round((outs / 3) * between(random, 0.7, 1.1));
+    const bb = Math.round((outs / 3) * between(random, 0.25, 0.45));
+    return {
+        gamesPlayed: games, gamesPitched: games, gamesStarted: starter ? games : 0, inningsPitched: ipText(outs), outs, wins: Math.min(games, player.wins), losses: Math.min(games, player.losses),
+        saves: player.saves, holds: starter ? 0 : Math.floor(between(random, 0, 3)), strikeOuts: Math.round((outs / 3) * between(random, 0.7, 1.2)), baseOnBalls: bb, hits: h, earnedRuns: er,
+        homeRuns: Math.floor(between(random, 0, games / 3)), era: outs ? ((er * 27) / outs).toFixed(2) : '-.--', whip: outs ? (((h + bb) * 3) / outs).toFixed(2) : '-.--'
+    };
+};
+
+/** Toda la liga en una temporada: lo que devuelve /stats con playerPool=ALL */
+const seasonSplits = (group, season) => {
+    const games = Number(season) >= new Date().getUTCFullYear() ? 12 : 50;
+    const splits = [];
+    for (const teamId of TEAM_IDS) {
+        const team = roster(teamId);
+        const random = rng(teamId * 131 + Number(season) + (group === 'pitching' ? 7 : 0));
+        const people = group === 'pitching' ? team.pitchers : team.hitters;
+        people.forEach((player, index) => {
+            const played = Math.max(1, Math.round(games * between(random, 0.6, 1)));
+            const stat = group === 'pitching' ? pitchingLine(random, player, Math.ceil(played / (index === 0 ? 5 : 2)), index < 2) : hittingLine(random, player, played);
+            splits.push({ season: String(season), stat, team: { id: teamId, name: TEAMS[teamId].name }, player: { id: player.id, fullName: player.fullName }, position: { abbreviation: player.pos } });
+        });
+    }
+    return splits;
+};
+
+const findPerson = (personId) => {
+    const teamId = Math.floor(Number(personId) / 1000);
+    if (!TEAMS[teamId]) return null;
+    const team = roster(teamId);
+    const player = [...team.hitters, ...team.pitchers].find((item) => item.id === Number(personId));
+    return player ? { teamId, player } : null;
+};
+
+/** /people/{id} con stats(season, gameLog, yearByYear) hidratados */
+const person = (personId, params = {}) => {
+    const found = findPerson(personId);
+    if (!found) throw Object.assign(new Error('not found'), { response: { status: 404 } });
+    const { teamId, player } = found;
+    const season = Number((String(params.hydrate || '').match(/season=(\d{4})/) || [])[1]) || new Date().getUTCFullYear();
+    const group = player.pos === 'P' ? 'pitching' : 'hitting';
+    const total = seasonSplits(group, season).find((split) => split.player.id === player.id);
+    const random = rng(player.id + season);
+    const opponents = TEAM_IDS.filter((id) => id !== teamId);
+    const games = Math.min(10, total.stat.gamesPlayed);
+    const log = Array.from({ length: games }, (_, index) => {
+        const date = new Date(Date.now() - (index + 1) * DAY).toISOString().slice(0, 10);
+        const opponent = opponents[index % opponents.length];
+        const stat = group === 'pitching' ? pitchingLine(random, player, 1, player.pos === 'P' && random() < 0.5) : hittingLine(random, player, 1);
+        return { season: String(season), date, isHome: index % 2 === 0, isWin: random() < 0.5, opponent: { id: opponent, name: TEAMS[opponent].name }, team: { id: teamId, name: TEAMS[teamId].name }, game: { gamePk: 900000 + index * 10 + (teamId % 10) }, stat };
+    });
+    const years = [season, season - 1, season - 2, season - 3].map((year) => ({ ...seasonSplits(group, year).find((split) => split.player.id === player.id), season: String(year) }));
+    const position = player.pos === 'P' ? { code: '1', abbreviation: 'P' } : { code: '9', abbreviation: player.pos };
+    return {
+        people: [
+            {
+                id: player.id, fullName: player.fullName, primaryNumber: String((player.id % 90) + 1), currentAge: 22 + (player.id % 14), birthDate: '1998-05-12', birthCity: 'San Pedro de Macorís',
+                birthCountry: 'Dominican Republic', height: `6' ${player.id % 4}"`, weight: 180 + (player.id % 40), primaryPosition: position,
+                batSide: { code: player.bats || 'R' }, pitchHand: { code: player.throws || 'R' }, currentTeam: { id: teamId, name: TEAMS[teamId].name },
+                stats: [
+                    { type: { displayName: 'season' }, group: { displayName: group }, splits: [total] },
+                    { type: { displayName: 'gameLog' }, group: { displayName: group }, splits: log },
+                    { type: { displayName: 'yearByYear' }, group: { displayName: group }, splits: years }
+                ]
+            }
+        ]
+    };
+};
+
 const get = async (url, params = {}) => {
     const path = url.replace(/^https?:\/\/[^/]+\/api\/v1(\.1)?/, '');
     let match;
@@ -687,7 +784,16 @@ const get = async (url, params = {}) => {
     }
     if (path === '/schedule') return schedule(params);
     if (path === '/standings') return standings(params);
-    if (path === '/stats') return stats(params);
+    if (path === '/stats') {
+        if (params.playerPool === 'ALL' && !params.sortStat) return Number(params.leagueId) === 131 ? { stats: [{ splits: seasonSplits(params.group, params.season) }] } : { stats: [] };
+        return stats(params);
+    }
+    if (path === '/teams') return { teams: TEAM_IDS.map((id) => ({ id, name: TEAMS[id].name, abbreviation: TEAMS[id].abbreviation })) };
+    if ((match = path.match(/^\/teams\/(\d+)\/roster$/))) {
+        const team = roster(Number(match[1]));
+        return { roster: [...team.hitters, ...team.pitchers].map((player) => ({ person: { id: player.id, fullName: player.fullName }, jerseyNumber: String((player.id % 90) + 1), position: { abbreviation: player.pos } })) };
+    }
+    if ((match = path.match(/^\/people\/(\d+)$/))) return person(match[1], params);
     if ((match = path.match(/^\/league\/(\d+)$/))) {
         return { leagues: [{ id: Number(match[1]), season: String(new Date().getUTCFullYear()), numGames: 50 }] };
     }

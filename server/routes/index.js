@@ -6,6 +6,7 @@ const { getSchedule, getScheduleV2 } = require('../controllers/scheduleControlle
 const { getStandings, getLeaders, getLeadersV2 } = require('../controllers/statsController');
 const { getPhotos, getPhoto } = require('../controllers/photoController');
 const { getFantasyDay } = require('../controllers/fantasyController');
+const { getPlayers, getPlayer } = require('../controllers/playersController');
 
 // v2: formato actual de la app
 router.get('/v2/game/:gamePk', getGame);
@@ -15,6 +16,8 @@ router.get('/v2/leaders', getLeadersV2);
 router.get('/v2/photos', getPhotos);
 router.get('/v2/photos/:teamId/:file', getPhoto);
 router.get('/v2/fantasy', getFantasyDay);
+router.get('/v2/players', getPlayers);
+router.get('/v2/player/:id', getPlayer);
 
 // v1: formato anterior (PWA vieja abierta durante el despliegue)
 router.get('/game/:gamePk', getGameData);

@@ -12,6 +12,7 @@ import { PlayerPhoto } from '../components/ui/PlayerPhoto';
 import { ErrorState, Skeleton } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { StatsTabs } from '../components/layout/StatsTabs';
+import { PlayerSheet } from '../components/stats/PlayerSheet';
 
 const detailOf = (leader: Leader, t: (key: string, options?: Record<string, unknown>) => string) => {
     const extra = leader.extra || {};
@@ -27,6 +28,7 @@ const CategoryCarousel: React.FC<{ data: Leaders; group: 'hitting' | 'pitching';
     const { activeLeague } = useLeague();
     const categories = data.categories.filter((category) => category.group === group);
     const [selected, setSelected] = useState(categories[0]?.id);
+    const [info, setInfo] = useState<Leader | null>(null);
     const category = categories.find((item) => item.id === selected) ?? categories[0];
     if (!category) return null;
     const leagueName = t(`leagues.${activeLeague}.name`);
@@ -76,9 +78,13 @@ const CategoryCarousel: React.FC<{ data: Leaders; group: 'hitting' | 'pitching';
                                 </div>
                                 <div className="mt-3 flex items-end justify-between gap-2">
                                     <span className={`font-extrabold leading-none tracking-tight tabular-nums ${first ? 'text-[64px]' : 'text-[48px]'}`}>{leader.value ?? '—'}</span>
-                                    <PlayerPhoto personId={leader.id} name={leader.name} size={first ? 96 : 72} background={first ? 'rgba(255,255,255,0.25)' : `${color}26`} team={{ id: leader.teamId, logo: leader.logo, color: leader.color }} />
+                                    <button type="button" onClick={() => setInfo(leader)} className="rounded-full" aria-label={t('statsPage.viewPlayer', { name: leader.name })}>
+                                        <PlayerPhoto personId={leader.id} name={leader.name} size={first ? 96 : 72} background={first ? 'rgba(255,255,255,0.25)' : `${color}26`} team={{ id: leader.teamId, logo: leader.logo, color: leader.color }} />
+                                    </button>
                                 </div>
-                                <p className={`mt-3 truncate font-extrabold ${first ? 'text-2xl' : 'text-lg'}`}>{leader.name}</p>
+                                <button type="button" onClick={() => setInfo(leader)} className={`mt-3 block w-full truncate text-left font-extrabold ${first ? 'text-2xl' : 'text-lg'}`}>
+                                    {leader.name}
+                                </button>
                                 <p className={`truncate text-sm font-semibold ${first ? 'opacity-80' : 'text-muted'}`}>{detailOf(leader, t) || leader.teamName}</p>
                                 <button
                                     type="button"
@@ -94,6 +100,7 @@ const CategoryCarousel: React.FC<{ data: Leaders; group: 'hitting' | 'pitching';
                     })}
                 </div>
             )}
+            {info && <PlayerSheet id={info.id} name={info.name} team={{ id: info.teamId, logo: info.logo, color: info.color }} season={data.isPreviousSeason ? data.season : undefined} onClose={() => setInfo(null)} />}
         </section>
     );
 };

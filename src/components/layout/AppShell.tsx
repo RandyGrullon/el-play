@@ -32,7 +32,7 @@ const BottomNav: React.FC<{ onLive: () => void; liveCount: number }> = ({ onLive
             className="fixed inset-x-0 bottom-0 z-30 mx-auto mb-[calc(10px+env(safe-area-inset-bottom))] grid h-[70px] w-[calc(100%-24px)] max-w-md grid-cols-5 rounded-[26px] bg-nav shadow-float"
         >
             {item('/', t('nav.games'), Home, true)}
-            {item('/posiciones', t('nav.standings'), BarChart3, false, ['/lideres'])}
+            {item('/posiciones', t('nav.standings'), BarChart3, false, ['/lideres', '/estadisticas'])}
             <button type="button" onClick={onLive} aria-label={t('nav.live')} className="relative flex items-center justify-center">
                 <span className="-mt-8 flex h-[62px] w-[62px] items-center justify-center rounded-full border-[5px] border-bg bg-live text-white shadow-float">
                     <Radio className="h-6 w-6" />

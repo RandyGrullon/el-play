@@ -470,3 +470,40 @@ describe('fantasy: puntos con el box score de MLB', () => {
         expect(players.find((p) => p.name === 'Andy Otero')).toMatchObject({ role: 'P', played: true, line: { outs: 15, k: 4 } });
     });
 });
+
+describe('estadísticas de jugadores', () => {
+    const { hittingOf, pitchingOf, pointsOf, fetchPlayers } = require('../services/players');
+
+    it('los puntos de la temporada usan la misma regla del fantasy', () => {
+        const hitting = hittingOf({ gamesPlayed: 3, hits: 4, doubles: 1, homeRuns: 1, runs: 2, rbi: 3, baseOnBalls: 1, strikeOuts: 2, stolenBases: 1, avg: '.400' });
+        expect(pointsOf('B', hitting, null)).toBe(2 * 3 + 5 + 10 + 4 + 6 + 2 - 2 + 5);
+        const pitching = pitchingOf({ gamesPitched: 1, inningsPitched: '5.1', strikeOuts: 6, wins: 1, earnedRuns: 2, hits: 4, baseOnBalls: 2 });
+        expect(pitching.outs).toBe(16);
+        expect(pointsOf('P', null, pitching)).toBe(16 + 12 + 5 - 4 - 2 - 1);
+    });
+
+    it('junta roster y temporada: quien no ha jugado también aparece, y el lanzador cuenta como lanzador', async () => {
+        clearCache();
+        http.mlbGet = async (url, params) => {
+            if (url.endsWith('/league/131')) return { leagues: [{ season: '2026', numGames: 50 }] };
+            if (url.endsWith('/teams')) return { teams: [{ id: 672, name: 'Tigres del Licey' }] };
+            if (url.endsWith('/teams/672/roster')) {
+                return { roster: [
+                    { person: { id: 1, fullName: 'Bateador Uno' }, jerseyNumber: '7', position: { abbreviation: 'SS' } },
+                    { person: { id: 2, fullName: 'Lanzador Dos' }, jerseyNumber: '40', position: { abbreviation: 'P' } },
+                    { person: { id: 3, fullName: 'Banca Tres' }, jerseyNumber: '9', position: { abbreviation: 'C' } }
+                ] };
+            }
+            if (url.endsWith('/stats') && params.group === 'hitting') return { stats: [{ splits: [{ player: { id: 1, fullName: 'Bateador Uno' }, team: { id: 672, name: 'Tigres del Licey' }, stat: { gamesPlayed: 2, hits: 2, homeRuns: 1, rbi: 2, runs: 1 } }] }] };
+            if (url.endsWith('/stats')) return { stats: [{ splits: [{ player: { id: 2, fullName: 'Lanzador Dos' }, team: { id: 672, name: 'Tigres del Licey' }, stat: { gamesPitched: 1, outs: 18, strikeOuts: 7, wins: 1 } }] }] };
+            throw new Error(`sin ruta ${url}`);
+        };
+        const data = await fetchPlayers('lidom');
+        expect(data.season).toBe(2026);
+        expect(data.players.map((p) => p.name)).toEqual(['Lanzador Dos', 'Bateador Uno', 'Banca Tres']);
+        expect(data.players[0]).toMatchObject({ role: 'P', pts: 18 + 14 + 5, g: 1, number: '40' });
+        expect(data.players[1]).toMatchObject({ role: 'B', pts: 3 + 10 + 2 + 4, g: 2, ppg: 9.5, pos: 'SS' });
+        expect(data.players[2]).toMatchObject({ role: 'B', pts: 0, g: 0, hitting: null });
+        expect(data.teams['672'].abbrev).toBe('LIC');
+    });
+});

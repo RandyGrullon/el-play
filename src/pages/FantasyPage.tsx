@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Crown, Info, Lock, Plus, Search, Share2, Sparkles, Trophy, Users, X } from 'lucide-react';
+import { BarChart3, Crown, Info, Lock, Plus, Search, Share2, Sparkles, Trophy, Users, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLeague } from '../store/LeagueContext';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
@@ -9,6 +10,7 @@ import { BottomSheet } from '../components/ui/BottomSheet';
 import { Segmented } from '../components/ui/Segmented';
 import { ErrorState, Skeleton } from '../components/ui/States';
 import { AccountCard } from '../components/account/AccountCard';
+import { PlayerSheet } from '../components/stats/PlayerSheet';
 import { formatLongDate, formatTime } from '../lib/format';
 import { inningName } from '../lib/baseball';
 import {
@@ -134,7 +136,13 @@ export const FantasyPage: React.FC = () => {
                     <p className="text-sm font-semibold text-muted first-letter:uppercase">{day ? formatLongDate(day.date, i18n.language) : t(`leagues.${activeLeague}.name`)}</p>
                     <h1 className="display text-[32px] leading-tight">{t('fantasy.title')}</h1>
                 </div>
-                {playing && day && day.players.some((p) => entry.lineup.includes(p.id)) && <ShareTeam day={day} entry={entry} points={points + picks} />}
+                <div className="flex shrink-0 gap-2">
+                    <Link to="/estadisticas" className="flex h-12 items-center gap-1.5 rounded-2xl bg-surface px-3.5 text-sm font-bold shadow-card" aria-label={t('statsPage.title')}>
+                        <BarChart3 className="h-5 w-5" />
+                        <span className="hidden min-[400px]:inline">{t('statsPage.open')}</span>
+                    </Link>
+                    {playing && day && day.players.some((p) => entry.lineup.includes(p.id)) && <ShareTeam day={day} entry={entry} points={points + picks} />}
+                </div>
             </header>
 
             {!playing ? (
@@ -209,6 +217,7 @@ export const FantasyPage: React.FC = () => {
 const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ day, loading }) => {
     const { t, i18n } = useTranslation();
     const [rules, setRules] = useState(false);
+    const [info, setInfo] = useState<FantasyPlayer | null>(null);
     const started = !!day?.games.some((game) => game.state !== 'preview');
     const top = day && started ? day.players.filter((p) => p.played).sort((a, b) => b.points - a.points).slice(0, 5) : [];
     const steps = [
@@ -248,17 +257,19 @@ const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ day, lo
                             const team = day?.teams[player.teamId];
                             const line = lineText(player, t);
                             return (
-                                <li key={player.id} className="flex items-center gap-3 px-3 py-2.5">
-                                    <span className="w-5 text-center font-display text-lg font-extrabold text-muted">{index + 1}</span>
-                                    <PlayerPhoto personId={player.id} name={player.name} size={44} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
-                                    <span className="min-w-0 flex-1">
-                                        <span className="block truncate text-sm font-extrabold">{player.name}</span>
-                                        <span className="block truncate text-xs text-muted">
-                                            {team?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')}
-                                            {line ? ` · ${line}` : ''}
+                                <li key={player.id}>
+                                    <button type="button" onClick={() => setInfo(player)} className="flex w-full items-center gap-3 px-3 py-2.5 text-left" aria-label={t('statsPage.viewPlayer', { name: player.name })}>
+                                        <span className="w-5 text-center font-display text-lg font-extrabold text-muted">{index + 1}</span>
+                                        <PlayerPhoto personId={player.id} name={player.name} size={44} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-sm font-extrabold">{player.name}</span>
+                                            <span className="block truncate text-xs text-muted">
+                                                {team?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')}
+                                                {line ? ` · ${line}` : ''}
+                                            </span>
                                         </span>
-                                    </span>
-                                    <span className="font-display text-xl font-extrabold tabular-nums">{player.points}</span>
+                                        <span className="font-display text-xl font-extrabold tabular-nums">{player.points}</span>
+                                    </button>
                                 </li>
                             );
                         })}
@@ -290,8 +301,14 @@ const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ day, lo
                     {rules && <ScoringTable day={day} />}
                 </>
             )}
+            {info && <PlayerSheet id={info.id} name={info.name} team={teamOf(day, info)} onClose={() => setInfo(null)} />}
         </>
     );
+};
+
+const teamOf = (day: FantasyDay | undefined, player: FantasyPlayer) => {
+    const team = day?.teams[player.teamId];
+    return team ? { id: team.id, logo: team.logo, color: team.color } : null;
 };
 
 // ---------------------------------------------------------------- mi equipo
@@ -342,19 +359,22 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
     const locked = isLocked(day, player);
     const captain = entry.captain === player.id;
     const line = lineText(player, t);
+    const [info, setInfo] = useState(false);
     return (
         <div className="relative flex h-[84px] items-center gap-3 rounded-[22px] bg-surface px-3 shadow-card">
-            <PlayerPhoto personId={player.id} name={player.name} size={56} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
-            <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1.5 truncate font-extrabold">
-                    {captain && <Crown className="h-4 w-4 shrink-0 text-gold" aria-label={t('fantasy.captain')} />}
-                    <span className="truncate">{player.name}</span>
-                </p>
-                <p className="truncate text-xs font-semibold text-muted">
-                    {team?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')} · {gameStatus(day, player.gamePk, i18n.language, t)}
-                </p>
-                {line && <p className="truncate text-xs text-muted">{line}</p>}
-            </div>
+            <button type="button" onClick={() => setInfo(true)} className="flex min-w-0 flex-1 items-center gap-3 text-left" aria-label={t('statsPage.viewPlayer', { name: player.name })}>
+                <PlayerPhoto personId={player.id} name={player.name} size={56} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
+                <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-1.5 truncate font-extrabold">
+                        {captain && <Crown className="h-4 w-4 shrink-0 text-gold" aria-label={t('fantasy.captain')} />}
+                        <span className="truncate">{player.name}</span>
+                    </p>
+                    <p className="truncate text-xs font-semibold text-muted">
+                        {team?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')} · {gameStatus(day, player.gamePk, i18n.language, t)}
+                    </p>
+                    {line && <p className="truncate text-xs text-muted">{line}</p>}
+                </div>
+            </button>
             <div className="flex flex-col items-end gap-1">
                 <span className="font-display text-2xl font-extrabold leading-none tabular-nums">{playerScore(entry, player)}</span>
                 {locked ? (
@@ -370,6 +390,7 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
                     </span>
                 )}
             </div>
+            {info && <PlayerSheet id={player.id} name={player.name} team={teamOf(day, player)} onClose={() => setInfo(false)} />}
         </div>
     );
 };
@@ -406,6 +427,7 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
     const [role, setRole] = useState<'B' | 'P'>(initialRole);
     const [teamId, setTeamId] = useState<number | null>(null);
     const [search, setSearch] = useState('');
+    const [info, setInfo] = useState<FantasyPlayer | null>(null);
     const started = day.games.some((game) => game.state !== 'preview');
     const normalized = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -456,18 +478,20 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
                         const team = day.teams[player.teamId];
                         return (
                             <li key={player.id} className="flex items-center gap-3 py-2.5">
-                                <PlayerPhoto personId={player.id} name={player.name} size={44} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-extrabold">
-                                        {player.name}
-                                        {player.starter && <span className="ml-1.5 rounded-full bg-accent/10 px-1.5 py-0.5 text-[10px] font-bold text-accent-ink">{t('fantasy.starter')}</span>}
-                                    </p>
-                                    <p className="truncate text-xs text-muted">
-                                        {team?.abbrev} · {player.pos || '—'} · {gameStatus(day, player.gamePk, i18n.language, t)}
-                                        {lineText(player, t) ? ` · ${lineText(player, t)}` : ''}
-                                    </p>
-                                    {problem && problem !== 'already' && <p className="text-[11px] font-semibold text-faint">{problemText(problem)}</p>}
-                                </div>
+                                <button type="button" onClick={() => setInfo(player)} className="flex min-w-0 flex-1 items-center gap-3 text-left" aria-label={t('statsPage.viewPlayer', { name: player.name })}>
+                                    <PlayerPhoto personId={player.id} name={player.name} size={44} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-extrabold">
+                                            {player.name}
+                                            {player.starter && <span className="ml-1.5 rounded-full bg-accent/10 px-1.5 py-0.5 text-[10px] font-bold text-accent-ink">{t('fantasy.starter')}</span>}
+                                        </p>
+                                        <p className="truncate text-xs text-muted">
+                                            {team?.abbrev} · {player.pos || '—'} · {gameStatus(day, player.gamePk, i18n.language, t)}
+                                            {lineText(player, t) ? ` · ${lineText(player, t)}` : ''}
+                                        </p>
+                                        {problem && problem !== 'already' && <p className="text-[11px] font-semibold text-faint">{problemText(problem)}</p>}
+                                    </div>
+                                </button>
                                 {started && <span className="w-9 text-right font-display text-lg font-extrabold tabular-nums">{player.points}</span>}
                                 <button
                                     type="button"
@@ -485,7 +509,37 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
                     {!list.length && <li className="py-8 text-center text-sm text-muted">{t('fantasy.noPlayers')}</li>}
                 </ul>
             </div>
+            {info && (
+                <PlayerSheet
+                    id={info.id}
+                    name={info.name}
+                    team={teamOf(day, info)}
+                    onClose={() => setInfo(null)}
+                    action={<PickerAction day={day} entry={entry} player={info} problemText={problemText} onDone={() => setInfo(null)} />}
+                />
+            )}
         </BottomSheet>
+    );
+};
+
+/** Botón de la ficha abierta desde el selector: agregar o quitar sin volver a la lista */
+const PickerAction: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPlayer; problemText: (problem: string | null) => string; onDone: () => void }> = ({ day, entry, player, problemText, onDone }) => {
+    const { t } = useTranslation();
+    const inTeam = entry.lineup.includes(player.id);
+    const problem = canAdd(day, entry, player);
+    const blocked = inTeam ? isLocked(day, player) : !!problem;
+    return (
+        <button
+            type="button"
+            disabled={blocked}
+            onClick={() => {
+                if (inTeam ? removePlayer(day, player) : addPlayer(day, entry, player)) onDone();
+            }}
+            className={`flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-extrabold disabled:opacity-50 ${inTeam ? 'bg-raised text-ink' : 'bg-accent text-white'}`}
+        >
+            {inTeam ? <X className="h-4 w-4" /> : blocked ? <Lock className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            {inTeam ? t('fantasy.remove', { name: player.name }) : blocked ? problemText(problem) : t('fantasy.add', { name: player.name })}
+        </button>
     );
 };
 

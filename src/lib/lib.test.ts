@@ -5,6 +5,7 @@ import { dayKey, dayRange, seasonLabel } from './format';
 import { nameKey, photoSources } from './photos';
 import { newPlayEvents, outVariant, titleClinch } from './playEvents';
 import { canAdd, getStore, isLocked, pickPoints, replaceStore, setStoreOwner, takeLegacyStore, teamPoints, unsettledDays, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
+import { SORTS, normalize, sortPlayers, type PlayerRow } from './stats';
 import type { AtBat, GameDetail, Pitch, Schedule, ScheduleGame } from '../types';
 
 const NOW = Date.parse('2026-11-20T23:00:00Z');
@@ -313,5 +314,32 @@ describe('fantasy: reglas del equipo del día', () => {
             'sdc:2026-10-12': entry([1])
         };
         expect(unsettledDays(all, 'lidom', '2026-10-17')).toEqual(['2026-10-16', '2026-10-14']);
+    });
+});
+
+describe('estadísticas: orden y búsqueda', () => {
+    const row = (id: number, pts: number, avg: string, pa: number): PlayerRow => ({
+        id,
+        name: `P${id}`,
+        teamId: 672,
+        pos: 'SS',
+        number: null,
+        role: 'B',
+        hitting: { g: 3, pa, ab: pa, r: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, sb: 0, cs: 0, hbp: 0, avg, obp: avg, slg: avg, ops: avg },
+        pitching: null,
+        g: 3,
+        pts,
+        ppg: pts / 3
+    });
+
+    it('en AVG un 1-1 sin turnos suficientes va al final; en fantasy cuenta todo', () => {
+        const rows = [row(1, 5, '1.000', 1), row(2, 20, '.300', 12), row(3, 9, '.350', 10)];
+        const avg = SORTS.B.find((option) => option.key === 'avg')!;
+        expect(sortPlayers(rows, avg, 3).map(({ row: r, ranked }) => [r.id, ranked])).toEqual([[3, true], [2, true], [1, false]]);
+        expect(sortPlayers(rows, SORTS.B[0], 3).map(({ row: r }) => r.id)).toEqual([2, 3, 1]);
+    });
+
+    it('busca sin tildes ni mayúsculas', () => {
+        expect(normalize('José Peña').includes(normalize('jose pena'))).toBe(true);
     });
 });
