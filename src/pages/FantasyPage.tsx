@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BarChart3, Crown, Info, Lock, Plus, Search, Share2, Sparkles, Trophy, Users, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLeague } from '../store/LeagueContext';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
@@ -11,6 +11,8 @@ import { Segmented } from '../components/ui/Segmented';
 import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { AccountCard } from '../components/account/AccountCard';
 import { PlayerSheet } from '../components/stats/PlayerSheet';
+import { FanProfile } from '../components/fantasy/FanProfile';
+import { FanRow, FanSearch, SeasonTable, type OpenFan } from '../components/fantasy/FanSearch';
 import { ProBadge } from '../components/pro/ProBadge';
 import { useIsPro } from '../lib/pro';
 import { usePlayers } from '../lib/stats';
@@ -25,6 +27,7 @@ import {
     getStore,
     history,
     isLocked,
+    lineText,
     pickPoints,
     pickResult,
     playerScore,
@@ -43,22 +46,13 @@ import {
     type FantasyPlayer
 } from '../lib/fantasy';
 import { accountEnabled, createLeague, dayEntries, joinLeague, myLeagues, pushEntry, syncFantasy, useSession, type PrivateLeague, type Rival } from '../lib/account';
+import { isFanId, useFanProfile } from '../lib/fans';
 
-type Tab = 'team' | 'picks' | 'table';
+type Tab = 'team' | 'picks' | 'table' | 'fans';
 const DAY_MS = 86400000;
 const shift = (day: string, days: number) => new Date(Date.parse(`${day}T12:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 
 // ---------------------------------------------------------------- textos cortos del pelotero
-
-const lineText = (player: FantasyPlayer, t: (key: string, options?: Record<string, unknown>) => string) => {
-    const line = player.line;
-    if (!line || !player.played) return null;
-    if (player.role === 'P') return t('fantasy.pitchLine', { ip: line.ip, k: line.k, er: line.er });
-    const extras = [Number(line.hr) ? `${line.hr} HR` : '', Number(line.d) ? `${line.d} 2B` : '', Number(line.t) ? `${line.t} 3B` : '', Number(line.rbi) ? `${line.rbi} CI` : '', Number(line.sb) ? `${line.sb} BR` : '']
-        .filter(Boolean)
-        .join(', ');
-    return `${line.h}-${line.ab}${extras ? `, ${extras}` : ''}`;
-};
 
 const gameStatus = (day: FantasyDay, gamePk: number, lang: string, t: (key: string) => string) => {
     const game = day.games.find((g) => g.gamePk === gamePk);
@@ -85,6 +79,40 @@ export const FantasyPage: React.FC = () => {
     const client = useQueryClient();
     // El Fantasy se juega con cuenta; sin ella se ve la portada para entrar
     const playing = accountEnabled() && !!session;
+
+    // Perfil de un fanático: `?fan=<id>` lo abre (se puede compartir el enlace) y atrás lo cierra
+    const [params, setParams] = useSearchParams();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const fanId = params.get('fan');
+    const fanState = location.state as { fanSheet?: boolean; fanName?: string | null } | null;
+    // El nombre que ya se conoce (el de la fila que se tocó) se pasa para no mostrar «Fanático» mientras carga
+    const openFan = useCallback(
+        (id: string, name?: string | null) =>
+            setParams(
+                (current) => {
+                    const next = new URLSearchParams(current);
+                    next.set('fan', id);
+                    return next;
+                },
+                { state: { fanSheet: true, fanName: name ?? null } }
+            ),
+        [setParams]
+    );
+    // Estable entre renders: la hoja no debe reaccionar a cada refresco de la página
+    const closeFan = useCallback(() => {
+        // Si se abrió desde aquí se vuelve atrás (así no queda repetido en el historial); si llegó por enlace se quita
+        if (fanState?.fanSheet) navigate(-1);
+        else
+            setParams(
+                (current) => {
+                    const next = new URLSearchParams(current);
+                    next.delete('fan');
+                    return next;
+                },
+                { replace: true }
+            );
+    }, [fanState?.fanSheet, navigate, setParams]);
 
     useEffect(() => {
         if (!date && day?.date) setToday(day.date);
@@ -126,7 +154,9 @@ export const FantasyPage: React.FC = () => {
     }, [session?.user.id, activeLeague, unsettled]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const past = useMemo(() => history(store, activeLeague), [store, activeLeague]);
-    const season = past.reduce((sum, d) => sum + d.points, 0);
+    // La temporada la da el servidor (la misma de la tabla y del perfil); mientras carga o sin red, la del teléfono
+    const mine = useFanProfile(playing ? session.user.id : null, activeLeague);
+    const season = mine.data?.season ?? { points: Math.round(past.reduce((sum, d) => sum + d.points, 0) * 10) / 10, days: past.length };
     const points = day ? teamPoints(day, entry) : 0;
     const picks = day ? pickPoints(day, entry) : 0;
     const days = today ? [shift(today, -1), today, shift(today, 1)] : [];
@@ -175,29 +205,31 @@ export const FantasyPage: React.FC = () => {
                         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-semibold">
                             <span>{t('fantasy.teamPts', { pts: points })}</span>
                             <span>{t('fantasy.picksPts', { pts: picks })}</span>
-                            <span>{t('fantasy.seasonPts', { pts: Math.round(season * 10) / 10, days: past.length })}</span>
+                            <span>{t('fantasy.seasonPts', { pts: Math.round(season.points * 10) / 10, count: season.days, days: season.days })}</span>
                         </div>
                         {past.length > 0 && <HistoryBars days={past.slice(0, 7).reverse()} />}
                     </section>
 
-                    <Segmented<Tab>
-                        label={t('fantasy.sections')}
+                    <FantasyTabs
                         value={tab}
                         onChange={setTab}
                         options={[
                             { value: 'team', label: t('fantasy.myTeam') },
                             { value: 'picks', label: t('fantasy.picks') },
-                            { value: 'table', label: t('fantasy.table') }
+                            { value: 'table', label: t('fantasy.table') },
+                            { value: 'fans', label: t('fantasy.fans.tab') }
                         ]}
                     />
 
-                    {waitingForNetwork(query) ? (
+                    {tab === 'fans' ? (
+                        <FanSearch league={activeLeague} onOpen={openFan} />
+                    ) : waitingForNetwork(query) ? (
                         <OfflineState />
                     ) : query.isPending ? (
                         <div className="grid gap-3 sm:grid-cols-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[88px] rounded-card" />)}</div>
                     ) : query.isError && !day ? (
                         <ErrorState error={query.error as Error} onRetry={() => query.refetch()} />
-                    ) : day && !day.games.length ? (
+                    ) : day && !day.games.length && tab !== 'table' ? (
                         <div className="card p-6 text-center">
                             <p className="font-extrabold">{t('fantasy.noGames')}</p>
                             <p className="mt-1 text-sm text-muted">{t('fantasy.noGamesHint')}</p>
@@ -208,13 +240,41 @@ export const FantasyPage: React.FC = () => {
                         ) : tab === 'picks' ? (
                             <PicksTab day={day} entry={entry} />
                         ) : (
-                            <TableTab day={day} />
+                            <TableTab day={day} dayName={dayLabel(day.date)} onOpenFan={openFan} />
                         )
                     ) : null}
 
                     {day && picking && <PlayerPicker day={day} entry={entry} role={picking} onClose={() => setPicking(null)} />}
                 </>
             )}
+
+            {isFanId(fanId) && <FanProfile userId={fanId} league={activeLeague} onClose={closeFan} knownName={fanState?.fanName ?? null} />}
+        </div>
+    );
+};
+
+/** Las cuatro pestañas como el Segmented, pero a todo lo ancho y cada una a la medida de su texto para que quepan en 320 px */
+const FantasyTabs: React.FC<{ value: Tab; onChange: (tab: Tab) => void; options: { value: Tab; label: string }[] }> = ({ value, onChange, options }) => {
+    const { t } = useTranslation();
+    return (
+        <div role="tablist" aria-label={t('fantasy.sections')} className="flex w-full rounded-full bg-raised p-1 sm:inline-flex sm:w-auto">
+            {options.map((option) => {
+                const active = option.value === value;
+                return (
+                    <button
+                        key={option.value}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => onChange(option.value)}
+                        className={`min-w-0 flex-auto truncate whitespace-nowrap rounded-full px-1.5 py-1.5 text-[13px] font-semibold transition-colors min-[400px]:px-2.5 min-[400px]:text-sm sm:flex-none sm:px-4 ${
+                            active ? 'bg-surface text-ink shadow-card' : 'text-muted hover:text-ink'
+                        }`}
+                    >
+                        {option.label}
+                    </button>
+                );
+            })}
         </div>
     );
 };
@@ -336,7 +396,7 @@ const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role: 'B' |
     return (
         <section className="space-y-3" aria-label={t('fantasy.myTeam')}>
             <p className="text-sm text-muted">{t('fantasy.rulesShort', { batters: RULES.batters, perTeam: RULES.perTeam })}</p>
-            <div className="grid gap-2.5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 {slots.map((slot, index) =>
                     typeof slot === 'string' ? (
                         <button key={`empty-${index}`} type="button" onClick={() => onPick(slot)} className="flex h-[84px] items-center gap-3 rounded-[22px] border-2 border-dashed border-line/20 px-4 text-left font-bold text-muted">
@@ -621,9 +681,10 @@ const PicksTab: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, entry }
 
 // ---------------------------------------------------------------- tabla (con cuenta)
 
-const TableTab: React.FC<{ day: FantasyDay }> = ({ day }) => {
+const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: OpenFan }> = ({ day, dayName, onOpenFan }) => {
     const { t } = useTranslation();
     const session = useSession();
+    const [period, setPeriod] = useState<'day' | 'season'>('day');
     const [rivals, setRivals] = useState<Rival[] | null>(null);
     const [leagues, setLeagues] = useState<PrivateLeague[]>([]);
     const [scope, setScope] = useState<string>('all');
@@ -656,28 +717,47 @@ const TableTab: React.FC<{ day: FantasyDay }> = ({ day }) => {
                     <AccountCard />
                 </div>
             )}
-            {leagues.length > 0 && (
-                <Segmented<string>
+            <div className="flex flex-wrap items-center gap-2">
+                <Segmented<'day' | 'season'>
                     size="sm"
-                    label={t('fantasy.leagues')}
-                    value={scope}
-                    onChange={setScope}
-                    options={[{ value: 'all', label: t('fantasy.everyone') }, ...leagues.map((l) => ({ value: l.id, label: l.name }))]}
+                    label={t('fantasy.fans.period')}
+                    value={period}
+                    onChange={setPeriod}
+                    options={[
+                        { value: 'day', label: dayName },
+                        { value: 'season', label: t('fantasy.fans.season') }
+                    ]}
                 />
+                {leagues.length > 0 && (
+                    <Segmented<string>
+                        size="sm"
+                        label={t('fantasy.leagues')}
+                        value={scope}
+                        onChange={setScope}
+                        options={[{ value: 'all', label: t('fantasy.everyone') }, ...leagues.map((l) => ({ value: l.id, label: l.name }))]}
+                    />
+                )}
+            </div>
+            {period === 'season' ? (
+                <SeasonTable league={day.league} members={scope === 'all' ? undefined : leagues.find((l) => l.id === scope)?.members} onOpen={onOpenFan} />
+            ) : (
+                <ol className="card divide-y divide-line/10 overflow-hidden">
+                    {ranking.map((row, index) => (
+                        <li key={row.userId}>
+                            <FanRow userId={row.userId} name={row.name} own={row.userId === session.user.id} onOpen={onOpenFan} rank={index + 1} points={row.points} />
+                        </li>
+                    ))}
+                    {!rivals && (
+                        <li className="px-4 py-3">
+                            <Skeleton className="h-9 rounded-full" />
+                        </li>
+                    )}
+                    {rivals && !ranking.length && <li className="px-4 py-6 text-center text-sm text-muted">{t('fantasy.emptyTable')}</li>}
+                </ol>
             )}
-            <ol className="card divide-y divide-line/10 overflow-hidden">
-                {ranking.map((row, index) => (
-                    <li key={row.userId} className={`flex items-center gap-3 px-4 py-3 ${row.userId === session.user.id ? 'bg-accent/10' : ''}`}>
-                        <span className="w-6 text-center font-display text-lg font-extrabold text-muted">{index + 1}</span>
-                        <span className="min-w-0 flex-1 truncate font-bold">{row.userId === session.user.id ? t('fantasy.you') : row.name}</span>
-                        <span className="font-display text-xl font-extrabold tabular-nums">{Math.round(row.points * 10) / 10}</span>
-                    </li>
-                ))}
-                {rivals && !ranking.length && <li className="px-4 py-6 text-center text-sm text-muted">{t('fantasy.emptyTable')}</li>}
-            </ol>
             {scope !== 'all' && <p className="text-xs text-muted">{t('fantasy.leagueCode', { code: leagues.find((l) => l.id === scope)?.code })}</p>}
 
-            <div className="card grid gap-3 p-4 sm:grid-cols-2">
+            <div className="card grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
                 <form
                     className="flex gap-2"
                     onSubmit={async (event) => {

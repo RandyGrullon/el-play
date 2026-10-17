@@ -23,8 +23,10 @@ const ES: Section[] = [
     {
         title: 'Cuenta del Fantasy',
         body: [
-            'Solo el Fantasy pide cuenta. Si la creas guardamos tu correo (para mandarte el código de entrada), el nombre que elijas para la tabla, tus equipos y pronósticos de cada día y las ligas privadas en las que estás.',
-            'Se guardan en Supabase, el servicio de base de datos de El Play. Tu nombre y tus equipos se ven en la tabla de puntos y en tus ligas; tu correo no se le muestra a nadie.',
+            'Solo el Fantasy pide cuenta. Puedes entrar con un código que te mandamos al correo o con Google, y vincular tu cuenta de Google. Guardamos tu correo, el nombre que elijas, tus equipos y pronósticos de cada día y las ligas privadas en las que estás. Si usas Google, Google nos comparte el correo, el nombre y la foto de esa cuenta; se guardan con tu cuenta y no se le muestran a nadie.',
+            'El nombre que elijas es público: sale en la tabla de puntos y en tus ligas, y cualquiera lo puede encontrar en el buscador de fanáticos. Si no eliges uno, no tomamos ninguno de tu correo.',
+            'Tus equipos y pronósticos de cada día son públicos; en la app los demás los ven cuando empieza cada juego. Tu correo nunca se le muestra a nadie.',
+            'Todo se guarda en Supabase, el servicio de base de datos de El Play.',
             'Puedes borrar tu cuenta y todo lo anterior cuando quieras desde Más → Tu cuenta → Borrar mi cuenta.'
         ]
     },
@@ -54,8 +56,10 @@ const EN: Section[] = [
     {
         title: 'Fantasy account',
         body: [
-            'Only Fantasy needs an account. If you create one we store your email (to send you the sign-in code), the name you choose for the standings, your daily teams and picks, and the private leagues you belong to.',
-            "It's stored in Supabase, El Play's database service. Your name and teams are visible in the standings and in your leagues; your email is never shown to anyone.",
+            "Only Fantasy needs an account. You can sign in with a code we email you or with Google, and you can link your Google account. We store your email, the name you choose, your daily teams and picks, and the private leagues you belong to. If you use Google, Google shares that account's email, name and photo with us; they are kept with your account and never shown to anyone.",
+            "The name you choose is public: it appears in the standings and in your leagues, and anyone can find it with the fan search. If you don't choose one, we never take one from your email.",
+            'Your daily teams and picks are public; in the app, other fans see them once each game starts. Your email is never shown to anyone.',
+            "Everything is stored in Supabase, El Play's database service.",
             'You can delete your account and everything above at any time from More → Your account → Delete my account.'
         ]
     },

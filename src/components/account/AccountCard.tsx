@@ -1,8 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LogOut, Mail, Sparkles, User as UserRound } from 'lucide-react';
+import { Check, LogOut, Mail, Sparkles, User as UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AccountError, accountEnabled, authProviders, deleteAccount, saveName, sendCode, signInWithGoogle, signOut, useSession, verifyCode } from '../../lib/account';
+import {
+    AccountError,
+    accountEnabled,
+    authProviders,
+    deleteAccount,
+    getIdentities,
+    linkGoogle,
+    linkingOff,
+    saveName,
+    sendCode,
+    signInWithGoogle,
+    signOut,
+    unlinkIdentity,
+    useSession,
+    verifyCode,
+    type Identity
+} from '../../lib/account';
+import { showToast } from '../../lib/toast';
+import { Skeleton } from '../ui/States';
 
 // Cuenta: entrar con un código que llega al correo (sin contraseñas). Solo el Fantasy la pide; lo demás funciona sin ella.
 // `purpose="fantasy"` cambia los textos para la puerta de entrada del Fantasy.
@@ -48,10 +66,11 @@ export const AccountCard: React.FC<{ compact?: boolean; purpose?: 'fantasy' }> =
             <div className="card space-y-3 p-4">
                 <div className="flex items-center gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent text-lg font-extrabold text-white">
-                        {(session.name || session.user.email)[0]?.toUpperCase()}
+                        {session.name ? Array.from(session.name)[0]?.toUpperCase() : <UserRound className="h-5 w-5" />}
                     </span>
+                    {/* Sin nombre se muestra lo que ven los demás («Fanático»), nunca el inicio del correo */}
                     <span className="min-w-0 flex-1">
-                        <span className="block truncate font-extrabold">{session.name || session.user.email.split('@')[0]}</span>
+                        <span className="block truncate font-extrabold">{session.name || t('fantasy.fans.anonymous')}</span>
                         <span className="block truncate text-sm text-muted">{session.user.email}</span>
                     </span>
                     <button type="button" onClick={() => signOut()} className="flex h-10 items-center gap-1.5 rounded-full bg-raised px-3 text-sm font-semibold" aria-label={t('account.signOut')}>
@@ -59,6 +78,7 @@ export const AccountCard: React.FC<{ compact?: boolean; purpose?: 'fantasy' }> =
                         {!compact && t('account.signOut')}
                     </button>
                 </div>
+                {!compact && !session.name && <p className="text-xs font-semibold text-muted">{t('account.noNameHint')}</p>}
                 {!compact && (
                     <form
                         className="flex gap-2"
@@ -87,6 +107,7 @@ export const AccountCard: React.FC<{ compact?: boolean; purpose?: 'fantasy' }> =
                         </button>
                     </form>
                 )}
+                {!compact && <LoginMethods userId={session.user.id} email={session.user.email} google={google} />}
                 {!compact &&
                     (confirmDelete ? (
                         <div className="space-y-2 rounded-2xl bg-live/10 p-3" role="alert">
@@ -215,6 +236,194 @@ export const AccountCard: React.FC<{ compact?: boolean; purpose?: 'fantasy' }> =
                 </Link>
             </p>
         </form>
+    );
+};
+
+/**
+ * Formas de entrar: el correo (siempre sirve: el código llega ahí) y Google, vinculada o con el botón para vincularla.
+ * Entrar con Google con el mismo correo la une sola; los botones Vincular y Desvincular piden «Manual linking» en
+ * Supabase y se esconden si llega linking_disabled.
+ */
+const LoginMethods: React.FC<{ userId: string; email: string; google: boolean }> = ({ userId, email, google }) => {
+    const { t } = useTranslation();
+    const [identities, setIdentities] = useState<Identity[] | null>(null);
+    const [loadFailed, setLoadFailed] = useState(false);
+    const [reload, setReload] = useState(0);
+    const [busy, setBusy] = useState<'link' | 'unlink' | null>(null);
+    const [confirmUnlink, setConfirmUnlink] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [linkOff, setLinkOff] = useState(linkingOff);
+    // Al cancelar la confirmación el foco vuelve a «Desvincular» (si no, cae al principio de la página)
+    const unlinkRef = useRef<HTMLButtonElement>(null);
+    const backToUnlink = useRef(false);
+    const fail = (err: unknown) => {
+        if (err instanceof AccountError && err.code === 'linking_disabled') setLinkOff(true);
+        setError(t(`account.errors.${err instanceof AccountError ? err.code : 'unknown'}`));
+    };
+
+    useEffect(() => {
+        let alive = true;
+        setLoadFailed(false);
+        getIdentities()
+            .then((list) => alive && setIdentities(list))
+            .catch((err) => {
+                if (!alive) return;
+                // Un mensaje propio: el genérico más «Reintentar» decía «intenta de nuevo» dos veces
+                setError(err instanceof AccountError && err.code === 'session_expired' ? t('account.errors.session_expired') : t('account.methods.loadFailed'));
+                setLoadFailed(true);
+            });
+        return () => {
+            alive = false;
+        };
+    }, [userId, reload]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (confirmUnlink || !backToUnlink.current) return;
+        backToUnlink.current = false;
+        unlinkRef.current?.focus();
+    }, [confirmUnlink]);
+
+    const googleIdentity = identities?.find((identity) => identity.provider === 'google');
+    // Sin vincular y con vincular apagado no hay nada que hacer con la fila de Google
+    const showGoogle = !!googleIdentity || (google && !linkOff);
+    const canLink = google && !linkOff && !googleIdentity;
+
+    return (
+        <div className="space-y-2" aria-busy={!identities && !loadFailed}>
+            <p className="eyebrow">{t('account.methods.title')}</p>
+            <ul className="divide-y divide-line/10 overflow-hidden rounded-2xl bg-raised">
+                <li className="flex items-center gap-3 px-3 py-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface text-muted">
+                        <Mail className="h-[18px] w-[18px]" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-bold">{t('account.methods.email')}</span>
+                        <span className="block truncate text-xs text-muted">{email}</span>
+                    </span>
+                    <Check className="h-5 w-5 shrink-0 text-ball" aria-label={t('account.methods.active')} />
+                </li>
+                {!identities && !loadFailed && (
+                    <li className="flex items-center gap-3 px-3 py-2.5">
+                        <Skeleton className="h-9 w-9 shrink-0 rounded-xl" />
+                        <span className="min-w-0 flex-1 space-y-1.5">
+                            <Skeleton className="h-3.5 w-16 rounded-full" />
+                            <Skeleton className="h-3 w-28 rounded-full" />
+                        </span>
+                    </li>
+                )}
+                {identities && showGoogle && (
+                    <li className={`flex gap-3 px-3 py-2.5 ${googleIdentity ? 'items-start' : 'items-center'}`}>
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface">
+                            <GoogleMark />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-bold">
+                                Google
+                                {googleIdentity && <span className="ml-1.5 text-xs font-semibold text-ball">{t('account.methods.linkedBadge')}</span>}
+                            </span>
+                            <span className="block truncate text-xs text-muted">{googleIdentity ? googleIdentity.email || email : t('account.methods.notLinked')}</span>
+                            {/* Debajo del correo para que este quepa entero; solo si queda otra forma de entrar */}
+                            {googleIdentity && identities.length > 1 && !linkOff && !confirmUnlink && (
+                                <button
+                                    ref={unlinkRef}
+                                    type="button"
+                                    disabled={!!busy}
+                                    onClick={() => {
+                                        setError(null);
+                                        setConfirmUnlink(true);
+                                    }}
+                                    className="mt-2 h-8 rounded-full bg-surface px-3 text-xs font-bold disabled:opacity-50"
+                                >
+                                    {t('account.methods.unlink')}
+                                </button>
+                            )}
+                        </span>
+                        {googleIdentity ? (
+                            <Check className="mt-2 h-5 w-5 shrink-0 text-ball" aria-label={t('account.methods.active')} />
+                        ) : canLink ? (
+                            <button
+                                type="button"
+                                disabled={!!busy}
+                                aria-label={t('account.methods.linkGoogle')}
+                                onClick={async () => {
+                                    setError(null);
+                                    setBusy('link');
+                                    try {
+                                        // Si sale bien la página se va a Google: el botón se queda ocupado
+                                        await linkGoogle();
+                                    } catch (err) {
+                                        fail(err);
+                                        setBusy(null);
+                                    }
+                                }}
+                                className="h-9 shrink-0 rounded-full bg-accent px-3.5 text-[13px] font-extrabold text-white disabled:opacity-50"
+                            >
+                                {busy === 'link' ? '…' : t('account.methods.link')}
+                            </button>
+                        ) : null}
+                    </li>
+                )}
+            </ul>
+            {confirmUnlink && googleIdentity && (
+                <div className="space-y-2 rounded-2xl bg-live/10 p-3" role="alert">
+                    <p className="text-sm font-semibold text-live">{t('account.methods.unlinkConfirm')}</p>
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            disabled={!!busy}
+                            onClick={async () => {
+                                setBusy('unlink');
+                                try {
+                                    await unlinkIdentity(googleIdentity.id);
+                                    setConfirmUnlink(false);
+                                    showToast(t('account.methods.unlinked'));
+                                    setReload((n) => n + 1);
+                                } catch (err) {
+                                    fail(err);
+                                    setConfirmUnlink(false);
+                                } finally {
+                                    setBusy(null);
+                                }
+                            }}
+                            className="h-10 flex-1 rounded-full bg-live text-sm font-extrabold text-white disabled:opacity-50"
+                        >
+                            {busy === 'unlink' ? '…' : t('account.methods.unlinkYes')}
+                        </button>
+                        {/* Al aparecer la confirmación el foco pasa aquí (el botón que se tocó desaparece) */}
+                        <button
+                            type="button"
+                            autoFocus
+                            disabled={!!busy}
+                            onClick={() => {
+                                backToUnlink.current = true;
+                                setConfirmUnlink(false);
+                            }}
+                            className="h-10 flex-1 rounded-full bg-surface text-sm font-bold disabled:opacity-50"
+                        >
+                            {t('account.deleteNo')}
+                        </button>
+                    </div>
+                </div>
+            )}
+            {identities && canLink && <p className="text-xs text-muted">{t('account.methods.sameEmail')}</p>}
+            {error && (
+                <p className="text-sm font-semibold text-live" role="alert">
+                    {error}{' '}
+                    {loadFailed && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setError(null);
+                                setReload((n) => n + 1);
+                            }}
+                            className="font-bold text-accent-ink underline-offset-2 hover:underline"
+                        >
+                            {t('common.retry')}
+                        </button>
+                    )}
+                </p>
+            )}
+        </div>
     );
 };
 

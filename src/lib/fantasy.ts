@@ -206,6 +206,23 @@ export const pickResult = (game: FantasyGame, entry: DayEntry): 'win' | 'loss' |
 
 export const pickPoints = (day: FantasyDay, entry: DayEntry) => day.games.filter((game) => pickResult(game, entry) === 'win').length * RULES.pick;
 
+/** Línea corta de lo que hizo en el día («2-4, 1 HR, 2 CI»), igual en Mi equipo y en el perfil de un fanático */
+export const lineText = (player: FantasyPlayer, t: (key: string, options?: Record<string, unknown>) => string) => {
+    const line = player.line;
+    if (!line || !player.played) return null;
+    if (player.role === 'P') return t('fantasy.pitchLine', { ip: line.ip, k: line.k, er: line.er });
+    const extras = [
+        Number(line.hr) ? `${line.hr} HR` : '',
+        Number(line.d) ? `${line.d} 2B` : '',
+        Number(line.t) ? `${line.t} 3B` : '',
+        Number(line.rbi) ? `${line.rbi} ${t('stats.rbi')}` : '',
+        Number(line.sb) ? `${line.sb} ${t('statsPage.unit.sb')}` : ''
+    ]
+        .filter(Boolean)
+        .join(', ');
+    return `${line.h}-${line.ab}${extras ? `, ${extras}` : ''}`;
+};
+
 /** Guarda el resultado del día cuando ya terminaron todos los juegos (para el historial y la racha) */
 export const settleDay = (day: FantasyDay, entry: DayEntry) => {
     if (!day.games.length || day.games.some((game) => game.state !== 'final')) return;

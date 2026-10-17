@@ -117,6 +117,17 @@ const feedOf = async (gamePk) => {
     }
 };
 
+// Un juego terminado ya no cambia: basta su box score (~300 KB) y no se guarda el feed completo (1-3 MB) en memoria.
+// Se envuelve con la forma del feed para que playersFromFeed lo lea igual.
+const boxOf = async (gamePk) => {
+    try {
+        const boxscore = await http.mlbGet(`${MLB_API_BASE}/game/${gamePk}/boxscore`);
+        return boxscore?.teams ? { liveData: { boxscore } } : null;
+    } catch {
+        return null;
+    }
+};
+
 /**
  * Todo lo del fantasy para un día: juegos y peloteros con sus puntos.
  * - Juegos en vivo o terminados: puntos reales de cada pelotero (y quedan «cerrados»: ya no se pueden cambiar).
@@ -143,10 +154,13 @@ const fantasyDay = async (leagueKey, date) => {
         }
     };
 
+    // Juegos empezados sin box score (MLB falló): el día sale incompleto y se vuelve a pedir pronto
+    let missing = 0;
     const games = await Promise.all(
         todays.map(async (game) => {
             const state = gameState(game.status);
-            const doc = await feedOf(game.gamePk);
+            const doc = state === 'final' ? await boxOf(game.gamePk) : await feedOf(game.gamePk);
+            if (!doc && state !== 'preview') missing += 1;
             if (doc) add(playersFromFeed(doc, game.gamePk, state !== 'preview'), state !== 'preview');
             if (state === 'preview') {
                 // Roster completo: el último juego de cada equipo (los rosters de un juego que no empieza vienen cortos)
@@ -155,7 +169,7 @@ const fantasyDay = async (leagueKey, date) => {
                     const last = all
                         .filter((g) => g.officialDate < day && gameState(g.status) === 'final' && [g.teams?.away?.team?.id, g.teams?.home?.team?.id].includes(teamId))
                         .sort((a, b) => b.gameDate.localeCompare(a.gameDate))[0];
-                    const lastDoc = last ? await feedOf(last.gamePk) : null;
+                    const lastDoc = last ? await boxOf(last.gamePk) : null;
                     if (lastDoc) add(playersFromFeed(lastDoc, game.gamePk, false).filter((player) => player.teamId === teamId), false);
                 }
             }
@@ -177,7 +191,8 @@ const fantasyDay = async (leagueKey, date) => {
             games.flatMap((game) => [game.away, game.home]).map((team) => [team.id, { id: team.id, abbrev: team.abbrev || teamAbbrev(team.id), color: team.color || teamColor(team.id), logo: team.logo || teamLogo(team.id) }])
         ),
         players: list,
-        scoring: SCORING
+        scoring: SCORING,
+        ...(missing ? { incomplete: true } : {})
     };
 };
 

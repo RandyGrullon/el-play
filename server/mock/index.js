@@ -782,6 +782,11 @@ const get = async (url, params = {}) => {
         if (!game) throw Object.assign(new Error('not found'), { response: { status: 404 } });
         return buildFeed(game);
     }
+    if ((match = path.match(/^\/game\/(\d+)\/boxscore$/))) {
+        const game = findGame(match[1]);
+        if (!game) throw Object.assign(new Error('not found'), { response: { status: 404 } });
+        return buildFeed(game).liveData.boxscore;
+    }
     if (path === '/schedule') return schedule(params);
     if (path === '/standings') return standings(params);
     if (path === '/stats') {

@@ -3,7 +3,7 @@ import './lib/appUpdate';
 // Antes de React: Chrome lanza el aviso de instalación una sola vez y muy temprano
 import './lib/install';
 import i18n from './i18n';
-import { consumeAuthRedirect } from './lib/account';
+import { consumeAuthRedirect, type AuthRedirect } from './lib/account';
 import { showToast } from './lib/toast';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -15,9 +15,21 @@ import './styles.css';
 
 blockDoubleTapZoom();
 
-// Vuelta desde el enlace del correo de Supabase: la sesión queda abierta y se dice
-const auth = consumeAuthRedirect();
-if (auth) showToast(auth.result === 'signed-in' ? i18n.t('account.linkSignedIn', { email: auth.email }) : i18n.t('account.linkExpired'), undefined, 7000);
+// Vuelta desde el enlace del correo o desde Google: la sesión queda abierta (o se dice qué falló)
+const authMessage = (auth: AuthRedirect) => {
+    if (auth.result === 'signed-in') return i18n.t('account.linkSignedIn', { email: auth.email });
+    if (auth.result === 'kept') return i18n.t('account.keptSession', { email: auth.email });
+    if (auth.result === 'linked' || auth.code === 'identity_already_linked') return i18n.t('account.methods.linked');
+    if (auth.code === 'link_other_account') return i18n.t('account.methods.linkOther');
+    if (auth.code === 'identity_already_exists') return i18n.t('account.errors.identity_taken');
+    if (auth.code === 'manual_linking_disabled') return i18n.t('account.errors.linking_disabled');
+    if (auth.via === 'link') return i18n.t('account.methods.linkFailed');
+    if (auth.via === 'google') return i18n.t('account.googleFailed');
+    return i18n.t('account.linkExpired');
+};
+// Si ya había otra cuenta abierta, se pregunta antes de cambiarla por la del enlace
+const auth = consumeAuthRedirect((current, next) => window.confirm(i18n.t('account.switchConfirm', { current, next })));
+if (auth) showToast(authMessage(auth), undefined, 7000);
 
 const queryClient = new QueryClient({
     defaultOptions: {

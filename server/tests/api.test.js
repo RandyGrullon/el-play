@@ -471,6 +471,258 @@ describe('fantasy: puntos con el box score de MLB', () => {
     });
 });
 
+describe('fantasy: perfil del fanático y tabla de la temporada', () => {
+    const fantasy = require('../services/fantasy');
+    const env = require('../utils/env');
+    const fans = require('../services/fantasyFans');
+    const { dayResult, toEntry } = require('../services/fantasyScore');
+    const app = require('../app');
+
+    const realDay = fantasy.fantasyDay;
+    const realConfig = env.supabaseConfig;
+    const realFetch = globalThis.fetch;
+    afterEach(() => {
+        fantasy.fantasyDay = realDay;
+        env.supabaseConfig = realConfig;
+        globalThis.fetch = realFetch;
+    });
+
+    const A = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa';
+    const B = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
+    const D = 'dddddddd-4444-4444-8444-dddddddddddd';
+    const F = 'ffffffff-6666-4666-8666-ffffffffffff';
+    const TODAY = '2026-10-17';
+
+    const game = (gamePk, state, away, home, winner = null) => ({ gamePk, state, away: { id: away, isWinner: winner === away }, home: { id: home, isWinner: winner === home } });
+    const player = (id, points) => ({ id, name: `P${id}`, teamId: 672, gamePk: 1, role: 'B', pos: 'SS', starter: true, played: points !== 0, line: null, points });
+    // Días inventados: 13 y 15 terminados, 14 sin juegos, 16 en vivo, 17 (hoy) por empezar; marzo es de la temporada anterior
+    const DAYS = {
+        '2026-03-01': { games: [game(9, 'final', 672, 667, 672)], players: [player(10, 5)] },
+        '2026-10-13': { games: [game(6, 'final', 672, 667, 672), game(7, 'final', 669, 671, 671)], players: [player(11, 4)] },
+        '2026-10-14': { games: [], players: [] },
+        '2026-10-15': { games: [game(1, 'final', 672, 667, 672), game(2, 'final', 669, 671, 671)], players: [player(10, 6.5), player(11, 4), player(12, -1)] },
+        '2026-10-16': { games: [game(3, 'live', 672, 669), game(4, 'final', 667, 671, 667)], players: [player(10, 3), player(11, 2.2)] },
+        '2026-10-17': { games: [game(5, 'preview', 672, 667)], players: [player(10, 0), player(11, 0)] }
+    };
+    const calls = {};
+    let active = 0;
+    let maxActive = 0;
+    const fakeDay = async (league, date) => {
+        calls[date] = (calls[date] || 0) + 1;
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        active -= 1;
+        return { league, date, teams: {}, scoring: {}, ...(DAYS[date] || { games: [], players: [] }) };
+    };
+
+    const ROWS = [
+        { user_id: A, day: '2026-10-18', lineup: [10], captain: null, picks: {} }, // mañana: no cuenta
+        { user_id: A, day: '2026-10-17', lineup: [10], captain: 10, picks: { 5: 672 } },
+        { user_id: A, day: '2026-10-16', lineup: [10, 11], captain: 11, picks: { 3: 672, 4: 667 } },
+        { user_id: A, day: '2026-10-15', lineup: [10, 11, 12, 999], captain: 10, picks: { 1: 672, 2: 669 } },
+        { user_id: A, day: '2026-10-14', lineup: [10], captain: null, picks: {} },
+        { user_id: A, day: '2026-03-01', lineup: [10], captain: null, picks: { 9: 672 } },
+        { user_id: D, day: '2026-10-17', lineup: [11], captain: null, picks: {} },
+        { user_id: 'cccccccc-3333-4333-8333-cccccccccccc', day: '2026-10-16', lineup: [], captain: null, picks: {} }, // vacío: no cuenta
+        // Relleno para pasar de 1000 filas (van de la más nueva a la más vieja): B solo aparece en la segunda página
+        ...Array.from({ length: 1200 }, () => ({ user_id: F, day: '2026-10-14', lineup: [10], captain: null, picks: {} })),
+        { user_id: B, day: '2026-10-13', lineup: [11], captain: 11, picks: { 6: 672, 7: 671 } }
+    ];
+    const PROFILES = { [A]: 'Ana', [D]: 'Darío' };
+    // Filas que agrega cada prueba (se vacían en setup)
+    const EXTRA = [];
+
+    // Supabase de mentira como PostgREST: filtra por usuario y día, ordena, respeta limit y Range (con su max-rows),
+    // da Content-Range con el total si se pide count=exact y anota cada petición
+    const requests = [];
+    let maxRows = 1000;
+    const fakeSupabase = async (url, init = {}) => {
+        const u = new URL(url);
+        const headers = init.headers || {};
+        requests.push({ path: u.pathname, search: u.search, headers });
+        const json = (data, extra = {}) => ({ ok: true, status: 200, headers: new Headers(extra), json: async () => data });
+        if (u.pathname.endsWith('/profiles')) {
+            const ids = (u.searchParams.get('id') || '').replace(/^eq\.|^in\.\(|\)$/g, '').split(',');
+            return json(ids.filter((id) => PROFILES[id]).map((id) => ({ id, display_name: PROFILES[id] })));
+        }
+        const user = u.searchParams.get('user_id')?.replace('eq.', '');
+        const filters = u.searchParams.getAll('day').map((value) => value.split('.'));
+        let rows = [...ROWS, ...EXTRA].filter((row) => (!user || row.user_id === user) && filters.every(([op, day]) => (op === 'gte' ? row.day >= day : op === 'lte' ? row.day <= day : row.day === day)));
+        const order = u.searchParams.get('order') || '';
+        if (order.startsWith('day.desc')) rows.sort((a, b) => b.day.localeCompare(a.day) || a.user_id.localeCompare(b.user_id));
+        if (order.startsWith('day.asc')) rows.sort((a, b) => a.day.localeCompare(b.day) || a.user_id.localeCompare(b.user_id));
+        const total = rows.length;
+        if (u.searchParams.get('limit')) rows = rows.slice(0, Number(u.searchParams.get('limit')));
+        let from = 0;
+        let to = rows.length - 1;
+        if (headers.Range) [from, to] = headers.Range.split('-').map(Number);
+        rows = rows.slice(from, Math.min(to, from + maxRows - 1) + 1);
+        const count = /count=exact/.test(headers.Prefer || '') ? total : '*';
+        return json(rows, { 'content-range': rows.length ? `${from}-${from + rows.length - 1}/${count}` : `*/${count}` });
+    };
+
+    const setup = () => {
+        clearCache();
+        for (const key of Object.keys(calls)) delete calls[key];
+        active = 0;
+        maxActive = 0;
+        maxRows = 1000;
+        requests.length = 0;
+        EXTRA.length = 0;
+        fantasy.fantasyDay = fakeDay;
+        env.supabaseConfig = () => ({ url: 'https://supabase.test', key: 'sb_publishable_prueba' });
+        globalThis.fetch = fakeSupabase;
+        http.mlbGet = async (url) => {
+            if (url.endsWith('/league/131')) return { leagues: [{ season: '2026', numGames: 50 }] };
+            throw new Error(`sin ruta ${url}`);
+        };
+    };
+
+    it('puntos iguales a la app: capitán ×1,5 redondeado, pelotero desconocido 0 y pronóstico acertado 10', () => {
+        const entry = toEntry({ lineup: [10, 11, 12, 999], captain: 10, picks: { 1: 672, 2: 669 } });
+        expect(dayResult(DAYS['2026-10-15'], entry)).toEqual({ final: true, live: false, started: true, team: 12.8, picks: 10, total: 22.8, picksMade: 2 });
+        // En vivo: el pronóstico del juego sin terminar queda pendiente
+        const live = dayResult(DAYS['2026-10-16'], toEntry({ lineup: [10, 11], captain: 11, picks: { 3: 672, 4: 667 } }));
+        expect(live).toMatchObject({ final: false, live: true, team: 6.3, picks: 10, total: 16.3 });
+    });
+
+    it('perfil: días del más reciente al más viejo, hoy sin juegos empezados cuenta 0 y la temporada suma solo días empezados', async () => {
+        setup();
+        const { data, live } = await fans.fanSummary('lidom', A, { today: TODAY });
+        expect(data).toMatchObject({ userId: A, league: 'lidom', name: 'Ana' });
+        expect(data.days.map((day) => day.date)).toEqual(['2026-10-17', '2026-10-16', '2026-10-15', '2026-10-14', '2026-03-01']);
+        expect(data.days[0]).toEqual({ date: '2026-10-17', final: false, live: false, team: 0, picks: 0, total: 0, lineup: [10], captain: 10, picksMade: 1 });
+        expect(data.days[1]).toMatchObject({ live: true, final: false, total: 16.3 });
+        expect(data.days[2]).toMatchObject({ final: true, team: 12.8, picks: 10, total: 22.8, lineup: [10, 11, 12, 999], captain: 10, picksMade: 2 });
+        expect(data.days[3]).toMatchObject({ final: false, live: false, total: 0, picksMade: 0 }); // día sin juegos
+        expect(data.days[4]).toMatchObject({ final: true, total: 15 }); // temporada anterior: aparece pero no suma
+        expect(data.season).toEqual({ points: 39.1, days: 2, best: { date: '2026-10-15', points: 22.8 } });
+        expect(live).toBe(true);
+        // La llave publishable va solo en apikey (no es un JWT)
+        expect(requests.every((request) => request.headers.apikey === 'sb_publishable_prueba' && !request.headers.Authorization)).toBe(true);
+    });
+
+    it('perfil de alguien sin equipos: sin días y temporada en 0', async () => {
+        setup();
+        const { data } = await fans.fanSummary('lidom', 'eeeeeeee-5555-4555-8555-eeeeeeeeeeee', { today: TODAY });
+        expect(data).toEqual({ userId: 'eeeeeeee-5555-4555-8555-eeeeeeeeeeee', league: 'lidom', name: null, season: { points: 0, days: 0, best: null }, days: [] });
+    });
+
+    it('tabla de la temporada: ordenada, paginada con Range y cada día calculado una vez (máx. 3 a la vez)', async () => {
+        setup();
+        const data = await fans.seasonRanking('lidom', { today: TODAY });
+        expect(data).toMatchObject({ league: 'lidom', season: 2026, partial: false });
+        expect(data.ranking.slice(0, 2)).toEqual([
+            { userId: A, name: 'Ana', points: 39.1, days: 2 },
+            { userId: B, name: null, points: 6 + 10 + 10, days: 1 }
+        ]);
+        // F tiene 1200 filas del mismo día (como dos páginas que se pisan): cuenta una vez
+        expect(data.ranking.map((row) => row.userId)).toEqual([A, B, D, F]);
+        expect(data.ranking[2]).toEqual({ userId: D, name: 'Darío', points: 0, days: 0 });
+        const entries = requests.filter((request) => request.path.endsWith('/fantasy_entries'));
+        expect(entries.map((request) => request.headers.Range)).toEqual(['0-999', '1000-1999']);
+        expect(entries[0].search).toContain('day=gte.2026-09-01');
+        expect(entries[0].search).toContain('day=lte.2026-10-17');
+        // De la más nueva a la más vieja: si hay que cortar, se pierden los días viejos
+        expect(entries[0].search).toContain('order=day.desc');
+        expect(calls).toEqual({ '2026-10-13': 1, '2026-10-14': 1, '2026-10-15': 1, '2026-10-16': 1, '2026-10-17': 1 });
+        expect(maxActive).toBeLessThanOrEqual(3);
+        // La segunda vez sale del caché
+        await fans.seasonRanking('lidom', { today: TODAY });
+        expect(requests.filter((request) => request.path.endsWith('/fantasy_entries'))).toHaveLength(2);
+    });
+
+    it('tabla de la temporada: no supone el max-rows de Supabase (con páginas de 500 también trae todo)', async () => {
+        setup();
+        maxRows = 500;
+        const data = await fans.seasonRanking('lidom', { today: TODAY });
+        expect(data.ranking.map((row) => row.userId)).toEqual([A, B, D, F]);
+        expect(data.partial).toBe(false);
+        expect(requests.filter((request) => request.path.endsWith('/fantasy_entries')).map((request) => request.headers.Range)).toEqual(['0-999', '500-1499', '1000-1999']);
+    });
+
+    it('perfil con más de 60 días en la temporada: suma lo mismo que la tabla de la temporada', async () => {
+        setup();
+        const H = '12345678-7777-4777-8777-123456789abc';
+        // Juega todos los días del 1 de septiembre al 20 de diciembre (111 días), 1 punto por día
+        for (let i = 0; i < 111; i++) EXTRA.push({ user_id: H, day: new Date(Date.UTC(2026, 8, 1 + i)).toISOString().slice(0, 10), lineup: [10], captain: null, picks: {} });
+        EXTRA.push({ user_id: H, day: '2026-12-21', lineup: [10], captain: null, picks: {} }); // mañana: no cuenta
+        fantasy.fantasyDay = async (league, date) => ({ league, date, teams: {}, scoring: {}, games: [game(100, 'final', 672, 667, 672)], players: [player(10, 1)] });
+        const { data } = await fans.fanSummary('lidom', H, { today: '2026-12-20' });
+        expect(data.season).toEqual({ points: 111, days: 111, best: { date: '2026-12-20', points: 1 } });
+        expect(data.days).toHaveLength(40);
+        expect(data.days[0].date).toBe('2026-12-20');
+        const season = await fans.seasonRanking('lidom', { today: '2026-12-20' });
+        expect(season.ranking.find((row) => row.userId === H)).toMatchObject({ points: data.season.points, days: data.season.days });
+    });
+
+    it('tabla de la temporada con users: esas cuentas con su puesto aunque no entren en el top 200', async () => {
+        setup();
+        // 205 cuentas con 6.5 puntos dejan a D y a F fuera del top 200
+        for (let i = 0; i < 205; i++) EXTRA.push({ user_id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`, day: '2026-10-15', lineup: [10], captain: null, picks: {} });
+        const top = await fans.seasonRanking('lidom', { today: TODAY });
+        expect(top.ranking).toHaveLength(200);
+        expect(top.ranking.some((row) => row.userId === D)).toBe(false);
+        const picked = await fans.seasonRanking('lidom', { today: TODAY, users: [B, D] });
+        expect(picked.ranking).toEqual([
+            { userId: B, name: null, points: 26, days: 1, rank: 2 },
+            { userId: D, name: 'Darío', points: 0, days: 0, rank: 208 }
+        ]);
+    });
+
+    it('un día viejo ya terminado se guarda una semana; hoy, una hora; incompleto, 30 s', () => {
+        const done = { games: [game(1, 'final', 672, 667, 672)], players: [] };
+        const old = new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10);
+        const today = fans.todayIn('America/Santo_Domingo');
+        expect(fans.dayTtlOn('lidom', old, done)).toBe(7 * 86400);
+        expect(fans.dayTtlOn('lidom', today, done)).toBe(3600);
+        expect(fans.dayTtlOn('lidom', old, { ...done, incomplete: true })).toBe(30);
+        expect(fans.dayTtlOn('lidom', old, { games: [game(1, 'live', 672, 667)], players: [] })).toBe(20);
+    });
+
+    it('si se acaba el tiempo, devuelve lo calculado y avisa con partial', async () => {
+        setup();
+        fantasy.fantasyDay = async (league, date) => (date === '2026-10-15' ? new Promise(() => {}) : fakeDay(league, date));
+        const { days, partial } = await fans.computeDays('lidom', ['2026-10-16', '2026-10-15', '2026-10-14'], { deadline: Date.now() + 100 });
+        expect(partial).toBe(true);
+        expect([...days.keys()].sort()).toEqual(['2026-10-14', '2026-10-16']);
+    });
+
+    it('rutas: uuid inválido 400, sin Supabase 503 y Cache-Control', async () => {
+        setup();
+        const server = app.listen(0);
+        await new Promise((resolve) => server.once('listening', resolve));
+        const base = `http://127.0.0.1:${server.address().port}/api/v2/fantasy`;
+        try {
+            const bad = await realFetch(`${base}/fan/123?league=lidom`);
+            expect(bad.status).toBe(400);
+            expect(await bad.json()).toEqual({ error: 'invalid_user' });
+
+            const fan = await realFetch(`${base}/fan/${A}?league=lidom`);
+            expect(fan.status).toBe(200);
+            expect(fan.headers.get('cache-control')).toMatch(/s-maxage=(60|300)\b/);
+            expect(await fan.json()).toMatchObject({ userId: A, name: 'Ana' });
+
+            const season = await realFetch(`${base}/season?league=lidom`);
+            expect(season.status).toBe(200);
+            expect(season.headers.get('cache-control')).toContain('s-maxage=300');
+
+            const some = await realFetch(`${base}/season?league=lidom&users=${B.toUpperCase()},${D}`);
+            expect((await some.json()).ranking.map((row) => row.userId)).toEqual([B, D]);
+            expect((await realFetch(`${base}/season?league=lidom&users=${B},123`)).status).toBe(400);
+
+            env.supabaseConfig = () => null;
+            const off = await realFetch(`${base}/fan/${A}?league=lidom`);
+            expect(off.status).toBe(503);
+            expect(await off.json()).toEqual({ error: 'accounts_disabled' });
+            expect((await realFetch(`${base}/season?league=lidom`)).status).toBe(503);
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    });
+});
+
 describe('estadísticas de jugadores', () => {
     const { hittingOf, pitchingOf, pointsOf, fetchPlayers } = require('../services/players');
 

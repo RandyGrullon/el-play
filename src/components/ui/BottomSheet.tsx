@@ -12,25 +12,36 @@ interface BottomSheetProps {
     tall?: boolean;
 }
 
+// Hojas abiertas, de la de abajo a la de arriba: Escape cierra solo la de arriba (una hoja puede abrir otra encima)
+const openSheets: object[] = [];
+
 // Hoja que sube desde abajo (en escritorio, panel centrado). Cierra con la X, tocando fuera o con Escape.
 export const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, title, children, tall = false }) => {
     const { t } = useTranslation();
     const closeRef = useRef<HTMLButtonElement>(null);
+    // onClose suele ser una función nueva en cada render: con el ref el efecto no se repite (y el foco no salta a la X)
+    const onCloseRef = useRef(onClose);
+    onCloseRef.current = onClose;
 
     useEffect(() => {
         if (!open) return;
         const previous = document.activeElement as HTMLElement | null;
         closeRef.current?.focus();
-        const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
+        const self = {};
+        openSheets.push(self);
+        const onKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && openSheets[openSheets.length - 1] === self) onCloseRef.current();
+        };
         document.addEventListener('keydown', onKey);
         const overflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         return () => {
             document.removeEventListener('keydown', onKey);
+            openSheets.splice(openSheets.indexOf(self), 1);
             document.body.style.overflow = overflow;
             previous?.focus?.();
         };
-    }, [open, onClose]);
+    }, [open]);
 
     if (!open) return null;
 

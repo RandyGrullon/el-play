@@ -61,7 +61,7 @@ export const useSession = () =>
 
 export class AccountError extends Error {
     constructor(
-        public code: 'disabled' | 'network' | 'invalid_code' | 'rate_limit' | 'unknown',
+        public code: 'disabled' | 'network' | 'invalid_code' | 'rate_limit' | 'unknown' | 'linking_disabled' | 'identity_taken' | 'last_identity' | 'session_expired',
         message: string = code
     ) {
         super(message);
@@ -124,10 +124,34 @@ export const authProviders = () =>
         }
     })());
 
+// Antes de ir a Google se apunta a qué se fue (entrar o vincular) para saber qué decir a la vuelta
+const OAUTH_KEY = 'el-play-oauth';
+type OAuthTrip = 'google' | 'link';
+
+const markOAuthTrip = (trip: OAuthTrip) => {
+    try {
+        sessionStorage.setItem(OAUTH_KEY, `${trip}:${Date.now()}`);
+    } catch {
+        /* sin almacenamiento: a la vuelta se dice lo genérico */
+    }
+};
+
+const takeOAuthTrip = (): OAuthTrip | null => {
+    try {
+        const [trip, at] = (sessionStorage.getItem(OAUTH_KEY) || '').split(':');
+        sessionStorage.removeItem(OAUTH_KEY);
+        // Solo vale si la vuelta llega en los 15 minutos siguientes
+        return (trip === 'google' || trip === 'link') && Date.now() - Number(at) < 15 * 60 * 1000 ? trip : null;
+    } catch {
+        return null;
+    }
+};
+
 /** Entrar con Google: Supabase abre la pantalla de Google y vuelve aquí con la sesión (consumeAuthRedirect) */
 export const signInWithGoogle = () => {
     if (!accountEnabled()) return;
     const back = window.location.origin + window.location.pathname;
+    markOAuthTrip('google');
     window.location.assign(`${URL_BASE}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(back)}`);
 };
 
@@ -145,27 +169,55 @@ const decodeJwt = (token: string): { sub?: string; email?: string } | null => {
     }
 };
 
+export type AuthRedirect =
+    | { result: 'signed-in'; email: string }
+    | { result: 'linked'; email: string }
+    // Había otra cuenta abierta y la persona prefirió seguir con ella
+    | { result: 'kept'; email: string }
+    // `code` es el error_code de Supabase (otp_expired, identity_already_exists…) o link_other_account; `via` dice de dónde se venía
+    | { result: 'error'; code: string | null; via: 'email' | OAuthTrip };
+
 /**
- * Al tocar el enlace del correo, Supabase vuelve a la app con la sesión en la dirección (#access_token=…&refresh_token=…)
- * o con el error si el enlace venció (#error=…). Se guarda la sesión y se limpia la dirección.
+ * Al tocar el enlace del correo (o al volver de Google), Supabase vuelve a la app con la sesión en la dirección
+ * (#access_token=…&refresh_token=…) o con el error (#error=…&error_code=…). Se guarda la sesión y se limpia la dirección.
+ * Una sesión que nadie pidió desde aquí no reemplaza en silencio otra cuenta abierta: `confirmSwitch` pregunta
+ * (sin él se queda la que estaba). Al vincular, la vuelta tiene que ser la misma cuenta.
  */
-export const consumeAuthRedirect = (): { result: 'signed-in'; email: string } | { result: 'expired' } | null => {
+export const consumeAuthRedirect = (confirmSwitch?: (current: string, next: string) => boolean): AuthRedirect | null => {
     if (typeof window === 'undefined' || !accountEnabled()) return null;
     const hash = window.location.hash.slice(1);
-    if (!/(^|&)(access_token|error)=/.test(hash)) return null;
-    const params = new URLSearchParams(hash);
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
-    if (params.get('error')) return { result: 'expired' };
+    const query = new URLSearchParams(window.location.search);
+    if (!/(^|&)(access_token|error)=/.test(hash) && !(query.get('error') && query.has('error_description'))) return null;
+    const params = new URLSearchParams(/(^|&)(access_token|error)=/.test(hash) ? hash : window.location.search);
+    // Supabase repite el error en la búsqueda (?error=…): también se quita
+    ['error', 'error_code', 'error_description'].forEach((key) => query.delete(key));
+    const search = query.toString();
+    window.history.replaceState(null, '', window.location.pathname + (search ? `?${search}` : ''));
+    const trip = takeOAuthTrip();
+    if (params.get('error')) {
+        let code = params.get('error_code');
+        // Mismo código si Google ya era de esta cuenta (p. ej. vinculada en otra pestaña): eso no es un error
+        if (code === 'identity_already_exists' && !/another/i.test(params.get('error_description') || '')) code = 'identity_already_linked';
+        if (code === 'manual_linking_disabled') markLinkingOff();
+        return { result: 'error', code, via: trip || 'email' };
+    }
     const access = params.get('access_token');
     const refresh = params.get('refresh_token');
     const claims = access ? decodeJwt(access) : null;
     if (!access || !refresh || !claims?.sub) return null;
     const expiresIn = Number(params.get('expires_in')) || 3600;
-    writeSession({ accessToken: access, refreshToken: refresh, expiresAt: Date.now() + (expiresIn - 60) * 1000, user: { id: claims.sub, email: claims.email || '' }, name: null });
+    const previous = readSession();
+    // Al vincular vuelve la misma cuenta con una sesión nueva: se queda el nombre
+    const sameUser = previous?.user.id === claims.sub;
+    // Vincular nunca cambia de cuenta: si vuelve otra, no se toca nada
+    if (trip === 'link' && !sameUser) return { result: 'error', code: 'link_other_account', via: 'link' };
+    // Otra cuenta abierta y esta vuelta no la pidió «Continuar con Google» aquí: se pregunta antes de cambiar
+    if (previous && !sameUser && trip !== 'google' && !confirmSwitch?.(previous.user.email, claims.email || '')) return { result: 'kept', email: previous.user.email };
+    writeSession({ accessToken: access, refreshToken: refresh, expiresAt: Date.now() + (expiresIn - 60) * 1000, user: { id: claims.sub, email: claims.email || '' }, name: sameUser ? previous!.name : null });
     loadProfile()
         .then(() => syncFantasy())
         .catch(() => undefined);
-    return { result: 'signed-in', email: claims.email || '' };
+    return { result: trip === 'link' && sameUser ? 'linked' : 'signed-in', email: claims.email || '' };
 };
 
 /** Paso 2: con el código queda la sesión abierta; luego se sube lo que había en el teléfono */
@@ -198,7 +250,7 @@ export const signOut = async () => {
     }
 };
 
-const freshToken = async () => {
+export const freshToken = async () => {
     const current = readSession();
     if (!current) return null;
     if (current.expiresAt > Date.now()) return current.accessToken;
@@ -214,7 +266,7 @@ const freshToken = async () => {
 };
 
 /** PostgREST de Supabase con la sesión (o como anónimo) */
-const rest = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
+export const rest = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
     if (!accountEnabled()) throw new AccountError('disabled');
     const token = await freshToken();
     const response = await fetch(`${URL_BASE}/rest/v1/${path}`, {
@@ -229,6 +281,95 @@ const rest = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
     return (text ? JSON.parse(text) : null) as T;
 };
 
+// ---------------------------------------------------------------- formas de entrar (correo, Google)
+// Lo único automático es entrar con Google usando el mismo correo: Supabase une esa identidad sola.
+// Vincular y desvincular desde aquí (/user/identities, también con el mismo correo) piden «Manual linking» activo en
+// Auth → Providers; si está apagado responden 404 manual_linking_disabled y la app esconde esos botones un día.
+
+const LINKING_KEY = 'el-play-linking-off';
+
+/** Supabase dijo hace menos de un día que vincular está apagado */
+export const linkingOff = () => {
+    try {
+        return Date.now() - Number(localStorage.getItem(LINKING_KEY) || 0) < 86400000;
+    } catch {
+        return false;
+    }
+};
+
+const markLinkingOff = () => {
+    try {
+        localStorage.setItem(LINKING_KEY, String(Date.now()));
+    } catch {
+        /* sin almacenamiento: se vuelve a intentar la próxima vez */
+    }
+};
+
+/** Auth de Supabase a nombre de la cuenta abierta */
+const userFetch = async <T>(path: string, method = 'GET'): Promise<T> => {
+    if (!accountEnabled()) throw new AccountError('disabled');
+    const token = await freshToken();
+    if (!token) throw new AccountError('session_expired');
+    let response: Response;
+    try {
+        response = await fetch(`${URL_BASE}/auth/v1/${path}`, { method, headers: { apikey: ANON!, Authorization: `Bearer ${token}` } });
+    } catch {
+        throw new AccountError('network');
+    }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        const code = data?.error_code || data?.code;
+        if (code === 'manual_linking_disabled') {
+            markLinkingOff();
+            throw new AccountError('linking_disabled');
+        }
+        if (code === 'identity_already_exists') throw new AccountError('identity_taken');
+        if (code === 'single_identity_not_deletable') throw new AccountError('last_identity');
+        if (response.status === 429) throw new AccountError('rate_limit');
+        if (response.status === 401 || code === 'session_not_found' || code === 'bad_jwt' || code === 'user_not_found') throw new AccountError('session_expired');
+        throw new AccountError('unknown', data?.msg || data?.message);
+    }
+    return data as T;
+};
+
+export interface Identity {
+    /** identity_id de Supabase (con él se desvincula) */
+    id: string;
+    provider: 'email' | 'google' | string;
+    email: string | null;
+}
+
+interface IdentityRow {
+    identity_id?: string;
+    id: string;
+    provider: string;
+    email?: string;
+    identity_data?: { email?: string };
+}
+
+/** Con qué se puede entrar a la cuenta abierta */
+export const getIdentities = async (): Promise<Identity[]> => {
+    const user = await userFetch<{ email?: string; identities?: IdentityRow[] }>('user');
+    // Si el correo principal cambió (p. ej. al desvincular) se pone al día aquí
+    const current = readSession();
+    if (current && user?.email && user.email !== current.user.email) writeSession({ ...current, user: { ...current.user, email: user.email } });
+    return (user?.identities || []).map((row) => ({ id: row.identity_id || row.id, provider: row.provider, email: row.email || row.identity_data?.email || null }));
+};
+
+/** Vincular Google: Supabase da la dirección de Google y a la vuelta llega la misma cuenta (consumeAuthRedirect → «linked») */
+export const linkGoogle = async () => {
+    const back = window.location.origin + window.location.pathname;
+    const data = await userFetch<{ url?: string }>(`user/identities/authorize?provider=google&redirect_to=${encodeURIComponent(back)}&skip_http_redirect=true`);
+    if (!data?.url) throw new AccountError('unknown');
+    markOAuthTrip('link');
+    window.location.assign(data.url);
+};
+
+/** Quita una forma de entrar (Supabase exige que quede al menos una) */
+export const unlinkIdentity = async (id: string) => {
+    await userFetch(`user/identities/${encodeURIComponent(id)}`, 'DELETE');
+};
+
 // ---------------------------------------------------------------- perfil
 
 const loadProfile = async () => {
@@ -238,7 +379,7 @@ const loadProfile = async () => {
     writeSession({ ...current, name: rows?.[0]?.display_name ?? null });
 };
 
-/** El nombre que ven los demás en la tabla (sin él se muestra el inicio del correo) */
+/** El nombre que ven los demás en la tabla y en el buscador (sin él los demás ven «Fanático»; nunca sale del correo) */
 export const saveName = async (name: string) => {
     const current = readSession();
     if (!current) return;
@@ -302,7 +443,8 @@ export const pushEntry = async (league: LeagueId, day: string, entry: DayEntry) 
 
 export interface Rival {
     userId: string;
-    name: string;
+    /** null si no ha elegido nombre (la fila dice «Fanático» en el idioma de la app) */
+    name: string | null;
     entry: DayEntry;
 }
 
@@ -312,7 +454,7 @@ export const dayEntries = async (league: LeagueId, day: string, members?: string
     const rows = await rest<EntryRow[]>(`fantasy_entries?league=eq.${league}&day=eq.${day}${filter}&select=user_id,lineup,captain,picks,saved_at,profiles(display_name)&limit=500`);
     return (rows || []).map((row) => ({
         userId: row.user_id,
-        name: row.profiles?.display_name || 'Fanático',
+        name: row.profiles?.display_name || null,
         entry: { lineup: row.lineup || [], captain: row.captain, picks: row.picks || {}, savedAt: row.saved_at }
     }));
 };

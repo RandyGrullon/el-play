@@ -41,16 +41,17 @@ create table if not exists public.league_members (
     primary key (league_id, user_id)
 );
 
--- Perfil automático al crear la cuenta (nombre = inicio del correo)
+-- Perfil automático al crear la cuenta, sin nombre: el nombre lo elige cada quien en la app.
+-- Nunca se toma del correo (el nombre es público y se puede buscar).
 create or replace function public.handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
 begin
-    insert into public.profiles (id, display_name) values (new.id, split_part(new.email, '@', 1)) on conflict do nothing;
+    insert into public.profiles (id) values (new.id) on conflict do nothing;
     return new;
 end $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
--- Cuentas creadas antes de correr este script (p. ej. una de prueba desde el panel): también llevan perfil
-insert into public.profiles (id, display_name) select id, split_part(email, '@', 1) from auth.users on conflict do nothing;
+-- Cuentas creadas antes de correr este script (p. ej. una de prueba desde el panel): también llevan perfil, sin nombre
+insert into public.profiles (id) select id from auth.users on conflict do nothing;
 
 -- Crear y unirse a ligas (el código lo genera la base de datos)
 create or replace function public.create_league(league_name text) returns table (code text) language plpgsql security definer set search_path = public as $$
@@ -123,6 +124,16 @@ begin
 end $$;
 revoke execute on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
+
+-- Buscador de fanáticos (también en 2026-10-17-buscador.sql para bases que ya existían).
+-- Antes el perfil nacía con el inicio del correo como nombre; con el buscador eso expondría parte del correo.
+-- Se borran solo los nombres que son exactamente el inicio del correo (chr(64) es la arroba); el resto se queda.
+update public.profiles p set display_name = null from auth.users u where u.id = p.id and p.display_name = split_part(u.email, chr(64), 1);
+-- El buscador hace display_name ILIKE '%texto%': un btree no sirve con el comodín al principio; un índice de trigramas sí.
+-- En Supabase las extensiones van en el esquema extensions.
+create extension if not exists pg_trgm with schema extensions;
+drop index if exists public.profiles_display_name_lower;
+create index if not exists profiles_display_name_trgm on public.profiles using gin (display_name extensions.gin_trgm_ops);
 
 -- Que la API vea las tablas nuevas enseguida
 notify pgrst, 'reload schema';
