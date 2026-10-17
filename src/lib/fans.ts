@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { LeagueId } from '../types';
 import { ApiError } from './api';
 import { AccountError, rest } from './account';
-import type { DayEntry } from './fantasy';
+import type { DayEntry, EntryHistory } from './fantasy';
 
 export interface FanDay {
     date: string;
@@ -165,12 +165,13 @@ export const useFanSearch = (q: string) => {
 export const fanEntry = async (userId: string, league: LeagueId, day: string): Promise<DayEntry | null> => {
     if (!isFanId(userId) || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
     const rows = await fromSupabase(
-        rest<{ lineup: number[] | null; captain: number | null; picks: Record<string, number> | null; saved_at: number }[]>(
-            `fantasy_entries?user_id=eq.${userId}&league=eq.${encodeURIComponent(league)}&day=eq.${day}&select=lineup,captain,picks,saved_at&limit=1`
+        rest<{ lineup: number[] | null; captain: number | null; picks: Record<string, number> | null; saved_at: number; history?: EntryHistory | null }[]>(
+            // select=* trae el historial antitrampa si la base ya lo tiene
+            `fantasy_entries?user_id=eq.${userId}&league=eq.${encodeURIComponent(league)}&day=eq.${day}&select=*&limit=1`
         )
     );
     const row = rows?.[0];
-    return row ? { lineup: row.lineup || [], captain: row.captain, picks: row.picks || {}, savedAt: row.saved_at } : null;
+    return row ? { lineup: row.lineup || [], captain: row.captain, picks: row.picks || {}, savedAt: row.saved_at, history: row.history ?? null } : null;
 };
 
 export const useFanEntry = (userId: string, league: LeagueId, day: string | undefined, enabled = true) =>

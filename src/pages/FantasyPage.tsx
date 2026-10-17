@@ -22,6 +22,7 @@ import {
     RULES,
     addPlayer,
     canAdd,
+    effectiveEntry,
     entryKey,
     fetchFantasyDay,
     gameStarted,
@@ -710,6 +711,8 @@ const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: OpenFan 
     if (!session) return null;
 
     const ranking = (rivals || [])
+        // Cada equipo como estaba al empezar cada juego (lo cambiado después no cuenta)
+        .map((rival) => ({ ...rival, entry: effectiveEntry(day, rival.entry) }))
         .map((rival) => ({ ...rival, points: teamPoints(day, rival.entry) + pickPoints(day, rival.entry) }))
         .sort((a, b) => b.points - a.points);
 

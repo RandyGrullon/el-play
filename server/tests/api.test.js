@@ -596,7 +596,7 @@ describe('fantasy: perfil del fanático y tabla de la temporada', () => {
 
     it('puntos iguales a la app: capitán ×1,5 redondeado, pelotero desconocido 0 y pronóstico acertado 10', () => {
         const entry = toEntry({ lineup: [10, 11, 12, 999], captain: 10, picks: { 1: 672, 2: 669 } });
-        expect(dayResult(DAYS['2026-10-15'], entry)).toEqual({ final: true, live: false, started: true, team: 12.8, picks: 10, total: 22.8, picksMade: 2 });
+        expect(dayResult(DAYS['2026-10-15'], entry)).toEqual({ lineup: [10, 11, 12, 999], captain: 10, final: true, live: false, started: true, team: 12.8, picks: 10, total: 22.8, picksMade: 2 });
         // En vivo: el pronóstico del juego sin terminar queda pendiente
         const live = dayResult(DAYS['2026-10-16'], toEntry({ lineup: [10, 11], captain: 11, picks: { 3: 672, 4: 667 } }));
         expect(live).toMatchObject({ final: false, live: true, team: 6.3, picks: 10, total: 16.3 });
@@ -686,6 +686,30 @@ describe('fantasy: perfil del fanático y tabla de la temporada', () => {
         ]);
     });
 
+    it('perfil y tabla: lo cambiado después de empezar el juego no cuenta (historial de la base)', async () => {
+        setup();
+        const C = 'cccccccc-9999-4999-8999-cccccccccccc';
+        const start = Date.parse('2026-10-15T23:00:00Z');
+        const hour = 3600000;
+        fantasy.fantasyDay = async (league, date) =>
+            date === '2026-10-15' ? { league, date, teams: {}, scoring: {}, games: [{ ...game(1, 'final', 672, 667, 672), date: '2026-10-15T23:00:00Z' }], players: [player(10, 6.5), player(11, 4)] } : fakeDay(league, date);
+        // Metió a 11, le pasó la banda y cambió el pronóstico cuando el juego ya había empezado
+        EXTRA.push({
+            user_id: C,
+            day: '2026-10-15',
+            lineup: [10, 11],
+            captain: 11,
+            picks: { 1: 672 },
+            history: { v: 1, players: { 10: [[start - hour, null]], 11: [[start + 60000, null]] }, captain: [[10, start - hour], [11, start + 60000]], picks: { 1: [[667, start - hour], [672, start + 60000]] } }
+        });
+        const { data } = await fans.fanSummary('lidom', C, { today: TODAY });
+        expect(data.days[0]).toMatchObject({ date: '2026-10-15', lineup: [10], captain: 10, team: 9.8, picks: 0, total: 9.8 });
+        const season = await fans.seasonRanking('lidom', { today: TODAY });
+        expect(season.ranking.find((row) => row.userId === C)).toMatchObject({ points: 9.8, days: 1 });
+        // Se pide con select=* para traer history (y no fallar si la base todavía no tiene la columna)
+        expect(requests.filter((request) => request.path.endsWith('/fantasy_entries')).every((request) => request.search.includes('select=*'))).toBe(true);
+    });
+
     it('un día viejo ya terminado se guarda una semana; hoy, una hora; incompleto, 30 s', () => {
         const done = { games: [game(1, 'final', 672, 667, 672)], players: [] };
         const old = new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10);
@@ -735,6 +759,89 @@ describe('fantasy: perfil del fanático y tabla de la temporada', () => {
         } finally {
             await new Promise((resolve) => server.close(resolve));
         }
+    });
+});
+
+describe('fantasy sin trampas: cada juego con el equipo que había cuando empezó', () => {
+    const { effectiveEntry, lockTime, teamPoints, pickPoints } = require('../services/fantasyScore');
+
+    // Juego 1 a las 17:00 (terminado), juego 2 a las 19:00 (terminado, ganó 669) y juego 3 con hora por definir
+    // (en vivo, primer lanzamiento 23:10). Horas en ms como las escribe la base.
+    const at = (hhmm) => Date.parse(`2026-10-17T${hhmm}:00Z`);
+    const g = (gamePk, date, state, away, home, winner, extra = {}) => ({ gamePk, date, state, startTimeTBD: false, away: { id: away, isWinner: winner === away }, home: { id: home, isWinner: winner === home }, ...extra });
+    const p = (id, role, teamId, gamePk, points) => ({ id, name: `P${id}`, teamId, gamePk, role, pos: role === 'P' ? 'P' : 'SS', starter: true, played: true, line: null, points });
+    const DAY = {
+        league: 'lidom',
+        date: '2026-10-17',
+        teams: {},
+        scoring: { batter: {}, pitcher: {} },
+        games: [
+            g(1, '2026-10-17T17:00:00Z', 'final', 672, 667, 672),
+            g(2, '2026-10-17T19:00:00Z', 'final', 669, 671, 669),
+            g(3, '2026-10-17T23:59:00Z', 'live', 668, 670, null, { startTimeTBD: true, firstPitch: '2026-10-17T23:10:00.000Z' })
+        ],
+        players: [p(10, 'B', 672, 1, 6), p(11, 'B', 669, 2, 4), p(12, 'P', 667, 1, -3), p(13, 'B', 671, 2, 8), p(14, 'B', 668, 3, 2), p(15, 'B', 670, 3, 1), p(16, 'B', 667, 1, 0), p(17, 'B', 671, 2, 5)]
+    };
+    const open = (hhmm) => [[at(hhmm), null]];
+    const entry = (lineup, captain, picks, history) => ({ lineup, captain, picks, savedAt: 1, ...(history ? { history: { v: 1, ...history } } : {}) });
+
+    it('sin historial (lo del teléfono o filas de antes del arreglo) el equipo queda igual', () => {
+        const saved = entry([10, 11], 10, { 1: 672 });
+        expect(effectiveEntry(DAY, saved)).toBe(saved);
+    });
+
+    it('meter a un pelotero después de empezar su juego no cuenta; antes sí', () => {
+        const saved = entry([10, 13], null, {}, { players: { 10: open('16:00'), 13: open('19:30') } });
+        expect(effectiveEntry(DAY, saved).lineup).toEqual([10]);
+        expect(teamPoints(DAY, effectiveEntry(DAY, saved))).toBe(6);
+    });
+
+    it('sacar a uno ya cerrado no lo saca: sigue contando con sus puntos (también los negativos)', () => {
+        const saved = entry([10], null, {}, { players: { 10: open('16:00'), 12: [[at('16:00'), at('18:00')]] } });
+        expect(effectiveEntry(DAY, saved).lineup).toEqual([10, 12]);
+        expect(teamPoints(DAY, effectiveEntry(DAY, saved))).toBe(3);
+        // Sacarlo antes de que empiece sí vale (y volver a meterlo tarde no)
+        const early = entry([10, 12], null, {}, { players: { 10: open('16:00'), 12: [[at('15:00'), at('16:30')], [at('17:30'), null]] } });
+        expect(effectiveEntry(DAY, early).lineup).toEqual([10]);
+    });
+
+    it('capitán: cambiarlo cuando el suyo ya empezó no vale; cambiarlo antes, sí', () => {
+        const players = { 10: open('16:00'), 11: open('16:00') };
+        const late = entry([10, 11], 11, {}, { players, captain: [[10, at('16:00')], [11, at('18:00')]] });
+        expect(effectiveEntry(DAY, late).captain).toBe(10);
+        expect(teamPoints(DAY, effectiveEntry(DAY, late))).toBe(9 + 4);
+        const early = entry([10, 11], 11, {}, { players, captain: [[10, at('16:00')], [11, at('16:30')]] });
+        expect(effectiveEntry(DAY, early).captain).toBe(11);
+        // Ponerle la banda a uno cuyo juego ya empezó: sin capitán
+        const tooLate = entry([10, 11], 11, {}, { players, captain: [[11, at('19:30')]] });
+        expect(effectiveEntry(DAY, tooLate).captain).toBe(null);
+    });
+
+    it('pronósticos: cuenta el que había al empezar cada juego', () => {
+        const saved = entry([], null, { 1: 667, 2: 669 }, { players: {}, picks: { 1: [[672, at('16:00')], [667, at('17:30')]], 2: [[671, at('18:00')], [669, at('18:59')]] } });
+        expect(effectiveEntry(DAY, saved).picks).toEqual({ 1: 672, 2: 669 });
+        expect(pickPoints(DAY, effectiveEntry(DAY, saved))).toBe(20);
+    });
+
+    it('quien quitó a uno cerrado para meter a otro se pasa del cupo: sobra el que entró de último', () => {
+        const players = { 10: [[at('15:00'), at('18:00')]], 11: open('15:00'), 13: open('15:01'), 14: open('15:02'), 15: open('15:03'), 17: open('18:00') };
+        const saved = entry([11, 13, 14, 15, 17], null, {}, { players });
+        // 17 es del mismo equipo que 13 (671) pero el cupo que sobra es el de bateadores
+        expect(effectiveEntry(DAY, saved).lineup).toEqual([11, 13, 14, 15, 10]);
+    });
+
+    it('hora por definir: se cierra con el primer lanzamiento; si no ha empezado, sigue abierto', () => {
+        expect(effectiveEntry(DAY, entry([14], null, {}, { players: { 14: open('23:20') } })).lineup).toEqual([]);
+        expect(effectiveEntry(DAY, entry([14], null, {}, { players: { 14: open('23:00') } })).lineup).toEqual([14]);
+        expect(lockTime({ state: 'preview', date: '2026-10-17T23:59:00Z', startTimeTBD: true })).toBe(Infinity);
+        expect(lockTime({ state: 'live', date: '2026-10-17T23:59:00Z', startTimeTBD: true })).toBe(at('23:59'));
+        // Juego programado que empezó antes de su hora: se cierra con el primer lanzamiento
+        expect(lockTime({ state: 'live', date: '2026-10-17T19:00:00Z', startTimeTBD: false, firstPitch: '2026-10-17T18:55:00Z' })).toBe(at('18:55'));
+    });
+
+    it('fila de antes del arreglo que cambió después (lo viejo con hora 0): lo viejo cuenta, lo tardío no', () => {
+        const saved = entry([10, 13], 10, { 1: 672 }, { players: { 10: [[0, null]], 13: open('19:05') }, captain: [[10, 0]], picks: { 1: [[672, 0]] } });
+        expect(effectiveEntry(DAY, saved)).toMatchObject({ lineup: [10], captain: 10, picks: { 1: 672 } });
     });
 });
 

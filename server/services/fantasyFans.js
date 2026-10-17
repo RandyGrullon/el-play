@@ -172,7 +172,8 @@ const rowsOf = (rows) => {
  * @returns {Promise<{ data: object, live: boolean, partial: boolean }>}
  */
 const fanSummary = async (league, userId, { today = todayIn(RD), deadline = Date.now() + BUDGET_MS } = {}) => {
-    const base = `fantasy_entries?user_id=eq.${userId}&league=eq.${league}&select=day,lineup,captain,picks`;
+    // select=* trae history (el historial antitrampa) si la base ya tiene la columna, y no falla si todavía no
+    const base = `fantasy_entries?user_id=eq.${userId}&league=eq.${league}&select=*`;
     const ranged = seasonRange(league, today);
     const [recent, profiles, range, seasonRows] = await Promise.all([
         // Los últimos días hasta hoy (los de mañana no ocupan cupo)
@@ -198,7 +199,8 @@ const fanSummary = async (league, userId, { today = todayIn(RD), deadline = Date
         .filter((item) => days.has(item.date))
         .map(({ date, entry }) => {
             const result = dayResult(days.get(date), entry);
-            return { date, final: result.final, live: result.live, team: result.team, picks: result.picks, total: result.total, lineup: entry.lineup, captain: entry.captain, picksMade: result.picksMade };
+            // El equipo que cuenta (lo cambiado después de empezar cada juego no sale)
+            return { date, final: result.final, live: result.live, team: result.team, picks: result.picks, total: result.total, lineup: result.lineup, captain: result.captain, picksMade: result.picksMade };
         });
 
     // Temporada: solo días con al menos un juego empezado
@@ -228,7 +230,7 @@ const computeSeason = async (league, today) => {
     if (range.start > range.end) return { data: base, all: [], names: new Map(), ttl: 300 };
 
     // Todas las filas de la temporada, de la más nueva a la más vieja: si pasan de 10000 se quedan fuera los días viejos y partial lo dice
-    const { rows, cut } = await allRows(`fantasy_entries?league=eq.${league}&day=gte.${range.start}&day=lte.${range.end}&select=user_id,day,lineup,captain,picks&order=day.desc,user_id.asc`, MAX_ROWS);
+    const { rows, cut } = await allRows(`fantasy_entries?league=eq.${league}&day=gte.${range.start}&day=lte.${range.end}&select=*&order=day.desc,user_id.asc`, MAX_ROWS);
     if (cut) console.warn(`[fantasyFans] ${league}: la temporada pasa de ${MAX_ROWS} filas, se cuentan solo las más nuevas`);
     const entries = rowsOf(rows).filter((item) => item.userId && item.date >= range.start && item.date <= range.end);
 

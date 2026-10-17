@@ -24,6 +24,8 @@ export interface FantasyPlayer {
 
 export interface FantasyGame extends ScheduleGame {
     state: ScheduleGame['state'];
+    /** Primer lanzamiento (solo juegos empezados en vivo): con la hora por definir, ahí se cierra */
+    firstPitch?: string;
 }
 
 export interface FantasyDay {
@@ -37,11 +39,24 @@ export interface FantasyDay {
 
 export const RULES = { batters: 5, pitchers: 1, perTeam: 2, captain: 1.5, pick: 10 };
 
+/**
+ * Historial que escribe la base con su hora (supabase/2026-10-17-antitrampa.sql), en ms; 0 = de antes del arreglo.
+ * players: tramos [entró, salió o null]; captain y picks: cambios [valor, cuándo].
+ */
+export interface EntryHistory {
+    v: number;
+    players: Record<string, [number, number | null][]>;
+    captain?: [number | null, number][];
+    picks?: Record<string, [number | null, number][]>;
+}
+
 export interface DayEntry {
     lineup: number[];
     captain: number | null;
     picks: Record<string, number>;
     savedAt: number;
+    /** Solo en los equipos que vienen de Supabase */
+    history?: EntryHistory | null;
     /** Cuando el día terminó: puntos finales (para el historial sin volver a pedir el día) */
     result?: { team: number; picks: number };
 }
@@ -243,6 +258,71 @@ export const setPick = (day: FantasyDay, game: FantasyGame, teamId: number, now 
     if (gameStarted(game, now)) return false;
     update(day.league, day.date, (value) => ({ ...value, picks: { ...value.picks, [game.gamePk]: teamId } }));
     return true;
+};
+
+// ---------------------------------------------------------------- sin trampas
+// Igual que server/services/fantasyScore.js: si cambia allá, cambia aquí.
+
+/**
+ * Hora (ms) en que se cierra un juego: la programada (o el primer lanzamiento si fue antes). Con la hora por definir,
+ * el primer lanzamiento; si ya empezó y MLB no lo dio, la hora que traiga. Si no ha empezado, sigue abierto.
+ */
+export const lockTime = (game: Pick<FantasyGame, 'state' | 'date' | 'startTimeTBD' | 'firstPitch'>) => {
+    const first = Date.parse(game.firstPitch ?? '');
+    const scheduled = game.startTimeTBD ? NaN : Date.parse(game.date ?? '');
+    const times = [first, scheduled].filter(Number.isFinite);
+    if (times.length) return Math.min(...times);
+    const placeholder = Date.parse(game.date ?? '');
+    return game.state !== 'preview' && Number.isFinite(placeholder) ? placeholder : Infinity;
+};
+
+/** Valor vigente justo antes de `at` en una lista de cambios [[valor, cuándo], ...] (undefined si no había) */
+function valueAt<T>(changes: [T, number][] | undefined, at: number): T | undefined {
+    let value: T | undefined;
+    for (const change of Array.isArray(changes) ? changes : []) {
+        if (Array.isArray(change) && Number(change[1]) < at) value = change[0];
+    }
+    return value;
+}
+
+/** Tramo en el que estaba en el equipo cuando se cerró su juego (entró antes y no había salido) */
+const spanAt = (spans: [number, number | null][] | undefined, at: number) =>
+    (Array.isArray(spans) ? spans : []).find((span) => Array.isArray(span) && Number(span[0]) < at && (span[1] === null || span[1] === undefined || Number(span[1]) >= at));
+
+/**
+ * El equipo que cuenta: cada pelotero si estaba cuando empezó su juego, el capitán que había cuando empezó el suyo
+ * (el primero que se cerró: cambiarlo después no vale) y cada pronóstico como estaba al empezar su juego.
+ * Si alguien se pasa de los cupos (quitó a uno ya cerrado para meter a otro), sobran los que entraron de último.
+ * Sin historial (lo del teléfono o filas de antes del arreglo) el equipo queda como está.
+ */
+export const effectiveEntry = (day: FantasyDay, entry: DayEntry): DayEntry => {
+    const history = entry.history;
+    if (!history || typeof history !== 'object' || !history.players || typeof history.players !== 'object') return entry;
+    const locks = new Map(day.games.map((game) => [String(game.gamePk), lockTime(game)]));
+    const counted: { player: FantasyPlayer; lock: number; added: number }[] = [];
+    for (const [key, spans] of Object.entries(history.players)) {
+        const player = day.players.find((p) => String(p.id) === key);
+        if (!player) continue;
+        const lock = locks.get(String(player.gamePk)) ?? Infinity;
+        const span = spanAt(spans, lock);
+        if (span) counted.push({ player, lock, added: Number(span[0]) });
+    }
+    counted.sort((a, b) => a.added - b.added || a.player.id - b.player.id);
+    const kept: typeof counted = [];
+    for (const item of counted) {
+        const sameRole = kept.filter((k) => k.player.role === item.player.role).length;
+        const sameTeam = kept.filter((k) => k.player.teamId === item.player.teamId).length;
+        if (sameRole < (item.player.role === 'P' ? RULES.pitchers : RULES.batters) && sameTeam < RULES.perTeam) kept.push(item);
+    }
+    const order = (id: number) => (entry.lineup.includes(id) ? entry.lineup.indexOf(id) : entry.lineup.length);
+    const lineup = kept.map((item) => item.player.id).sort((a, b) => order(a) - order(b));
+    const captains = kept.filter((item) => valueAt(history.captain, item.lock) === item.player.id).sort((a, b) => a.lock - b.lock);
+    const picks: Record<string, number> = {};
+    for (const game of day.games) {
+        const pick = valueAt(history.picks?.[game.gamePk], locks.get(String(game.gamePk)) ?? Infinity);
+        if (pick) picks[game.gamePk] = pick;
+    }
+    return { ...entry, lineup, captain: captains[0]?.player.id ?? null, picks };
 };
 
 // ---------------------------------------------------------------- puntos

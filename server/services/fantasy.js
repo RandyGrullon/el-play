@@ -173,7 +173,9 @@ const fantasyDay = async (leagueKey, date) => {
                     if (lastDoc) add(playersFromFeed(lastDoc, game.gamePk, false).filter((player) => player.teamId === teamId), false);
                 }
             }
-            return { ...transformScheduleGame(game, leagueKey), state };
+            // Primer lanzamiento (del feed de un juego en vivo): con la hora por definir, ahí se cierra el juego en el fantasy
+            const firstPitch = state !== 'preview' ? doc?.gameData?.gameInfo?.firstPitch : undefined;
+            return { ...transformScheduleGame(game, leagueKey), state, ...(firstPitch ? { firstPitch } : {}) };
         })
     );
 

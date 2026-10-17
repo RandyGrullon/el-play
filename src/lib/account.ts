@@ -4,7 +4,7 @@
 // Se activa con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en Vercel; las tablas están en supabase/fantasy.sql.
 import { useSyncExternalStore } from 'react';
 import type { LeagueId } from '../types';
-import { getStore, replaceStore, setStoreOwner, takeLegacyStore, type DayEntry } from './fantasy';
+import { getStore, replaceStore, setStoreOwner, takeLegacyStore, type DayEntry, type EntryHistory } from './fantasy';
 
 const URL_BASE: string | undefined = import.meta.env.VITE_SUPABASE_URL || undefined;
 const ANON: string | undefined = import.meta.env.VITE_SUPABASE_ANON_KEY || undefined;
@@ -470,6 +470,8 @@ interface EntryRow {
     captain: number | null;
     picks: Record<string, number>;
     saved_at: number;
+    /** Lo escribe la base (antitrampa); no viene si todavía no se corrió el SQL */
+    history?: EntryHistory | null;
     profiles?: { display_name: string | null } | null;
 }
 
@@ -520,14 +522,17 @@ export interface Rival {
     entry: DayEntry;
 }
 
-/** Todos los equipos de un día (de una liga privada si se pasa `members`) */
+/**
+ * Todos los equipos de un día (de una liga privada si se pasa `members`), con su historial para puntuar solo lo que
+ * había al empezar cada juego (effectiveEntry). select=* trae history si la base ya lo tiene y no falla si todavía no.
+ */
 export const dayEntries = async (league: LeagueId, day: string, members?: string[]): Promise<Rival[]> => {
     const filter = members?.length ? `&user_id=in.(${members.join(',')})` : '';
-    const rows = await rest<EntryRow[]>(`fantasy_entries?league=eq.${league}&day=eq.${day}${filter}&select=user_id,lineup,captain,picks,saved_at,profiles(display_name)&limit=500`);
+    const rows = await rest<EntryRow[]>(`fantasy_entries?league=eq.${league}&day=eq.${day}${filter}&select=*,profiles(display_name)&limit=500`);
     return (rows || []).map((row) => ({
         userId: row.user_id,
         name: row.profiles?.display_name || null,
-        entry: { lineup: row.lineup || [], captain: row.captain, picks: row.picks || {}, savedAt: row.saved_at }
+        entry: { lineup: row.lineup || [], captain: row.captain, picks: row.picks || {}, savedAt: row.saved_at, history: row.history ?? null }
     }));
 };
 
