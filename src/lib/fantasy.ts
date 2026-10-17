@@ -1,5 +1,5 @@
 // Fantasy de El Play: cada día armas tu equipo (5 bateadores y 1 lanzador de los juegos de ese día, máximo 2 por
-// equipo, un capitán que suma ×1,5) y pronosticas quién gana cada juego. Cada pelotero se cierra cuando empieza su
+// equipo, sin pasarte de los créditos del día, un capitán que suma ×1,5) y pronosticas quién gana cada juego. Cada pelotero se cierra cuando empieza su
 // juego. Para jugar hace falta cuenta (Supabase): el equipo vive en la cuenta y el teléfono guarda una copia por usuario.
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, useSyncExternalStore } from 'react';
@@ -20,6 +20,8 @@ export interface FantasyPlayer {
     played: boolean;
     line: FantasyLine | null;
     points: number;
+    /** Créditos que cuesta ese día (solo los días que se juegan con créditos) */
+    price?: number;
 }
 
 export interface FantasyGame extends ScheduleGame {
@@ -35,9 +37,11 @@ export interface FantasyDay {
     teams: Record<string, { id: number; abbrev: string; color: string; logo: string }>;
     players: FantasyPlayer[];
     scoring: { batter: Record<string, number>; pitcher: Record<string, number> };
+    /** Días con créditos: presupuesto del equipo y rango de precios (el servidor pone los precios) */
+    credits?: { budget: number; min: number; max: number };
 }
 
-export const RULES = { batters: 5, pitchers: 1, perTeam: 2, captain: 1.5, pick: 10 };
+export const RULES = { batters: 5, pitchers: 1, perTeam: 2, captain: 1.5, pick: 10, budget: 50 };
 
 /**
  * Historial que escribe la base con su hora (supabase/2026-10-17-antitrampa.sql), en ms; 0 = de antes del arreglo.
@@ -217,7 +221,16 @@ export const isLocked = (day: FantasyDay, player: Pick<FantasyPlayer, 'gamePk'>,
     return !!game && gameStarted(game, now);
 };
 
-export type AddProblem = 'locked' | 'full' | 'team' | 'already' | null;
+export type AddProblem = 'locked' | 'full' | 'team' | 'budget' | 'already' | null;
+
+const priceOf = (player: Pick<FantasyPlayer, 'price'> | undefined) => (player && Number.isFinite(player.price) ? player.price! : 0);
+
+/** Lo que cuesta un equipo con los precios del día */
+export const entryCost = (day: FantasyDay, entry: Pick<DayEntry, 'lineup'>) =>
+    Math.round(entry.lineup.reduce((sum, id) => sum + priceOf(day.players.find((p) => p.id === id)), 0) * 10) / 10;
+
+/** Créditos que quedan (null si el día no se juega con créditos) */
+export const creditsLeft = (day: FantasyDay, entry: Pick<DayEntry, 'lineup'>) => (day.credits ? Math.round((day.credits.budget - entryCost(day, entry)) * 10) / 10 : null);
 
 export const canAdd = (day: FantasyDay, entry: DayEntry, player: FantasyPlayer, now = Date.now()): AddProblem => {
     if (entry.lineup.includes(player.id)) return 'already';
@@ -226,6 +239,8 @@ export const canAdd = (day: FantasyDay, entry: DayEntry, player: FantasyPlayer, 
     const sameRole = chosen.filter((p) => p.role === player.role).length;
     if (sameRole >= (player.role === 'P' ? RULES.pitchers : RULES.batters)) return 'full';
     if (chosen.filter((p) => p.teamId === player.teamId).length >= RULES.perTeam) return 'team';
+    const left = creditsLeft(day, entry);
+    if (left !== null && priceOf(player) > left + 1e-9) return 'budget';
     return null;
 };
 
@@ -289,15 +304,39 @@ function valueAt<T>(changes: [T, number][] | undefined, at: number): T | undefin
 const spanAt = (spans: [number, number | null][] | undefined, at: number) =>
     (Array.isArray(spans) ? spans : []).find((span) => Array.isArray(span) && Number(span[0]) < at && (span[1] === null || span[1] === undefined || Number(span[1]) >= at));
 
+/** Cabe en el equipo (en el orden en que entraron): cupo de su rol, máximo por equipo y presupuesto */
+const fits = (kept: FantasyPlayer[], player: FantasyPlayer, budget: number | null) => {
+    const sameRole = kept.filter((k) => k.role === player.role).length;
+    const sameTeam = kept.filter((k) => k.teamId === player.teamId).length;
+    const spent = kept.reduce((sum, k) => sum + priceOf(k), 0);
+    return sameRole < (player.role === 'P' ? RULES.pitchers : RULES.batters) && sameTeam < RULES.perTeam && (budget === null || spent + priceOf(player) <= budget + 1e-9);
+};
+
 /**
  * El equipo que cuenta: cada pelotero si estaba cuando empezó su juego, el capitán que había cuando empezó el suyo
  * (el primero que se cerró: cambiarlo después no vale) y cada pronóstico como estaba al empezar su juego.
- * Si alguien se pasa de los cupos (quitó a uno ya cerrado para meter a otro), sobran los que entraron de último.
- * Sin historial (lo del teléfono o filas de antes del arreglo) el equipo queda como está.
+ * Si alguien se pasa de los cupos o del presupuesto (quitó a uno ya cerrado para meter a otro, o los precios
+ * cambiaron), sobran los que entraron de último. Sin historial (lo del teléfono o filas de antes del arreglo) cuenta
+ * el orden de la alineación.
  */
 export const effectiveEntry = (day: FantasyDay, entry: DayEntry): DayEntry => {
     const history = entry.history;
-    if (!history || typeof history !== 'object' || !history.players || typeof history.players !== 'object') return entry;
+    const budget = day.credits ? day.credits.budget : null;
+    if (!history || typeof history !== 'object' || !history.players || typeof history.players !== 'object') {
+        if (budget === null) return entry;
+        const kept: FantasyPlayer[] = [];
+        const lineup: number[] = [];
+        for (const id of entry.lineup) {
+            const player = day.players.find((p) => p.id === id);
+            if (!player) lineup.push(id);
+            else if (fits(kept, player, budget)) {
+                kept.push(player);
+                lineup.push(id);
+            }
+        }
+        if (lineup.length === entry.lineup.length) return entry;
+        return { ...entry, lineup, captain: entry.captain !== null && lineup.includes(entry.captain) ? entry.captain : null };
+    }
     const locks = new Map(day.games.map((game) => [String(game.gamePk), lockTime(game)]));
     const counted: { player: FantasyPlayer; lock: number; added: number }[] = [];
     for (const [key, spans] of Object.entries(history.players)) {
@@ -310,9 +349,7 @@ export const effectiveEntry = (day: FantasyDay, entry: DayEntry): DayEntry => {
     counted.sort((a, b) => a.added - b.added || a.player.id - b.player.id);
     const kept: typeof counted = [];
     for (const item of counted) {
-        const sameRole = kept.filter((k) => k.player.role === item.player.role).length;
-        const sameTeam = kept.filter((k) => k.player.teamId === item.player.teamId).length;
-        if (sameRole < (item.player.role === 'P' ? RULES.pitchers : RULES.batters) && sameTeam < RULES.perTeam) kept.push(item);
+        if (fits(kept.map((k) => k.player), item.player, budget)) kept.push(item);
     }
     const order = (id: number) => (entry.lineup.includes(id) ? entry.lineup.indexOf(id) : entry.lineup.length);
     const lineup = kept.map((item) => item.player.id).sort((a, b) => order(a) - order(b));

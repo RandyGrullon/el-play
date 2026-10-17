@@ -3,6 +3,7 @@ const http = require('./http');
 const { getLiveFeed } = require('./liveFeed');
 const { transformScheduleGame, gameState } = require('../utils/transformers');
 const { teamAbbrev, teamColor, teamLogo } = require('../utils/teams');
+const { CREDITS, CREDITS_FROM, dayPrices } = require('./fantasyPrices');
 
 // Fantasy de El Play: los puntos de cada pelotero en un día salen del box score de MLB de sus juegos.
 // El servidor los calcula (una sola regla para todos); la app arma el equipo y suma.
@@ -185,6 +186,24 @@ const fantasyDay = async (leagueKey, date) => {
         .filter((player) => gameOfTeam.has(player.teamId))
         .map((player) => ({ ...player, gamePk: player.line ? player.gamePk : gameOfTeam.get(player.teamId) }));
 
+    // Créditos: el precio de cada pelotero en el día (sin datos suficientes, ese día no hay tope)
+    let credits = null;
+    let pricesFailed = false;
+    if (day >= CREDITS_FROM) {
+        try {
+            const table = await dayPrices(league.id, day, { batterPoints, pitcherPoints });
+            if (table) {
+                const prices = { B: new Map(table.prices.B), P: new Map(table.prices.P) };
+                for (const player of list) player.price = prices[player.role === 'P' ? 'P' : 'B'].get(player.id) ?? CREDITS.unknown;
+                credits = { budget: table.budget, min: CREDITS.min, max: CREDITS.max };
+            }
+        } catch (problem) {
+            // Sin precios no se puede armar con tope: el día sale incompleto y se vuelve a pedir pronto
+            console.warn(`[fantasy] precios ${league.id} ${day}: ${problem.message}`);
+            pricesFailed = true;
+        }
+    }
+
     return {
         league: leagueKey,
         date: day,
@@ -194,7 +213,8 @@ const fantasyDay = async (leagueKey, date) => {
         ),
         players: list,
         scoring: SCORING,
-        ...(missing ? { incomplete: true } : {})
+        ...(credits ? { credits } : {}),
+        ...(missing || pricesFailed ? { incomplete: true } : {})
     };
 };
 

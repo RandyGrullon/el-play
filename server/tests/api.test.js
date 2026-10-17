@@ -845,6 +845,82 @@ describe('fantasy sin trampas: cada juego con el equipo que había cuando empez�
     });
 });
 
+describe('fantasy con créditos: precio por pelotero y tope del equipo', () => {
+    const { effectiveEntry, entryCost } = require('../services/fantasyScore');
+    const prices = require('../services/fantasyPrices');
+    const fantasy = require('../services/fantasy');
+
+    const p = (id, role, teamId, price, points = 1) => ({ id, name: `P${id}`, teamId, gamePk: 1, role, pos: role === 'P' ? 'P' : 'SS', starter: true, played: true, line: null, points, price });
+    const day = (credits = { budget: 50, min: 4, max: 12 }) => ({
+        league: 'lidom',
+        date: '2026-10-18',
+        teams: {},
+        scoring: {},
+        games: [{ gamePk: 1, date: '2026-10-18T23:00:00Z', state: 'preview', startTimeTBD: false, away: { id: 1 }, home: { id: 2 } }],
+        players: [p(1, 'B', 1, 12), p(2, 'B', 2, 12), p(3, 'B', 3, 12), p(4, 'B', 4, 12), p(5, 'B', 5, 4), p(6, 'P', 6, 6)],
+        ...(credits ? { credits } : {})
+    });
+
+    it('lo que cuesta un equipo', () => {
+        expect(entryCost(day(), { lineup: [1, 2, 5, 6, 999] })).toBe(34);
+    });
+
+    it('sin historial: si se pasa del presupuesto sobran los últimos de la alineación (y su banda de capitán)', () => {
+        const saved = { lineup: [1, 2, 3, 4, 5, 6], captain: 6, picks: {} };
+        // 12×4 = 48; el 5 (4) ya no cabe y el lanzador (6) tampoco
+        expect(effectiveEntry(day(), saved)).toEqual({ lineup: [1, 2, 3, 4], captain: null, picks: {} });
+        // Un día sin créditos queda igual
+        expect(effectiveEntry(day(null), saved)).toBe(saved);
+        // Dentro del presupuesto queda igual
+        const fine = { lineup: [1, 5, 6], captain: 1, picks: {} };
+        expect(effectiveEntry(day(), fine)).toBe(fine);
+    });
+
+    it('con historial: sobra el que entró de último aunque esté antes en la alineación', () => {
+        const history = { v: 1, players: { 1: [[1, null]], 2: [[2, null]], 3: [[3, null]], 6: [[4, null]], 4: [[5, null]], 5: [[6, null]] } };
+        // Entraron 1, 2, 3 (36), el lanzador 6 (42), el 4 (54: no cabe) y el 5 (46)
+        const saved = { lineup: [4, 1, 2, 3, 5, 6], captain: 4, picks: {}, history };
+        expect(effectiveEntry(day(), saved)).toMatchObject({ lineup: [1, 2, 3, 5, 6], captain: null });
+    });
+
+    it('precio por percentil dentro del rol: de 4 a 12, de medio en medio, y la temporada pasada vale la mitad', () => {
+        const current = new Map([[10, { points: 30, games: 3 }], [11, { points: 3, games: 3 }], [12, { points: 15, games: 3 }]]);
+        const previous = new Map([[13, { points: 100, games: 40 }], [11, { points: 20, games: 40 }]]);
+        const table = prices.priceTable(current, previous);
+        expect(table.get(10)).toBe(12);
+        expect(Math.min(...table.values())).toBe(4);
+        expect([...table.values()].every((value) => value * 2 === Math.round(value * 2) && value >= 4 && value <= 12)).toBe(true);
+        expect(table.get(10)).toBeGreaterThan(table.get(12));
+        expect(table.get(12)).toBeGreaterThan(table.get(11));
+    });
+
+    it('precios del día con las estadísticas hasta ayer, y sin datos suficientes no hay créditos', async () => {
+        const realGet = http.mlbGet;
+        const calls = [];
+        const split = (id, stat) => ({ player: { id }, stat });
+        http.mlbGet = async (url, params) => {
+            calls.push(params);
+            const many = (group) =>
+                Array.from({ length: 30 }, (_, i) => split(100 + i, group === 'hitting' ? { gamesPlayed: 10, hits: i, homeRuns: 0, runs: 0, rbi: 0 } : { gamesPitched: 5, outs: i * 3, strikeOuts: i }));
+            return { stats: [{ splits: params.stats === 'season' ? many(params.group) : [] }] };
+        };
+        try {
+            const table = await prices.dayPrices('lidom', '2026-10-15', { batterPoints: fantasy.batterPoints, pitcherPoints: fantasy.pitcherPoints });
+            expect(table.budget).toBe(50);
+            const range = calls.filter((c) => c.stats === 'byDateRange');
+            expect(range.every((c) => c.startDate === '2026-09-01' && c.endDate === '2026-10-14' && c.season === 2026)).toBe(true);
+            expect(calls.filter((c) => c.stats === 'season').every((c) => c.season === 2025)).toBe(true);
+            expect(new Map(table.prices.B).get(129)).toBe(12);
+            expect(new Map(table.prices.B).get(100)).toBe(4);
+
+            http.mlbGet = async () => ({ stats: [{ splits: [] }] });
+            expect(await prices.dayPrices('lidom', '2026-10-16', { batterPoints: fantasy.batterPoints, pitcherPoints: fantasy.pitcherPoints })).toBe(null);
+        } finally {
+            http.mlbGet = realGet;
+        }
+    });
+});
+
 describe('estadísticas de jugadores', () => {
     const { hittingOf, pitchingOf, pointsOf, fetchPlayers } = require('../services/players');
 

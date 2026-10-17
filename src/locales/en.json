@@ -611,7 +611,8 @@
       "fullB": "You already have 5 hitters",
       "fullP": "You already have your pitcher",
       "team": "You already have {{n}} from this team",
-      "already": "Already on your team"
+      "already": "Already on your team",
+      "budget": "Not enough credits ({{left}} left)"
     },
     "captainRule": "Your captain scores ×{{x}}.",
     "pickRule": "Each correct pick: +{{pts}}.",
@@ -658,7 +659,7 @@
       "eyebrow": "El Play Fantasy",
       "title": "Build your baseball team every day",
       "lead": "Pick players from the day's games and score with every real hit, homer and strikeout.",
-      "step1": "Pick {{batters}} batters and 1 pitcher (up to {{perTeam}} per team).",
+      "step1": "Pick {{batters}} batters and 1 pitcher with {{budget}} credits (up to {{perTeam}} per team).",
       "step2": "Tap the crown: your captain scores ×{{x}}.",
       "step3": "Pick the winner of each game (+{{pts}}) and take on your friends in private leagues.",
       "joinTitle": "Sign in to play",
@@ -721,7 +722,20 @@
       "pickedOwn": "(your pick)",
       "viewOwnProfile": "View your profile",
       "outsideTop": "Outside the season's top {{n}}"
-    }
+    },
+    "credits": {
+      "label": "Credits",
+      "spent": "{{spent}} of {{budget}}",
+      "left": "{{left}} credits left",
+      "over": "You're {{over}} credits over: drop or swap someone before their game starts. Otherwise the last player you added won't count.",
+      "rule": "You get {{budget}} credits per day. Each player costs {{min}} to {{max}} based on what he has scored this season through yesterday.",
+      "price": "{{price}} cr",
+      "priceLong": "Costs {{price}} credits",
+      "pickerLeft": "{{left}} of {{budget}} credits left",
+      "short_one": "{{left}} credits left and {{count}} player still to pick (the cheapest costs {{min}}): swap a pricey player for a cheaper one.",
+      "short_other": "{{left}} credits left and {{count}} players still to pick (the cheapest costs {{min}}): swap a pricey player for a cheaper one."
+    },
+    "rulesShortCredits": "Pick {{batters}} hitters and 1 pitcher from the day's games (max {{perTeam}} per team) without going over your credits. Tap the crown for your captain. Each player locks when his game starts."
   },
   "account": {
     "title": "Your account",

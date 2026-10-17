@@ -4,7 +4,7 @@ import { atBatForZone, arsenal, battedBalls, battersFaced, pitchesByPitcher, des
 import { dayKey, dayRange, seasonLabel } from './format';
 import { nameKey, photoSources } from './photos';
 import { newPlayEvents, outVariant, titleClinch } from './playEvents';
-import { canAdd, effectiveEntry, fantasyInterval, gameStarted, getStore, isLocked, lockTime, nextLockAt, pickPoints, replaceStore, setPick, setStoreOwner, takeLegacyStore, teamPoints, unsettledDays, type DayEntry, type EntryHistory, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
+import { canAdd, creditsLeft, effectiveEntry, entryCost, fantasyInterval, gameStarted, getStore, isLocked, lockTime, nextLockAt, pickPoints, replaceStore, setPick, setStoreOwner, takeLegacyStore, teamPoints, unsettledDays, type DayEntry, type EntryHistory, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
 import { SORTS, normalize, sortPlayers, type PlayerRow } from './stats';
 import { battingAdvanced, fmtPct, fmtRate, pitchingAdvanced, pythagorean } from './advanced';
 import { showAlert } from '../hooks/useGameAlerts';
@@ -346,6 +346,40 @@ describe('fantasy sin trampas (igual que el servidor)', () => {
     it('fila de antes del arreglo que cambió después (lo viejo con hora 0): lo viejo cuenta, lo tardío no', () => {
         const saved = entry([10, 13], 10, { 1: 672 }, { players: { 10: [[0, null]], 13: open('19:05') }, captain: [[10, 0]], picks: { 1: [[672, 0]] } });
         expect(effectiveEntry(DAY, saved)).toMatchObject({ lineup: [10], captain: 10, picks: { 1: 672 } });
+    });
+});
+
+describe('fantasy con créditos (igual que el servidor)', () => {
+    const p = (id: number, role: 'B' | 'P', teamId: number, price: number): FantasyPlayer => ({ id, name: `P${id}`, teamId, gamePk: 1, role, pos: role === 'P' ? 'P' : 'SS', starter: true, played: false, line: null, points: 0, price });
+    const day = (credits: FantasyDay['credits'] | null = { budget: 50, min: 4, max: 12 }) =>
+        ({
+            league: 'lidom',
+            date: '2026-10-18',
+            teams: {},
+            scoring: { batter: {}, pitcher: {} },
+            games: [{ gamePk: 1, date: '2099-10-18T23:00:00Z', state: 'preview', startTimeTBD: false, away: { id: 1 }, home: { id: 2 } }],
+            players: [p(1, 'B', 1, 12), p(2, 'B', 2, 12), p(3, 'B', 3, 12), p(4, 'B', 4, 12), p(5, 'B', 5, 4), p(6, 'P', 6, 6)],
+            ...(credits ? { credits } : {})
+        }) as unknown as FantasyDay;
+    const entry = (lineup: number[], captain: number | null = null): DayEntry => ({ lineup, captain, picks: {}, savedAt: 1 });
+
+    it('cuánto cuesta y cuánto queda', () => {
+        expect(entryCost(day(), entry([1, 2, 5, 6]))).toBe(34);
+        expect(creditsLeft(day(), entry([1, 2, 5, 6]))).toBe(16);
+        expect(creditsLeft(day(null), entry([1]))).toBe(null);
+    });
+
+    it('no deja agregar a quien no alcanza; sin créditos ese día, sí', () => {
+        const d = day();
+        expect(canAdd(d, entry([1, 2, 5]), d.players[5])).toBe(null); // 28 + 6 = 34
+        expect(canAdd(d, entry([1, 2, 3, 4]), d.players[5])).toBe('budget'); // 48 + 6 = 54
+        expect(canAdd(day(null), entry([1, 2, 3, 4]), day(null).players[5])).toBe(null);
+    });
+
+    it('el equipo que cuenta respeta el presupuesto (sobran los últimos)', () => {
+        expect(effectiveEntry(day(), entry([1, 2, 3, 4, 5, 6], 6))).toMatchObject({ lineup: [1, 2, 3, 4], captain: null });
+        const fine = entry([1, 5, 6], 1);
+        expect(effectiveEntry(day(), fine)).toBe(fine);
     });
 });
 

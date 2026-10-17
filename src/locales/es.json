@@ -611,7 +611,8 @@
       "fullB": "Ya tienes tus 5 bateadores",
       "fullP": "Ya tienes tu lanzador",
       "team": "Ya tienes {{n}} de este equipo",
-      "already": "Ya está en tu equipo"
+      "already": "Ya está en tu equipo",
+      "budget": "No te alcanzan los créditos (te quedan {{left}})"
     },
     "captainRule": "El capitán suma ×{{x}}.",
     "pickRule": "Cada pronóstico acertado: +{{pts}}.",
@@ -658,7 +659,7 @@
       "eyebrow": "El Play Fantasy",
       "title": "Arma tu equipo de pelota cada día",
       "lead": "Escoge peloteros de los juegos del día y suma con cada hit, jonrón y ponche de verdad.",
-      "step1": "Escoge {{batters}} bateadores y 1 lanzador (máximo {{perTeam}} por equipo).",
+      "step1": "Escoge {{batters}} bateadores y 1 lanzador con {{budget}} créditos (máximo {{perTeam}} por equipo).",
       "step2": "Toca la corona: tu capitán suma ×{{x}}.",
       "step3": "Pronostica quién gana cada juego (+{{pts}}) y compite con tus panas en ligas privadas.",
       "joinTitle": "Entra para jugar",
@@ -721,7 +722,20 @@
       "pickedOwn": "(tu pronóstico)",
       "viewOwnProfile": "Ver tu perfil",
       "outsideTop": "Fuera del top {{n}} de la temporada"
-    }
+    },
+    "credits": {
+      "label": "Créditos",
+      "spent": "{{spent}} de {{budget}}",
+      "left": "Te quedan {{left}} créditos",
+      "over": "Te pasaste por {{over}} créditos: quita o cambia a alguien antes de que empiece su juego. Si no, el último que entró no cuenta.",
+      "rule": "Tienes {{budget}} créditos por día. Cada pelotero cuesta de {{min}} a {{max}} según lo que ha sumado en la temporada hasta ayer.",
+      "price": "{{price}} cr",
+      "priceLong": "Cuesta {{price}} créditos",
+      "pickerLeft": "Te quedan {{left}} de {{budget}} créditos",
+      "short_one": "Te quedan {{left}} créditos y te falta {{count}} pelotero (el más barato cuesta {{min}}): cambia a alguien caro por uno más barato.",
+      "short_other": "Te quedan {{left}} créditos y te faltan {{count}} peloteros (el más barato cuesta {{min}}): cambia a alguien caro por uno más barato."
+    },
+    "rulesShortCredits": "Escoge {{batters}} bateadores y 1 lanzador de los juegos del día (máximo {{perTeam}} por equipo) sin pasarte de tus créditos. Toca la corona para tu capitán. Cada pelotero se cierra cuando empieza su juego."
   },
   "account": {
     "title": "Tu cuenta",
