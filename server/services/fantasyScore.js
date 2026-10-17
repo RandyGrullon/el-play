@@ -43,6 +43,15 @@ const valueAt = (changes, at) => {
 const spanAt = (spans, at) =>
     (Array.isArray(spans) ? spans : []).find((span) => Array.isArray(span) && Number(span[0]) < at && (span[1] === null || span[1] === undefined || Number(span[1]) >= at));
 
+/**
+ * Máximo por equipo del día: 2, salvo que haya pocos equipos jugando. Con un solo juego (Serie Final, eliminatorias,
+ * final de la Serie del Caribe) dos equipos no alcanzan para 6 peloteros con 2 cada uno: sube a 3. Igual en la app.
+ */
+const perTeamLimit = (day) => {
+    const teams = new Set((day?.games ?? []).flatMap((game) => [game.away?.id, game.home?.id]).filter(Boolean)).size;
+    return teams ? Math.max(RULES.perTeam, Math.ceil((RULES.batters + RULES.pitchers) / teams)) : RULES.perTeam;
+};
+
 /** Presupuesto del día (null si ese día no se juega con créditos) */
 const budgetOf = (day) => (day?.credits && Number.isFinite(day.credits.budget) ? day.credits.budget : null);
 const priceOf = (player) => (Number.isFinite(player?.price) ? player.price : 0);
@@ -51,11 +60,11 @@ const priceOf = (player) => (Number.isFinite(player?.price) ? player.price : 0);
 const entryCost = (day, entry) => round1(entry.lineup.reduce((sum, id) => sum + priceOf(day.players.find((p) => p.id === id)), 0));
 
 /** Cabe en el equipo (en el orden en que entraron): cupo de su rol, máximo por equipo y presupuesto */
-const fits = (kept, player, budget) => {
+const fits = (kept, player, budget, perTeam) => {
     const sameRole = kept.filter((k) => k.role === player.role).length;
     const sameTeam = kept.filter((k) => k.teamId === player.teamId).length;
     const spent = kept.reduce((sum, k) => sum + priceOf(k), 0);
-    return sameRole < (player.role === 'P' ? RULES.pitchers : RULES.batters) && sameTeam < RULES.perTeam && (budget === null || spent + priceOf(player) <= budget + 1e-9);
+    return sameRole < (player.role === 'P' ? RULES.pitchers : RULES.batters) && sameTeam < perTeam && (budget === null || spent + priceOf(player) <= budget + 1e-9);
 };
 
 /**
@@ -75,7 +84,7 @@ const effectiveEntry = (day, entry) => {
         for (const id of entry.lineup) {
             const player = day.players.find((p) => p.id === id);
             if (!player) lineup.push(id);
-            else if (fits(kept, player, budget)) {
+            else if (fits(kept, player, budget, perTeamLimit(day))) {
                 kept.push(player);
                 lineup.push(id);
             }
@@ -95,7 +104,7 @@ const effectiveEntry = (day, entry) => {
     counted.sort((a, b) => a.added - b.added || a.player.id - b.player.id);
     const kept = [];
     for (const item of counted) {
-        if (fits(kept.map((k) => k.player), item.player, budget)) kept.push(item);
+        if (fits(kept.map((k) => k.player), item.player, budget, perTeamLimit(day))) kept.push(item);
     }
     const order = (id) => (entry.lineup.includes(id) ? entry.lineup.indexOf(id) : entry.lineup.length);
     const lineup = kept.map((item) => item.player.id).sort((a, b) => order(a) - order(b));
@@ -151,4 +160,4 @@ const dayResult = (day, saved) => {
     };
 };
 
-module.exports = { RULES, round1, toEntry, lockTime, entryCost, effectiveEntry, hasPlay, playerScore, teamPoints, pickPoints, dayStarted, dayResult };
+module.exports = { RULES, round1, toEntry, lockTime, perTeamLimit, entryCost, effectiveEntry, hasPlay, playerScore, teamPoints, pickPoints, dayStarted, dayResult };

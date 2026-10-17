@@ -221,6 +221,15 @@ export const isLocked = (day: FantasyDay, player: Pick<FantasyPlayer, 'gamePk'>,
     return !!game && gameStarted(game, now);
 };
 
+/**
+ * Máximo por equipo del día: 2, salvo que haya pocos equipos jugando. Con un solo juego (Serie Final, eliminatorias,
+ * final de la Serie del Caribe) dos equipos no alcanzan para 6 peloteros con 2 cada uno: sube a 3. Igual que el servidor.
+ */
+export const perTeamLimit = (day: Pick<FantasyDay, 'games'> | null | undefined) => {
+    const teams = new Set((day?.games ?? []).flatMap((game) => [game.away?.id, game.home?.id]).filter(Boolean)).size;
+    return teams ? Math.max(RULES.perTeam, Math.ceil((RULES.batters + RULES.pitchers) / teams)) : RULES.perTeam;
+};
+
 export type AddProblem = 'locked' | 'full' | 'team' | 'budget' | 'already' | null;
 
 const priceOf = (player: Pick<FantasyPlayer, 'price'> | undefined) => (player && Number.isFinite(player.price) ? player.price! : 0);
@@ -238,7 +247,7 @@ export const canAdd = (day: FantasyDay, entry: DayEntry, player: FantasyPlayer, 
     const chosen = entry.lineup.map((id) => day.players.find((p) => p.id === id)).filter((p): p is FantasyPlayer => !!p);
     const sameRole = chosen.filter((p) => p.role === player.role).length;
     if (sameRole >= (player.role === 'P' ? RULES.pitchers : RULES.batters)) return 'full';
-    if (chosen.filter((p) => p.teamId === player.teamId).length >= RULES.perTeam) return 'team';
+    if (chosen.filter((p) => p.teamId === player.teamId).length >= perTeamLimit(day)) return 'team';
     const left = creditsLeft(day, entry);
     if (left !== null && priceOf(player) > left + 1e-9) return 'budget';
     return null;
@@ -305,11 +314,11 @@ const spanAt = (spans: [number, number | null][] | undefined, at: number) =>
     (Array.isArray(spans) ? spans : []).find((span) => Array.isArray(span) && Number(span[0]) < at && (span[1] === null || span[1] === undefined || Number(span[1]) >= at));
 
 /** Cabe en el equipo (en el orden en que entraron): cupo de su rol, máximo por equipo y presupuesto */
-const fits = (kept: FantasyPlayer[], player: FantasyPlayer, budget: number | null) => {
+const fits = (kept: FantasyPlayer[], player: FantasyPlayer, budget: number | null, perTeam: number) => {
     const sameRole = kept.filter((k) => k.role === player.role).length;
     const sameTeam = kept.filter((k) => k.teamId === player.teamId).length;
     const spent = kept.reduce((sum, k) => sum + priceOf(k), 0);
-    return sameRole < (player.role === 'P' ? RULES.pitchers : RULES.batters) && sameTeam < RULES.perTeam && (budget === null || spent + priceOf(player) <= budget + 1e-9);
+    return sameRole < (player.role === 'P' ? RULES.pitchers : RULES.batters) && sameTeam < perTeam && (budget === null || spent + priceOf(player) <= budget + 1e-9);
 };
 
 /**
@@ -329,7 +338,7 @@ export const effectiveEntry = (day: FantasyDay, entry: DayEntry): DayEntry => {
         for (const id of entry.lineup) {
             const player = day.players.find((p) => p.id === id);
             if (!player) lineup.push(id);
-            else if (fits(kept, player, budget)) {
+            else if (fits(kept, player, budget, perTeamLimit(day))) {
                 kept.push(player);
                 lineup.push(id);
             }
@@ -349,7 +358,7 @@ export const effectiveEntry = (day: FantasyDay, entry: DayEntry): DayEntry => {
     counted.sort((a, b) => a.added - b.added || a.player.id - b.player.id);
     const kept: typeof counted = [];
     for (const item of counted) {
-        if (fits(kept.map((k) => k.player), item.player, budget)) kept.push(item);
+        if (fits(kept.map((k) => k.player), item.player, budget, perTeamLimit(day))) kept.push(item);
     }
     const order = (id: number) => (entry.lineup.includes(id) ? entry.lineup.indexOf(id) : entry.lineup.length);
     const lineup = kept.map((item) => item.player.id).sort((a, b) => order(a) - order(b));

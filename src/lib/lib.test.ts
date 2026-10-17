@@ -4,7 +4,7 @@ import { atBatForZone, arsenal, battedBalls, battersFaced, pitchesByPitcher, des
 import { dayKey, dayRange, seasonLabel } from './format';
 import { nameKey, photoSources } from './photos';
 import { newPlayEvents, outVariant, titleClinch } from './playEvents';
-import { canAdd, creditsLeft, effectiveEntry, entryCost, fantasyInterval, gameStarted, getStore, isLocked, lockTime, nextLockAt, pickPoints, replaceStore, setPick, setStoreOwner, takeLegacyStore, teamPoints, unsettledDays, type DayEntry, type EntryHistory, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
+import { canAdd, creditsLeft, effectiveEntry, entryCost, perTeamLimit, fantasyInterval, gameStarted, getStore, isLocked, lockTime, nextLockAt, pickPoints, replaceStore, setPick, setStoreOwner, takeLegacyStore, teamPoints, unsettledDays, type DayEntry, type EntryHistory, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
 import { SORTS, normalize, sortPlayers, type PlayerRow } from './stats';
 import { battingAdvanced, fmtPct, fmtRate, pitchingAdvanced, pythagorean } from './advanced';
 import { showAlert } from '../hooks/useGameAlerts';
@@ -363,6 +363,13 @@ describe('fantasy con créditos (igual que el servidor)', () => {
         }) as unknown as FantasyDay;
     const entry = (lineup: number[], captain: number | null = null): DayEntry => ({ lineup, captain, picks: {}, savedAt: 1 });
 
+    it('con un solo juego el máximo por equipo es 3 (como el servidor y la app)', () => {
+        expect(perTeamLimit(day())).toBe(3);
+        const d = { ...day(null), players: [p(1, 'B', 1, 5), p(2, 'B', 1, 5), p(3, 'B', 1, 5), p(4, 'B', 1, 5)] } as FantasyDay;
+        expect(canAdd(d, entry([1, 2]), d.players[2])).toBe(null);
+        expect(canAdd(d, entry([1, 2, 3]), d.players[3])).toBe('team');
+    });
+
     it('cuánto cuesta y cuánto queda', () => {
         expect(entryCost(day(), entry([1, 2, 5, 6]))).toBe(34);
         expect(creditsLeft(day(), entry([1, 2, 5, 6]))).toBe(16);
@@ -394,7 +401,8 @@ describe('fantasy: reglas del equipo del día', () => {
 
     it('5 bateadores, 1 lanzador, máximo 2 por equipo y cerrado si su juego empezó', () => {
         const players = [player(1, 10, 'B', 0), player(2, 10, 'B', 0), player(3, 10, 'B', 0), player(4, 20, 'P', 0), player(5, 20, 'P', 0), player(6, 30, 'B', 0, 2)];
-        const d = day(players, [game(1, 'preview'), game(2, 'live')]);
+        // Dos juegos con cuatro equipos: el máximo por equipo es 2
+        const d = day(players, [game(1, 'preview'), { ...game(2, 'live'), away: { id: 30, isWinner: false }, home: { id: 40, isWinner: false } } as FantasyGame]);
         expect(canAdd(d, entry([1, 2]), players[2], BEFORE)).toBe('team');
         expect(canAdd(d, entry([4]), players[4], BEFORE)).toBe('full');
         expect(canAdd(d, entry([]), players[5], BEFORE)).toBe('locked');

@@ -25,6 +25,7 @@ import {
     creditsLeft,
     effectiveEntry,
     entryCost,
+    perTeamLimit,
     entryKey,
     fetchFantasyDay,
     gameStarted,
@@ -442,7 +443,7 @@ const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role: 'B' |
 
     return (
         <section className="space-y-3" aria-label={t('fantasy.myTeam')}>
-            <p className="text-sm text-muted">{t(day.credits ? 'fantasy.rulesShortCredits' : 'fantasy.rulesShort', { batters: RULES.batters, perTeam: RULES.perTeam })}</p>
+            <p className="text-sm text-muted">{t(day.credits ? 'fantasy.rulesShortCredits' : 'fantasy.rulesShort', { batters: RULES.batters, perTeam: perTeamLimit(day) })}</p>
             <CreditsMeter day={day} entry={entry} />
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 {slots.map((slot, index) =>
@@ -575,7 +576,7 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
                   ? t('fantasy.problem.fullP')
                   : t('fantasy.problem.fullB')
               : problem === 'team'
-                ? t('fantasy.problem.team', { n: RULES.perTeam })
+                ? t('fantasy.problem.team', { n: perTeamLimit(day) })
                 : problem === 'budget'
                   ? t('fantasy.problem.budget', { left: credits(Math.max(0, left ?? 0), i18n.language) })
                   : problem === 'already'

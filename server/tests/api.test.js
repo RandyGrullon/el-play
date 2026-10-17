@@ -861,6 +861,16 @@ describe('fantasy con créditos: precio por pelotero y tope del equipo', () => {
         ...(credits ? { credits } : {})
     });
 
+    it('con un solo juego en el día el máximo por equipo sube a 3 (6 peloteros entre 2 equipos)', () => {
+        const { perTeamLimit } = require('../services/fantasyScore');
+        expect(perTeamLimit(day())).toBe(3);
+        expect(perTeamLimit({ games: [{ away: { id: 1 }, home: { id: 2 } }, { away: { id: 3 }, home: { id: 4 } }] })).toBe(2);
+        // Tres del mismo equipo cuentan en un día de un solo juego
+        const one = { ...day(null), players: [p(1, 'B', 1, 5), p(2, 'B', 1, 5), p(3, 'B', 1, 5), p(4, 'B', 1, 5)] };
+        const history = { v: 1, players: { 1: [[1, null]], 2: [[2, null]], 3: [[3, null]], 4: [[4, null]] } };
+        expect(effectiveEntry(one, { lineup: [1, 2, 3, 4], captain: null, picks: {}, history }).lineup).toEqual([1, 2, 3]);
+    });
+
     it('lo que cuesta un equipo', () => {
         expect(entryCost(day(), { lineup: [1, 2, 5, 6, 999] })).toBe(34);
     });
