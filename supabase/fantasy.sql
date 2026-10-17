@@ -49,6 +49,8 @@ begin
 end $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
+-- Cuentas creadas antes de correr este script (p. ej. una de prueba desde el panel): también llevan perfil
+insert into public.profiles (id, display_name) select id, split_part(email, '@', 1) from auth.users on conflict do nothing;
 
 -- Crear y unirse a ligas (el código lo genera la base de datos)
 create or replace function public.create_league(league_name text) returns table (code text) language plpgsql security definer set search_path = public as $$
@@ -103,3 +105,15 @@ drop policy if exists "miembros de mis ligas" on public.league_members;
 create policy "miembros de mis ligas" on public.league_members for select using (public.is_league_member(league_id));
 drop policy if exists "salir de una liga" on public.league_members;
 create policy "salir de una liga" on public.league_members for delete using (auth.uid() = user_id);
+
+-- Permisos de la API (algunos proyectos nuevos ya no los dan solos a las tablas nuevas)
+grant usage on schema public to anon, authenticated;
+grant select on public.profiles, public.fantasy_entries to anon, authenticated;
+grant insert, update on public.profiles, public.fantasy_entries to authenticated;
+grant select on public.leagues, public.league_members to authenticated;
+grant delete on public.league_members to authenticated;
+grant execute on function public.is_league_member(uuid) to anon, authenticated;
+grant execute on function public.create_league(text), public.join_league(text) to authenticated;
+
+-- Que la API vea las tablas nuevas enseguida
+notify pgrst, 'reload schema';
