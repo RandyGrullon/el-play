@@ -1,10 +1,10 @@
-// Cuenta opcional con Supabase (sin librería: Auth y REST por fetch, así no se agrega nada al build).
-// La app funciona igual sin cuenta: todo se guarda en el teléfono. Con cuenta, el fantasy se sincroniza entre
-// teléfonos, aparece en la tabla y se puede jugar en ligas privadas con código.
+// Cuenta con Supabase (sin librería: Auth y REST por fetch, así no se agrega nada al build).
+// La app se usa sin cuenta; solo el Fantasy la pide: el equipo vive en la cuenta (sirve en cualquier teléfono),
+// aparece en la tabla y se juega en ligas privadas con código.
 // Se activa con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en Vercel; las tablas están en supabase/fantasy.sql.
 import { useSyncExternalStore } from 'react';
 import type { LeagueId } from '../types';
-import { getStore, replaceStore, type DayEntry } from './fantasy';
+import { getStore, replaceStore, setStoreOwner, takeLegacyStore, type DayEntry } from './fantasy';
 
 const URL_BASE: string | undefined = import.meta.env.VITE_SUPABASE_URL || undefined;
 const ANON: string | undefined = import.meta.env.VITE_SUPABASE_ANON_KEY || undefined;
@@ -36,6 +36,7 @@ const readSession = (): Session | null => {
 
 const writeSession = (next: Session | null) => {
     session = next;
+    setStoreOwner(next?.user.id ?? null);
     try {
         if (next) localStorage.setItem(KEY, JSON.stringify(next));
         else localStorage.removeItem(KEY);
@@ -44,6 +45,9 @@ const writeSession = (next: Session | null) => {
     }
     emit();
 };
+
+// El fantasy del teléfono es el de la cuenta abierta (antes de que nadie lo lea)
+setStoreOwner(readSession()?.user.id ?? null);
 
 export const useSession = () =>
     useSyncExternalStore(
@@ -174,13 +178,14 @@ interface EntryRow {
     profiles?: { display_name: string | null } | null;
 }
 
-/** Junta lo del teléfono con lo de la cuenta: en cada día gana lo último que se guardó */
+/** Junta lo del teléfono con lo de la cuenta: en cada día gana lo último que se guardó (y lo armado sin cuenta pasa a ella) */
 export const syncFantasy = async () => {
     const current = readSession();
     if (!current) return;
     const remote = await rest<EntryRow[]>(`fantasy_entries?user_id=eq.${current.user.id}&select=league,day,lineup,captain,picks,saved_at`);
+    const legacy = takeLegacyStore();
     const local = getStore();
-    const merged = { ...local };
+    const merged = { ...legacy, ...local };
     for (const row of remote || []) {
         const key = `${row.league}:${row.day}`;
         if (!merged[key] || merged[key].savedAt < row.saved_at) {
@@ -188,10 +193,12 @@ export const syncFantasy = async () => {
         }
     }
     replaceStore(merged);
+    // Supabase solo acepta días de hoy en adelante (hora de RD): los pasados quedan como están
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santo_Domingo' }).format(new Date());
     const uploads = Object.entries(merged)
         .filter(([key, entry]) => {
             const row = (remote || []).find((r) => `${r.league}:${r.day}` === key);
-            return !row || row.saved_at < entry.savedAt;
+            return key.slice(key.indexOf(':') + 1) >= today && (!row || row.saved_at < entry.savedAt);
         })
         .map(([key, entry]) => {
             const [league, day] = key.split(':');

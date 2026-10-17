@@ -586,8 +586,6 @@
     "pickRule": "Cada pronóstico acertado: +{{pts}}.",
     "picksHint": "Escoge quién gana cada juego antes de que empiece. Cada acierto suma {{pts}} puntos.",
     "noPick": "Sin pronóstico",
-    "compete": "Compite con tus panas",
-    "competeHint": "Con una cuenta tu equipo aparece en la tabla del día y puedes crear ligas privadas con un código. Sin cuenta, todo sigue guardado en este teléfono.",
     "leagues": "Ligas",
     "everyone": "Todos",
     "you": "Tú",
@@ -624,13 +622,28 @@
         "hit": "Hit permitido",
         "walk": "Base por bolas"
       }
+    },
+    "gate": {
+      "eyebrow": "El Play Fantasy",
+      "title": "Arma tu equipo de pelota cada día",
+      "lead": "Escoge peloteros de los juegos del día y suma con cada hit, jonrón y ponche de verdad.",
+      "step1": "Escoge {{batters}} bateadores y 1 lanzador (máximo {{perTeam}} por equipo).",
+      "step2": "Toca la corona: tu capitán suma ×{{x}}.",
+      "step3": "Pronostica quién gana cada juego (+{{pts}}) y compite con tus panas en ligas privadas.",
+      "joinTitle": "Entra para jugar",
+      "joinWhy": "El Fantasy se juega con cuenta: tu equipo queda guardado, sale en la tabla y lo ves en cualquier teléfono.",
+      "soonTitle": "El Fantasy abre muy pronto",
+      "soonText": "Estamos activando las cuentas para que puedas jugar. Mientras, mira quién va sumando.",
+      "topToday": "Los que más suman hoy",
+      "playingToday": "Hoy juegan",
+      "nameTitle": "Ponte un nombre para la tabla"
     }
   },
   "account": {
     "title": "Tu cuenta",
-    "soon": "Las cuentas llegan pronto. Por ahora tu fantasy, tus favoritos y tus avisos se guardan en este teléfono.",
+    "soon": "Las cuentas llegan pronto y con ellas se abre el Fantasy. Tus favoritos y avisos se guardan en este teléfono.",
     "join": "Crea tu cuenta o entra",
-    "why": "Para jugar el fantasy contra tus panas y no perder tu equipo si cambias de teléfono.",
+    "why": "Para jugar el Fantasy contra tus panas y tener tu equipo en cualquier teléfono.",
     "email": "Correo",
     "emailPlaceholder": "tucorreo@ejemplo.com",
     "code": "Código",
@@ -638,7 +651,7 @@
     "sendCode": "Mandarme el código",
     "enter": "Entrar",
     "back": "Cambiar correo",
-    "optional": "Es opcional: la app funciona igual sin cuenta.",
+    "optional": "Solo el Fantasy pide cuenta: el resto de la app funciona igual sin ella.",
     "signOut": "Salir",
     "name": "Tu nombre en la tabla",
     "namePlaceholder": "Cómo te verán en la tabla",

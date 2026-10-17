@@ -4,7 +4,7 @@ import { atBatForZone, arsenal, battedBalls, battersFaced, pitchesByPitcher, des
 import { dayKey, dayRange, seasonLabel } from './format';
 import { nameKey, photoSources } from './photos';
 import { newPlayEvents, outVariant, titleClinch } from './playEvents';
-import { canAdd, isLocked, pickPoints, teamPoints, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
+import { canAdd, getStore, isLocked, pickPoints, replaceStore, setStoreOwner, takeLegacyStore, teamPoints, unsettledDays, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
 import type { AtBat, GameDetail, Pitch, Schedule, ScheduleGame } from '../types';
 
 const NOW = Date.parse('2026-11-20T23:00:00Z');
@@ -288,5 +288,30 @@ describe('fantasy: reglas del equipo del día', () => {
         const d = day(players, [game(1, 'final', true), game(2, 'final', false)]);
         expect(teamPoints(d, entry([1, 2], 1))).toBe(35);
         expect(pickPoints(d, entry([], null, { 1: 10, 2: 10 }))).toBe(10);
+    });
+
+    it('cada cuenta tiene su copia en el teléfono y lo armado sin cuenta pasa una sola vez', () => {
+        localStorage.setItem('el-play-fantasy-v1', JSON.stringify({ 'lidom:2026-10-16': entry([7]) }));
+        setStoreOwner('ana');
+        replaceStore({ 'lidom:2026-10-17': entry([1]) });
+        setStoreOwner('beto');
+        expect(getStore()).toEqual({});
+        setStoreOwner('ana');
+        expect(Object.keys(getStore())).toEqual(['lidom:2026-10-17']);
+        expect(Object.keys(takeLegacyStore())).toEqual(['lidom:2026-10-16']);
+        expect(takeLegacyStore()).toEqual({});
+        setStoreOwner(null);
+    });
+
+    it('los días pasados sin resultado se cierran después (los más recientes primero)', () => {
+        const all = {
+            'lidom:2026-10-14': entry([1]),
+            'lidom:2026-10-15': { ...entry([1]), result: { team: 5, picks: 0 } },
+            'lidom:2026-10-16': entry([], null, { 1: 10 }),
+            'lidom:2026-10-17': entry([1]),
+            'lidom:2026-10-13': entry([]),
+            'sdc:2026-10-12': entry([1])
+        };
+        expect(unsettledDays(all, 'lidom', '2026-10-17')).toEqual(['2026-10-16', '2026-10-14']);
     });
 });

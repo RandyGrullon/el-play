@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LogOut, Mail, User as UserRound } from 'lucide-react';
+import { LogOut, Mail, Sparkles, User as UserRound } from 'lucide-react';
 import { AccountError, accountEnabled, saveName, sendCode, signOut, useSession, verifyCode } from '../../lib/account';
 
-// Cuenta opcional: entrar con un código que llega al correo (sin contraseñas). Sin cuenta la app funciona igual.
-export const AccountCard: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
+// Cuenta: entrar con un código que llega al correo (sin contraseñas). Solo el Fantasy la pide; lo demás funciona sin ella.
+// `purpose="fantasy"` cambia los textos para la puerta de entrada del Fantasy.
+export const AccountCard: React.FC<{ compact?: boolean; purpose?: 'fantasy' }> = ({ compact = false, purpose }) => {
     const { t } = useTranslation();
     const session = useSession();
     const [email, setEmail] = useState('');
@@ -14,15 +15,17 @@ export const AccountCard: React.FC<{ compact?: boolean }> = ({ compact = false }
     const [error, setError] = useState<string | null>(null);
     const [name, setName] = useState('');
 
+    const fantasy = purpose === 'fantasy';
+
     if (!accountEnabled()) {
         return (
             <div className="card flex items-start gap-3 p-4">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-raised text-muted">
-                    <UserRound className="h-5 w-5" />
+                <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${fantasy ? 'bg-accent text-white' : 'bg-raised text-muted'}`}>
+                    {fantasy ? <Sparkles className="h-5 w-5" /> : <UserRound className="h-5 w-5" />}
                 </span>
                 <span className="min-w-0">
-                    <span className="block font-extrabold">{t('account.title')}</span>
-                    <span className="block text-sm text-muted">{t('account.soon')}</span>
+                    <span className="block font-extrabold">{fantasy ? t('fantasy.gate.soonTitle') : t('account.title')}</span>
+                    <span className="block text-sm text-muted">{fantasy ? t('fantasy.gate.soonText') : t('account.soon')}</span>
                 </span>
             </div>
         );
@@ -104,8 +107,8 @@ export const AccountCard: React.FC<{ compact?: boolean }> = ({ compact = false }
                     <Mail className="h-5 w-5" />
                 </span>
                 <span className="min-w-0">
-                    <span className="block font-extrabold">{t('account.join')}</span>
-                    <span className="block text-sm text-muted">{step === 'email' ? t('account.why') : t('account.codeSent', { email })}</span>
+                    <span className="block font-extrabold">{fantasy ? t('fantasy.gate.joinTitle') : t('account.join')}</span>
+                    <span className="block text-sm text-muted">{step === 'code' ? t('account.codeSent', { email }) : fantasy ? t('fantasy.gate.joinWhy') : t('account.why')}</span>
                 </span>
             </div>
             {step === 'email' ? (

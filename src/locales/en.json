@@ -586,8 +586,6 @@
     "pickRule": "Each correct pick: +{{pts}}.",
     "picksHint": "Pick who wins each game before it starts. Each correct pick is worth {{pts}} points.",
     "noPick": "No pick",
-    "compete": "Play against your friends",
-    "competeHint": "With an account your team shows up in the daily standings and you can create private leagues with a code. Without one, everything stays saved on this phone.",
     "leagues": "Leagues",
     "everyone": "Everyone",
     "you": "You",
@@ -624,13 +622,28 @@
         "hit": "Hit allowed",
         "walk": "Walk"
       }
+    },
+    "gate": {
+      "eyebrow": "El Play Fantasy",
+      "title": "Build your baseball team every day",
+      "lead": "Pick players from the day's games and score with every real hit, homer and strikeout.",
+      "step1": "Pick {{batters}} batters and 1 pitcher (up to {{perTeam}} per team).",
+      "step2": "Tap the crown: your captain scores ×{{x}}.",
+      "step3": "Pick the winner of each game (+{{pts}}) and take on your friends in private leagues.",
+      "joinTitle": "Sign in to play",
+      "joinWhy": "Fantasy needs an account: your team is saved, shows up in the standings and follows you to any phone.",
+      "soonTitle": "Fantasy opens very soon",
+      "soonText": "We're turning on accounts so you can play. Meanwhile, see who's scoring.",
+      "topToday": "Top scorers today",
+      "playingToday": "Playing today",
+      "nameTitle": "Pick a name for the standings"
     }
   },
   "account": {
     "title": "Your account",
-    "soon": "Accounts are coming soon. For now your fantasy team, favorites and alerts are saved on this phone.",
+    "soon": "Accounts are coming soon, and with them Fantasy opens. Your favorites and alerts are saved on this phone.",
     "join": "Sign up or sign in",
-    "why": "To play fantasy against your friends and keep your team if you change phones.",
+    "why": "To play Fantasy against your friends and have your team on any phone.",
     "email": "Email",
     "emailPlaceholder": "you@example.com",
     "code": "Code",
@@ -638,7 +651,7 @@
     "sendCode": "Send me the code",
     "enter": "Sign in",
     "back": "Change email",
-    "optional": "It's optional: the app works the same without an account.",
+    "optional": "Only Fantasy needs an account: the rest of the app works the same without one.",
     "signOut": "Sign out",
     "name": "Your name in the standings",
     "namePlaceholder": "How others will see you",
