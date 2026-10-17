@@ -3,7 +3,7 @@ import { gameInterval, scheduleInterval } from './polling';
 import { atBatForZone, arsenal, battedBalls, battersFaced, pitchesByPitcher, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName } from './baseball';
 import { dayKey, dayRange, seasonLabel } from './format';
 import { nameKey, photoSources } from './photos';
-import { newPlayEvents, titleClinch } from './playEvents';
+import { newPlayEvents, outVariant, titleClinch } from './playEvents';
 import type { AtBat, GameDetail, Pitch, Schedule, ScheduleGame } from '../types';
 
 const NOW = Date.parse('2026-11-20T23:00:00Z');
@@ -179,13 +179,15 @@ describe('animaciones de jugada: qué es nuevo entre dos lecturas del juego', ()
         expect(events[2].strikeouts).toBe(1);
     });
 
-    it('fin de media entrada: entra a batear el otro equipo; un out normal no anima', () => {
+    it('fin de media entrada: primero el out (del equipo que lo hizo) y después entra a batear el otro equipo', () => {
         const prev = game([ab(0, 'field_out')], { n: 3, isTop: true, state: 'Top' });
         const next = game([ab(0, 'field_out'), ab(1, 'field_out')], { n: 3, isTop: true, state: 'Middle' });
         const events = newPlayEvents(prev, next);
-        expect(events).toHaveLength(1);
-        expect(events[0]).toMatchObject({ kind: 'inning', key: 'inning-3-top', inning: { n: 3, isTop: true } });
-        expect(events[0].team.abbrev).toBe('ESC');
+        expect(events.map((e) => [e.kind, e.team.abbrev])).toEqual([
+            ['out', 'ESC'],
+            ['inning', 'ESC']
+        ]);
+        expect(events[1]).toMatchObject({ key: 'inning-3-top', inning: { n: 3, isTop: true } });
     });
 
     it('jonrón que deja en el terreno sí anima aunque el juego ya diga final (pero sin fin de entrada)', () => {
@@ -235,5 +237,29 @@ describe('animación de emergentes', () => {
     it('solo los cambios nuevos, del equipo al bate', () => {
         const events = newPlayEvents(game([sub('PH')]), game([sub('PH'), sub('PR'), { event: 'pitching_substitution', desc: '' }]));
         expect(events.map((e) => [e.kind, e.team.abbrev, e.sub?.in.name])).toEqual([['pinchRunner', 'ESC', 'Entra']]);
+    });
+});
+
+describe('tipos de out', () => {
+    const inplay = (traj: string | null) => pitch({ r: 'inplay', hit: { ev: null, la: null, dist: null, traj } });
+    const play = (event: string, label: string, traj: string | null = null) => ({ event, eventLabel: label, pitches: [pitch(), inplay(traj)] });
+
+    it('cada out con su tipo (trayectoria del batazo o etiqueta de MLB)', () => {
+        expect(outVariant(play('field_out', 'Groundout', 'ground_ball'))).toBe('ground');
+        expect(outVariant(play('field_out', 'Flyout', 'fly_ball'))).toBe('fly');
+        expect(outVariant(play('field_out', 'Lineout', 'line_drive'))).toBe('line');
+        expect(outVariant(play('field_out', 'Pop Out', 'popup'))).toBe('pop');
+        expect(outVariant(play('field_out', 'Flyout'))).toBe('fly');
+        expect(outVariant(play('force_out', 'Forceout', 'ground_ball'))).toBe('force');
+        expect(outVariant(play('grounded_into_double_play', 'Grounded Into DP', 'ground_ball'))).toBe('dp');
+        expect(outVariant(play('triple_play', 'Triple Play'))).toBe('tp');
+        expect(outVariant(play('sac_fly', 'Sac Fly', 'fly_ball'))).toBe('sac');
+    });
+
+    it('hits, bases por bolas y ponches no son «out» (el ponche tiene su K)', () => {
+        expect(outVariant(play('single', 'Single', 'line_drive'))).toBeNull();
+        expect(outVariant(play('walk', 'Walk'))).toBeNull();
+        expect(outVariant(play('strikeout', 'Strikeout'))).toBeNull();
+        expect(outVariant(play('field_error', 'Field Error', 'ground_ball'))).toBeNull();
     });
 });

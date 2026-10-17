@@ -396,7 +396,7 @@
     "language": "Language",
     "tagline": "Live Dominican baseball",
     "playAnimations": "Play animations",
-    "playAnimationsHint": "Hit, jonrón, ponche, emergentes, fin de entrada, victoria y campeonato en el juego en vivo"
+    "playAnimationsHint": "Hits, outs, ponches, emergentes, fin de entrada, victoria y campeonato en el juego en vivo"
   },
   "stories": {
     "label": "Teams",
@@ -520,6 +520,21 @@
     "pinchHitter": "Pinch hitter",
     "pinchRunner": "Pinch runner",
     "in": "In",
-    "out": "Out"
+    "out": "Out",
+    "outWord": "OUT",
+    "doublePlay": "DOUBLE PLAY",
+    "triplePlay": "TRIPLE PLAY",
+    "outsCount_one": "{{count}} out",
+    "outsCount_other": "{{count}} outs",
+    "outType": {
+      "ground": "Groundout",
+      "fly": "Flyout",
+      "line": "Lineout",
+      "pop": "Pop out",
+      "force": "Force out",
+      "dp": "Double play",
+      "tp": "Triple play",
+      "sac": "Sacrifice"
+    }
   }
 }

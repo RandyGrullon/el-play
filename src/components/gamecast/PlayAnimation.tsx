@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import type { PlayEvent } from '../../lib/playEvents';
+import type { OutVariant, PlayEvent } from '../../lib/playEvents';
 import { inkOn } from './GameHero';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
 
@@ -9,7 +9,21 @@ import { PlayerPhoto } from '../ui/PlayerPhoto';
 // terminar el juego y el campeonato cuando ese juego da el título; con el logo y los colores del equipo protagonista. Se cierran solas o al tocarlas y no tapan
 // la barra de abajo. Con «menos movimiento» en el sistema solo aparecen y desaparecen.
 
-const HOLD: Record<PlayEvent['kind'], number> = { inning: 2800, k: 2300, single: 2120, double: 2340, triple: 2560, hr: 3300, win: 3400, champion: 6000, pinchHitter: 2800, pinchRunner: 2800 };
+const HOLD: Record<PlayEvent['kind'], number> = { inning: 2800, k: 2300, single: 2120, double: 2340, triple: 2560, hr: 3300, win: 3400, champion: 6000, pinchHitter: 2800, pinchRunner: 2800, out: 2300 };
+
+// Trayectoria de la bola en cada tipo de out (cuadro de 100×100, home abajo): puntos [x, y, tamaño] y dónde la atrapan
+type Point = [number, number, number];
+const OUT_PATHS: Record<OutVariant, { legs: Point[][]; outsAt: [number, number][]; runner?: [number, number][] }> = {
+    ground: { legs: [[[50, 88, 1], [44, 76, 1], [40, 66, 1], [36, 58, 1]], [[36, 58, 1], [86, 52, 1]]], outsAt: [[86, 52]] },
+    line: { legs: [[[50, 88, 1], [22, 42, 1]]], outsAt: [[22, 42]] },
+    fly: { legs: [[[50, 88, 1], [50, 58, 2], [50, 28, 1.7], [50, 10, 1]]], outsAt: [[50, 10]] },
+    pop: { legs: [[[50, 88, 1], [52, 72, 2.2], [56, 64, 1.7], [60, 62, 1]]], outsAt: [[60, 62]] },
+    force: { legs: [[[50, 88, 1], [42, 70, 1], [36, 58, 1]], [[36, 58, 1], [50, 16, 1]]], outsAt: [[50, 16]] },
+    dp: { legs: [[[50, 88, 1], [42, 70, 1], [36, 58, 1]], [[36, 58, 1], [50, 16, 1]], [[50, 16, 1], [86, 52, 1]]], outsAt: [[50, 16], [86, 52]] },
+    tp: { legs: [[[50, 88, 1], [30, 66, 1], [14, 52, 1]], [[14, 52, 1], [50, 16, 1]], [[50, 16, 1], [86, 52, 1]]], outsAt: [[14, 52], [50, 16], [86, 52]] },
+    sac: { legs: [[[50, 88, 1], [64, 56, 2], [74, 32, 1.6], [80, 20, 1]]], outsAt: [[80, 20]], runner: [[14, 52], [50, 88]] }
+};
+const LEG_MS = 340;
 const BASES: [number, number][] = [
     [50, 88],
     [86, 52],
@@ -106,6 +120,23 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
             anim(q('.pa-logo'), [{ transform: 'translateX(-140%)' }, { transform: 'none' }], { duration: 420, delay: 600 });
             anim(q('.pa-label'), [{ opacity: 0, letterSpacing: '0.5em' }, { opacity: 1, letterSpacing: '0.08em' }], { duration: 420, delay: 700 });
             anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.85 }], { duration: 300, delay: 950 });
+        } else if (kind === 'out' && event.out) {
+            const path = OUT_PATHS[event.out.variant];
+            anim(q('.pa-outcard'), [{ transform: 'translateX(-115%) skewX(8deg)', opacity: 0 }, { transform: 'translateX(3%) skewX(-2deg)', opacity: 1, offset: 0.75 }, { transform: 'none', opacity: 1 }], { duration: 420 });
+            anim(q('.pa-logo'), [{ transform: 'scale(0)' }, { transform: 'scale(1.15)', offset: 0.7 }, { transform: 'none' }], { duration: 460, delay: 180 });
+            // La bola recorre su camino tramo por tramo (un tramo por cada tiro)
+            const frames = path.legs.flatMap((leg, legIndex) => leg.slice(legIndex ? 1 : 0)).map(([x, y, size]) => ({ transform: `translate(${x - 50}px, ${y - 88}px) scale(${size})` }));
+            const total = path.legs.length * LEG_MS + (event.out.variant === 'fly' || event.out.variant === 'sac' ? 260 : 0);
+            anim(q('.pa-ball'), frames, { duration: total, delay: 320, easing: 'linear' });
+            // Cada out marcado en su base, en orden
+            path.outsAt.forEach((_, index) => {
+                const at = 320 + Math.round(((index + path.legs.length - path.outsAt.length + 1) / path.legs.length) * total);
+                anim(q(`.pa-mark-${index}`), [{ transform: 'scale(0)', opacity: 0 }, { transform: 'scale(1.3)', opacity: 1, offset: 0.6 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: at });
+            });
+            if (path.runner) anim(q('.pa-runner'), [{ transform: 'none' }, { transform: `translate(${path.runner[1][0] - path.runner[0][0]}px, ${path.runner[1][1] - path.runner[0][1]}px)` }], { duration: 420, delay: 320 + total });
+            all('.pa-big span span').forEach((span, index) => anim(span, [{ transform: 'scale(2)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 260, delay: 320 + total + index * 50, easing: 'cubic-bezier(.3,1.5,.5,1)' }));
+            all('.pa-out-dot.on').forEach((dot, index) => anim(dot, [{ transform: 'scale(.3)' }, { transform: 'scale(1.3)', offset: 0.6 }, { transform: 'none' }], { duration: 320, delay: 380 + total + index * 80 }));
+            anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.9 }], { duration: 260, delay: 420 + total });
         } else if (kind === 'pinchHitter' || kind === 'pinchRunner') {
             anim(q('.pa-subcard'), [{ transform: 'translateY(-130%)', opacity: 0 }, { transform: 'translateY(4%)', opacity: 1, offset: 0.75 }, { transform: 'none', opacity: 1 }], { duration: 460 });
             all('.pa-big span').forEach((span, index) => anim(span, [{ transform: 'translateY(60%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 280, delay: 260 + index * 50 }));
@@ -149,6 +180,8 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                 anim(q('.pa-hitcard'), [{ transform: 'none', opacity: 1 }, { transform: 'translateX(-115%) skewX(8deg)', opacity: 0 }], { duration: out });
             } else if (kind === 'pinchHitter' || kind === 'pinchRunner') {
                 anim(q('.pa-subcard'), [{ transform: 'none', opacity: 1 }, { transform: 'translateY(-130%)', opacity: 0 }], { duration: out });
+            } else if (kind === 'out') {
+                anim(q('.pa-outcard'), [{ transform: 'none', opacity: 1 }, { transform: 'translateX(115%) skewX(-8deg)', opacity: 0 }], { duration: out });
             } else if (kind === 'inning') {
                 anim(q('.pa-panel'), [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
                 anim(q('.pa-shutter-l'), [{ transform: 'none' }, { transform: 'translateX(-100%)' }], { duration: out, delay: 120 });
@@ -159,7 +192,8 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
             timers.push(window.setTimeout(() => doneRef.current(), out + 160));
         };
         node.addEventListener('click', close);
-        timers.push(window.setTimeout(close, reduce ? Math.min(HOLD[kind], 1600) : HOLD[kind]));
+        const hold = kind === 'out' && event.out ? HOLD.out + (OUT_PATHS[event.out.variant].legs.length - 1) * LEG_MS : HOLD[kind];
+        timers.push(window.setTimeout(close, reduce ? Math.min(hold, 1600) : hold));
 
         return () => {
             closed = true;
@@ -234,6 +268,55 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                 <div className="pa-sub relative px-6">
                     {t('anim.kSub', { pitcher: atBat?.pitcher.name ?? '', batter: lastName(atBat?.batter.name ?? ''), count: event.strikeouts ?? 1 })}
                 </div>
+            </div>
+        );
+    } else if (kind === 'out' && event.out) {
+        const { variant, outs } = event.out;
+        const path = OUT_PATHS[variant];
+        const word = variant === 'dp' ? t('anim.doublePlay') : variant === 'tp' ? t('anim.triplePlay') : t('anim.outWord');
+        body = (
+            <div className="pa-outcard" style={style}>
+                <div className="pa-stripes" />
+                <Logo src={team.logo} className="pa-logo" />
+                <div className="relative min-w-0">
+                    <div className="pa-kicker">
+                        {team.abbrev} · {t(`anim.outType.${variant}`)}
+                    </div>
+                    {/* «DOBLE PLAY» y «TRIPLE PLAY» en dos renglones para no tapar el cuadro */}
+                    <div className={`pa-big flex flex-col ${variant === 'dp' || variant === 'tp' ? 'text-[40px]' : 'text-[74px]'}`}>
+                        {word.split(' ').map((line, index) => (
+                            <span key={index} className="flex">
+                                {letters(line)}
+                            </span>
+                        ))}
+                    </div>
+                    <div className="pa-sub flex items-center gap-2">
+                        <span className="truncate">{atBat?.batter.name}</span>
+                        <span className="flex shrink-0 gap-1" aria-label={t('anim.outsCount', { count: outs })}>
+                            {[1, 2, 3].map((n) => (
+                                <span key={n} className={`pa-out-dot ${n <= outs ? 'on' : ''}`} />
+                            ))}
+                        </span>
+                    </div>
+                </div>
+                <svg viewBox="0 0 100 100" className="relative h-[92px] w-[92px] overflow-visible" aria-hidden="true">
+                    <path d="M50 88 L86 52 L50 16 L14 52 Z" fill="none" stroke="currentColor" strokeOpacity={0.45} strokeWidth={3} />
+                    {[
+                        [86, 52],
+                        [50, 16],
+                        [14, 52]
+                    ].map(([x, y]) => (
+                        <rect key={`${x}${y}`} x={x - 7} y={y - 7} width={14} height={14} transform={`rotate(45 ${x} ${y})`} fill="currentColor" fillOpacity={0.3} />
+                    ))}
+                    {path.runner && <circle className="pa-runner" cx={path.runner[0][0]} cy={path.runner[0][1]} r={6} fill="currentColor" />}
+                    {path.outsAt.map(([x, y], index) => (
+                        <g key={index} className={`pa-mark-${index}`} style={{ transformOrigin: `${x}px ${y}px` }} opacity={0}>
+                            <circle cx={x} cy={y} r={13} fill="#fff" />
+                            <path d={`M${x - 6} ${y - 6} L${x + 6} ${y + 6} M${x + 6} ${y - 6} L${x - 6} ${y + 6}`} stroke={team.color} strokeWidth={4.5} strokeLinecap="round" />
+                        </g>
+                    ))}
+                    <circle className="pa-ball" cx={50} cy={88} r={5} fill="#fff" stroke={second} strokeWidth={1.5} style={{ transformOrigin: '50px 88px', transformBox: 'view-box' }} />
+                </svg>
             </div>
         );
     } else if (kind === 'pinchHitter' || kind === 'pinchRunner') {

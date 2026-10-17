@@ -2,7 +2,10 @@
 // juego y solo cuenta lo nuevo (al abrir el juego no se repite nada de lo que ya pasó).
 import type { AtBat, GameDetail, GameTeam, LeagueId, SeriesStatus } from '../types';
 
-export type PlayKind = 'inning' | 'k' | 'single' | 'double' | 'triple' | 'hr' | 'win' | 'champion' | 'pinchHitter' | 'pinchRunner';
+export type PlayKind = 'inning' | 'k' | 'single' | 'double' | 'triple' | 'hr' | 'win' | 'champion' | 'pinchHitter' | 'pinchRunner' | 'out';
+
+/** Cómo fue el out: cada uno tiene su propia trayectoria en la animación */
+export type OutVariant = 'ground' | 'fly' | 'line' | 'pop' | 'force' | 'dp' | 'tp' | 'sac';
 
 export interface PlayEvent {
     /** Una animación por jugada aunque el juego se lea varias veces */
@@ -23,7 +26,26 @@ export interface PlayEvent {
     seriesRecord?: { wins: number; losses: number } | null;
     /** Emergente: quién entra y a quién sustituye */
     sub?: { in: { id: number | null; name: string }; out: { id: number | null; name: string } | null };
+    /** Out: tipo y outs que quedan en la entrada después de la jugada */
+    out?: { variant: OutVariant; outs: number };
 }
+
+/** Tipo de out según el evento de MLB y, en los «field_out», la trayectoria del batazo (o la etiqueta de MLB) */
+export const outVariant = (atBat: Pick<AtBat, 'event' | 'eventLabel' | 'pitches'>): OutVariant | null => {
+    const event = atBat.event ?? '';
+    if (event === 'triple_play') return 'tp';
+    if (event === 'grounded_into_double_play' || event === 'double_play' || event === 'sac_fly_double_play' || event === 'sac_bunt_double_play') return 'dp';
+    if (event === 'sac_fly' || event === 'sac_bunt') return 'sac';
+    if (event === 'force_out' || event === 'fielders_choice_out') return 'force';
+    if (event !== 'field_out' && event !== 'other_out') return null;
+    const traj = [...atBat.pitches].reverse().find((pitch) => pitch.r === 'inplay')?.hit?.traj ?? '';
+    const label = atBat.eventLabel ?? '';
+    if (/ground|bunt_grounder/i.test(traj) || /ground/i.test(label)) return 'ground';
+    if (/line/i.test(traj) || /line/i.test(label)) return 'line';
+    if (/popup|bunt_popup/i.test(traj) || /pop/i.test(label)) return 'pop';
+    if (/fly/i.test(traj) || /fly/i.test(label)) return 'fly';
+    return 'ground';
+};
 
 /** Victorias del equipo en la serie después de este juego, y si con eso se lleva el título */
 export const titleClinch = (series: SeriesStatus | null | undefined, winnerId: number) => {
@@ -61,15 +83,19 @@ export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDet
 
     for (const atBat of next.atBats) {
         if (!atBat.complete || done.has(atBat.i)) continue;
-        const kind = playKind(atBat);
+        const variant = outVariant(atBat);
+        const kind = playKind(atBat) ?? (variant ? 'out' : null);
         if (!kind) continue;
         const batting = atBat.top ? next.away : next.home;
         const fielding = atBat.top ? next.home : next.away;
+        // El out lo celebra el equipo que lo hizo (como el ponche)
+        const defense = kind === 'k' || kind === 'out';
         events.push({
             key: `ab-${atBat.i}`,
             kind,
-            team: kind === 'k' ? fielding : batting,
-            rival: kind === 'k' ? batting : fielding,
+            team: defense ? fielding : batting,
+            rival: defense ? batting : fielding,
+            out: kind === 'out' && variant ? { variant, outs: atBat.outs ?? 0 } : undefined,
             away: next.away,
             home: next.home,
             atBat,

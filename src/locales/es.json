@@ -396,7 +396,7 @@
     "language": "Idioma",
     "tagline": "Béisbol dominicano en vivo",
     "playAnimations": "Animaciones de jugadas",
-    "playAnimationsHint": "Hit, jonrón, ponche, emergentes, fin de entrada, victoria y campeonato en el juego en vivo"
+    "playAnimationsHint": "Hits, outs, ponches, emergentes, fin de entrada, victoria y campeonato en el juego en vivo"
   },
   "stories": {
     "label": "Equipos",
@@ -520,6 +520,21 @@
     "pinchHitter": "Bateador emergente",
     "pinchRunner": "Corredor emergente",
     "in": "Entra",
-    "out": "Sale"
+    "out": "Sale",
+    "outWord": "OUT",
+    "doublePlay": "DOBLE PLAY",
+    "triplePlay": "TRIPLE PLAY",
+    "outsCount_one": "{{count}} out",
+    "outsCount_other": "{{count}} outs",
+    "outType": {
+      "ground": "Rodado",
+      "fly": "Elevado",
+      "line": "Línea",
+      "pop": "Globito",
+      "force": "Out forzado",
+      "dp": "Doble play",
+      "tp": "Triple play",
+      "sac": "Sacrificio"
+    }
   }
 }
