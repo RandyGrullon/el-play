@@ -25,6 +25,18 @@ router.get('/v2/fantasy', getFantasyDay);
 router.get('/v2/players', getPlayers);
 router.get('/v2/player/:id', getPlayer);
 
+// Modo PRO: cada parte del rediseño registra sus rutas en su archivo (requires explícitos para que Vercel los incluya)
+require('./pro/juego')(router);
+require('./pro/liga')(router);
+require('./pro/portada')(router);
+require('./pro/vivo')(router);
+require('./pro/jugadas')(router);
+require('./pro/previa-final')(router);
+require('./pro/posiciones')(router);
+require('./pro/estadisticas')(router);
+require('./pro/fantasy')(router);
+require('./pro/mas')(router);
+
 // v1: formato anterior (PWA vieja abierta durante el despliegue)
 router.get('/game/:gamePk', getGameData);
 router.get('/schedule', getSchedule);

@@ -3,6 +3,15 @@ import { initReactI18next } from 'react-i18next';
 import es from './locales/es.json';
 import en from './locales/en.json';
 
+// Textos del modo PRO: un archivo por pantalla (src/locales/pro/<nombre>.json con "es" y "en"), bajo pro.<nombre>
+const proFiles = import.meta.glob('./locales/pro/*.json', { eager: true });
+for (const [path, file] of Object.entries(proFiles)) {
+    const name = path.split('/').pop().replace(/\.json$/, '');
+    const texts = file.default || file;
+    es.pro = { ...es.pro, [name]: texts.es || {} };
+    en.pro = { ...en.pro, [name]: texts.en || {} };
+}
+
 const STORAGE_KEY = 'i18n_lng';
 
 function getInitialLanguage() {
