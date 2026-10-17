@@ -308,24 +308,35 @@ export const finalLabel = (innings: number, scheduled: number, lang: string) =>
 // ------------------------------------------------------------------ Turnos para la zona de strike
 
 /**
- * Turno que conviene mostrar en la zona de strike: el actual si ya tiene pitcheos; si el bateador
- * acaba de llegar (0 pitcheos) se muestra el turno anterior para que la zona no quede vacía.
+ * Turno que se muestra en la zona de strike: en vivo, siempre el del bateador actual (cuando entra uno nuevo la zona
+ * se limpia, aunque todavía no le hayan lanzado). Fuera de vivo, si el último turno no tiene pitcheos, el anterior.
  */
 export const atBatForZone = (game: Pick<GameDetail, 'atBats' | 'currentAtBat' | 'state'>) => {
     const { atBats } = game;
     if (!atBats.length) return { atBat: null, isPrevious: false };
     const currentIndex = atBats.findIndex((atBat) => atBat.i === game.currentAtBat);
     const current = currentIndex >= 0 ? atBats[currentIndex] : atBats[atBats.length - 1];
-    if (current.pitches.length > 0) return { atBat: current, isPrevious: false };
+    if (current.pitches.length > 0 || game.state === 'live') return { atBat: current, isPrevious: false };
     for (let index = (currentIndex >= 0 ? currentIndex : atBats.length - 1) - 1; index >= 0; index--) {
         if (atBats[index].pitches.length > 0) return { atBat: atBats[index], isPrevious: true };
     }
     return { atBat: current, isPrevious: false };
 };
 
-/** Pitcheos del lanzador (en todo el juego) para la vista de arsenal */
-export const pitchesByPitcher = (atBats: AtBat[], pitcherId: number | null | undefined) =>
-    pitcherId ? atBats.filter((atBat) => atBat.pitcher.id === pitcherId).flatMap((atBat) => atBat.pitches) : [];
+/** Pitcheos del lanzador en el juego; con `batterId`, solo los que le tiró a ese bateador (en todos sus turnos) */
+export const pitchesByPitcher = (atBats: AtBat[], pitcherId: number | null | undefined, batterId?: number | null) =>
+    pitcherId
+        ? atBats.filter((atBat) => atBat.pitcher.id === pitcherId && (batterId == null || atBat.batter.id === batterId)).flatMap((atBat) => atBat.pitches)
+        : [];
+
+/** Bateadores que ha enfrentado el lanzador, en orden y sin repetir */
+export const battersFaced = (atBats: AtBat[], pitcherId: number | null | undefined) => {
+    const seen = new Map<number, { id: number; name: string }>();
+    for (const atBat of atBats) {
+        if (atBat.pitcher.id === pitcherId && atBat.batter.id !== null && !seen.has(atBat.batter.id)) seen.set(atBat.batter.id, { id: atBat.batter.id, name: atBat.batter.name });
+    }
+    return [...seen.values()];
+};
 
 export interface ArsenalRow {
     type: string;

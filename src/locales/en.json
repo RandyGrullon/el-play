@@ -65,7 +65,9 @@
     "androidInstall": "Tap “Install app” or “Add to Home screen”",
     "androidConfirm": "Confirm with “Install”",
     "doneTitle": "All set!",
-    "doneBody": "El Play is on your home screen. Open it from there."
+    "doneBody": "El Play is on your home screen. Open it from there.",
+    "installedTitle": "El Play is installed",
+    "installedBody": "You're using it from your home screen."
   },
   "offline": {
     "banner": "Offline: showing the last data loaded"
@@ -193,7 +195,11 @@
     "sumFouls": "Fouls",
     "estimated": "Location marked by the official scorer (approximate): MLB hasn't sent tracking for these pitches yet.",
     "estimatedSome_one": "{{count}} pitch with the scorer's approximate location (tracking arrives in seconds).",
-    "estimatedSome_other": "{{count}} pitches with the scorer's approximate location (tracking arrives in seconds)."
+    "estimatedSome_other": "{{count}} pitches with the scorer's approximate location (tracking arrives in seconds).",
+    "pitchesTo_one": "{{count}} pitch to {{batter}}",
+    "pitchesTo_other": "{{count}} pitches to {{batter}}",
+    "byBatter": "Pitches by batter",
+    "allBatters": "All"
   },
   "plays": {
     "title": "Play by play",

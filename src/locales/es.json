@@ -65,7 +65,9 @@
     "androidInstall": "Toca «Instalar app» o «Agregar a la pantalla principal»",
     "androidConfirm": "Confirma con «Instalar»",
     "doneTitle": "¡Listo!",
-    "doneBody": "El Play ya está en tu pantalla de inicio. Ábrela desde ahí."
+    "doneBody": "El Play ya está en tu pantalla de inicio. Ábrela desde ahí.",
+    "installedTitle": "El Play está instalada",
+    "installedBody": "La estás usando desde la pantalla de inicio."
   },
   "offline": {
     "banner": "Sin conexión: estás viendo lo último que cargó"
@@ -193,7 +195,11 @@
     "sumFouls": "Fouls",
     "estimated": "Ubicación marcada por el anotador (aproximada): MLB todavía no trae el rastreo de estos pitcheos.",
     "estimatedSome_one": "{{count}} pitcheo con ubicación aproximada del anotador (su rastreo llega en segundos).",
-    "estimatedSome_other": "{{count}} pitcheos con ubicación aproximada del anotador (su rastreo llega en segundos)."
+    "estimatedSome_other": "{{count}} pitcheos con ubicación aproximada del anotador (su rastreo llega en segundos).",
+    "pitchesTo_one": "{{count}} pitcheo a {{batter}}",
+    "pitchesTo_other": "{{count}} pitcheos a {{batter}}",
+    "byBatter": "Pitcheos por bateador",
+    "allBatters": "Todos"
   },
   "plays": {
     "title": "Jugada a jugada",

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { gameInterval, scheduleInterval } from './polling';
-import { atBatForZone, arsenal, battedBalls, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName } from './baseball';
+import { atBatForZone, arsenal, battedBalls, battersFaced, pitchesByPitcher, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName } from './baseball';
 import { dayKey, dayRange, seasonLabel } from './format';
 import { nameKey, photoSources } from './photos';
 import type { AtBat, GameDetail, Pitch, Schedule, ScheduleGame } from '../types';
@@ -46,11 +46,22 @@ describe('polling', () => {
 });
 
 describe('zona de strike', () => {
-    it('si el turno actual no tiene pitcheos, muestra el anterior', () => {
+    it('en vivo, cuando entra un bateador nuevo la zona se limpia (su turno, aunque no tenga pitcheos)', () => {
         const game = { state: 'live', currentAtBat: 1, atBats: [atBat(0, [pitch(), pitch({ n: 2 })]), atBat(1, [], false)] } as unknown as GameDetail;
-        const { atBat: shown, isPrevious } = atBatForZone(game);
-        expect(shown?.i).toBe(0);
-        expect(isPrevious).toBe(true);
+        expect(atBatForZone(game)).toMatchObject({ atBat: { i: 1, pitches: [] }, isPrevious: false });
+    });
+
+    it('fuera de vivo, si el último turno no tiene pitcheos, muestra el anterior', () => {
+        const game = { state: 'final', currentAtBat: 1, atBats: [atBat(0, [pitch(), pitch({ n: 2 })]), atBat(1, [], true)] } as unknown as GameDetail;
+        expect(atBatForZone(game)).toMatchObject({ atBat: { i: 0 }, isPrevious: true });
+    });
+
+    it('vista del lanzador por bateador: sus pitcheos en todos sus turnos', () => {
+        const atBats = [atBat(0, [pitch(), pitch({ n: 2 })]), atBat(1, [pitch()]), { ...atBat(2, [pitch(), pitch({ n: 2 }), pitch({ n: 3 })]), batter: { id: 0, name: 'Bateador 0', side: 'R' } }];
+        expect(pitchesByPitcher(atBats, 99, 0)).toHaveLength(5);
+        expect(pitchesByPitcher(atBats, 99, 1)).toHaveLength(1);
+        expect(pitchesByPitcher(atBats, 99)).toHaveLength(6);
+        expect(battersFaced(atBats, 99).map((b) => b.id)).toEqual([0, 1]);
     });
 
     it('con pitcheos, muestra el turno actual', () => {

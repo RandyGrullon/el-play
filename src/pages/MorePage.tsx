@@ -22,6 +22,8 @@ export const MorePage: React.FC = () => {
                 <h1 className="display text-[32px] leading-tight">{t('more.title')}</h1>
             </header>
 
+            <InstallRow />
+
             <section aria-labelledby="more-league">
                 <h2 id="more-league" className="eyebrow mb-2">{t('leagues.choose')}</h2>
                 <ul className="card divide-y divide-line/10 overflow-hidden">
@@ -73,8 +75,6 @@ export const MorePage: React.FC = () => {
                     />
                 </div>
             </section>
-
-            <InstallRow />
 
             <section className="card flex items-center gap-3 p-4">
                 <LogoMark size={44} />

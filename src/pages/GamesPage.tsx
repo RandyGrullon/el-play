@@ -13,7 +13,7 @@ import { LogoMark } from '../components/brand/Logo';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { EmptyState, ErrorState } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
-import { InstallBanner } from '../components/install/InstallCard';
+import { InstallBanner, InstallIconButton } from '../components/install/InstallCard';
 
 // Solo se baja si el usuario quiere jugar mientras no hay juegos
 const MiniGame = lazy(() => import('../components/game/MiniGame'));
@@ -149,9 +149,12 @@ export const GamesPage: React.FC = () => {
                             {day === today ? t('games.todayIn', { league: leagueName }) : leagueName}
                         </h1>
                     </div>
-                    <button type="button" onClick={() => setLeagueOpen(true)} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface shadow-card" aria-label={t('leagues.choose')}>
-                        <LogoMark size={30} />
-                    </button>
+                    <div className="flex shrink-0 gap-2">
+                        <InstallIconButton />
+                        <button type="button" onClick={() => setLeagueOpen(true)} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface shadow-card" aria-label={t('leagues.choose')}>
+                            <LogoMark size={30} />
+                        </button>
+                    </div>
                 </header>
 
                 <InstallBanner />

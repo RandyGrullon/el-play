@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AtBat, GameDetail } from '../../types';
-import { arsenal, atBatForZone, eventName, pitchTypeColor, pitchesByPitcher } from '../../lib/baseball';
+import { arsenal, atBatForZone, battersFaced, eventName, pitchTypeColor, pitchesByPitcher } from '../../lib/baseball';
 import { Segmented } from '../ui/Segmented';
 import { StrikeZone } from './StrikeZone';
 import { uniformColors } from './BatterFigure';
@@ -23,11 +23,17 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
     const { atBat: automatic, isPrevious } = atBatForZone(game);
     const atBat = forced ?? automatic;
 
-    // Al cambiar de turno se limpia la selección
+    // Vista del lanzador por bateador: sigue al bateador del turno (null) o al que se eligió; 'all' = todos
+    const [batterPick, setBatterPick] = useState<number | 'all' | null>(null);
+
+    // Al cambiar de turno se limpia la selección y la vista del lanzador vuelve al bateador actual
     useEffect(() => setSelected(null), [atBat?.i, mode]);
+    useEffect(() => setBatterPick(null), [atBat?.i]);
 
     const pitcher = atBat?.pitcher ?? null;
-    const pitcherPitches = useMemo(() => pitchesByPitcher(game.atBats, pitcher?.id), [game.atBats, pitcher?.id]);
+    const batters = useMemo(() => battersFaced(game.atBats, pitcher?.id), [game.atBats, pitcher?.id]);
+    const batterId = batterPick === 'all' ? null : batterPick ?? atBat?.batter.id ?? null;
+    const pitcherPitches = useMemo(() => pitchesByPitcher(game.atBats, pitcher?.id, batterId), [game.atBats, pitcher?.id, batterId]);
     const rows = useMemo(() => arsenal(pitcherPitches, i18n.language), [pitcherPitches, i18n.language]);
     // Sin rastreo no hay tipos de pitcheo: el resumen sale de los resultados, que siempre vienen
     const typed = pitcherPitches.some((pitch) => pitch.type);
@@ -85,10 +91,29 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
                         <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-semibold ${atBat.complete ? 'bg-raised text-muted' : 'bg-live/10 text-live'}`}>{status}</span>
                     </p>
                 ) : (
-                    <p className="text-sm">
-                        <span className="font-semibold">{pitcher?.name}</span>
-                        <span className="text-muted"> · {t('zone.pitchesToday', { count: pitcherPitches.length })}</span>
-                    </p>
+                    <>
+                        <p className="text-sm">
+                            <span className="font-semibold">{pitcher?.name}</span>
+                            <span className="text-muted">
+                                {' · '}
+                                {batterId === null
+                                    ? t('zone.pitchesToday', { count: pitcherPitches.length })
+                                    : t('zone.pitchesTo', { count: pitcherPitches.length, batter: batters.find((b) => b.id === batterId)?.name ?? atBat.batter.name })}
+                            </span>
+                        </p>
+                        {/* Por bateador: el actual primero, luego los demás que ha enfrentado (el más reciente antes) y «Todos» */}
+                        <div className="-mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 pb-1 scrollbar-none" role="group" aria-label={t('zone.byBatter')}>
+                            {[...batters.filter((b) => b.id === atBat.batter.id), ...batters.filter((b) => b.id !== atBat.batter.id).reverse()].map((batter) => (
+                                <BatterChip key={batter.id} active={batterId === batter.id} onClick={() => setBatterPick(batter.id === atBat.batter.id ? null : batter.id)}>
+                                    {batter.name.split(' ').slice(-1)[0]}
+                                    {batter.id === atBat.batter.id && !atBat.complete && <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-live align-middle" />}
+                                </BatterChip>
+                            ))}
+                            <BatterChip active={batterId === null} onClick={() => setBatterPick('all')}>
+                                {t('zone.allBatters')}
+                            </BatterChip>
+                        </div>
+                    </>
                 )}
             </div>
 
@@ -152,3 +177,14 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
         </section>
     );
 };
+
+const BatterChip: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        aria-pressed={active}
+        className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${active ? 'bg-ink text-bg' : 'bg-raised text-muted'}`}
+    >
+        {children}
+    </button>
+);

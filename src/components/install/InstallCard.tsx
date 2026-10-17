@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, Download, X } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Download, X } from 'lucide-react';
 import { LogoMark } from '../brand/Logo';
 import { bannerDismissed, dismissBanner, requestInstall, useInstallMode, type InstallMode } from '../../lib/install';
 
@@ -37,10 +37,42 @@ export const InstallBanner: React.FC = () => {
     );
 };
 
-// Fila de «Más»: siempre a mano mientras no esté instalada
+// Botón de la barra de arriba: solo aparece si la app no está instalada (en la app instalada no sale nunca)
+export const InstallIconButton: React.FC = () => {
+    const { t } = useTranslation();
+    const mode = useInstallMode();
+    if (!canInstall(mode)) return null;
+    return (
+        <button
+            type="button"
+            onClick={requestInstall}
+            className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-white shadow-card"
+            aria-label={t('install.button')}
+            title={t('install.button')}
+        >
+            <Download className="h-5 w-5" />
+            <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-bg bg-live" aria-hidden="true" />
+        </button>
+    );
+};
+
+// Fila de «Más»: instalar mientras no esté instalada; ya instalada, lo confirma
 export const InstallRow: React.FC = () => {
     const { t } = useTranslation();
     const mode = useInstallMode();
+    if (mode === 'installed') {
+        return (
+            <div className="card flex items-center gap-3 p-4">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-raised text-accent-ink">
+                    <CheckCircle2 className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                    <span className="block font-extrabold">{t('install.installedTitle')}</span>
+                    <span className="block text-sm text-muted">{t('install.installedBody')}</span>
+                </span>
+            </div>
+        );
+    }
     if (!canInstall(mode)) return null;
 
     return (
