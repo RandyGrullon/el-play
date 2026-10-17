@@ -394,7 +394,9 @@
     "look": "Apariencia",
     "theme": "Tema",
     "language": "Idioma",
-    "tagline": "Béisbol dominicano en vivo"
+    "tagline": "Béisbol dominicano en vivo",
+    "playAnimations": "Animaciones de jugadas",
+    "playAnimationsHint": "Hit, jonrón, ponche y fin de entrada en el juego en vivo"
   },
   "stories": {
     "label": "Equipos",
@@ -484,5 +486,25 @@
       "medium": "medio",
       "hard": "fuerte"
     }
+  },
+  "anim": {
+    "single": "HIT",
+    "double": "DOBLE",
+    "triple": "TRIPLE",
+    "hr": "¡JONRÓN!",
+    "k": "PONCHE",
+    "kLooking": "PONCHE CANTADO",
+    "rbi_one": "{{count}} carrera impulsada",
+    "rbi_other": "{{count}} carreras impulsadas",
+    "vs": "contra {{pitcher}}",
+    "solo": "Jonrón solitario",
+    "hrRuns": "Jonrón de {{count}} carreras",
+    "grandSlam": "¡Grand slam!",
+    "feet": "{{ft}} pies",
+    "kSub": "{{pitcher}} poncha a {{batter}} · {{count}}.º del juego",
+    "inningEnd_top": "Fin de la alta · {{n}}.ª entrada",
+    "inningEnd_bottom": "Fin de la baja · {{n}}.ª entrada",
+    "nowBatting": "Ahora batea",
+    "close": "Cerrar la animación"
   }
 }

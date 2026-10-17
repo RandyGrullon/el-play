@@ -18,6 +18,8 @@ import { Timeline } from '../components/gamecast/Timeline';
 import { StoryRecap } from '../components/gamecast/StoryRecap';
 import { StrikeZone } from '../components/game/StrikeZone';
 import { SprayChart } from '../components/game/SprayChart';
+import { PlayAnimation } from '../components/gamecast/PlayAnimation';
+import { newPlayEvents, type PlayEvent } from '../lib/playEvents';
 import { StrikeZonePanel } from '../components/game/StrikeZonePanel';
 import { uniformColors } from '../components/game/BatterFigure';
 import { Matchup } from '../components/game/Matchup';
@@ -215,6 +217,20 @@ export const GamePage: React.FC = () => {
     const [sheet, setSheet] = useState<Sheet>(null);
     const { trackGameView } = useAnalytics();
     const tracked = useRef<string | null>(null);
+    const { playAnimations } = usePreferences();
+    const previous = useRef<GameDetail | null>(null);
+    const shown = useRef(new Set<string>());
+    const [plays, setPlays] = useState<PlayEvent[]>([]);
+
+    // Jugadas nuevas entre una lectura del juego y la siguiente → animación (en cola si llegan juntas)
+    useEffect(() => {
+        if (!game) return;
+        const fresh = playAnimations ? newPlayEvents(previous.current, game).filter((play) => !shown.current.has(play.key)) : [];
+        previous.current = game;
+        if (!fresh.length) return;
+        fresh.forEach((play) => shown.current.add(play.key));
+        setPlays((queue) => [...queue, ...fresh].slice(-4));
+    }, [game, playAnimations]);
 
     useEffect(() => {
         if (game && gamePk && tracked.current !== gamePk) {
@@ -270,6 +286,8 @@ export const GamePage: React.FC = () => {
             ) : (
                 <PreviewView game={game} onShare={shareGame} />
             )}
+
+            {plays[0] && <PlayAnimation key={plays[0].key} event={plays[0]} onDone={() => setPlays((queue) => queue.slice(1))} />}
 
             {game && (
                 <>

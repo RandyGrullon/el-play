@@ -3,6 +3,7 @@ import { gameInterval, scheduleInterval } from './polling';
 import { atBatForZone, arsenal, battedBalls, battersFaced, pitchesByPitcher, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName } from './baseball';
 import { dayKey, dayRange, seasonLabel } from './format';
 import { nameKey, photoSources } from './photos';
+import { newPlayEvents } from './playEvents';
 import type { AtBat, GameDetail, Pitch, Schedule, ScheduleGame } from '../types';
 
 const NOW = Date.parse('2026-11-20T23:00:00Z');
@@ -152,5 +153,44 @@ describe('mapa de batazos', () => {
             [1, 'hit', 'home'],
             [2, 'out', 'home']
         ]);
+    });
+});
+
+describe('animaciones de jugada: qué es nuevo entre dos lecturas del juego', () => {
+    const team = (id: number, abbrev: string) => ({ id, abbrev, name: abbrev, logo: '', color: '#0069e0', record: null, teamName: abbrev, runs: 0, hits: 0, errors: 0, lob: 0, isWinner: false });
+    const ab = (i: number, event: string | null, top = true, complete = true, pitcherId = 99): AtBat =>
+        ({ ...atBat(i, [pitch()], complete), event, top, pitcher: { id: pitcherId, name: 'Lanzador', hand: 'R' } }) as AtBat;
+    const game = (atBats: AtBat[], inning: { n: number; isTop: boolean; state: string }, state: GameDetail['state'] = 'live') =>
+        ({ gamePk: 1, state, atBats, inning: { ordinal: '', ...inning }, away: team(672, 'LIC'), home: team(671, 'ESC') }) as unknown as GameDetail;
+
+    it('al abrir el juego no se repite nada de lo que ya pasó', () => {
+        expect(newPlayEvents(null, game([ab(0, 'home_run')], { n: 1, isTop: true, state: 'Top' }))).toEqual([]);
+    });
+
+    it('hit, jonrón y ponche: el protagonista es quien batea o, en el ponche, quien lanza', () => {
+        const prev = game([ab(0, 'field_out'), ab(1, null, true, false)], { n: 1, isTop: true, state: 'Top' });
+        const next = game([ab(0, 'field_out'), ab(1, 'double'), ab(2, 'home_run'), ab(3, 'strikeout'), ab(4, null, true, false)], { n: 1, isTop: true, state: 'Top' });
+        const events = newPlayEvents(prev, next);
+        expect(events.map((e) => [e.kind, e.team.abbrev])).toEqual([
+            ['double', 'LIC'],
+            ['hr', 'LIC'],
+            ['k', 'ESC']
+        ]);
+        expect(events[2].strikeouts).toBe(1);
+    });
+
+    it('fin de media entrada: entra a batear el otro equipo; un out normal no anima', () => {
+        const prev = game([ab(0, 'field_out')], { n: 3, isTop: true, state: 'Top' });
+        const next = game([ab(0, 'field_out'), ab(1, 'field_out')], { n: 3, isTop: true, state: 'Middle' });
+        const events = newPlayEvents(prev, next);
+        expect(events).toHaveLength(1);
+        expect(events[0]).toMatchObject({ kind: 'inning', key: 'inning-3-top', inning: { n: 3, isTop: true } });
+        expect(events[0].team.abbrev).toBe('ESC');
+    });
+
+    it('jonrón que deja en el terreno sí anima aunque el juego ya diga final (pero sin fin de entrada)', () => {
+        const prev = game([ab(0, null, false, false)], { n: 9, isTop: false, state: 'Bottom' });
+        const next = game([ab(0, 'home_run', false)], { n: 9, isTop: false, state: 'End' }, 'final');
+        expect(newPlayEvents(prev, next).map((e) => e.kind)).toEqual(['hr']);
     });
 });

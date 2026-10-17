@@ -394,7 +394,9 @@
     "look": "Appearance",
     "theme": "Theme",
     "language": "Language",
-    "tagline": "Live Dominican baseball"
+    "tagline": "Live Dominican baseball",
+    "playAnimations": "Play animations",
+    "playAnimationsHint": "Hits, home runs, strikeouts and inning changes during live games"
   },
   "stories": {
     "label": "Teams",
@@ -484,5 +486,25 @@
       "medium": "medium",
       "hard": "hard"
     }
+  },
+  "anim": {
+    "single": "SINGLE",
+    "double": "DOUBLE",
+    "triple": "TRIPLE",
+    "hr": "HOME RUN!",
+    "k": "STRIKEOUT",
+    "kLooking": "CALLED STRIKEOUT",
+    "rbi_one": "{{count}} RBI",
+    "rbi_other": "{{count}} RBIs",
+    "vs": "off {{pitcher}}",
+    "solo": "Solo home run",
+    "hrRuns": "{{count}}-run home run",
+    "grandSlam": "Grand slam!",
+    "feet": "{{ft}} ft",
+    "kSub": "{{pitcher}} strikes out {{batter}} · No. {{count}} today",
+    "inningEnd_top": "End of the top · inning {{n}}",
+    "inningEnd_bottom": "End of the bottom · inning {{n}}",
+    "nowBatting": "Now batting",
+    "close": "Close animation"
   }
 }

@@ -13,7 +13,7 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 export const MorePage: React.FC = () => {
     const { t, i18n } = useTranslation();
     const { leagues, activeLeague, setActiveLeague } = useLeague();
-    const { theme, setTheme } = usePreferences();
+    const { theme, setTheme, playAnimations, setPlayAnimations } = usePreferences();
     const lang = i18n.language.startsWith('en') ? 'en' : 'es';
 
     return (
@@ -73,6 +73,22 @@ export const MorePage: React.FC = () => {
                             { value: 'en', label: 'English' }
                         ]}
                     />
+                </div>
+                <div className="card flex items-center justify-between gap-3 p-4">
+                    <span className="min-w-0">
+                        <span className="block font-semibold">{t('more.playAnimations')}</span>
+                        <span className="block text-sm text-muted">{t('more.playAnimationsHint')}</span>
+                    </span>
+                    <button
+                        type="button"
+                        role="switch"
+                        aria-checked={playAnimations}
+                        aria-label={t('more.playAnimations')}
+                        onClick={() => setPlayAnimations(!playAnimations)}
+                        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${playAnimations ? 'bg-accent' : 'bg-raised'}`}
+                    >
+                        <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-card transition-all ${playAnimations ? 'left-[22px]' : 'left-0.5'}`} />
+                    </button>
                 </div>
             </section>
 

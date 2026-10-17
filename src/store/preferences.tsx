@@ -11,6 +11,9 @@ interface Preferences {
     toggleFavoriteTeam: (teamId: number) => void;
     subscribedGames: number[];
     toggleGameSubscription: (gamePk: number) => Promise<boolean>;
+    /** Animaciones de jugada en el juego en vivo (hit, jonrón, ponche, fin de entrada) */
+    playAnimations: boolean;
+    setPlayAnimations: (on: boolean) => void;
 }
 
 const PreferencesContext = createContext<Preferences | undefined>(undefined);
@@ -19,6 +22,7 @@ const PreferencesContext = createContext<Preferences | undefined>(undefined);
 const FAVORITE_KEY = 'el-play-favorite-team';
 const SUBSCRIBED_KEY = 'el-play-subscribed-games';
 const THEME_KEY = 'el-play-theme';
+const ANIMATIONS_KEY = 'el-play-play-animations';
 
 const applyTheme = (theme: ThemePreference) => {
     const root = document.documentElement;
@@ -35,6 +39,7 @@ export const PreferencesProvider: React.FC<{ children: ReactNode }> = ({ childre
         return stored === null ? null : Number(stored) || null;
     });
     const [subscribedGames, setSubscribed] = useState<number[]>(() => readStorage<number[]>(SUBSCRIBED_KEY, []));
+    const [playAnimations, setPlayAnimations] = useState<boolean>(() => readStorage<boolean>(ANIMATIONS_KEY, true));
 
     useEffect(() => {
         applyTheme(theme);
@@ -48,6 +53,7 @@ export const PreferencesProvider: React.FC<{ children: ReactNode }> = ({ childre
 
     useEffect(() => writeStorage(FAVORITE_KEY, favoriteTeamId), [favoriteTeamId]);
     useEffect(() => writeStorage(SUBSCRIBED_KEY, subscribedGames), [subscribedGames]);
+    useEffect(() => writeStorage(ANIMATIONS_KEY, playAnimations), [playAnimations]);
 
     const cycleTheme = useCallback(() => setTheme((current) => (current === 'system' ? 'dark' : current === 'dark' ? 'light' : 'system')), []);
     const toggleFavoriteTeam = useCallback((teamId: number) => setFavorite((current) => (current === teamId ? null : teamId)), []);
@@ -68,8 +74,8 @@ export const PreferencesProvider: React.FC<{ children: ReactNode }> = ({ childre
     );
 
     const value = useMemo(
-        () => ({ theme, setTheme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription }),
-        [theme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription]
+        () => ({ theme, setTheme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription, playAnimations, setPlayAnimations }),
+        [theme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription, playAnimations]
     );
 
     return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;
