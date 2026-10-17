@@ -138,7 +138,8 @@ const rest = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
     const token = await freshToken();
     const response = await fetch(`${URL_BASE}/rest/v1/${path}`, {
         ...init,
-        headers: { apikey: ANON!, Authorization: `Bearer ${token ?? ANON}`, 'Content-Type': 'application/json', ...(init.headers || {}) }
+        // Sin sesión basta `apikey` (la llave nueva sb_publishable_ no es un JWT y no se acepta como Bearer)
+        headers: { apikey: ANON!, ...(token ? { Authorization: `Bearer ${token}` } : {}), 'Content-Type': 'application/json', ...(init.headers || {}) }
     }).catch(() => {
         throw new AccountError('network');
     });
