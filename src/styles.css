@@ -289,3 +289,20 @@
 .pa-mini-logo { width: 46px; height: 46px; background: #fff; border-radius: 9999px; padding: 6px; object-fit: contain; }
 .pa-next-logo { width: 96px; height: 96px; background: #fff; border-radius: 9999px; padding: 11px; object-fit: contain; box-shadow: 0 10px 30px rgb(0 0 0 / 0.4); }
 @media (prefers-reduced-motion: reduce) { .pa-rays { display: none; } }
+
+/* Victoria y campeonato */
+.pa-win { position: absolute; inset: 0; padding-top: env(safe-area-inset-top, 0px); overflow: hidden; background: var(--pa-c); color: var(--pa-on); display: grid; justify-items: center; align-content: center; gap: 8px; text-align: center; }
+.pa-win .pa-logo { width: 104px; height: 104px; padding: 12px; }
+.pa-win .pa-scoreline { color: var(--pa-on); font-size: 40px; }
+.pa-champ { position: absolute; inset: 0; padding-top: env(safe-area-inset-top, 0px); overflow: hidden; background: #0b0c10; color: #fff; display: grid; justify-items: center; align-content: center; gap: 6px; text-align: center; }
+.pa-glow { position: absolute; left: 50%; top: 40%; width: 520px; height: 520px; margin: -260px 0 0 -260px; border-radius: 50%; background: radial-gradient(circle, var(--pa-c) 0%, transparent 62%); opacity: 0.7; }
+.pa-trophy { position: relative; width: 150px; height: 150px; }
+.pa-trophy .pa-logo { position: absolute; left: 50%; top: 14px; width: 62px; height: 62px; margin-left: -31px; padding: 7px; }
+.pa-gold { background: linear-gradient(180deg, #fff3c4 0%, #f2c14e 55%, #c8901f 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 4px 12px rgb(0 0 0 / 0.5)); }
+.pa-gold span { background: inherit; -webkit-background-clip: text; background-clip: text; }
+
+/* Bateador o corredor emergente */
+.pa-subcard {
+    position: absolute; left: 10px; right: 10px; top: calc(env(safe-area-inset-top, 0px) + 64px); border-radius: 26px; overflow: hidden;
+    background: var(--pa-c); color: var(--pa-on); display: grid; gap: 12px; padding: 16px 16px 18px; box-shadow: 0 18px 40px rgb(0 0 0 / 0.35);
+}

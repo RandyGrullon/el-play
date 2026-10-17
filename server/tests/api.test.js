@@ -440,3 +440,11 @@ describe('ubicación del pitcheo sin rastreo (coordenadas del anotador en Gameda
         expect(pitches.every((pitch) => Math.abs(pitch.x) < 4 && pitch.z > -1 && pitch.z < 7)).toBe(true);
     });
 });
+
+describe('bateadores y corredores emergentes', () => {
+    it('cada cambio ofensivo trae quién entra, a quién sustituye y si es PH o PR (826279)', () => {
+        const subs = transformGame(fixture('feed-826279')).atBats.flatMap((atBat) => atBat.actions.filter((action) => action.sub).map((action) => ({ i: atBat.i, ...action.sub })));
+        expect(subs.map((sub) => sub.pos)).toEqual(['PR', 'PH', 'PH', 'PR', 'PH']);
+        expect(subs[1]).toMatchObject({ i: 65, in: { id: 501659, name: 'Abraham Almonte' }, out: { id: 660710, name: 'Rodolfo Durán' } });
+    });
+});

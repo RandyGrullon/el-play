@@ -1,8 +1,8 @@
 // Jugadas que disparan una animación en la pantalla del juego en vivo: se comparan dos lecturas seguidas del
 // juego y solo cuenta lo nuevo (al abrir el juego no se repite nada de lo que ya pasó).
-import type { AtBat, GameDetail, GameTeam } from '../types';
+import type { AtBat, GameDetail, GameTeam, LeagueId, SeriesStatus } from '../types';
 
-export type PlayKind = 'inning' | 'k' | 'single' | 'double' | 'triple' | 'hr';
+export type PlayKind = 'inning' | 'k' | 'single' | 'double' | 'triple' | 'hr' | 'win' | 'champion' | 'pinchHitter' | 'pinchRunner';
 
 export interface PlayEvent {
     /** Una animación por jugada aunque el juego se lea varias veces */
@@ -18,7 +18,28 @@ export interface PlayEvent {
     inning: { n: number; isTop: boolean } | null;
     /** Ponches del lanzador en el juego, contando este */
     strikeouts?: number;
+    league?: LeagueId;
+    /** Serie del ganador después del juego (finales al mejor de varios) */
+    seriesRecord?: { wins: number; losses: number } | null;
+    /** Emergente: quién entra y a quién sustituye */
+    sub?: { in: { id: number | null; name: string }; out: { id: number | null; name: string } | null };
 }
+
+/** Victorias del equipo en la serie después de este juego, y si con eso se lleva el título */
+export const titleClinch = (series: SeriesStatus | null | undefined, winnerId: number) => {
+    if (!series?.championship) return { champion: false, record: null };
+    const total = series.total || 1;
+    const needed = Math.floor(total / 2) + 1;
+    // Si MLB ya contó este juego, la serie dice quién la ganó; si no, se suma la victoria de hoy
+    if (series.over) {
+        const champion = series.leaderId === winnerId;
+        return { champion, record: total > 1 ? { wins: series.wins, losses: series.losses } : null };
+    }
+    const mine = series.leaderId === winnerId || series.tied ? series.wins : series.losses;
+    const theirs = series.leaderId === winnerId || series.tied ? series.losses : series.wins;
+    const record = total > 1 ? { wins: mine + 1, losses: theirs } : null;
+    return { champion: mine + 1 >= needed, record };
+};
 
 const KIND: Record<string, PlayKind> = {
     single: 'single',
@@ -58,6 +79,47 @@ export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDet
                     ? next.atBats.filter((other) => other.complete && other.i <= atBat.i && other.pitcher.id === atBat.pitcher.id && playKind(other) === 'k').length
                     : undefined
         });
+    }
+
+    // Bateador o corredor emergente: acciones nuevas de cambio ofensivo (PH / PR)
+    const seenActions = new Map(prev.atBats.map((atBat) => [atBat.i, atBat.actions.length]));
+    for (const atBat of next.atBats) {
+        atBat.actions.forEach((action, index) => {
+            if (index < (seenActions.get(atBat.i) ?? 0) || !action.sub) return;
+            const kind: PlayKind | null = action.sub.pos === 'PH' ? 'pinchHitter' : action.sub.pos === 'PR' ? 'pinchRunner' : null;
+            if (!kind) return;
+            events.push({
+                key: `sub-${atBat.i}-${index}`,
+                kind,
+                team: atBat.top ? next.away : next.home,
+                rival: atBat.top ? next.home : next.away,
+                away: next.away,
+                home: next.home,
+                atBat,
+                inning: null,
+                sub: { in: action.sub.in, out: action.sub.out }
+            });
+        });
+    }
+
+    // Final del juego: victoria del ganador, o campeonato si con este juego se lleva el título
+    if (next.state === 'final') {
+        const winner = next.home.isWinner ? next.home : next.away.isWinner ? next.away : null;
+        if (winner) {
+            const { champion, record } = titleClinch(next.series ?? prev.series, winner.id);
+            events.push({
+                key: `final-${next.gamePk}`,
+                kind: champion ? 'champion' : 'win',
+                team: winner,
+                rival: winner === next.home ? next.away : next.home,
+                away: next.away,
+                home: next.home,
+                atBat: null,
+                inning: null,
+                league: next.league,
+                seriesRecord: record
+            });
+        }
     }
 
     // Fin de media entrada: se pasó de jugar (alta/baja) a la mitad o al final, o ya cambió de lado

@@ -3,7 +3,7 @@ import { gameInterval, scheduleInterval } from './polling';
 import { atBatForZone, arsenal, battedBalls, battersFaced, pitchesByPitcher, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName } from './baseball';
 import { dayKey, dayRange, seasonLabel } from './format';
 import { nameKey, photoSources } from './photos';
-import { newPlayEvents } from './playEvents';
+import { newPlayEvents, titleClinch } from './playEvents';
 import type { AtBat, GameDetail, Pitch, Schedule, ScheduleGame } from '../types';
 
 const NOW = Date.parse('2026-11-20T23:00:00Z');
@@ -192,5 +192,48 @@ describe('animaciones de jugada: qué es nuevo entre dos lecturas del juego', ()
         const prev = game([ab(0, null, false, false)], { n: 9, isTop: false, state: 'Bottom' });
         const next = game([ab(0, 'home_run', false)], { n: 9, isTop: false, state: 'End' }, 'final');
         expect(newPlayEvents(prev, next).map((e) => e.kind)).toEqual(['hr']);
+    });
+});
+
+describe('victoria y campeonato al terminar el juego', () => {
+    const series = (over: boolean, leaderId: number, wins: number, losses: number, total = 7, tied = false) =>
+        ({ name: 'LIDOM Championship', game: wins + losses, total, over, tied, leaderId, wins, losses, championship: true }) as const;
+
+    it('final de LIDOM: gana el juego 5 y la serie 4-1 (MLB ya lo contó o todavía no)', () => {
+        expect(titleClinch(series(true, 671, 4, 1), 671)).toEqual({ champion: true, record: { wins: 4, losses: 1 } });
+        expect(titleClinch(series(false, 671, 3, 1), 671)).toEqual({ champion: true, record: { wins: 4, losses: 1 } });
+    });
+
+    it('no es campeón si la serie sigue (el que va abajo gana, o empatada)', () => {
+        expect(titleClinch(series(false, 671, 3, 1), 668)).toEqual({ champion: false, record: { wins: 2, losses: 3 } });
+        expect(titleClinch(series(false, 671, 2, 2, 7, true), 668)).toEqual({ champion: false, record: { wins: 3, losses: 2 } });
+    });
+
+    it('final a un juego (Clásico, Serie del Caribe) y juegos que no son finales', () => {
+        expect(titleClinch(series(true, 944, 1, 0, 1), 944).champion).toBe(true);
+        expect(titleClinch({ ...series(true, 944, 1, 0, 1), championship: false }, 944).champion).toBe(false);
+        expect(titleClinch(null, 944).champion).toBe(false);
+    });
+
+    it('al pasar de en vivo a final sale la victoria o el campeonato del ganador', () => {
+        const team = (id: number, abbrev: string, isWinner: boolean) => ({ id, abbrev, name: abbrev, logo: '', color: '#E31837', record: null, teamName: abbrev, runs: isWinner ? 1 : 0, hits: 0, errors: 0, lob: 0, isWinner });
+        const game = (state: GameDetail['state'], seriesStatus: unknown) =>
+            ({ gamePk: 837760, league: 'lidom', state, atBats: [], inning: null, series: seriesStatus, away: team(668, 'TOR', false), home: team(671, 'ESC', state === 'final') }) as unknown as GameDetail;
+        const champion = newPlayEvents(game('live', series(false, 671, 3, 1)), game('final', series(false, 671, 3, 1)));
+        expect(champion.map((e) => [e.kind, e.team.abbrev, e.seriesRecord])).toEqual([['champion', 'ESC', { wins: 4, losses: 1 }]]);
+        const win = newPlayEvents(game('live', null), game('final', null));
+        expect(win.map((e) => [e.kind, e.team.abbrev])).toEqual([['win', 'ESC']]);
+    });
+});
+
+describe('animación de emergentes', () => {
+    const team = (id: number, abbrev: string) => ({ id, abbrev, name: abbrev, logo: '', color: '#0069e0', record: null, teamName: abbrev, runs: 0, hits: 0, errors: 0, lob: 0, isWinner: false });
+    const sub = (pos: string) => ({ event: 'offensive_substitution', desc: '', sub: { pos, in: { id: 2, name: 'Entra' }, out: { id: 1, name: 'Sale' } } });
+    const game = (actions: AtBat['actions']) =>
+        ({ gamePk: 1, state: 'live', inning: null, atBats: [{ ...atBat(0, [], false), top: false, actions }], away: team(672, 'LIC'), home: team(671, 'ESC') }) as unknown as GameDetail;
+
+    it('solo los cambios nuevos, del equipo al bate', () => {
+        const events = newPlayEvents(game([sub('PH')]), game([sub('PH'), sub('PR'), { event: 'pitching_substitution', desc: '' }]));
+        expect(events.map((e) => [e.kind, e.team.abbrev, e.sub?.in.name])).toEqual([['pinchRunner', 'ESC', 'Entra']]);
     });
 });

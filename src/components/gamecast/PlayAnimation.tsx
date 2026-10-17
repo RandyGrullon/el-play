@@ -3,12 +3,13 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { PlayEvent } from '../../lib/playEvents';
 import { inkOn } from './GameHero';
+import { PlayerPhoto } from '../ui/PlayerPhoto';
 
-// Animaciones de jugada en el juego en vivo (aprobadas en la vista previa): fin de entrada, ponche, hit, doble,
-// triple y jonrón, con el logo y los colores del equipo protagonista. Se cierran solas o al tocarlas y no tapan
+// Animaciones de jugada en el juego en vivo: fin de entrada, ponche, hit, doble, triple y jonrón, más la victoria al
+// terminar el juego y el campeonato cuando ese juego da el título; con el logo y los colores del equipo protagonista. Se cierran solas o al tocarlas y no tapan
 // la barra de abajo. Con «menos movimiento» en el sistema solo aparecen y desaparecen.
 
-const HOLD: Record<PlayEvent['kind'], number> = { inning: 2800, k: 2300, single: 2120, double: 2340, triple: 2560, hr: 3300 };
+const HOLD: Record<PlayEvent['kind'], number> = { inning: 2800, k: 2300, single: 2120, double: 2340, triple: 2560, hr: 3300, win: 3400, champion: 6000, pinchHitter: 2800, pinchRunner: 2800 };
 const BASES: [number, number][] = [
     [50, 88],
     [86, 52],
@@ -105,6 +106,33 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
             anim(q('.pa-logo'), [{ transform: 'translateX(-140%)' }, { transform: 'none' }], { duration: 420, delay: 600 });
             anim(q('.pa-label'), [{ opacity: 0, letterSpacing: '0.5em' }, { opacity: 1, letterSpacing: '0.08em' }], { duration: 420, delay: 700 });
             anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.85 }], { duration: 300, delay: 950 });
+        } else if (kind === 'pinchHitter' || kind === 'pinchRunner') {
+            anim(q('.pa-subcard'), [{ transform: 'translateY(-130%)', opacity: 0 }, { transform: 'translateY(4%)', opacity: 1, offset: 0.75 }, { transform: 'none', opacity: 1 }], { duration: 460 });
+            all('.pa-big span').forEach((span, index) => anim(span, [{ transform: 'translateY(60%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 280, delay: 260 + index * 50 }));
+            anim(q('.pa-out'), [{ transform: 'none', opacity: 1, filter: 'grayscale(0)' }, { transform: 'translateX(-6px) scale(.9)', opacity: 0.5, filter: 'grayscale(1)' }], { duration: 500, delay: 800 });
+            anim(q('.pa-arrows'), [{ transform: 'rotate(0deg)' }, { transform: 'rotate(180deg)' }], { duration: 600, delay: 700, easing: 'cubic-bezier(.6,0,.2,1)' });
+            anim(q('.pa-in'), [{ transform: 'translateX(70px) scale(.6)', opacity: 0 }, { transform: 'translateX(-4px) scale(1.08)', opacity: 1, offset: 0.7 }, { transform: 'none', opacity: 1 }], { duration: 560, delay: 950 });
+        } else if (kind === 'win') {
+            anim(q('.pa-win'), [{ clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)' }, { clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)' }], { duration: 520, easing: 'cubic-bezier(.7,0,.2,1)' });
+            anim(q('.pa-logo'), [{ transform: 'scale(0) rotate(-20deg)', opacity: 0 }, { transform: 'scale(1.2) rotate(4deg)', opacity: 1, offset: 0.7 }, { transform: 'none', opacity: 1 }], { duration: 600, delay: 380 });
+            all('.pa-big span').forEach((span, index) => anim(span, [{ transform: 'translateY(80%) rotate(6deg)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 340, delay: 620 + index * 50, easing: 'cubic-bezier(.3,1.5,.5,1)' }));
+            anim(q('.pa-scoreline'), [{ transform: 'translateY(16px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 380, delay: 1100 });
+            anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.9 }], { duration: 300, delay: 1350 });
+            if (!reduce) timers.push(window.setTimeout(() => confetti(canvas.current, [team.color, second, '#ffffff'], () => closed, 70), 700));
+        } else if (kind === 'champion') {
+            anim(q('.pa-champ'), [{ opacity: 0 }, { opacity: 1 }], { duration: 400 });
+            if (!reduce) anim(q('.pa-glow'), [{ transform: 'scale(.6)', opacity: 0 }, { transform: 'scale(1.1)', opacity: 0.9, offset: 0.5 }, { transform: 'scale(1)', opacity: 0.7 }], { duration: 1600, delay: 200 });
+            anim(q('.pa-trophy'), [{ transform: 'translateY(90px) scale(.6)', opacity: 0 }, { transform: 'translateY(-6px) scale(1.04)', opacity: 1, offset: 0.75 }, { transform: 'none', opacity: 1 }], { duration: 900, delay: 300, easing: 'cubic-bezier(.2,.9,.3,1.2)' });
+            anim(q('.pa-logo'), [{ transform: 'scale(0)', opacity: 0 }, { transform: 'scale(1.3)', opacity: 1, offset: 0.6 }, { transform: 'none', opacity: 1 }], { duration: 600, delay: 1050 });
+            all('.pa-big span').forEach((span, index) => anim(span, [{ transform: 'translateY(-90%) scale(1.5)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 380, delay: 1300 + index * 60, easing: 'cubic-bezier(.3,1.6,.5,1)' }));
+            anim(q('.pa-kicker'), [{ opacity: 0, letterSpacing: '0.5em' }, { opacity: 0.9, letterSpacing: '0.14em' }], { duration: 500, delay: 1900 });
+            anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.9 }], { duration: 400, delay: 2200 });
+            if (!reduce) {
+                const colors = [team.color, second, '#f2c14e', '#ffe08a', '#ffffff'];
+                timers.push(window.setTimeout(() => confetti(canvas.current, colors, () => closed, 140, true), 1250));
+                timers.push(window.setTimeout(() => confetti(canvas.current, colors, () => closed, 120, true), 2700));
+                timers.push(window.setTimeout(() => confetti(canvas.current, colors, () => closed, 120, true), 4100));
+            }
         } else {
             anim(q('.pa-shutter-l'), [{ transform: 'translateX(-100%)' }, { transform: 'none' }], { duration: 380 });
             anim(q('.pa-shutter-r'), [{ transform: 'translateX(100%)' }, { transform: 'none' }], { duration: 380 });
@@ -119,6 +147,8 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
             const out = 380;
             if (kind === 'single' || kind === 'double' || kind === 'triple') {
                 anim(q('.pa-hitcard'), [{ transform: 'none', opacity: 1 }, { transform: 'translateX(-115%) skewX(8deg)', opacity: 0 }], { duration: out });
+            } else if (kind === 'pinchHitter' || kind === 'pinchRunner') {
+                anim(q('.pa-subcard'), [{ transform: 'none', opacity: 1 }, { transform: 'translateY(-130%)', opacity: 0 }], { duration: out });
             } else if (kind === 'inning') {
                 anim(q('.pa-panel'), [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
                 anim(q('.pa-shutter-l'), [{ transform: 'none' }, { transform: 'translateX(-100%)' }], { duration: out, delay: 120 });
@@ -206,6 +236,86 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                 </div>
             </div>
         );
+    } else if (kind === 'pinchHitter' || kind === 'pinchRunner') {
+        const person = (who: { id: number | null; name: string } | null, label: string, cls: string) =>
+            who && (
+                <div className={`${cls} flex min-w-0 flex-col items-center gap-1 text-center`}>
+                    <PlayerPhoto personId={who.id} name={who.name} size={64} background="rgba(255,255,255,0.9)" team={{ id: team.id, logo: team.logo, color: team.color }} />
+                    <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] opacity-80">{label}</span>
+                    <span className="max-w-[120px] truncate text-sm font-bold leading-tight">{who.name}</span>
+                </div>
+            );
+        body = (
+            <div className="pa-subcard" style={style}>
+                <div className="pa-stripes" />
+                <div className="relative flex items-end justify-between gap-2">
+                    <div className="min-w-0">
+                        <div className="pa-kicker">
+                            {team.abbrev} · {t(kind === 'pinchHitter' ? 'anim.pinchHitter' : 'anim.pinchRunner')}
+                        </div>
+                        <div className="pa-big flex text-[54px]">{letters(t('anim.sub'))}</div>
+                    </div>
+                    <Logo src={team.logo} className="pa-logo h-12 w-12 p-1.5" />
+                </div>
+                <div className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    {person(event.sub?.out ?? null, t('anim.out'), 'pa-out')}
+                    <svg viewBox="0 0 24 24" className="pa-arrows h-8 w-8" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M4 9h14l-4-4M20 15H6l4 4" />
+                    </svg>
+                    {person(event.sub?.in ?? null, t('anim.in'), 'pa-in')}
+                </div>
+            </div>
+        );
+    } else if (kind === 'win') {
+        body = (
+            <div className="pa-win" style={style}>
+                <div className="pa-stripes" />
+                <span className="pa-kicker relative">{t('anim.final')}</span>
+                <Logo src={team.logo} className="pa-logo" />
+                <div className="pa-big relative flex text-[76px]">{letters(t('anim.win'))}</div>
+                <div className="pa-scoreline relative">
+                    <Logo src={event.away.logo} className="pa-mini-logo" />
+                    <span>
+                        {event.away.runs} – {event.home.runs}
+                    </span>
+                    <Logo src={event.home.logo} className="pa-mini-logo" />
+                </div>
+                <div className="pa-sub relative">
+                    {event.seriesRecord ? t('anim.seriesLead', { team: team.name, wins: event.seriesRecord.wins, losses: event.seriesRecord.losses }) : team.name}
+                </div>
+                <canvas ref={canvas} className="pointer-events-none absolute inset-0 h-full w-full" />
+            </div>
+        );
+    } else if (kind === 'champion') {
+        body = (
+            <div className="pa-champ" style={style}>
+                <div className="pa-glow" />
+                <div className="pa-trophy">
+                    <svg viewBox="0 0 120 120" className="h-full w-full" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="pa-gold" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0" stopColor="#ffe08a" />
+                                <stop offset="0.5" stopColor="#f2c14e" />
+                                <stop offset="1" stopColor="#c8901f" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M32 14 L32 20 Q12 20 14 38 Q16 52 34 54" fill="none" stroke="url(#pa-gold)" strokeWidth={6} strokeLinecap="round" />
+                        <path d="M88 14 L88 20 Q108 20 106 38 Q104 52 86 54" fill="none" stroke="url(#pa-gold)" strokeWidth={6} strokeLinecap="round" />
+                        <path d="M28 10 H92 V38 Q92 70 60 74 Q28 70 28 38 Z" fill="url(#pa-gold)" />
+                        <rect x={53} y={73} width={14} height={16} fill="url(#pa-gold)" />
+                        <rect x={38} y={88} width={44} height={9} rx={3} fill="url(#pa-gold)" />
+                        <rect x={30} y={97} width={60} height={13} rx={4} fill="#c8901f" />
+                    </svg>
+                    <Logo src={team.logo} className="pa-logo" />
+                </div>
+                <div className="pa-big pa-gold relative flex text-[68px]">{letters(t('anim.champions'))}</div>
+                <span className="pa-kicker relative">{t(`anim.championOf.${event.league ?? 'lidom'}`)}</span>
+                <div className="pa-sub relative">
+                    {event.seriesRecord ? t('anim.seriesWon', { team: team.name, wins: event.seriesRecord.wins, losses: event.seriesRecord.losses }) : team.name}
+                </div>
+                <canvas ref={canvas} className="pointer-events-none absolute inset-0 h-full w-full" />
+            </div>
+        );
     } else {
         const half = event.inning?.isTop ? 'top' : 'bottom';
         body = (
@@ -241,32 +351,47 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
     );
 };
 
-/** Papelitos con los colores del equipo (solo en jonrón) */
-const confetti = (canvas: HTMLCanvasElement | null, colors: string[], stopped: () => boolean) => {
+/** Papelitos: de un estallido en el centro o, en el campeonato, lloviendo desde arriba para no tapar el trofeo.
+ *  Varias ráfagas comparten un solo dibujo por lienzo (si cada una borrara el lienzo, parpadearían). */
+interface Bit { x: number; y: number; vx: number; vy: number; r: number; vr: number; w: number; h: number; c: string; g: number; until: number }
+const systems = new WeakMap<HTMLCanvasElement, { bits: Bit[]; running: boolean }>();
+
+const confetti = (canvas: HTMLCanvasElement | null, colors: string[], stopped: () => boolean, count = 110, rain = false) => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const rect = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-    const bits = Array.from({ length: 110 }, () => ({
-        x: rect.width / 2 + (Math.random() - 0.5) * 80,
-        y: rect.height * 0.4,
-        vx: (Math.random() - 0.5) * 9,
-        vy: -Math.random() * 9 - 3,
-        r: Math.random() * Math.PI,
-        vr: (Math.random() - 0.5) * 0.3,
-        w: 6 + Math.random() * 6,
-        h: 4 + Math.random() * 4,
-        c: colors[Math.floor(Math.random() * colors.length)]
-    }));
-    const t0 = performance.now();
-    const frame = (now: number) => {
+    if (canvas.width !== Math.round(rect.width * dpr)) {
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
+        ctx.scale(dpr, dpr);
+    }
+    const now = performance.now();
+    const system = systems.get(canvas) ?? { bits: [], running: false };
+    systems.set(canvas, system);
+    for (let i = 0; i < count; i++) {
+        system.bits.push({
+            x: rain ? Math.random() * rect.width : rect.width / 2 + (Math.random() - 0.5) * 80,
+            y: rain ? -20 - Math.random() * 120 : rect.height * 0.4,
+            vx: rain ? (Math.random() - 0.5) * 2 : (Math.random() - 0.5) * 9,
+            vy: rain ? 1 + Math.random() * 2 : -Math.random() * 9 - 3,
+            r: Math.random() * Math.PI,
+            vr: (Math.random() - 0.5) * 0.3,
+            w: 6 + Math.random() * 6,
+            h: 4 + Math.random() * 4,
+            c: colors[Math.floor(Math.random() * colors.length)],
+            g: rain ? 0.05 : 0.22,
+            until: now + (rain ? 3200 : 2200)
+        });
+    }
+    if (system.running) return;
+    system.running = true;
+    const frame = (time: number) => {
         ctx.clearRect(0, 0, rect.width, rect.height);
-        for (const bit of bits) {
-            bit.vy += 0.22;
+        system.bits = system.bits.filter((bit) => bit.until > time && bit.y < rect.height + 40);
+        for (const bit of system.bits) {
+            bit.vy += bit.g;
             bit.x += bit.vx;
             bit.y += bit.vy;
             bit.r += bit.vr;
@@ -277,8 +402,12 @@ const confetti = (canvas: HTMLCanvasElement | null, colors: string[], stopped: (
             ctx.fillRect(-bit.w / 2, -bit.h / 2, bit.w, bit.h);
             ctx.restore();
         }
-        if (now - t0 < 2200 && !stopped()) requestAnimationFrame(frame);
-        else ctx.clearRect(0, 0, rect.width, rect.height);
+        if (system.bits.length && !stopped()) requestAnimationFrame(frame);
+        else {
+            ctx.clearRect(0, 0, rect.width, rect.height);
+            system.bits = [];
+            system.running = false;
+        }
     };
     requestAnimationFrame(frame);
 };

@@ -396,7 +396,7 @@
     "language": "Language",
     "tagline": "Live Dominican baseball",
     "playAnimations": "Play animations",
-    "playAnimationsHint": "Hits, home runs, strikeouts and inning changes during live games"
+    "playAnimationsHint": "Hit, jonrón, ponche, emergentes, fin de entrada, victoria y campeonato en el juego en vivo"
   },
   "stories": {
     "label": "Teams",
@@ -505,6 +505,21 @@
     "inningEnd_top": "End of the top · inning {{n}}",
     "inningEnd_bottom": "End of the bottom · inning {{n}}",
     "nowBatting": "Now batting",
-    "close": "Close animation"
+    "close": "Close animation",
+    "final": "Final",
+    "win": "WIN!",
+    "champions": "CHAMPIONS!",
+    "seriesLead": "{{team}} · series {{wins}}-{{losses}}",
+    "seriesWon": "{{team}} win the series {{wins}}-{{losses}}",
+    "championOf": {
+      "lidom": "LIDOM champions",
+      "wbc": "World Baseball Classic champions",
+      "sdc": "Caribbean Series champions"
+    },
+    "sub": "CHANGE",
+    "pinchHitter": "Pinch hitter",
+    "pinchRunner": "Pinch runner",
+    "in": "In",
+    "out": "Out"
   }
 }

@@ -2,6 +2,7 @@ const { MLB_API_BASE, LEAGUES } = require('../config/constants');
 const http = require('./http');
 const { getLiveFeed } = require('./liveFeed');
 const { getSeasonInfo } = require('./season');
+const { cached } = require('../utils/cache');
 const { transformGame, transformScheduleGame } = require('../utils/transformers');
 const { teamLogo, teamColor, teamColor2, teamAbbrev, teamFlag, findTeam } = require('../utils/teams');
 
@@ -14,17 +15,53 @@ const transformed = new Map(); // gamePk -> { version, data }
 // Cómo se obtuvo la última versión de cada juego (full | patch | unchanged): va en la cabecera X-Feed-Mode
 const feedInfo = new Map();
 
+// Estado de la serie (finales de LIDOM y del Clásico, Serie del Caribe): el feed no lo trae, el calendario sí.
+// Sirve para saber si el juego da el campeonato (animación de campeón en la app).
+const SERIES_TYPES = new Set(['F', 'D', 'L', 'W']);
+const needsSeries = (game) => !!game.gameType && (SERIES_TYPES.has(game.gameType) || game.league === 'sdc');
+
+const toSeries = (game) => {
+    if (!game) return null;
+    const status = game.seriesStatus || {};
+    return {
+        name: status.description || game.seriesDescription || null,
+        game: status.gameNumber ?? null,
+        total: status.totalGames ?? null,
+        over: !!status.isOver,
+        tied: !!status.isTied,
+        leaderId: status.winningTeam?.id ?? null,
+        wins: status.wins ?? 0,
+        losses: status.losses ?? 0,
+        // Final de LIDOM y del Clásico: tipo «W»; en la Serie del Caribe el último juego se llama «Championship Game»
+        championship: game.gameType === 'W' || /championship game/i.test(game.description || '')
+    };
+};
+
+const fetchSeries = (gamePk, live) =>
+    cached(
+        `series_${gamePk}`,
+        live ? 30 : 6 * 3600,
+        async () => {
+            const data = await http.mlbGet(`${MLB_API_BASE}/schedule`, { gamePk, hydrate: 'seriesStatus' });
+            return toSeries(data?.dates?.[0]?.games?.find((game) => String(game.gamePk) === String(gamePk)));
+        },
+        { staleSec: 600 }
+    ).catch(() => null);
+
 const fetchGame = async (gamePk) => {
     const { doc, version, mode } = await getLiveFeed(gamePk);
     const key = String(gamePk);
     feedInfo.set(key, { mode, version });
     if (feedInfo.size > 50) feedInfo.delete(feedInfo.keys().next().value);
     const previous = transformed.get(key);
-    if (previous && previous.version === version) return previous.data;
-    const data = transformGame(doc);
-    transformed.set(key, { version, data });
-    if (transformed.size > 50) transformed.delete(transformed.keys().next().value);
-    return data;
+    let data = previous && previous.version === version ? previous.data : null;
+    if (!data) {
+        data = transformGame(doc);
+        transformed.set(key, { version, data });
+        if (transformed.size > 50) transformed.delete(transformed.keys().next().value);
+    }
+    if (!needsSeries(data) || process.env.MLB_MOCK === '1') return data;
+    return { ...data, series: await fetchSeries(gamePk, data.state !== 'final') };
 };
 
 // ---------------------------------------------------------------- Calendario
@@ -320,6 +357,7 @@ const fetchLeaders = async (leagueKey = 'lidom') => {
 const getFeedInfo = (gamePk) => feedInfo.get(String(gamePk)) || null;
 
 module.exports = {
+    toSeries,
     poolsFromGames,
     fetchGame,
     getFeedInfo,

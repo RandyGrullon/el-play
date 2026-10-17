@@ -107,7 +107,7 @@ export interface AtBat {
     home: number | null;
     outs: number | null;
     pitches: Pitch[];
-    actions: { event: string | null; desc: string }[];
+    actions: { event: string | null; desc: string; sub?: { pos: string | null; in: PersonRef; out: PersonRef | null } }[];
 }
 
 export interface GameTeam extends TeamBase {
@@ -167,6 +167,19 @@ export type TopPerformer =
     | ({ kind: 'hitter'; teamId: number } & BatterLine)
     | ({ kind: 'pitcher'; teamId: number } & PitcherLine);
 
+/** Estado de la serie (finales y Serie del Caribe): para saber si un juego da el campeonato */
+export interface SeriesStatus {
+    name: string | null;
+    game: number | null;
+    total: number | null;
+    over: boolean;
+    tied: boolean;
+    leaderId: number | null;
+    wins: number;
+    losses: number;
+    championship: boolean;
+}
+
 export interface GameDetail {
     gamePk: number | null;
     league: LeagueId;
@@ -177,6 +190,8 @@ export interface GameDetail {
     venue: string;
     weather: { condition: string; temp: string | null } | null;
     description: string | null;
+    gameType?: string | null;
+    series?: SeriesStatus | null;
     scheduledInnings: number;
     away: GameTeam;
     home: GameTeam;

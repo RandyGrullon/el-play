@@ -90,7 +90,7 @@ const toPitch = (event) => {
     return pitch;
 };
 
-const toAtBat = (play, index) => {
+const toAtBat = (play, index, nameOf = () => '') => {
     const about = play.about || {};
     const matchup = play.matchup || {};
     const result = play.result || {};
@@ -114,7 +114,18 @@ const toAtBat = (play, index) => {
         actions: events
             // Sin avisos internos de MLB ("Status Change - Warmup", game_advisory)
             .filter((event) => !event.isPitch && event.type === 'action' && event.details?.description && event.details.eventType !== 'game_advisory' && !/^Status Change/.test(event.details.description))
-            .map((event) => ({ event: event.details.eventType || null, desc: event.details.description }))
+            .map((event) => {
+                const action = { event: event.details.eventType || null, desc: event.details.description };
+                // Bateador o corredor emergente: quién entra, a quién sustituye y en qué posición (PH / PR)
+                if (event.details.eventType === 'offensive_substitution' && event.player?.id) {
+                    action.sub = {
+                        pos: event.position?.abbreviation || null,
+                        in: { id: event.player.id, name: nameOf(event.player.id) },
+                        out: event.replacedPlayer?.id ? { id: event.replacedPlayer.id, name: nameOf(event.replacedPlayer.id) } : null
+                    };
+                }
+                return action;
+            })
     };
 };
 
@@ -180,7 +191,8 @@ const transformGame = (feed) => {
         };
     };
 
-    const atBats = allPlays.map(toAtBat);
+    const nameOf = (id) => people[`ID${id}`]?.fullName || '';
+    const atBats = allPlays.map((play, index) => toAtBat(play, index, nameOf));
     const currentPlay = liveData.plays?.currentPlay;
     const currentIndex = currentPlay?.about?.atBatIndex ?? (atBats.length ? atBats[atBats.length - 1].i : null);
 
@@ -336,6 +348,7 @@ const transformGame = (feed) => {
         venue: gameData.venue?.name || '',
         weather: gameData.weather?.condition ? { condition: gameData.weather.condition, temp: gameData.weather.temp || null } : null,
         description: gameData.game?.description || null,
+        gameType: gameData.game?.type || null,
         scheduledInnings: linescore.scheduledInnings ?? 9,
         away,
         home,

@@ -396,7 +396,7 @@
     "language": "Idioma",
     "tagline": "Béisbol dominicano en vivo",
     "playAnimations": "Animaciones de jugadas",
-    "playAnimationsHint": "Hit, jonrón, ponche y fin de entrada en el juego en vivo"
+    "playAnimationsHint": "Hit, jonrón, ponche, emergentes, fin de entrada, victoria y campeonato en el juego en vivo"
   },
   "stories": {
     "label": "Equipos",
@@ -505,6 +505,21 @@
     "inningEnd_top": "Fin de la alta · {{n}}.ª entrada",
     "inningEnd_bottom": "Fin de la baja · {{n}}.ª entrada",
     "nowBatting": "Ahora batea",
-    "close": "Cerrar la animación"
+    "close": "Cerrar la animación",
+    "final": "Final",
+    "win": "¡VICTORIA!",
+    "champions": "¡CAMPEONES!",
+    "seriesLead": "{{team}} · serie {{wins}}-{{losses}}",
+    "seriesWon": "{{team}} gana la serie {{wins}}-{{losses}}",
+    "championOf": {
+      "lidom": "Campeones de la LIDOM",
+      "wbc": "Campeones del Clásico Mundial",
+      "sdc": "Campeones de la Serie del Caribe"
+    },
+    "sub": "CAMBIO",
+    "pinchHitter": "Bateador emergente",
+    "pinchRunner": "Corredor emergente",
+    "in": "Entra",
+    "out": "Sale"
   }
 }
