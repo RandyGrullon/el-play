@@ -12,7 +12,8 @@
     "standings": "Posiciones",
     "leaders": "Líderes",
     "more": "Más",
-    "live": "Juegos en vivo"
+    "live": "Juegos en vivo",
+    "fantasy": "Fantasy"
   },
   "leagues": {
     "choose": "Elegir liga",
@@ -396,7 +397,8 @@
     "language": "Idioma",
     "tagline": "Béisbol dominicano en vivo",
     "playAnimations": "Animaciones de jugadas",
-    "playAnimationsHint": "Hits, outs, ponches, emergentes, fin de entrada, victoria y campeonato en el juego en vivo"
+    "playAnimationsHint": "Hits, outs, ponches, emergentes, fin de entrada, victoria y campeonato en el juego en vivo",
+    "account": "Cuenta"
   },
   "stories": {
     "label": "Equipos",
@@ -535,6 +537,118 @@
       "dp": "Doble play",
       "tp": "Triple play",
       "sac": "Sacrificio"
+    }
+  },
+  "fantasy": {
+    "title": "Fantasy",
+    "yourPoints": "Tus puntos del día",
+    "teamPts": "Equipo: {{pts}}",
+    "picksPts": "Pronósticos: {{pts}}",
+    "seasonPts": "Temporada: {{pts}} en {{days}} días",
+    "sections": "Secciones del fantasy",
+    "myTeam": "Mi equipo",
+    "picks": "Pronósticos",
+    "table": "Tabla",
+    "noGames": "No hay juegos este día",
+    "noGamesHint": "Prueba con otro día: el fantasy se juega con los juegos de cada día.",
+    "rulesShort": "Escoge {{batters}} bateadores y 1 lanzador de los juegos del día (máximo {{perTeam}} por equipo). Toca la corona para tu capitán. Cada pelotero se cierra cuando empieza su juego.",
+    "addBatter": "Escoger bateador",
+    "addPitcher": "Escoger lanzador",
+    "howPoints": "Cómo se cuentan los puntos",
+    "captain": "Capitán",
+    "makeCaptain": "Hacerlo capitán",
+    "remove": "Quitar a {{name}}",
+    "add": "Agregar a {{name}}",
+    "locked": "Su juego ya empezó",
+    "pitcher": "Lanzador",
+    "batter": "Bateador",
+    "final": "Final",
+    "liveNow": "En vivo",
+    "pitchLine": "{{ip}} IP, {{k}} K, {{er}} CL",
+    "batters": "Bateadores",
+    "pitchers": "Lanzadores",
+    "role": "Tipo de pelotero",
+    "search": "Buscar pelotero",
+    "filterTeam": "Filtrar por equipo",
+    "allTeams": "Todos",
+    "choosePitcher": "Escoge tu lanzador",
+    "chooseBatters": "Escoge tus bateadores",
+    "starter": "Titular",
+    "noPlayers": "No hay peloteros con ese filtro.",
+    "problem": {
+      "locked": "Su juego ya empezó",
+      "fullB": "Ya tienes tus 5 bateadores",
+      "fullP": "Ya tienes tu lanzador",
+      "team": "Ya tienes {{n}} de este equipo",
+      "already": "Ya está en tu equipo"
+    },
+    "captainRule": "El capitán suma ×{{x}}.",
+    "pickRule": "Cada pronóstico acertado: +{{pts}}.",
+    "picksHint": "Escoge quién gana cada juego antes de que empiece. Cada acierto suma {{pts}} puntos.",
+    "noPick": "Sin pronóstico",
+    "compete": "Compite con tus panas",
+    "competeHint": "Con una cuenta tu equipo aparece en la tabla del día y puedes crear ligas privadas con un código. Sin cuenta, todo sigue guardado en este teléfono.",
+    "leagues": "Ligas",
+    "everyone": "Todos",
+    "you": "Tú",
+    "emptyTable": "Todavía nadie ha armado su equipo hoy.",
+    "leagueCode": "Código de la liga: {{code}} (compártelo para que se unan)",
+    "newLeague": "Nombre de tu liga",
+    "create": "Crear",
+    "created": "Liga creada. Código: {{code}}",
+    "code": "Código",
+    "join": "Unirme",
+    "joined": "¡Listo! Ya estás en la liga.",
+    "badCode": "No encontramos una liga con ese código.",
+    "share": "Compartir mi equipo",
+    "shareText": "Mi equipo de El Play Fantasy lleva {{points}} puntos: {{names}}",
+    "scoring": {
+      "batter": {
+        "single": "Sencillo",
+        "double": "Doble",
+        "triple": "Triple",
+        "homeRun": "Jonrón",
+        "run": "Carrera anotada",
+        "rbi": "Carrera impulsada",
+        "walk": "Base por bolas",
+        "hitByPitch": "Golpeado",
+        "stolenBase": "Base robada",
+        "strikeOut": "Ponche"
+      },
+      "pitcher": {
+        "out": "Cada out",
+        "strikeOut": "Ponche",
+        "win": "Victoria",
+        "save": "Salvado",
+        "earnedRun": "Carrera limpia",
+        "hit": "Hit permitido",
+        "walk": "Base por bolas"
+      }
+    }
+  },
+  "account": {
+    "title": "Tu cuenta",
+    "soon": "Las cuentas llegan pronto. Por ahora tu fantasy, tus favoritos y tus avisos se guardan en este teléfono.",
+    "join": "Crea tu cuenta o entra",
+    "why": "Para jugar el fantasy contra tus panas y no perder tu equipo si cambias de teléfono.",
+    "email": "Correo",
+    "emailPlaceholder": "tucorreo@ejemplo.com",
+    "code": "Código",
+    "codeSent": "Te mandamos un código a {{email}}. Escríbelo aquí.",
+    "sendCode": "Mandarme el código",
+    "enter": "Entrar",
+    "back": "Cambiar correo",
+    "optional": "Es opcional: la app funciona igual sin cuenta.",
+    "signOut": "Salir",
+    "name": "Tu nombre en la tabla",
+    "namePlaceholder": "Cómo te verán en la tabla",
+    "saveName": "Guardar",
+    "errors": {
+      "disabled": "Las cuentas todavía no están activas.",
+      "network": "No hay conexión. Intenta de nuevo.",
+      "invalid_code": "Ese código no sirve o ya venció.",
+      "rate_limit": "Espera un minuto antes de pedir otro código.",
+      "unknown": "Algo salió mal. Intenta de nuevo."
     }
   }
 }

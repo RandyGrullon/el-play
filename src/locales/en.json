@@ -12,7 +12,8 @@
     "standings": "Standings",
     "leaders": "Leaders",
     "more": "More",
-    "live": "Live games"
+    "live": "Live games",
+    "fantasy": "Fantasy"
   },
   "leagues": {
     "choose": "Choose league",
@@ -396,7 +397,8 @@
     "language": "Language",
     "tagline": "Live Dominican baseball",
     "playAnimations": "Play animations",
-    "playAnimationsHint": "Hits, outs, ponches, emergentes, fin de entrada, victoria y campeonato en el juego en vivo"
+    "playAnimationsHint": "Hits, outs, ponches, emergentes, fin de entrada, victoria y campeonato en el juego en vivo",
+    "account": "Account"
   },
   "stories": {
     "label": "Teams",
@@ -535,6 +537,118 @@
       "dp": "Double play",
       "tp": "Triple play",
       "sac": "Sacrifice"
+    }
+  },
+  "fantasy": {
+    "title": "Fantasy",
+    "yourPoints": "Your points today",
+    "teamPts": "Team: {{pts}}",
+    "picksPts": "Picks: {{pts}}",
+    "seasonPts": "Season: {{pts}} in {{days}} days",
+    "sections": "Fantasy sections",
+    "myTeam": "My team",
+    "picks": "Picks",
+    "table": "Standings",
+    "noGames": "No games this day",
+    "noGamesHint": "Try another day: fantasy is played with each day's games.",
+    "rulesShort": "Pick {{batters}} hitters and 1 pitcher from the day's games (max {{perTeam}} per team). Tap the crown for your captain. Each player locks when his game starts.",
+    "addBatter": "Pick a hitter",
+    "addPitcher": "Pick a pitcher",
+    "howPoints": "How points work",
+    "captain": "Captain",
+    "makeCaptain": "Make captain",
+    "remove": "Remove {{name}}",
+    "add": "Add {{name}}",
+    "locked": "His game has started",
+    "pitcher": "Pitcher",
+    "batter": "Hitter",
+    "final": "Final",
+    "liveNow": "Live",
+    "pitchLine": "{{ip}} IP, {{k}} K, {{er}} ER",
+    "batters": "Hitters",
+    "pitchers": "Pitchers",
+    "role": "Player type",
+    "search": "Search player",
+    "filterTeam": "Filter by team",
+    "allTeams": "All",
+    "choosePitcher": "Pick your pitcher",
+    "chooseBatters": "Pick your hitters",
+    "starter": "Starter",
+    "noPlayers": "No players match that filter.",
+    "problem": {
+      "locked": "His game has started",
+      "fullB": "You already have 5 hitters",
+      "fullP": "You already have your pitcher",
+      "team": "You already have {{n}} from this team",
+      "already": "Already on your team"
+    },
+    "captainRule": "Your captain scores ×{{x}}.",
+    "pickRule": "Each correct pick: +{{pts}}.",
+    "picksHint": "Pick who wins each game before it starts. Each correct pick is worth {{pts}} points.",
+    "noPick": "No pick",
+    "compete": "Play against your friends",
+    "competeHint": "With an account your team shows up in the daily standings and you can create private leagues with a code. Without one, everything stays saved on this phone.",
+    "leagues": "Leagues",
+    "everyone": "Everyone",
+    "you": "You",
+    "emptyTable": "Nobody has picked a team today yet.",
+    "leagueCode": "League code: {{code}} (share it so others can join)",
+    "newLeague": "Your league name",
+    "create": "Create",
+    "created": "League created. Code: {{code}}",
+    "code": "Code",
+    "join": "Join",
+    "joined": "Done! You're in the league.",
+    "badCode": "We couldn't find a league with that code.",
+    "share": "Share my team",
+    "shareText": "My El Play Fantasy team has {{points}} points: {{names}}",
+    "scoring": {
+      "batter": {
+        "single": "Single",
+        "double": "Double",
+        "triple": "Triple",
+        "homeRun": "Home run",
+        "run": "Run scored",
+        "rbi": "RBI",
+        "walk": "Walk",
+        "hitByPitch": "Hit by pitch",
+        "stolenBase": "Stolen base",
+        "strikeOut": "Strikeout"
+      },
+      "pitcher": {
+        "out": "Each out",
+        "strikeOut": "Strikeout",
+        "win": "Win",
+        "save": "Save",
+        "earnedRun": "Earned run",
+        "hit": "Hit allowed",
+        "walk": "Walk"
+      }
+    }
+  },
+  "account": {
+    "title": "Your account",
+    "soon": "Accounts are coming soon. For now your fantasy team, favorites and alerts are saved on this phone.",
+    "join": "Sign up or sign in",
+    "why": "To play fantasy against your friends and keep your team if you change phones.",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "code": "Code",
+    "codeSent": "We sent a code to {{email}}. Type it here.",
+    "sendCode": "Send me the code",
+    "enter": "Sign in",
+    "back": "Change email",
+    "optional": "It's optional: the app works the same without an account.",
+    "signOut": "Sign out",
+    "name": "Your name in the standings",
+    "namePlaceholder": "How others will see you",
+    "saveName": "Save",
+    "errors": {
+      "disabled": "Accounts aren't active yet.",
+      "network": "No connection. Try again.",
+      "invalid_code": "That code is wrong or expired.",
+      "rate_limit": "Wait a minute before asking for another code.",
+      "unknown": "Something went wrong. Try again."
     }
   }
 }

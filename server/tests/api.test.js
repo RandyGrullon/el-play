@@ -448,3 +448,25 @@ describe('bateadores y corredores emergentes', () => {
         expect(subs[1]).toMatchObject({ i: 65, in: { id: 501659, name: 'Abraham Almonte' }, out: { id: 660710, name: 'Rodolfo Durán' } });
     });
 });
+
+describe('fantasy: puntos con el box score de MLB', () => {
+    const { batterPoints, pitcherPoints, playersFromFeed } = require('../services/fantasy');
+
+    it('bateador: sencillo 3, doble 5, triple 8, jonrón 10, carrera 2, impulsada 2, BB 2, golpeado 2, robo 5, ponche −1', () => {
+        expect(batterPoints({ hits: 3, doubles: 1, homeRuns: 1, runs: 2, rbi: 4, baseOnBalls: 1, stolenBases: 1, strikeOuts: 1 })).toBe(3 + 5 + 10 + 4 + 8 + 2 + 5 - 1);
+        expect(batterPoints({})).toBe(0);
+    });
+
+    it('lanzador: out 1, ponche 2, victoria 5, salvado 5, limpia −2, hit −0.5, BB −0.5', () => {
+        expect(pitcherPoints({ outs: 15, strikeOuts: 9, earnedRuns: 1, hits: 3, baseOnBalls: 0 })).toBe(15 + 18 - 2 - 1.5);
+        expect(pitcherPoints({ outs: 3, strikeOuts: 1, saves: 1, hits: 1, baseOnBalls: 1 })).toBe(3 + 2 + 5 - 0.5 - 0.5);
+    });
+
+    it('juego real (826279): todo el roster, quién jugó y sus puntos', () => {
+        const players = playersFromFeed(fixture('feed-826279'), 826279, true);
+        const cano = players.find((p) => p.name === 'Robinson Canó');
+        expect(players.length).toBeGreaterThan(80);
+        expect(cano).toMatchObject({ role: 'B', played: true, line: { ab: 4, h: 1, d: 1, r: 1 }, points: 5 + 2 });
+        expect(players.find((p) => p.name === 'Andy Otero')).toMatchObject({ role: 'P', played: true, line: { outs: 15, k: 4 } });
+    });
+});

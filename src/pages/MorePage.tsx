@@ -6,6 +6,7 @@ import { usePreferences, type ThemePreference } from '../store/preferences';
 import { LogoMark } from '../components/brand/Logo';
 import { Segmented } from '../components/ui/Segmented';
 import { InstallRow } from '../components/install/InstallCard';
+import { AccountCard } from '../components/account/AccountCard';
 
 // "Más": liga, tema, idioma e instalación (antes estaban en la barra de arriba)
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -23,6 +24,11 @@ export const MorePage: React.FC = () => {
             </header>
 
             <InstallRow />
+
+            <section aria-labelledby="more-account">
+                <h2 id="more-account" className="eyebrow mb-2">{t('more.account')}</h2>
+                <AccountCard />
+            </section>
 
             <section aria-labelledby="more-league">
                 <h2 id="more-league" className="eyebrow mb-2">{t('leagues.choose')}</h2>

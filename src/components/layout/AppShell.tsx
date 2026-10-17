@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Home, Menu, Radio, Trophy, BarChart3 } from 'lucide-react';
+import { Home, Menu, Radio, Sparkles, BarChart3 } from 'lucide-react';
 import { useLeague } from '../../store/LeagueContext';
 import { useSchedule } from '../../lib/queries';
 import { formatTime } from '../../lib/format';
@@ -15,11 +15,12 @@ import { InstallSheet } from '../install/InstallSheet';
 // Barra inferior flotante (diseño D): Inicio · Tabla · [En vivo] · Líderes · Más
 const BottomNav: React.FC<{ onLive: () => void; liveCount: number }> = ({ onLive, liveCount }) => {
     const { t } = useTranslation();
-    const item = (to: string, label: string, Icon: typeof Home, end = false) => (
+    const location = useLocation();
+    const item = (to: string, label: string, Icon: typeof Home, end = false, also: string[] = []) => (
         <NavLink
             to={to}
             end={end}
-            className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold ${isActive ? 'text-white' : 'text-nav-ink'}`}
+            className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold ${isActive || also.some((path) => location.pathname.startsWith(path)) ? 'text-white' : 'text-nav-ink'}`}
         >
             <Icon className="h-[22px] w-[22px]" />
             {label}
@@ -31,7 +32,7 @@ const BottomNav: React.FC<{ onLive: () => void; liveCount: number }> = ({ onLive
             className="fixed inset-x-0 bottom-0 z-30 mx-auto mb-[calc(10px+env(safe-area-inset-bottom))] grid h-[70px] w-[calc(100%-24px)] max-w-md grid-cols-5 rounded-[26px] bg-nav shadow-float"
         >
             {item('/', t('nav.games'), Home, true)}
-            {item('/posiciones', t('nav.standings'), BarChart3)}
+            {item('/posiciones', t('nav.standings'), BarChart3, false, ['/lideres'])}
             <button type="button" onClick={onLive} aria-label={t('nav.live')} className="relative flex items-center justify-center">
                 <span className="-mt-8 flex h-[62px] w-[62px] items-center justify-center rounded-full border-[5px] border-bg bg-live text-white shadow-float">
                     <Radio className="h-6 w-6" />
@@ -40,7 +41,7 @@ const BottomNav: React.FC<{ onLive: () => void; liveCount: number }> = ({ onLive
                     <span className="absolute right-2 top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[11px] font-extrabold text-live">{liveCount}</span>
                 )}
             </button>
-            {item('/lideres', t('nav.leaders'), Trophy)}
+            {item('/fantasy', t('nav.fantasy'), Sparkles)}
             {item('/mas', t('nav.more'), Menu)}
         </nav>
     );

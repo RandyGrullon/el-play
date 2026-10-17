@@ -16,13 +16,15 @@ const loadGame = () => import('./pages/GamePage');
 const loadStandings = () => import('./pages/StandingsPage');
 const loadLeaders = () => import('./pages/LeadersPage');
 const loadMore = () => import('./pages/MorePage');
+const loadFantasy = () => import('./pages/FantasyPage');
 const GamePage = lazy(() => loadGame().then((module) => ({ default: module.GamePage })));
 const StandingsPage = lazy(() => loadStandings().then((module) => ({ default: module.StandingsPage })));
 const LeadersPage = lazy(() => loadLeaders().then((module) => ({ default: module.LeadersPage })));
 const MorePage = lazy(() => loadMore().then((module) => ({ default: module.MorePage })));
+const FantasyPage = lazy(() => loadFantasy().then((module) => ({ default: module.FantasyPage })));
 
 if (typeof window !== 'undefined') {
-    const prefetch = () => [loadGame, loadStandings, loadLeaders, loadMore].forEach((load) => load().catch(() => undefined));
+    const prefetch = () => [loadGame, loadStandings, loadLeaders, loadMore, loadFantasy].forEach((load) => load().catch(() => undefined));
     if ('requestIdleCallback' in window) window.requestIdleCallback(prefetch, { timeout: 3000 });
     else setTimeout(prefetch, 1500);
 }
@@ -64,6 +66,7 @@ const App: React.FC = () => (
                             <Route path="/posiciones" element={<StandingsPage />} />
                             <Route path="/lideres" element={<LeadersPage />} />
                             <Route path="/mas" element={<MorePage />} />
+                            <Route path="/fantasy" element={<FantasyPage />} />
                             <Route path="/instalar" element={<InstallLink />} />
                             <Route path="/install" element={<InstallLink />} />
                             <Route path="*" element={<Navigate to="/" replace />} />

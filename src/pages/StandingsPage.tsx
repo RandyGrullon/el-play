@@ -13,6 +13,7 @@ import { inkOn } from '../components/gamecast/GameHero';
 import { TeamLogo } from '../components/ui/TeamLogo';
 import { ErrorState, Skeleton } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
+import { StatsTabs } from '../components/layout/StatsTabs';
 
 type Phase = 'regular' | 'roundRobin' | 'final';
 
@@ -124,6 +125,7 @@ export const StandingsPage: React.FC = () => {
     return (
         <PullToRefresh onRefresh={async () => { await standings.refetch(); }}>
             <div className="space-y-4 px-4 pt-5">
+                <StatsTabs active="standings" />
                 <header className="flex items-start justify-between gap-3">
                     <div>
                         <p className="text-sm font-semibold text-muted">{leagueName}{season ? ` · ${t('common.season', { season })}` : ''}</p>

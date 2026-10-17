@@ -11,6 +11,7 @@ import { inkOn } from '../components/gamecast/GameHero';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
 import { ErrorState, Skeleton } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
+import { StatsTabs } from '../components/layout/StatsTabs';
 
 const detailOf = (leader: Leader, t: (key: string, options?: Record<string, unknown>) => string) => {
     const extra = leader.extra || {};
@@ -107,6 +108,9 @@ export const LeadersPage: React.FC = () => {
     return (
         <PullToRefresh onRefresh={async () => { await leaders.refetch(); }}>
             <div className="space-y-6 pt-5">
+                <div className="px-4">
+                    <StatsTabs active="leaders" />
+                </div>
                 <header className="px-4">
                     <p className="text-sm font-semibold text-muted">{t(`leagues.${activeLeague}.name`)}{season ? ` · ${t('common.season', { season })}` : ''}</p>
                     <h1 className="display text-[32px] leading-tight">{t('leaders.title')}</h1>

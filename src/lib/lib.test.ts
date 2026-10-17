@@ -4,6 +4,7 @@ import { atBatForZone, arsenal, battedBalls, battersFaced, pitchesByPitcher, des
 import { dayKey, dayRange, seasonLabel } from './format';
 import { nameKey, photoSources } from './photos';
 import { newPlayEvents, outVariant, titleClinch } from './playEvents';
+import { canAdd, isLocked, pickPoints, teamPoints, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
 import type { AtBat, GameDetail, Pitch, Schedule, ScheduleGame } from '../types';
 
 const NOW = Date.parse('2026-11-20T23:00:00Z');
@@ -261,5 +262,31 @@ describe('tipos de out', () => {
         expect(outVariant(play('walk', 'Walk'))).toBeNull();
         expect(outVariant(play('strikeout', 'Strikeout'))).toBeNull();
         expect(outVariant(play('field_error', 'Field Error', 'ground_ball'))).toBeNull();
+    });
+});
+
+describe('fantasy: reglas del equipo del día', () => {
+    const player = (id: number, teamId: number, role: 'B' | 'P', points: number, gamePk = 1): FantasyPlayer => ({ id, name: `P${id}`, teamId, gamePk, role, pos: role === 'P' ? 'P' : 'SS', starter: true, played: true, line: null, points });
+    const game = (gamePk: number, state: string, awayWins = false) =>
+        ({ gamePk, state, date: '2026-10-17T21:00:00Z', away: { id: 10, isWinner: awayWins }, home: { id: 20, isWinner: !awayWins && state === 'final' } }) as unknown as FantasyGame;
+    const day = (players: FantasyPlayer[], games: FantasyGame[]) => ({ league: 'lidom', date: '2026-10-17', games, teams: {}, players, scoring: { batter: {}, pitcher: {} } }) as unknown as FantasyDay;
+    const entry = (lineup: number[], captain: number | null = null, picks: Record<string, number> = {}): DayEntry => ({ lineup, captain, picks, savedAt: 1 });
+
+    it('5 bateadores, 1 lanzador, máximo 2 por equipo y cerrado si su juego empezó', () => {
+        const players = [player(1, 10, 'B', 0), player(2, 10, 'B', 0), player(3, 10, 'B', 0), player(4, 20, 'P', 0), player(5, 20, 'P', 0), player(6, 30, 'B', 0, 2)];
+        const d = day(players, [game(1, 'preview'), game(2, 'live')]);
+        expect(canAdd(d, entry([1, 2]), players[2])).toBe('team');
+        expect(canAdd(d, entry([4]), players[4])).toBe('full');
+        expect(canAdd(d, entry([]), players[5])).toBe('locked');
+        expect(canAdd(d, entry([1]), players[0])).toBe('already');
+        expect(canAdd(d, entry([1]), players[1])).toBeNull();
+        expect(isLocked(d, players[5])).toBe(true);
+    });
+
+    it('el capitán suma ×1,5 y cada pronóstico acertado +10', () => {
+        const players = [player(1, 10, 'B', 10), player(2, 20, 'P', 20)];
+        const d = day(players, [game(1, 'final', true), game(2, 'final', false)]);
+        expect(teamPoints(d, entry([1, 2], 1))).toBe(35);
+        expect(pickPoints(d, entry([], null, { 1: 10, 2: 10 }))).toBe(10);
     });
 });
