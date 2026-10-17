@@ -18,6 +18,12 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Builds descargados de EAS y llaves para enviar a las tiendas
+*.apk
+*.aab
+*.ipa
+google-service-account*.json
+
 # Metro
 .metro-health-check*
 
