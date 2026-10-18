@@ -5,6 +5,7 @@ import type { OutVariant, PlayEvent } from '../../lib/playEvents';
 import { inkOn } from './GameHero';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
 import { HomeRunFlight, homeRunFlightMs } from './HomeRunFlight';
+import { legsOf, runnerPaths, type RunnerPath } from '../../lib/runners';
 
 // Animaciones de jugada en el juego en vivo: fin de entrada, ponche, hit, doble, triple y jonrón, más la victoria al
 // terminar el juego y el campeonato cuando ese juego da el título; con el logo y los colores del equipo protagonista. Se cierran solas o al tocarlas y no tapan
@@ -35,6 +36,13 @@ const BASES: [number, number][] = [
 // El jonrón con el batazo marcado: el campo aparece, la bola sale a los 450 ms y la tarjeta espera a que caiga
 const FLIGHT_DELAY = 450;
 
+// Hits: los corredores salen a la vez (380 ms por base) cuando ya entró la tarjeta
+const RUN_START = 620;
+const RUN_LEG = 380;
+
+/** Puntos del diamante (cuadro de 100) que recorre un corredor; anotar es volver a home */
+const routeOf = (path: Pick<RunnerPath, 'from' | 'to'>) => Array.from({ length: path.to - path.from + 1 }, (_, k) => BASES[(path.from + k) % 4]);
+
 const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const lastName = (name: string) => name.split(' ').slice(-1)[0];
 
@@ -56,6 +64,11 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
     // Jonrón: cuánto vuela la bola (null si MLB no marcó dónde cayó: entonces va la curva de siempre)
     const flight = kind === 'hr' ? homeRunFlightMs(atBat) : null;
     const landAt = flight !== null ? FLIGHT_DELAY + flight : 0;
+    // Hits: quién corre y cuántas entran (del marcador; si no se sabe, las impulsadas)
+    const rbi = atBat?.rbi ?? 0;
+    const scored = event.runs ? event.runs.after - event.runs.before : rbi;
+    const hitPaths = kind === 'single' || kind === 'double' || kind === 'triple' ? runnerPaths(kind, event.bases ?? null, scored) : [];
+    const runLegs = Math.max(0, ...hitPaths.map(legsOf));
 
     useEffect(() => {
         const node = root.current;
@@ -73,19 +86,40 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
         let closed = false;
 
         if (kind === 'single' || kind === 'double' || kind === 'triple') {
-            const bases = kind === 'single' ? 1 : kind === 'double' ? 2 : 3;
             const card = q('.pa-hitcard');
             anim(card, [{ transform: 'translateX(115%) skewX(-8deg)', opacity: 0 }, { transform: 'translateX(-3%) skewX(2deg)', opacity: 1, offset: 0.75 }, { transform: 'none', opacity: 1 }], { duration: 480 });
             anim(q('.pa-logo'), [{ transform: 'scale(0) rotate(-30deg)' }, { transform: 'scale(1.18) rotate(6deg)', offset: 0.7 }, { transform: 'none' }], { duration: 520, delay: 220 });
             all('.pa-big span').forEach((span, index) => anim(span, [{ transform: 'translateY(60%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 300 + index * 60 }));
             anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.9 }], { duration: 300, delay: 650 });
-            const path = BASES.slice(0, bases + 1);
-            anim(
-                q('.pa-runner'),
-                path.map(([x, y], index) => ({ transform: `translate(${x - 50}px, ${y - 88}px)`, offset: index / bases })),
-                { duration: 380 * bases, delay: 600, easing: 'linear' }
-            );
-            path.slice(1).forEach((_, index) => anim(q(`.pa-base-${index + 1}`), [{ fillOpacity: 0.25 }, { fillOpacity: 1 }], { duration: 120, delay: 600 + 380 * (index + 1) }));
+            // Todos corren a la vez: el bateador a su base, los que anotan cruzan home (+1 y sube el marcador) y el resto avanza
+            let runs = 0;
+            const score = () => {
+                runs += 1;
+                const total = q('.pa-rbi-n');
+                if (total) total.textContent = `+${runs}`;
+                anim(total, [{ opacity: 0.6, transform: 'scale(1.6)' }, { opacity: 1, transform: 'none' }], { duration: 360, easing: 'cubic-bezier(.3,1.6,.5,1)' });
+                anim(q('.pa-plus'), [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'translateY(-6px)', offset: 0.3 }, { opacity: 0, transform: 'translateY(-16px)' }], { duration: 700, easing: 'ease-out' });
+                const scoreNode = q('.pa-score-n');
+                if (scoreNode && event.runs) scoreNode.textContent = String(Math.min(event.runs.after, event.runs.before + runs));
+                anim(scoreNode, [{ transform: 'scale(1.5)' }, { transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.3,1.6,.5,1)' });
+            };
+            hitPaths.forEach((path, index) => {
+                const route = routeOf(path);
+                const [x0, y0] = route[0];
+                const node = q(`.pa-run-${index}`);
+                const legs = legsOf(path);
+                if (reduce) {
+                    // Sin movimiento: cada uno ya en su base (los que anotaron no se ven)
+                    const [x, y] = route[route.length - 1];
+                    node?.setAttribute('transform', `translate(${x - x0} ${y - y0})`);
+                    if (path.to === 4) node?.setAttribute('opacity', '0');
+                } else {
+                    anim(node, route.map(([x, y], k) => ({ transform: `translate(${x - x0}px, ${y - y0}px)`, offset: legs ? k / legs : 1 })), { duration: Math.max(1, RUN_LEG * legs), delay: RUN_START, easing: 'linear' });
+                    if (path.to === 4) anim(node, [{ opacity: 1 }, { opacity: 0 }], { duration: 200, delay: RUN_START + RUN_LEG * legs });
+                }
+                if (path.to === 4) timers.push(window.setTimeout(score, reduce ? 0 : RUN_START + RUN_LEG * legs));
+                else anim(q(`.pa-base-${path.to}`), [{ fillOpacity: 0.25 }, { fillOpacity: 1 }], { duration: 120, delay: RUN_START + RUN_LEG * legs });
+            });
         } else if (kind === 'hr' && flight !== null) {
             // El batazo de verdad: primero el vuelo sobre el parque y, al caer, el logo, «¡JONRÓN!» y el confeti
             anim(q('.pa-hr'), [{ opacity: 0 }, { opacity: 1 }], { duration: 220 });
@@ -211,7 +245,14 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
             timers.push(window.setTimeout(() => doneRef.current(), out + 160));
         };
         node.addEventListener('click', close);
-        const hold = kind === 'out' && event.out ? HOLD.out + (OUT_PATHS[event.out.variant].legs.length - 1) * LEG_MS : flight !== null ? landAt + 2900 : HOLD[kind];
+        const hold =
+            kind === 'out' && event.out
+                ? HOLD.out + (OUT_PATHS[event.out.variant].legs.length - 1) * LEG_MS
+                : flight !== null
+                  ? landAt + 2900
+                  : hitPaths.length
+                    ? Math.max(HOLD[kind], RUN_START + runLegs * RUN_LEG + 1300)
+                    : HOLD[kind];
         // Con menos movimiento el jonrón sale ya caído: un poco más de tiempo para leer la distancia
         timers.push(window.setTimeout(close, reduce ? Math.min(hold, flight !== null ? 3200 : 1600) : hold));
 
@@ -232,7 +273,6 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
 
     let body: React.ReactNode;
     if (kind === 'single' || kind === 'double' || kind === 'triple') {
-        const rbi = atBat?.rbi ?? 0;
         body = (
             <div className="pa-hitcard" style={style}>
                 <div className="pa-stripes" />
@@ -242,21 +282,37 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                         {team.abbrev} · {atBat?.batter.name}
                     </div>
                     <div className="pa-big flex text-[74px]">{letters(t(`anim.${kind}`))}</div>
-                    <div className="pa-sub">{rbi > 0 ? t('anim.rbi', { count: rbi }) : t('anim.vs', { pitcher: atBat?.pitcher.name ?? '' })}</div>
+                    <div className="pa-sub flex flex-wrap items-center gap-x-2">
+                        <span>{rbi > 0 ? t('anim.drivesIn', { count: rbi }) : t('anim.vs', { pitcher: atBat?.pitcher.name ?? '' })}</span>
+                        {event.runs && event.runs.after > event.runs.before && (
+                            <span className="pa-score">
+                                {team.abbrev} <b className="pa-score-n">{event.runs.before}</b>
+                            </span>
+                        )}
+                    </div>
                 </div>
-                <svg viewBox="0 0 100 100" className="relative h-[92px] w-[92px]" aria-hidden="true">
+                <svg viewBox="0 0 100 100" className="relative h-[92px] w-[92px] overflow-visible" aria-label={rbi > 0 ? t('anim.drivesIn', { count: rbi }) : undefined} role={rbi > 0 ? 'img' : undefined} aria-hidden={rbi > 0 ? undefined : true}>
                     <path d="M50 88 L86 52 L50 16 L14 52 Z" fill="none" stroke="currentColor" strokeOpacity={0.45} strokeWidth={3} />
                     {BASES.slice(1).map(([x, y], index) => (
                         <rect key={index} className={`pa-base-${index + 1}`} x={x - 8} y={y - 8} width={16} height={16} transform={`rotate(45 ${x} ${y})`} fill="currentColor" fillOpacity={0.25} />
                     ))}
-                    <circle className="pa-runner" cx={50} cy={88} r={7} fill="#fff" stroke={second} strokeWidth={2} />
+                    {/* Carreras que entran: el total en el centro del diamante y un «+1» que salta en home */}
+                    <text className="pa-rbi-n" x={50} y={60} textAnchor="middle" fontSize={26} fontWeight={800} fill="currentColor" opacity={scored > 0 ? 1 : 0} style={{ fontFamily: "'Barlow Condensed', 'Outfit', sans-serif", transformBox: 'fill-box', transformOrigin: 'center' }}>
+                        {scored > 0 ? '+0' : ''}
+                    </text>
+                    <text className="pa-plus" x={50} y={80} textAnchor="middle" fontSize={15} fontWeight={900} fill="currentColor" opacity={0}>
+                        +1
+                    </text>
+                    {hitPaths.map((path, index) => (
+                        <circle key={index} className={`pa-run-${index}`} cx={BASES[path.from][0]} cy={BASES[path.from][1]} r={path.batter ? 7 : 6} fill="#fff" stroke={second} strokeWidth={2} />
+                    ))}
                 </svg>
             </div>
         );
     } else if (kind === 'hr') {
-        const rbi = atBat?.rbi ?? 1;
         const dist = atBat?.pitches.find((pitch) => pitch.hit?.dist)?.hit?.dist ?? null;
-        const what = rbi >= 4 ? t('anim.grandSlam') : rbi <= 1 ? t('anim.solo') : t('anim.hrRuns', { count: rbi });
+        const runsIn = Math.max(1, rbi);
+        const what = runsIn >= 4 ? t('anim.grandSlam') : runsIn <= 1 ? t('anim.solo') : t('anim.hrRuns', { count: runsIn });
         body = (
             <div className={`pa-hr${flight !== null ? ' pa-hr-flight' : ''}`} style={style}>
                 <div className="pa-rays" />
@@ -269,7 +325,9 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                 <span className="pa-kicker relative">
                     {team.abbrev} · {atBat?.batter.name}
                 </span>
-                {flight !== null && <HomeRunFlight atBat={atBat} venue={event.venue} color={team.color} ink={on} accent={second} delay={FLIGHT_DELAY} reduce={reducedMotion()} />}
+                {flight !== null && (
+                    <HomeRunFlight atBat={atBat} venue={event.venue} color={team.color} ink={on} accent={second} delay={FLIGHT_DELAY} reduce={reducedMotion()} bases={event.bases ?? null} scored={event.runs ? event.runs.after - event.runs.before : rbi} />
+                )}
                 <Logo src={team.logo} className="pa-logo" />
                 <div className="pa-big relative flex text-[78px]">{letters(t('anim.hr'))}</div>
                 <div className="pa-sub relative">{dist && dist > 200 ? `${what} · ${t('anim.feet', { ft: dist })}` : what}</div>

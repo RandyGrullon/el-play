@@ -672,7 +672,11 @@
     "flightLabel": "Jonrón de {{ft}} pies {{dir}}",
     "toLeft": "por el left",
     "toCenter": "por el center",
-    "toRight": "por el right"
+    "toRight": "por el right",
+    "drivesIn_one": "Remolca {{count}} carrera",
+    "drivesIn_other": "Remolca {{count}} carreras",
+    "drivesInChip": "Remolca",
+    "runsLabel": "{{team}} {{runs}}"
   },
   "fantasy": {
     "title": "Fantasy",

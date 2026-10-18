@@ -672,7 +672,11 @@
     "flightLabel": "{{ft}}-foot home run {{dir}}",
     "toLeft": "to left",
     "toCenter": "to center",
-    "toRight": "to right"
+    "toRight": "to right",
+    "drivesIn_one": "Drives in {{count}} run",
+    "drivesIn_other": "Drives in {{count}} runs",
+    "drivesInChip": "RBI",
+    "runsLabel": "{{team}} {{runs}}"
   },
   "fantasy": {
     "title": "Fantasy",

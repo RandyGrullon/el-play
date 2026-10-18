@@ -1,6 +1,7 @@
 // Jugadas que disparan una animación en la pantalla del juego en vivo: se comparan dos lecturas seguidas del
 // juego y solo cuenta lo nuevo (al abrir el juego no se repite nada de lo que ya pasó).
 import type { AtBat, GameDetail, GameTeam, LeagueId, SeriesStatus } from '../types';
+import { basesOf, type Bases } from './runners';
 
 export type PlayKind = 'inning' | 'k' | 'single' | 'double' | 'triple' | 'hr' | 'win' | 'champion' | 'pinchHitter' | 'pinchRunner' | 'out';
 
@@ -30,6 +31,10 @@ export interface PlayEvent {
     out?: { variant: OutVariant; outs: number };
     /** Estadio (para dibujar el parque con sus medidas en el jonrón) */
     venue?: string;
+    /** Hits y jonrones: quién estaba en base antes (de la lectura anterior; null si no se sabe) */
+    bases?: Bases | null;
+    /** Hits y jonrones: carreras del equipo al bate antes y después de la jugada */
+    runs?: { before: number; after: number } | null;
 }
 
 /** Tipo de out según el evento de MLB y, en los «field_out», la trayectoria del batazo (o la etiqueta de MLB) */
@@ -82,6 +87,9 @@ export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDet
     if (!prev || prev.gamePk !== next.gamePk || prev.state !== 'live') return [];
     const done = new Set(prev.atBats.filter((atBat) => atBat.complete).map((atBat) => atBat.i));
     const events: PlayEvent[] = [];
+    // Los corredores de la lectura anterior son los de antes de la primera jugada nueva (de las siguientes no se sabe)
+    let basesKnown = true;
+    const scoreOf = (atBat: AtBat | undefined, top: boolean) => (atBat ? (top ? atBat.away : atBat.home) : 0);
 
     for (const atBat of next.atBats) {
         if (!atBat.complete || done.has(atBat.i)) continue;
@@ -92,6 +100,11 @@ export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDet
         const fielding = atBat.top ? next.home : next.away;
         // El out lo celebra el equipo que lo hizo (como el ponche)
         const defense = kind === 'k' || kind === 'out';
+        const hit = kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'hr';
+        const after = scoreOf(atBat, atBat.top);
+        const before = scoreOf(next.atBats.find((other) => other.i === atBat.i - 1), atBat.top);
+        const bases = hit && basesKnown ? basesOf(prev.runners) : null;
+        basesKnown = false;
         events.push({
             key: `ab-${atBat.i}`,
             kind,
@@ -103,6 +116,8 @@ export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDet
             atBat,
             inning: null,
             venue: next.venue,
+            bases,
+            runs: hit && after !== null && before !== null && after >= before ? { before, after } : null,
             strikeouts:
                 kind === 'k'
                     ? next.atBats.filter((other) => other.complete && other.i <= atBat.i && other.pitcher.id === atBat.pitcher.id && playKind(other) === 'k').length

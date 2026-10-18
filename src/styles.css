@@ -263,6 +263,8 @@
     box-shadow: 0 18px 40px rgb(0 0 0 / 0.35);
 }
 .pa-hitcard .pa-logo { width: 74px; height: 74px; padding: 9px; }
+.pa-score { display: inline-flex; align-items: baseline; gap: 4px; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--pa-on) 16%, transparent); font-weight: 800; }
+.pa-score-n { display: inline-block; font-family: 'Barlow Condensed', 'Outfit', sans-serif; font-size: 16px; font-variant-numeric: tabular-nums; }
 .pa-stripes { position: absolute; inset: 0; background: repeating-linear-gradient(-60deg, transparent 0 22px, var(--pa-on) 22px 34px); opacity: 0.18; }
 
 .pa-hr { position: absolute; inset: 0; padding-top: env(safe-area-inset-top, 0px); overflow: hidden; background: var(--pa-c); color: var(--pa-on); display: grid; justify-items: center; align-content: center; gap: 6px; text-align: center; }
@@ -273,7 +275,7 @@
 .pa-hr-flight { gap: 4px; padding-inline: max(12px, env(safe-area-inset-left, 0px)); }
 .pa-hr-flight .pa-logo { width: 84px; height: 84px; padding: 10px; }
 .pa-hr-flight .pa-big { font-size: 62px; }
-.hrf-chip { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; min-width: 76px; padding: 5px 10px; border-radius: 14px; background: color-mix(in srgb, var(--pa-on) 14%, transparent); }
+.hrf-chip { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; min-width: 64px; padding: 5px 8px; border-radius: 14px; background: color-mix(in srgb, var(--pa-on) 14%, transparent); }
 .hrf-chip-label { font-size: 9px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75; }
 
 .pa-k-wrap { position: absolute; inset: 0; padding-top: env(safe-area-inset-top, 0px); background: #0d0e13; color: #fff; display: grid; justify-items: center; align-content: center; gap: 4px; overflow: hidden; text-align: center; }

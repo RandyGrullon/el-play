@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AtBat } from '../../types';
 import { camera, flightMs, flightOf, groundAt, heightAt, parkFor, polar, wallAt, wallCrossing } from '../../lib/flight';
+import { legsOf, runnerPaths, type Bases } from '../../lib/runners';
 
 // El jonrón visto desde detrás de home, como en la transmisión: el parque a escala (con sus medidas cuando MLB las da),
 // la bola que sale hacia donde la sacó el bateador, sube según el ángulo de salida, pasa la cerca y cae en el punto que
@@ -10,6 +11,14 @@ import { camera, flightMs, flightOf, groundAt, heightAt, parkFor, polar, wallAt,
 const W = 360;
 const H = 250;
 const STEP = 1.5;
+// Después de caer la bola, los corredores y el bateador trotan las bases (420 ms por base) y cada uno que pisa home suma
+const TROT_LEG = 420;
+const BASE_FT = [
+    { x: 0, y: 0 },
+    { x: 63.6, y: 63.6 },
+    { x: 0, y: 127.3 },
+    { x: -63.6, y: 63.6 }
+];
 
 interface Props {
     atBat: AtBat | null;
@@ -21,11 +30,14 @@ interface Props {
     /** Cuándo sale el batazo (ms desde que aparece) */
     delay: number;
     reduce: boolean;
+    /** Quién estaba en base (null si no se sabe) y cuántas carreras entraron */
+    bases?: Bases | null;
+    scored: number;
 }
 
 const pts = (list: { x: number; y: number }[]) => list.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
 
-export const HomeRunFlight: React.FC<Props> = ({ atBat, venue, color, ink, accent, delay, reduce }) => {
+export const HomeRunFlight: React.FC<Props> = ({ atBat, venue, color, ink, accent, delay, reduce, bases = null, scored }) => {
     const { t, i18n } = useTranslation();
     const flight = useMemo(() => flightOf(atBat), [atBat]);
     const park = useMemo(() => parkFor(venue), [venue]);
@@ -41,6 +53,11 @@ export const HomeRunFlight: React.FC<Props> = ({ atBat, venue, color, ink, accen
     const distRef = useRef<HTMLSpanElement>(null);
     const evRef = useRef<HTMLSpanElement>(null);
     const laRef = useRef<HTMLSpanElement>(null);
+    const rbiRef = useRef<HTMLSpanElement>(null);
+    const runnersRef = useRef<SVGGElement>(null);
+    const plusRef = useRef<SVGTextElement>(null);
+    // Los que anotan: los que estaban en base y el bateador (en el jonrón entran todos)
+    const trot = useMemo(() => runnerPaths('hr', bases, Math.max(1, scored)), [bases, scored]);
 
     const number = useMemo(() => new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }), [i18n.language]);
 
@@ -134,17 +151,51 @@ export const HomeRunFlight: React.FC<Props> = ({ atBat, venue, color, ink, accen
             return `M${list.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L')}`;
         })();
         const land = project(flight.land.x, flight.land.y, 0);
-        return { at, trail, crossing, wallSpan, land, homeDepth, ms: flightMs(flight) };
+        // Dónde va cada corredor a los `elapsed` ms del trote (null si ya anotó)
+        const runnerAt = (path: { from: number; to: number }, elapsed: number) => {
+            const legs = legsOf(path as { from: 0; to: 4 });
+            const done = Math.min(legs, elapsed / TROT_LEG);
+            if (done >= legs) return null;
+            const leg = Math.floor(done);
+            const part = done - leg;
+            const a = BASE_FT[(path.from + leg) % 4];
+            const b = BASE_FT[(path.from + leg + 1) % 4];
+            return project(a.x + (b.x - a.x) * part, a.y + (b.y - a.y) * part, 0);
+        };
+        return { at, trail, crossing, wallSpan, land, homeDepth, ms: flightMs(flight), runnerAt };
     }, [flight, park, project]);
 
     useEffect(() => {
         if (!flight || !geometry) return;
-        const { at, trail, crossing, land, homeDepth, ms } = geometry;
+        const { at, trail, crossing, land, homeDepth, ms, runnerAt } = geometry;
         const radius = (depth: number) => Math.max(2.4, Math.min(8, (7 * homeDepth) / depth));
         const fmt = (value: number) => number.format(Math.round(value * 10) / 10);
         let raf = 0;
         let flashed = false;
         let landed = false;
+        let trotStart = 0;
+        let home = 0;
+        const dots = () => Array.from(runnersRef.current?.querySelectorAll<SVGCircleElement>('circle') ?? []);
+        // El trote: cada corredor avanza base a base; al pisar home suma a «Remolca» y salta un «+1»
+        const drawTrot = (elapsed: number) => {
+            let scoredNow = 0;
+            dots().forEach((dot, index) => {
+                const point = runnerAt(trot[index], elapsed);
+                if (!point) {
+                    scoredNow += 1;
+                    dot.setAttribute('opacity', '0');
+                    return;
+                }
+                dot.setAttribute('cx', point.x.toFixed(1));
+                dot.setAttribute('cy', point.y.toFixed(1));
+            });
+            if (scoredNow > home) {
+                home = scoredNow;
+                if (rbiRef.current) rbiRef.current.textContent = String(home);
+                plusRef.current?.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'translateY(-8px)', offset: 0.3 }, { opacity: 0, transform: 'translateY(-20px)' }], { duration: 700, easing: 'ease-out' });
+            }
+            return scoredNow >= trot.length;
+        };
 
         const draw = (time: number) => {
             const s = groundAt(time);
@@ -189,6 +240,7 @@ export const HomeRunFlight: React.FC<Props> = ({ atBat, venue, color, ink, accen
 
         if (reduce) {
             draw(1);
+            drawTrot(Infinity);
             return;
         }
         draw(0);
@@ -196,12 +248,17 @@ export const HomeRunFlight: React.FC<Props> = ({ atBat, venue, color, ink, accen
         burst.current?.animate([{ transform: 'scale(.2)', opacity: 0 }, { transform: 'scale(.2)', opacity: 0.9, offset: 0.01 }, { transform: 'scale(1.8)', opacity: 0 }], { duration: 500, delay, easing: 'ease-out', fill: 'both' });
         const tick = (now: number) => {
             const time = Math.max(0, Math.min(1, (now - start) / ms));
-            draw(time);
-            if (time < 1) raf = requestAnimationFrame(tick);
+            if (!landed || time < 1) draw(time);
+            if (time >= 1) {
+                // Cayó la bola: empieza el trote (un respiro de 250 ms)
+                if (!trotStart) trotStart = now + 250;
+                if (drawTrot(Math.max(0, now - trotStart))) return;
+            }
+            raf = requestAnimationFrame(tick);
         };
         raf = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(raf);
-    }, [flight, geometry, delay, reduce, number, t]);
+    }, [flight, geometry, delay, reduce, number, t, trot]);
 
     if (!flight || !geometry) return null;
     const home = field.home;
@@ -263,6 +320,16 @@ export const HomeRunFlight: React.FC<Props> = ({ atBat, venue, color, ink, accen
                     <path ref={core} d="" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
                     <circle ref={burst} cx={home.x} cy={home.y} r={14} fill="none" stroke="#fff" strokeWidth={2} opacity={0} style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
                     <circle ref={ball} cx={home.x} cy={home.y} r={6} fill="#fff" stroke={accent} strokeWidth={1.4} />
+                    {/* Corredores en base y el bateador en home; trotan cuando cae la bola */}
+                    <g ref={runnersRef}>
+                        {trot.map((path, index) => {
+                            const start = project(BASE_FT[path.from].x, BASE_FT[path.from].y, 0);
+                            return <circle key={index} cx={start.x} cy={start.y} r={path.batter ? 4 : 3.6} fill={color} stroke="#fff" strokeWidth={1.4} />;
+                        })}
+                    </g>
+                    <text ref={plusRef} x={home.x} y={home.y - 12} textAnchor="middle" fontSize={13} fontWeight={900} fill="currentColor" opacity={0}>
+                        +1
+                    </text>
                 </g>
             </svg>
             <div className="mt-1 flex justify-center gap-2 text-[12px] font-extrabold tabular-nums" aria-hidden="true">
@@ -281,6 +348,10 @@ export const HomeRunFlight: React.FC<Props> = ({ atBat, venue, color, ink, accen
                 <span className="hrf-chip">
                     <span className="hrf-chip-label">{t('anim.distance')}</span>
                     <span ref={distRef}>{t('anim.feet', { ft: reduce ? Math.round(flight.dist) : 0 })}</span>
+                </span>
+                <span className="hrf-chip">
+                    <span className="hrf-chip-label">{t('anim.drivesInChip')}</span>
+                    <span ref={rbiRef}>{reduce ? trot.length : 0}</span>
                 </span>
             </div>
         </div>
