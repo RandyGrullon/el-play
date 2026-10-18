@@ -133,6 +133,51 @@ export const useBannerVisible = () => useSyncExternalStore(subscribe, bannerVisi
 
 /** Navegador de Android, para dar los pasos de su menú (Chrome, Samsung Internet o Firefox) */
 export const androidBrowser = (): 'chrome' | 'samsung' | 'firefox' => (/SamsungBrowser/i.test(ua()) ? 'samsung' : /Firefox\//i.test(ua()) ? 'firefox' : 'chrome');
+
+// ---------------------------------------------------------------- navegador para la guía (cada uno instala distinto)
+
+export type InstallPlatform = 'ios' | 'android' | 'desktop';
+export type InstallBrowser = 'safari' | 'chrome' | 'firefox' | 'edge' | 'samsung' | 'opera' | 'other' | 'inapp';
+
+/** Los navegadores de cada sistema que tienen su propia guía, en el orden en que salen */
+export const BROWSERS: Record<InstallPlatform, InstallBrowser[]> = {
+    ios: ['safari', 'chrome', 'firefox', 'edge', 'other', 'inapp'],
+    android: ['chrome', 'samsung', 'firefox', 'edge', 'opera', 'other', 'inapp'],
+    desktop: ['chrome', 'edge', 'safari', 'firefox', 'other']
+};
+
+/**
+ * Sistema y navegador de quien abre la guía, por su user agent. Brave y DuckDuckGo se hacen pasar por Chrome o Safari:
+ * Brave se reconoce por navigator.brave; los que no se reconocen van a «otro» con pasos generales.
+ */
+export const detectBrowser = (agent = typeof navigator !== 'undefined' ? navigator.userAgent : '', touch = typeof navigator !== 'undefined' ? navigator.maxTouchPoints : 0, brave = typeof navigator !== 'undefined' && 'brave' in navigator): { platform: InstallPlatform; browser: InstallBrowser } => {
+    const ios = /iPhone|iPad|iPod/.test(agent) || (agent.includes('Macintosh') && touch > 1);
+    const android = /Android/i.test(agent);
+    const inApp = /Instagram|FBAN|FBAV|FB_IAB|FBIOS|Messenger|BytedanceWebview|musical_ly|TikTok|Snapchat|LinkedInApp|\bLine\/|Pinterest/i.test(agent) || (android && /; wv\)/.test(agent));
+    if (ios) {
+        if (inApp) return { platform: 'ios', browser: 'inapp' };
+        if (/CriOS/.test(agent)) return { platform: 'ios', browser: 'chrome' };
+        if (/FxiOS/.test(agent)) return { platform: 'ios', browser: 'firefox' };
+        if (/EdgiOS/.test(agent)) return { platform: 'ios', browser: 'edge' };
+        if (/OPiOS|OPT\/|YaBrowser|GSA\/|DuckDuckGo|Ddg\//.test(agent) || brave) return { platform: 'ios', browser: 'other' };
+        return { platform: 'ios', browser: /Safari\//.test(agent) ? 'safari' : 'other' };
+    }
+    if (android) {
+        if (inApp) return { platform: 'android', browser: 'inapp' };
+        if (/SamsungBrowser/i.test(agent)) return { platform: 'android', browser: 'samsung' };
+        if (/Firefox\//i.test(agent)) return { platform: 'android', browser: 'firefox' };
+        if (/EdgA\//.test(agent)) return { platform: 'android', browser: 'edge' };
+        if (/OPR\/|Opera/.test(agent)) return { platform: 'android', browser: 'opera' };
+        if (brave || /MiuiBrowser|XiaoMi|HuaweiBrowser|HeyTapBrowser|YaBrowser|UCBrowser|DuckDuckGo/i.test(agent)) return { platform: 'android', browser: 'other' };
+        return { platform: 'android', browser: /Chrome\//.test(agent) ? 'chrome' : 'other' };
+    }
+    if (/Edg\//.test(agent)) return { platform: 'desktop', browser: 'edge' };
+    if (/OPR\/|Opera/.test(agent) || brave) return { platform: 'desktop', browser: 'other' };
+    if (/Firefox\//.test(agent)) return { platform: 'desktop', browser: 'firefox' };
+    if (/Chrome\//.test(agent)) return { platform: 'desktop', browser: 'chrome' };
+    if (/Macintosh/.test(agent) && /Safari\//.test(agent)) return { platform: 'desktop', browser: 'safari' };
+    return { platform: 'desktop', browser: 'other' };
+};
 export const dismissBanner = () => {
     writeStorage(BANNER_KEY, Date.now());
     emit();

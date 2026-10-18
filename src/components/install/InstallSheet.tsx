@@ -3,76 +3,56 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ArrowRight, Check, Download, ExternalLink } from 'lucide-react';
 import { BottomSheet } from '../ui/BottomSheet';
 import { Segmented } from '../ui/Segmented';
-import { TutorialArt, type SceneKind } from './TutorialArt';
-import { androidBrowser, closeInstallSheet, isAndroid, isIOS, isIOSSafari, openInBrowserUrl, promptInstall, safariVersion, useInstallMode, useInstallSheet } from '../../lib/install';
+import { TutorialArt } from './TutorialArt';
+import { guideFor } from './steps';
+import { BROWSERS, closeInstallSheet, detectBrowser, isIOS, openInBrowserUrl, promptInstall, safariVersion, useInstallMode, useInstallSheet, type InstallBrowser, type InstallPlatform } from '../../lib/install';
 
-type Platform = 'ios' | 'android';
-interface Step {
-    scene: SceneKind;
-    text: string;
-}
-
-// Tutorial paso a paso para instalar El Play. Detecta el teléfono y el navegador y arranca en su guía;
-// con el selector se ve la del otro sistema (para ayudar a alguien más). En Android con el aviso de Chrome
-// basta un toque: el botón va arriba y los pasos explican qué sale después.
+// Tutorial paso a paso para instalar El Play. Detecta el sistema y el navegador y arranca en su guía; con los
+// selectores se ve la de otro sistema o de otro navegador (cada uno instala distinto, y sirve para ayudar a alguien más).
+// En Android con el aviso de Chrome basta un toque: el botón va arriba y los pasos explican qué sale después.
 export const InstallSheet: React.FC = () => {
     const { t } = useTranslation();
     const open = useInstallSheet();
     const mode = useInstallMode();
     const [done, setDone] = useState(false);
-    const detected: Platform = isIOS() ? 'ios' : 'android';
-    const [platform, setPlatform] = useState<Platform>(detected);
+    const detected = useMemo(() => detectBrowser(), []);
+    const [platform, setPlatform] = useState<InstallPlatform>(detected.platform);
+    const [browser, setBrowser] = useState<InstallBrowser>(detected.browser);
     const [step, setStep] = useState(0);
     const touch = useRef<number | null>(null);
 
     useEffect(() => {
         if (!open) return;
-        setPlatform(detected);
+        setPlatform(detected.platform);
+        setBrowser(detected.browser);
         setStep(0);
     }, [open, detected]);
     useEffect(() => {
         if (open && mode === 'installed') setDone(true);
     }, [open, mode]);
-    useEffect(() => setStep(0), [platform]);
+    useEffect(() => setStep(0), [platform, browser]);
 
-    const steps = useMemo<Step[]>(() => {
-        const finish: Step = { scene: platform === 'ios' ? 'home' : 'home-android', text: t('install.tutorial.done') };
-        if (platform === 'android') {
-            return mode === 'prompt'
-                ? [{ scene: 'app-button', text: t('install.tutorial.tapInstall') }, { scene: 'android-dialog', text: t('install.androidConfirm') }, finish]
-                : [
-                      // Samsung Internet y Firefox tienen el menú en otro lugar y otras palabras
-                      { scene: 'chrome-android-bar', text: t(`install.androidMenuBy.${isAndroid() ? androidBrowser() : 'chrome'}`) },
-                      { scene: 'chrome-menu', text: t(`install.androidInstallBy.${isAndroid() ? androidBrowser() : 'chrome'}`) },
-                      { scene: 'android-dialog', text: t('install.androidConfirm') },
-                      finish
-                  ];
-        }
-        // En un iPhone se usa la guía de su navegador; viéndola desde otro teléfono, la de Safari actual
-        if (isIOS() && !isIOSSafari() && mode !== 'in-app') {
-            return [
-                { scene: 'chrome-ios-bar', text: t('install.browserShare') },
-                { scene: 'share-sheet', text: t('install.iosAdd') },
-                { scene: 'add-ios-old', text: t('install.iosConfirm') },
-                finish
-            ];
-        }
-        if (isIOS() && safariVersion() > 0 && safariVersion() < 26) {
-            return [
-                { scene: 'safari-old-bar', text: t('install.iosShareBottom') },
-                { scene: 'share-sheet', text: t('install.iosAdd') },
-                { scene: 'add-ios-old', text: t('install.iosConfirm') },
-                finish
-            ];
-        }
-        return [
-            { scene: 'safari26-bar', text: t('install.iosMore') },
-            { scene: 'safari-menu', text: t('install.iosShare') },
-            { scene: 'share-sheet', text: t('install.iosAdd') },
-            { scene: 'add-ios', text: t('install.iosWebApp') },
-            finish
-        ];
-    }, [platform, mode, t]);
+    // Otro sistema: su navegador más común (o el detectado, si se vuelve al propio)
+    const choosePlatform = (next: InstallPlatform) => {
+        setPlatform(next);
+        setBrowser(next === detected.platform ? detected.browser : BROWSERS[next][0]);
+    };
+    const ownBrowser = platform === detected.platform && browser === detected.browser;
+    // El navegador elegido siempre a la vista en la fila de botones (el tuyo puede estar al final)
+    const chips = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!open) return;
+        // Solo de lado (scrollIntoView también movería la hoja hacia abajo)
+        const row = chips.current;
+        const chip = row?.querySelector<HTMLElement>('[aria-checked="true"]');
+        if (row && chip) row.scrollLeft = chip.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2;
+    }, [open, platform, browser]);
+
+    const guide = useMemo(
+        () => guideFor(platform, browser, { prompt: mode === 'prompt' && ownBrowser, safariNew: !(isIOS() && safariVersion() > 0 && safariVersion() < 26) }, t),
+        [platform, browser, mode, ownBrowser, t]
+    );
+    const steps = guide.steps;
 
     const close = () => {
         closeInstallSheet();
@@ -83,14 +63,8 @@ export const InstallSheet: React.FC = () => {
     };
     const go = (delta: number) => setStep((current) => Math.max(0, Math.min(steps.length - 1, current + delta)));
 
-    const deviceLabel =
-        mode === 'in-app'
-            ? t('install.tutorial.detectedInApp')
-            : isIOS()
-              ? t('install.tutorial.detectedIphone', { browser: isIOSSafari() ? 'Safari' : t('install.tutorial.otherBrowser') })
-              : isAndroid()
-                ? t('install.tutorial.detectedAndroid')
-                : t('install.tutorial.detectedDesktop');
+    const names = { device: t(`install.platformsA.${platform}`), browser: t(`install.browsers.${browser}`) };
+    const deviceLabel = mode === 'in-app' && ownBrowser ? t('install.tutorial.detectedInApp') : ownBrowser ? t('install.tutorial.detected', names) : t('install.tutorial.viewing', names);
 
     if (done || mode === 'installed') {
         return (
@@ -125,23 +99,39 @@ export const InstallSheet: React.FC = () => {
                     </div>
                 )}
 
-                {mode === 'prompt' && platform === 'android' && (
+                {mode === 'prompt' && platform === 'android' && ownBrowser && (
                     <button type="button" onClick={install} className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-base font-extrabold text-white shadow-float">
                         <Download className="h-5 w-5" />
                         {t('install.tutorial.oneTap')}
                     </button>
                 )}
 
-                <Segmented<Platform>
+                <Segmented<InstallPlatform>
                     size="sm"
                     label={t('install.tutorial.platform')}
                     value={platform}
-                    onChange={setPlatform}
-                    options={[
-                        { value: 'ios', label: 'iPhone' },
-                        { value: 'android', label: 'Android' }
-                    ]}
+                    onChange={choosePlatform}
+                    options={(['ios', 'android', 'desktop'] as const).map((value) => ({ value, label: t(`install.platforms.${value}`) }))}
                 />
+
+                <div ref={chips} className="-mx-4 flex gap-2 overflow-x-auto px-4 scrollbar-none" role="radiogroup" aria-label={t('install.tutorial.browser')}>
+                    {BROWSERS[platform].map((id) => {
+                        const mine = platform === detected.platform && id === detected.browser;
+                        return (
+                            <button
+                                key={id}
+                                type="button"
+                                role="radio"
+                                aria-checked={browser === id}
+                                onClick={() => setBrowser(id)}
+                                className={`flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold ${browser === id ? 'bg-ink text-bg' : 'bg-raised text-muted'}`}
+                            >
+                                {t(`install.browsers.${id}`)}
+                                {mine && <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${browser === id ? 'bg-bg/20' : 'bg-accent/15 text-accent-ink'}`}>{t('install.tutorial.yours')}</span>}
+                            </button>
+                        );
+                    })}
+                </div>
 
                 <div
                     className="overflow-hidden rounded-3xl bg-raised p-2"
@@ -156,13 +146,15 @@ export const InstallSheet: React.FC = () => {
                     }}
                 >
                     <div key={`${platform}-${step}`} className="animate-fade-up">
-                        <TutorialArt kind={current.scene} />
+                        <TutorialArt kind={current.scene} art={current.art} />
                     </div>
                 </div>
 
                 <div aria-live="polite">
                     <p className="eyebrow">{t('install.tutorial.step', { n: step + 1, total: steps.length })}</p>
                     <p className="mt-1 min-h-[44px] text-[15px] font-semibold leading-snug">{current.text}</p>
+                    {guide.note && <p className="mt-1 text-xs text-muted">{guide.note}</p>}
+                    {platform === 'desktop' && last && <p className="mt-1 text-xs text-muted">{t('install.tutorial.phoneTip')}</p>}
                 </div>
 
                 <div className="flex items-center justify-between gap-3 pb-1">
