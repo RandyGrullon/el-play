@@ -268,6 +268,13 @@
 .pa-hr { position: absolute; inset: 0; padding-top: env(safe-area-inset-top, 0px); overflow: hidden; background: var(--pa-c); color: var(--pa-on); display: grid; justify-items: center; align-content: center; gap: 6px; text-align: center; }
 .pa-rays { position: absolute; left: 50%; top: 46%; width: 900px; height: 900px; margin: -450px 0 0 -450px; border-radius: 50%; background: repeating-conic-gradient(var(--pa-on) 0 9deg, transparent 9deg 18deg); opacity: 0.16; }
 .pa-hr .pa-logo { width: 132px; height: 132px; padding: 14px; box-shadow: 0 0 0 6px rgb(255 255 255 / 0.35), 0 16px 40px rgb(0 0 0 / 0.35); }
+/* Jonrón con el vuelo del batazo: el campo arriba y una tarjeta más compacta (más alta, sin tapar la barra de abajo) */
+.pa-stage-tall { height: calc(min(570px, 100svh - 120px) + env(safe-area-inset-top, 0px)); }
+.pa-hr-flight { gap: 4px; padding-inline: max(12px, env(safe-area-inset-left, 0px)); }
+.pa-hr-flight .pa-logo { width: 84px; height: 84px; padding: 10px; }
+.pa-hr-flight .pa-big { font-size: 62px; }
+.hrf-chip { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; min-width: 76px; padding: 5px 10px; border-radius: 14px; background: color-mix(in srgb, var(--pa-on) 14%, transparent); }
+.hrf-chip-label { font-size: 9px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75; }
 
 .pa-k-wrap { position: absolute; inset: 0; padding-top: env(safe-area-inset-top, 0px); background: #0d0e13; color: #fff; display: grid; justify-items: center; align-content: center; gap: 4px; overflow: hidden; text-align: center; }
 .pa-zone {

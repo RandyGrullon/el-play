@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { OutVariant, PlayEvent } from '../../lib/playEvents';
 import { inkOn } from './GameHero';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
+import { HomeRunFlight, homeRunFlightMs } from './HomeRunFlight';
 
 // Animaciones de jugada en el juego en vivo: fin de entrada, ponche, hit, doble, triple y jonrón, más la victoria al
 // terminar el juego y el campeonato cuando ese juego da el título; con el logo y los colores del equipo protagonista. Se cierran solas o al tocarlas y no tapan
@@ -31,6 +32,9 @@ const BASES: [number, number][] = [
     [14, 52]
 ];
 
+// El jonrón con el batazo marcado: el campo aparece, la bola sale a los 450 ms y la tarjeta espera a que caiga
+const FLIGHT_DELAY = 450;
+
 const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const lastName = (name: string) => name.split(' ').slice(-1)[0];
 
@@ -49,6 +53,9 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
     const on = inkOn(team.color);
     const second = team.color2 || on;
     const style = { '--pa-c': team.color, '--pa-on': on, '--pa-c-rival': rival.color } as React.CSSProperties;
+    // Jonrón: cuánto vuela la bola (null si MLB no marcó dónde cayó: entonces va la curva de siempre)
+    const flight = kind === 'hr' ? homeRunFlightMs(atBat) : null;
+    const landAt = flight !== null ? FLIGHT_DELAY + flight : 0;
 
     useEffect(() => {
         const node = root.current;
@@ -79,6 +86,18 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                 { duration: 380 * bases, delay: 600, easing: 'linear' }
             );
             path.slice(1).forEach((_, index) => anim(q(`.pa-base-${index + 1}`), [{ fillOpacity: 0.25 }, { fillOpacity: 1 }], { duration: 120, delay: 600 + 380 * (index + 1) }));
+        } else if (kind === 'hr' && flight !== null) {
+            // El batazo de verdad: primero el vuelo sobre el parque y, al caer, el logo, «¡JONRÓN!» y el confeti
+            anim(q('.pa-hr'), [{ opacity: 0 }, { opacity: 1 }], { duration: 220 });
+            if (!reduce) anim(q('.pa-rays'), [{ transform: 'rotate(0deg) scale(.6)' }, { transform: 'rotate(40deg) scale(1)' }], { duration: landAt + 2600, easing: 'ease-out' });
+            anim(q('.hrf'), [{ opacity: 0, transform: 'translateY(14px) scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: 60 });
+            anim(q('.pa-kicker'), [{ opacity: 0 }, { opacity: 0.85 }], { duration: 300, delay: 120 });
+            anim(q('.pa-logo'), [{ transform: 'scale(0)', opacity: 0 }, { transform: 'scale(1.25)', opacity: 1, offset: 0.6 }, { transform: 'scale(.95)', offset: 0.8 }, { transform: 'none', opacity: 1 }], { duration: 650, delay: landAt + 80 });
+            all('.pa-big span').forEach((span, index) =>
+                anim(span, [{ transform: 'translateY(-120%) scale(1.4)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 360, delay: landAt + 300 + index * 55, easing: 'cubic-bezier(.3,1.6,.5,1)' })
+            );
+            anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.9 }], { duration: 300, delay: landAt + 800 });
+            if (!reduce) timers.push(window.setTimeout(() => confetti(canvas.current, [team.color, second, '#ffffff'], () => closed), landAt + 250));
         } else if (kind === 'hr') {
             anim(q('.pa-hr'), [{ opacity: 0 }, { opacity: 1 }], { duration: 220 });
             if (!reduce) anim(q('.pa-rays'), [{ transform: 'rotate(0deg) scale(.6)' }, { transform: 'rotate(40deg) scale(1)' }], { duration: 3600, easing: 'ease-out' });
@@ -192,8 +211,9 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
             timers.push(window.setTimeout(() => doneRef.current(), out + 160));
         };
         node.addEventListener('click', close);
-        const hold = kind === 'out' && event.out ? HOLD.out + (OUT_PATHS[event.out.variant].legs.length - 1) * LEG_MS : HOLD[kind];
-        timers.push(window.setTimeout(close, reduce ? Math.min(hold, 1600) : hold));
+        const hold = kind === 'out' && event.out ? HOLD.out + (OUT_PATHS[event.out.variant].legs.length - 1) * LEG_MS : flight !== null ? landAt + 2900 : HOLD[kind];
+        // Con menos movimiento el jonrón sale ya caído: un poco más de tiempo para leer la distancia
+        timers.push(window.setTimeout(close, reduce ? Math.min(hold, flight !== null ? 3200 : 1600) : hold));
 
         return () => {
             closed = true;
@@ -238,15 +258,18 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
         const dist = atBat?.pitches.find((pitch) => pitch.hit?.dist)?.hit?.dist ?? null;
         const what = rbi >= 4 ? t('anim.grandSlam') : rbi <= 1 ? t('anim.solo') : t('anim.hrRuns', { count: rbi });
         body = (
-            <div className="pa-hr" style={style}>
+            <div className={`pa-hr${flight !== null ? ' pa-hr-flight' : ''}`} style={style}>
                 <div className="pa-rays" />
-                <svg className="absolute inset-0 h-full w-full" viewBox="0 0 340 430" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-                    <path className="pa-trail" d="M30 400 Q 150 -60 330 70" fill="none" stroke="currentColor" strokeWidth={4} strokeLinecap="round" strokeDasharray="6 10" />
-                    <circle className="pa-ball" r={11} cx={30} cy={400} fill="#fff" stroke={second} strokeWidth={2} />
-                </svg>
+                {flight === null && (
+                    <svg className="absolute inset-0 h-full w-full" viewBox="0 0 340 430" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                        <path className="pa-trail" d="M30 400 Q 150 -60 330 70" fill="none" stroke="currentColor" strokeWidth={4} strokeLinecap="round" strokeDasharray="6 10" />
+                        <circle className="pa-ball" r={11} cx={30} cy={400} fill="#fff" stroke={second} strokeWidth={2} />
+                    </svg>
+                )}
                 <span className="pa-kicker relative">
                     {team.abbrev} · {atBat?.batter.name}
                 </span>
+                {flight !== null && <HomeRunFlight atBat={atBat} venue={event.venue} color={team.color} ink={on} accent={second} delay={FLIGHT_DELAY} reduce={reducedMotion()} />}
                 <Logo src={team.logo} className="pa-logo" />
                 <div className="pa-big relative flex text-[78px]">{letters(t('anim.hr'))}</div>
                 <div className="pa-sub relative">{dist && dist > 200 ? `${what} · ${t('anim.feet', { ft: dist })}` : what}</div>
@@ -426,7 +449,7 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
 
     return createPortal(
         <div className="pa-root" aria-live="polite">
-            <div ref={root} className="pa-stage" role="button" tabIndex={-1} aria-label={t('anim.close')}>
+            <div ref={root} className={`pa-stage${flight !== null ? ' pa-stage-tall' : ''}`} role="button" tabIndex={-1} aria-label={t('anim.close')}>
                 {body}
             </div>
         </div>,

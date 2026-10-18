@@ -6,6 +6,7 @@ import { nameKey, photoSources } from './photos';
 import { newPlayEvents, outVariant, titleClinch } from './playEvents';
 import { canAdd, creditsLeft, effectiveEntry, entryCost, perTeamLimit, fantasyInterval, gameStarted, getStore, isLocked, lockTime, nextLockAt, pickPoints, replaceStore, setPick, setStoreOwner, takeLegacyStore, teamPoints, unsettledDays, type DayEntry, type EntryHistory, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
 import { SORTS, normalize, sortPlayers, type PlayerRow } from './stats';
+import { camera, flightMs, flightOf, gamedayToFeet, groundAt, heightAt, parkFor, wallAt, wallCrossing } from './flight';
 import { battingAdvanced, fmtPct, fmtRate, pitchingAdvanced, pythagorean } from './advanced';
 import { showAlert } from '../hooks/useGameAlerts';
 import type { AtBat, GameDetail, Pitch, Schedule, ScheduleGame } from '../types';
@@ -265,6 +266,59 @@ describe('tipos de out', () => {
         expect(outVariant(play('walk', 'Walk'))).toBeNull();
         expect(outVariant(play('strikeout', 'Strikeout'))).toBeNull();
         expect(outVariant(play('field_error', 'Field Error', 'ground_ball'))).toBeNull();
+    });
+});
+
+describe('vuelo del jonrón a escala', () => {
+    const atBat = (hit: Pitch['hit']) => ({ pitches: [{ hit: null }, { hit }] }) as unknown as AtBat;
+
+    it('el parque: medidas de MLB en Quisqueya, Cibao y Tetelo; genérico (sin medidas a la vista) en los demás', () => {
+        expect(parkFor('Estadio Quisqueya Juan Marichal')).toMatchObject({ left: 335, center: 411, right: 335, known: true });
+        expect(parkFor('Estadio Cibao')).toMatchObject({ center: 385, known: true });
+        expect(parkFor('Estadio Julian Javier')).toMatchObject({ known: false });
+        const park = parkFor('Estadio Quisqueya Juan Marichal');
+        expect(wallAt(park, -45)).toBe(335);
+        expect(wallAt(park, 0)).toBe(411);
+        expect(wallAt(park, 10)).toBeGreaterThan(park.rightCenter);
+        expect(wallAt(park, 10)).toBeLessThan(411);
+    });
+
+    it('jonrones reales: hacia dónde salió, cuánto voló y qué tan alto', () => {
+        expect(gamedayToFeet(125.42, 198.27)).toEqual({ x: 0, y: 0 });
+        // Agustín Ramírez, 453 pies por el left (851464)
+        const left = flightOf(atBat({ ev: 109.1, la: 22, dist: 453, x: 38.6, y: 36.9, traj: 'fly_ball' }))!;
+        expect(left.deg).toBeLessThan(-15);
+        expect(Math.hypot(left.land.x, left.land.y)).toBeCloseTo(453, 0);
+        expect(left.apex).toBeGreaterThan(60);
+        // Jesús Made, 408 por el right (851491); Carlos Jorge, 404 al center (851509)
+        expect(flightOf(atBat({ ev: 106.8, la: 31, dist: 408, x: 219.3, y: 79.2, traj: 'fly_ball' }))!.deg).toBeGreaterThan(15);
+        expect(Math.abs(flightOf(atBat({ ev: 100.1, la: 28, dist: 404, x: 118.6, y: 27.4, traj: 'fly_ball' }))!.deg)).toBeLessThan(5);
+        // Sin distancia de MLB, la del punto marcado; sin punto, no hay vuelo (va la animación de siempre)
+        expect(flightOf(atBat({ ev: null, la: null, dist: null, x: 125.42, y: 38.27, traj: 'fly_ball' }))!.dist).toBeCloseTo(400, 0);
+        expect(flightOf(atBat({ ev: 100, la: 30, dist: 400 }))).toBeNull();
+        expect(wallCrossing(left, parkFor('Estadio Quisqueya Juan Marichal'))).toBeGreaterThan(0.7);
+    });
+
+    it('la curva: sale del piso, sube hasta el pico al 58 % y vuelve a caer; el vuelo dura según la distancia', () => {
+        const flight = { apex: 100 };
+        expect(heightAt(flight, 0)).toBe(0);
+        expect(heightAt(flight, 0.58)).toBe(100);
+        expect(heightAt(flight, 1)).toBeCloseTo(0, 6);
+        expect(groundAt(0)).toBe(0);
+        expect(groundAt(1)).toBe(1);
+        expect(groundAt(0.5)).toBeGreaterThan(0.5);
+        expect(flightMs({ dist: 453 })).toBeGreaterThan(flightMs({ dist: 404 }));
+    });
+
+    it('la cámara: home abajo y la cerca del center más arriba que home', () => {
+        const park = parkFor('Estadio Quisqueya Juan Marichal');
+        const project = camera(park, 360, 250);
+        const home = project(0, 0, 0);
+        const center = project(0, 411, 0);
+        const high = project(0, 200, 100);
+        expect(home.y).toBeGreaterThan(center.y);
+        expect(high.y).toBeLessThan(project(0, 200, 0).y);
+        expect(home.y).toBeLessThanOrEqual(250);
     });
 });
 

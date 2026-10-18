@@ -28,6 +28,8 @@ export interface PlayEvent {
     sub?: { in: { id: number | null; name: string }; out: { id: number | null; name: string } | null };
     /** Out: tipo y outs que quedan en la entrada después de la jugada */
     out?: { variant: OutVariant; outs: number };
+    /** Estadio (para dibujar el parque con sus medidas en el jonrón) */
+    venue?: string;
 }
 
 /** Tipo de out según el evento de MLB y, en los «field_out», la trayectoria del batazo (o la etiqueta de MLB) */
@@ -100,6 +102,7 @@ export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDet
             home: next.home,
             atBat,
             inning: null,
+            venue: next.venue,
             strikeouts:
                 kind === 'k'
                     ? next.atBats.filter((other) => other.complete && other.i <= atBat.i && other.pitcher.id === atBat.pitcher.id && playKind(other) === 'k').length

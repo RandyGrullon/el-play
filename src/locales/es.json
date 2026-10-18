@@ -567,7 +567,14 @@
       "dp": "Doble play",
       "tp": "Triple play",
       "sac": "Sacrificio"
-    }
+    },
+    "exitVelo": "Salida",
+    "launchAngle": "Ángulo",
+    "distance": "Distancia",
+    "flightLabel": "Jonrón de {{ft}} pies {{dir}}",
+    "toLeft": "por el left",
+    "toCenter": "por el center",
+    "toRight": "por el right"
   },
   "fantasy": {
     "title": "Fantasy",

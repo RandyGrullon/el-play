@@ -567,7 +567,14 @@
       "dp": "Double play",
       "tp": "Triple play",
       "sac": "Sacrifice"
-    }
+    },
+    "exitVelo": "Exit velo",
+    "launchAngle": "Launch angle",
+    "distance": "Distance",
+    "flightLabel": "{{ft}}-foot home run {{dir}}",
+    "toLeft": "to left",
+    "toCenter": "to center",
+    "toRight": "to right"
   },
   "fantasy": {
     "title": "Fantasy",
