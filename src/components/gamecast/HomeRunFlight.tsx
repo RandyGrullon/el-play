@@ -48,6 +48,8 @@ export const HomeRunFlight: React.FC<Props> = ({ atBat, venue, color, ink, accen
     const ball = useRef<SVGCircleElement>(null);
     const shadow = useRef<SVGEllipseElement>(null);
     const landing = useRef<SVGGElement>(null);
+    // La medida va aparte, encima de la estela (debajo, la curva que baja la tapaba)
+    const tag = useRef<SVGGElement>(null);
     const flash = useRef<SVGPathElement>(null);
     const burst = useRef<SVGCircleElement>(null);
     const distRef = useRef<HTMLSpanElement>(null);
@@ -231,7 +233,9 @@ export const HomeRunFlight: React.FC<Props> = ({ atBat, venue, color, ink, accen
             if (!landed && time >= 1) {
                 landed = true;
                 if (distRef.current) distRef.current.textContent = t('anim.feet', { ft: Math.round(flight.dist) });
-                landing.current?.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'both' });
+                [landing.current, tag.current].forEach((group) =>
+                    group?.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'both' })
+                );
                 landing.current?.querySelectorAll('.hrf-ring').forEach((ring, index) =>
                     ring.animate([{ transform: 'scale(.2)', opacity: 0.9 }, { transform: 'scale(1.6)', opacity: 0 }], { duration: 900, delay: index * 260, iterations: 2, easing: 'ease-out', fill: 'both' })
                 );
@@ -308,12 +312,6 @@ export const HomeRunFlight: React.FC<Props> = ({ atBat, venue, color, ink, accen
                         <circle className="hrf-ring" cx={geometry.land.x} cy={geometry.land.y} r={9} fill="none" stroke="currentColor" strokeWidth={1.5} style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
                         <circle cx={geometry.land.x} cy={geometry.land.y} r={2.6} fill={accent} />
                         <line x1={geometry.land.x} y1={geometry.land.y} x2={geometry.land.x} y2={geometry.land.y - 22} stroke="currentColor" strokeWidth={1.2} />
-                        <g transform={`translate(${geometry.land.x} ${geometry.land.y - 30})`}>
-                            <rect x={-27} y={-9} width={54} height={17} rx={8.5} fill="currentColor" />
-                            <text x={0} y={3.6} textAnchor="middle" fontSize={10.5} fontWeight={900} fill={color} className="tabular-nums">
-                                {t('anim.feet', { ft: Math.round(flight.dist) })}
-                            </text>
-                        </g>
                     </g>
                     <ellipse ref={shadow} cx={home.x} cy={home.y} rx={4} ry={1.6} fill="#000" opacity={0} />
                     <path ref={glow} d="" fill="none" stroke={accent} strokeWidth={7} strokeLinecap="round" strokeLinejoin="round" opacity={0.55} filter="url(#hrf-blur)" />
@@ -330,6 +328,14 @@ export const HomeRunFlight: React.FC<Props> = ({ atBat, venue, color, ink, accen
                     <text ref={plusRef} x={home.x} y={home.y - 12} textAnchor="middle" fontSize={13} fontWeight={900} fill="currentColor" opacity={0}>
                         +1
                     </text>
+                    <g ref={tag} opacity={reduce ? 1 : 0}>
+                        <g transform={`translate(${geometry.land.x} ${geometry.land.y - 30})`}>
+                            <rect x={-27} y={-9} width={54} height={17} rx={8.5} fill="currentColor" />
+                            <text x={0} y={3.6} textAnchor="middle" fontSize={10.5} fontWeight={900} fill={color} className="tabular-nums">
+                                {t('anim.feet', { ft: Math.round(flight.dist) })}
+                            </text>
+                        </g>
+                    </g>
                 </g>
             </svg>
             <div className="mt-1 flex justify-center gap-2 text-[12px] font-extrabold tabular-nums" aria-hidden="true">

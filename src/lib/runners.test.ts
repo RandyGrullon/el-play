@@ -63,5 +63,9 @@ describe('corredores en un hit: quién anota y hasta dónde llega cada uno', () 
         const next = { ...prev, runners: { first: null, second: null, third: null }, atBats: [atBat(0, {}), atBat(1, { event: 'double', rbi: 2, away: 3, scoring: true })] } as unknown as GameDetail;
         const [event] = newPlayEvents(prev, next);
         expect(event).toMatchObject({ kind: 'double', bases: { first: true, second: false, third: true }, runs: { before: 1, after: 3 } });
+        // Una base por bolas (que no se anima) en la misma lectura también cambia las bases: del hit siguiente ya no se sabe
+        const later = { ...next, atBats: [atBat(0, {}), atBat(1, { event: 'walk', away: 1 }), atBat(2, { event: 'single', rbi: 1, away: 2 })] } as unknown as GameDetail;
+        const [single] = newPlayEvents(prev, later);
+        expect(single).toMatchObject({ kind: 'single', bases: null, runs: { before: 1, after: 2 } });
     });
 });

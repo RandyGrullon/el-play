@@ -93,6 +93,9 @@ export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDet
 
     for (const atBat of next.atBats) {
         if (!atBat.complete || done.has(atBat.i)) continue;
+        // Cualquier turno nuevo (también una base por bolas, que no se anima) cambia las bases para los siguientes
+        const firstNew = basesKnown;
+        basesKnown = false;
         const variant = outVariant(atBat);
         const kind = playKind(atBat) ?? (variant ? 'out' : null);
         if (!kind) continue;
@@ -103,8 +106,7 @@ export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDet
         const hit = kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'hr';
         const after = scoreOf(atBat, atBat.top);
         const before = scoreOf(next.atBats.find((other) => other.i === atBat.i - 1), atBat.top);
-        const bases = hit && basesKnown ? basesOf(prev.runners) : null;
-        basesKnown = false;
+        const bases = hit && firstNew ? basesOf(prev.runners) : null;
         events.push({
             key: `ab-${atBat.i}`,
             kind,
