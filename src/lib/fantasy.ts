@@ -22,6 +22,10 @@ export interface FantasyPlayer {
     points: number;
     /** Créditos que cuesta ese día (solo los días que se juegan con créditos) */
     price?: number;
+    /** Puntos que se esperan de él ese día (con lo de antes del día: no cambia mientras se juega) */
+    proj?: number;
+    /** Lanzador que abrió el último juego de su equipo: hoy le toca descansar */
+    rest?: boolean;
 }
 
 export interface FantasyGame extends ScheduleGame {
@@ -275,6 +279,25 @@ export const setCaptain = (day: FantasyDay, entry: DayEntry, player: FantasyPlay
     if (isLocked(day, player) || (current && isLocked(day, current))) return false;
     update(day.league, day.date, (value) => ({ ...value, captain: value.captain === player.id ? null : player.id }));
     return true;
+};
+
+/**
+ * Pone un equipo entero (el sugerido): los peloteros ya cerrados se quedan y el capitán cerrado no se cambia; del
+ * resto entra lo que se pide si su juego no ha empezado.
+ */
+export const applyLineup = (day: FantasyDay, lineup: number[], captain: number | null, now = Date.now()) => {
+    const find = (id: number | null) => (id === null ? undefined : day.players.find((p) => p.id === id));
+    const locked = (id: number | null) => {
+        const player = find(id);
+        return !!player && isLocked(day, player, now);
+    };
+    update(day.league, day.date, (current) => {
+        const kept = current.lineup.filter((id) => locked(id));
+        const next = [...new Set([...kept, ...lineup.filter((id) => !!find(id) && !locked(id))])];
+        const captainLocked = current.captain !== null && current.lineup.includes(current.captain) && locked(current.captain);
+        const nextCaptain = captainLocked ? current.captain : captain !== null && next.includes(captain) && !locked(captain) ? captain : current.captain !== null && next.includes(current.captain) ? current.captain : null;
+        return { ...current, lineup: next, captain: nextCaptain };
+    });
 };
 
 /** El pronóstico se cierra cuando empieza el juego (como los peloteros) */

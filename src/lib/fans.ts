@@ -72,6 +72,26 @@ const getJson = async <T>(path: string, signal?: AbortSignal): Promise<T> => {
 // Un perfil que no existe o las cuentas apagadas no se arreglan reintentando
 const retry = (failureCount: number, error: Error) => !(error instanceof ApiError && [400, 404, 503].includes(error.status)) && failureCount < 2;
 
+/** % de elección del día (solo de los juegos que ya empezaron), como el «% drafted» de los fantasy */
+export interface FantasyOwners {
+    league: LeagueId;
+    date: string;
+    teams: number;
+    players: { id: number; pct: number; captainPct: number }[];
+    /** gamePk → teamId → % de los pronósticos */
+    picks: Record<string, Record<string, number>>;
+}
+
+export const useFantasyOwners = (league: LeagueId, date: string | undefined, enabled: boolean) =>
+    useQuery({
+        queryKey: ['fantasy-owners', league, date],
+        queryFn: ({ signal }) => getJson<FantasyOwners>(`/api/v2/fantasy/owners?league=${league}&date=${date}`, signal),
+        enabled: enabled && !!date,
+        staleTime: 60000,
+        refetchInterval: enabled ? 60000 : false,
+        retry: 1
+    });
+
 export const useFanProfile = (userId: string | null, league: LeagueId) =>
     useQuery({
         queryKey: ['fantasy-fan', league, userId],

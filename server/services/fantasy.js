@@ -3,7 +3,7 @@ const http = require('./http');
 const { getLiveFeed } = require('./liveFeed');
 const { transformScheduleGame, gameState } = require('../utils/transformers');
 const { teamAbbrev, teamColor, teamLogo } = require('../utils/teams');
-const { CREDITS, CREDITS_FROM, dayPrices } = require('./fantasyPrices');
+const { CREDITS, CREDITS_FROM, dayPrices, projectionOf } = require('./fantasyPrices');
 
 // Fantasy de El Play: los puntos de cada pelotero en un día salen del box score de MLB de sus juegos.
 // El servidor los calcula (una sola regla para todos); la app arma el equipo y suma.
@@ -155,6 +155,11 @@ const fantasyDay = async (leagueKey, date) => {
         }
     };
 
+    // Del último juego de cada equipo con juego por empezar: quién bateó en la alineación (probable titular hoy)
+    // y qué lanzador abrió (le toca descansar). En LIDOM no se anuncian alineaciones ni abridores antes del juego.
+    const lastLineup = new Set();
+    const lastStarter = new Set();
+
     // Juegos empezados sin box score (MLB falló): el día sale incompleto y se vuelve a pedir pronto
     let missing = 0;
     const games = await Promise.all(
@@ -171,7 +176,10 @@ const fantasyDay = async (leagueKey, date) => {
                         .filter((g) => g.officialDate < day && gameState(g.status) === 'final' && [g.teams?.away?.team?.id, g.teams?.home?.team?.id].includes(teamId))
                         .sort((a, b) => b.gameDate.localeCompare(a.gameDate))[0];
                     const lastDoc = last ? await boxOf(last.gamePk) : null;
-                    if (lastDoc) add(playersFromFeed(lastDoc, game.gamePk, false).filter((player) => player.teamId === teamId), false);
+                    if (!lastDoc) continue;
+                    const roster = playersFromFeed(lastDoc, game.gamePk, false).filter((player) => player.teamId === teamId);
+                    roster.filter((player) => player.starter).forEach((player) => (player.role === 'P' ? lastStarter : lastLineup).add(player.id));
+                    add(roster, false);
                 }
             }
             // Primer lanzamiento (del feed de un juego en vivo): con la hora por definir, ahí se cierra el juego en el fantasy
@@ -184,7 +192,12 @@ const fantasyDay = async (leagueKey, date) => {
     const gameOfTeam = new Map(games.flatMap((game) => [[game.away.id, game.gamePk], [game.home.id, game.gamePk]]));
     const list = [...players.values()]
         .filter((player) => gameOfTeam.has(player.teamId))
-        .map((player) => ({ ...player, gamePk: player.line ? player.gamePk : gameOfTeam.get(player.teamId) }));
+        .map((player) => {
+            const gamePk = player.line ? player.gamePk : gameOfTeam.get(player.teamId);
+            if (player.line) return { ...player, gamePk };
+            // Juego por empezar: titular = estuvo en la alineación del último juego; `rest` = abrió el último juego
+            return { ...player, gamePk, starter: player.role === 'B' ? lastLineup.has(player.id) : false, ...(lastStarter.has(player.id) ? { rest: true } : {}) };
+        });
 
     // Créditos: el precio de cada pelotero en el día (sin datos suficientes, ese día no hay tope)
     let credits = null;
@@ -194,7 +207,11 @@ const fantasyDay = async (leagueKey, date) => {
             const table = await dayPrices(league.id, day, { batterPoints, pitcherPoints });
             if (table) {
                 const prices = { B: new Map(table.prices.B), P: new Map(table.prices.P) };
-                for (const player of list) player.price = prices[player.role === 'P' ? 'P' : 'B'].get(player.id) ?? CREDITS.unknown;
+                for (const player of list) {
+                    player.price = prices[player.role === 'P' ? 'P' : 'B'].get(player.id) ?? CREDITS.unknown;
+                    // Lo que se espera de él hoy (con lo de antes de hoy: no cambia durante el día)
+                    if (table.ppg) player.proj = projectionOf(table, player);
+                }
                 credits = { budget: table.budget, min: CREDITS.min, max: CREDITS.max };
             }
         } catch (problem) {

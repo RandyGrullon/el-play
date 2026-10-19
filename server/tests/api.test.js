@@ -760,6 +760,77 @@ describe('fantasy: perfil del fanático y tabla de la temporada', () => {
             await new Promise((resolve) => server.close(resolve));
         }
     });
+
+    describe('% elegido del día (como el «% drafted» de los fantasy)', () => {
+        // Juego 20 (Escogido-Licey) empieza 20:00 UTC; juego 21 (Águilas-Gigantes) a medianoche: a las 22:00 solo el 20 está cerrado
+        const OWN_DAY = '2026-10-12';
+        const ownPlayer = (id, teamId, gamePk) => ({ ...player(id, 0), teamId, gamePk });
+        const ownDay = {
+            games: [
+                { ...game(20, 'live', 672, 667), date: '2026-10-12T20:00:00Z' },
+                { ...game(21, 'preview', 669, 671), date: '2026-10-13T00:00:00Z' }
+            ],
+            players: [ownPlayer(10, 672, 20), ownPlayer(11, 667, 20), ownPlayer(30, 669, 21)]
+        };
+        const ownRows = () => [
+            { user_id: A, day: OWN_DAY, lineup: [10, 30], captain: 10, picks: { 20: 672, 21: 669 } },
+            { user_id: B, day: OWN_DAY, lineup: [10, 11], captain: 11, picks: { 20: 667 } },
+            { user_id: D, day: OWN_DAY, lineup: [], captain: null, picks: { 20: 672 } }, // solo pronosticó
+            { user_id: F, day: OWN_DAY, lineup: [30], captain: 30, picks: {} }
+        ];
+        afterEach(() => delete DAYS[OWN_DAY]);
+
+        it('solo de los juegos que ya empezaron, sobre los equipos con peloteros', async () => {
+            setup();
+            DAYS[OWN_DAY] = ownDay;
+            EXTRA.push(...ownRows());
+            const data = await fans.computeOwners('lidom', OWN_DAY, Date.parse('2026-10-12T22:00:00Z'));
+            expect(data.teams).toBe(3);
+            expect(data.players).toEqual([
+                { id: 10, pct: 66.7, captainPct: 33.3 },
+                { id: 11, pct: 33.3, captainPct: 33.3 }
+            ]);
+            // El 30 juega en el 21 (por empezar): no se ve; los pronósticos del 21 tampoco
+            expect(data.picks).toEqual({ 20: { 672: 66.7, 667: 33.3 } });
+            expect(data.partial).toBe(false);
+
+            // Antes del primer juego no se ve nada
+            const before = await fans.computeOwners('lidom', OWN_DAY, Date.parse('2026-10-12T19:00:00Z'));
+            expect(before.players).toEqual([]);
+            expect(before.picks).toEqual({});
+        });
+
+        it('cuenta el equipo que valía al cerrar: un cambio después del juego no suma', async () => {
+            setup();
+            DAYS[OWN_DAY] = ownDay;
+            // Puso al 11 cuando el juego 20 ya había empezado: el historial dice que no estaba al cerrar
+            const at = (iso) => Date.parse(iso);
+            EXTRA.push({ user_id: A, day: OWN_DAY, lineup: [10, 11], captain: 10, picks: {}, history: { v: 1, players: { 10: [[at('2026-10-12T18:00:00Z'), null]], 11: [[at('2026-10-12T21:00:00Z'), null]] }, captain: [[10, at('2026-10-12T18:00:00Z')]] } });
+            const data = await fans.computeOwners('lidom', OWN_DAY, Date.parse('2026-10-12T22:00:00Z'));
+            expect(data.players.map((row) => row.id)).toEqual([10]);
+        });
+
+        it('ruta: fecha inválida 400, sin Supabase 503 y un minuto de caché', async () => {
+            setup();
+            DAYS[OWN_DAY] = ownDay;
+            EXTRA.push(...ownRows());
+            const server = app.listen(0);
+            await new Promise((resolve) => server.once('listening', resolve));
+            const base = `http://127.0.0.1:${server.address().port}/api/v2/fantasy/owners`;
+            try {
+                expect((await realFetch(`${base}?league=lidom&date=ayer`)).status).toBe(400);
+                const ok = await realFetch(`${base}?league=lidom&date=${OWN_DAY}`);
+                expect(ok.status).toBe(200);
+                expect(ok.headers.get('cache-control')).toContain('s-maxage=60');
+                // Ya pasaron los dos juegos: se ven todos
+                expect((await ok.json()).players.map((row) => row.id).sort()).toEqual([10, 11, 30]);
+                env.supabaseConfig = () => null;
+                expect((await realFetch(`${base}?league=lidom&date=2026-10-11`)).status).toBe(503);
+            } finally {
+                await new Promise((resolve) => server.close(resolve));
+            }
+        });
+    });
 });
 
 describe('fantasy sin trampas: cada juego con el equipo que había cuando empezó', () => {
@@ -869,6 +940,22 @@ describe('fantasy con créditos: precio por pelotero y tope del equipo', () => {
         const one = { ...day(null), players: [p(1, 'B', 1, 5), p(2, 'B', 1, 5), p(3, 'B', 1, 5), p(4, 'B', 1, 5)] };
         const history = { v: 1, players: { 1: [[1, null]], 2: [[2, null]], 3: [[3, null]], 4: [[4, null]] } };
         expect(effectiveEntry(one, { lineup: [1, 2, 3, 4], captain: null, picks: {}, history }).lineup).toEqual([1, 2, 3]);
+    });
+
+    it('proyección del día: puntos por juego (con las temporadas pasadas) según si batea de titular o le toca descansar', () => {
+        const table = { ppg: { B: [[1, 6], [2, 3]], P: [[9, 10]] }, prior: { B: 2, P: 4 } };
+        expect(prices.projectionOf(table, { id: 1, role: 'B', starter: true })).toBe(6);
+        // Suplente: entra poco
+        expect(prices.projectionOf(table, { id: 2, role: 'B', starter: false })).toBe(1);
+        // Sin estadísticas: la mitad del «promedio bajo» de su rol
+        expect(prices.projectionOf(table, { id: 5, role: 'B', starter: true })).toBe(1);
+        // Lanzador: abrió el último juego, hoy descansa
+        expect(prices.projectionOf(table, { id: 9, role: 'P', starter: false })).toBe(10);
+        expect(prices.projectionOf(table, { id: 9, role: 'P', starter: false, rest: true })).toBe(1);
+        // rateTable da los puntos por juego regresados y el «promedio bajo» de cada tabla
+        const rated = prices.rateTable([{ table: new Map([[10, { points: 30, games: 3 }], [11, { points: 3, games: 3 }], [12, { points: 15, games: 3 }]]), weight: 1 }]);
+        expect(rated.ppg.get(10)).toBeGreaterThan(rated.ppg.get(12));
+        expect(rated.prior).toBeGreaterThan(0);
     });
 
     it('lo que cuesta un equipo', () => {

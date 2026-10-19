@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BarChart3, Crown, Info, Lock, Plus, Search, Share2, Sparkles, Trophy, Users, X } from 'lucide-react';
+import { BarChart3, Clock, Crown, Info, Lock, Plus, Search, Share2, Sparkles, Trophy, Users, Wand2, X } from 'lucide-react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLeague } from '../store/LeagueContext';
@@ -18,9 +18,12 @@ import { useIsPro } from '../lib/pro';
 import { usePlayers } from '../lib/stats';
 import { formatLongDate, formatTime } from '../lib/format';
 import { inningName } from '../lib/baseball';
+import { bestLineup, projectedPoints, valueOf } from '../lib/fantasyBest';
+import { showToast } from '../lib/toast';
 import {
     RULES,
     addPlayer,
+    applyLineup,
     canAdd,
     creditsLeft,
     effectiveEntry,
@@ -33,6 +36,7 @@ import {
     history,
     isLocked,
     lineText,
+    nextLockAt,
     pickPoints,
     pickResult,
     playerScore,
@@ -51,7 +55,7 @@ import {
     type FantasyPlayer
 } from '../lib/fantasy';
 import { accountEnabled, createLeague, dayEntries, joinLeague, myLeagues, pushEntry, syncFantasy, useSession, type PrivateLeague, type Rival } from '../lib/account';
-import { isFanId, useFanProfile } from '../lib/fans';
+import { isFanId, useFanProfile, useFantasyOwners } from '../lib/fans';
 
 type Tab = 'team' | 'picks' | 'table' | 'fans';
 const DAY_MS = 86400000;
@@ -206,11 +210,11 @@ export const FantasyPage: React.FC = () => {
                     <section className="relative overflow-hidden rounded-card p-5 text-white shadow-float" style={{ background: 'linear-gradient(135deg, #1e4fd8 0%, #6d28d9 55%, #e11d48 100%)' }}>
                         <Sparkles className="absolute -right-3 -top-3 h-24 w-24 opacity-15" aria-hidden="true" />
                         <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] opacity-85">{t('fantasy.yourPoints')}</p>
-                        <p className="mt-1 font-display text-[64px] font-extrabold leading-none tabular-nums">{Math.round((points + picks) * 10) / 10}</p>
+                        <p className="mt-1 font-display text-[64px] font-extrabold leading-none tabular-nums">{credits(Math.round((points + picks) * 10) / 10, i18n.language)}</p>
                         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-semibold">
-                            <span>{t('fantasy.teamPts', { pts: points })}</span>
-                            <span>{t('fantasy.picksPts', { pts: picks })}</span>
-                            <span>{t('fantasy.seasonPts', { pts: Math.round(season.points * 10) / 10, count: season.days, days: season.days })}</span>
+                            <span>{t('fantasy.teamPts', { pts: credits(points, i18n.language) })}</span>
+                            <span>{t('fantasy.picksPts', { pts: credits(picks, i18n.language) })}</span>
+                            <span>{t('fantasy.seasonPts', { pts: credits(Math.round(season.points * 10) / 10, i18n.language), count: season.days, days: season.days })}</span>
                         </div>
                         {past.length > 0 && <HistoryBars days={past.slice(0, 7).reverse()} />}
                     </section>
@@ -380,6 +384,7 @@ const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ day, lo
 
 /** Créditos con la coma o el punto del idioma (8,5 / 8.5) */
 const credits = (value: number, language: string) => new Intl.NumberFormat(language, { maximumFractionDigits: 1 }).format(value);
+const valueText = (value: number, language: string) => new Intl.NumberFormat(language, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 
 /** Barra de créditos del equipo: cuánto lleva gastado, cuánto le queda o por cuánto se pasó */
 const CreditsMeter: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, entry }) => {
@@ -421,6 +426,198 @@ const CreditsMeter: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, ent
     );
 };
 
+/** Minutos u horas que faltan («25 min», «2 h 10 min») */
+const untilText = (ms: number, t: (key: string, options?: Record<string, unknown>) => string) => {
+    const minutes = Math.max(1, Math.round(ms / 60000));
+    return minutes < 60 ? t('fantasy.smart.min', { n: minutes }) : t('fantasy.smart.hours', { h: Math.floor(minutes / 60), m: minutes % 60 });
+};
+
+/** % de elección del día: solo cuando hay juegos empezados (antes no se muestra para que nadie copie) */
+const useOwners = (day: FantasyDay) => {
+    const started = day.games.some((game) => gameStarted(game));
+    const owners = useFantasyOwners(day.league, day.date, accountEnabled() && started);
+    return useMemo(() => new Map((owners.data?.players ?? []).map((row) => [row.id, row])), [owners.data]);
+};
+
+/** Próximo cierre (cuenta regresiva al minuto) y cuántos peloteros faltan */
+const LockNotice: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, entry }) => {
+    const { t, i18n } = useTranslation();
+    const [now, setNow] = useState(() => Date.now());
+    useEffect(() => {
+        const timer = window.setInterval(() => setNow(Date.now()), 30000);
+        return () => window.clearInterval(timer);
+    }, []);
+    const next = nextLockAt(day, now);
+    if (next === null) return null;
+    const missing = Math.max(0, RULES.batters + RULES.pitchers - entry.lineup.length);
+    const game = day.games.find((g) => !g.startTimeTBD && Date.parse(g.date) === next);
+    return (
+        <div className={`flex items-start gap-2.5 rounded-2xl p-3 text-sm ${missing ? 'bg-live/10' : 'bg-raised'}`}>
+            <Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <p className="min-w-0">
+                <span className="font-bold">{t('fantasy.smart.nextLock', { time: untilText(next - now, t) })}</span>
+                {game && (
+                    <span className="text-muted">
+                        {' '}
+                        · {game.away.abbrev}–{game.home.abbrev}, <span className="whitespace-nowrap">{formatTime(game.date, i18n.language)}</span>
+                    </span>
+                )}
+                {missing > 0 && <span className="block font-semibold text-live">{t('fantasy.smart.missing', { count: missing })}</span>}
+            </p>
+        </div>
+    );
+};
+
+/** Proyección del equipo y las ayudas: completar con los mejores y ver el equipo sugerido */
+const SmartActions: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, entry }) => {
+    const { t, i18n } = useTranslation();
+    const [open, setOpen] = useState(false);
+    const hasProj = day.players.some((player) => player.proj !== undefined);
+    const anyOpen = day.players.some((player) => !isLocked(day, player));
+    if (!hasProj) return null;
+    const missing = RULES.batters + RULES.pitchers - entry.lineup.length;
+    const projected = projectedPoints(day, entry.lineup, entry.captain);
+    const fill = () => {
+        const best = bestLineup(day, { metric: 'proj', keep: entry.lineup, captain: entry.captain });
+        if (best) applyLineup(day, best.lineup, best.captain);
+        else showToast(t('fantasy.smart.none'));
+    };
+    const locked = entry.lineup.filter((id) => {
+        const player = day.players.find((p) => p.id === id);
+        return !!player && isLocked(day, player);
+    });
+    const lockedCaptain = entry.captain !== null && locked.includes(entry.captain) ? entry.captain : null;
+    if (!anyOpen) return null;
+    return (
+        <>
+            <div className="flex flex-wrap items-center gap-2">
+                <p className="mr-auto text-sm">
+                    <span className="text-muted">{t('fantasy.smart.teamProj')}</span>{' '}
+                    <b className="tabular-nums">{t('fantasy.smart.pts', { pts: credits(projected, i18n.language) })}</b>
+                </p>
+                {anyOpen && missing > 0 && (
+                    <button type="button" onClick={fill} className="flex h-11 items-center gap-1.5 rounded-full bg-accent px-4 text-xs font-extrabold text-white">
+                        <Sparkles className="h-4 w-4" aria-hidden="true" />
+                        {t('fantasy.smart.fill')}
+                    </button>
+                )}
+                {anyOpen && (
+                    <button type="button" onClick={() => setOpen(true)} className="flex h-11 items-center gap-1.5 rounded-full bg-raised px-4 text-xs font-extrabold">
+                        <Wand2 className="h-4 w-4" aria-hidden="true" />
+                        {t('fantasy.smart.suggest')}
+                    </button>
+                )}
+            </div>
+            {open && <SuggestSheet day={day} keep={locked} captain={lockedCaptain} onClose={() => setOpen(false)} />}
+        </>
+    );
+};
+
+/** El equipo sugerido (el mejor según las proyecciones, con los créditos y las reglas): se ve antes de usarlo */
+const SuggestSheet: React.FC<{ day: FantasyDay; keep: number[]; captain: number | null; onClose: () => void }> = ({ day, keep, captain, onClose }) => {
+    const { t, i18n } = useTranslation();
+    const best = useMemo(() => bestLineup(day, { metric: 'proj', keep, captain }), [day, keep, captain]);
+    return (
+        <BottomSheet open onClose={onClose} title={t('fantasy.smart.suggestTitle')}>
+            <div className="space-y-3 pb-2">
+                <p className="text-sm text-muted">{t('fantasy.smart.suggestHint')}</p>
+                {best ? (
+                    <>
+                        <LineupList day={day} lineup={best.lineup} captain={best.captain} metric="proj" />
+                        <p className="text-sm font-bold">
+                            {t('fantasy.smart.suggestTotal', { pts: credits(best.total, i18n.language), cost: credits(best.cost, i18n.language), budget: credits(day.credits?.budget ?? 0, i18n.language) })}
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                applyLineup(day, best.lineup, best.captain);
+                                onClose();
+                            }}
+                            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent text-sm font-extrabold text-white"
+                        >
+                            <Wand2 className="h-4 w-4" aria-hidden="true" />
+                            {t('fantasy.smart.use')}
+                        </button>
+                    </>
+                ) : (
+                    <p className="card p-4 text-sm text-muted">{t('fantasy.smart.none')}</p>
+                )}
+            </div>
+        </BottomSheet>
+    );
+};
+
+/** Lista corta de un equipo (sugerido o ideal): foto, nombre, equipo y sus puntos (proyectados o reales) */
+const LineupList: React.FC<{ day: FantasyDay; lineup: number[]; captain: number | null; metric: 'proj' | 'points' }> = ({ day, lineup, captain, metric }) => {
+    const { t, i18n } = useTranslation();
+    const players = lineup.map((id) => day.players.find((p) => p.id === id)).filter((p): p is FantasyPlayer => !!p);
+    return (
+        <ul className="divide-y divide-line/10">
+            {players.map((player) => {
+                const team = day.teams[player.teamId];
+                const points = metric === 'proj' ? player.proj ?? 0 : player.points;
+                return (
+                    <li key={player.id} className="flex items-center gap-3 py-2">
+                        <PlayerPhoto personId={player.id} name={player.name} size={40} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
+                        <div className="min-w-0 flex-1">
+                            <p className="flex items-center gap-1.5 truncate text-sm font-extrabold">
+                                {captain === player.id && <Crown className="h-3.5 w-3.5 shrink-0 text-gold" aria-label={t('fantasy.captain')} />}
+                                <span className="truncate">{player.name}</span>
+                            </p>
+                            <p className="truncate text-xs text-muted">
+                                {team?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')}
+                                {player.price !== undefined ? ` · ${t('fantasy.credits.price', { price: credits(player.price, i18n.language) })}` : ''}
+                            </p>
+                        </div>
+                        <span className="text-right">
+                            <span className="block font-display text-lg font-extrabold tabular-nums">{credits(captain === player.id ? Math.round(points * RULES.captain * 10) / 10 : points, i18n.language)}</span>
+                            <span className="block text-[10px] font-semibold text-muted">{metric === 'proj' ? t('fantasy.smart.projShort') : t('fantasy.fans.pts')}</span>
+                        </span>
+                    </li>
+                );
+            })}
+        </ul>
+    );
+};
+
+/** El equipo ideal del día (lo máximo que se podía sumar con los créditos y las reglas) y cuánto de eso hizo el tuyo */
+const IdealCard: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, entry }) => {
+    const { t, i18n } = useTranslation();
+    const started = day.games.some((game) => game.state !== 'preview');
+    const ideal = useMemo(() => (started ? bestLineup(day, { metric: 'points', ignoreLocks: true }) : null), [day, started]);
+    const [open, setOpen] = useState(false);
+    if (!ideal || ideal.total <= 0) return null;
+    const mine = teamPoints(day, entry);
+    const pct = Math.max(0, Math.min(100, Math.round((Math.max(0, mine) / ideal.total) * 100)));
+    const live = day.games.some((game) => game.state === 'live');
+    return (
+        <section className="card space-y-3 p-4" aria-label={t('fantasy.smart.ideal')}>
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="eyebrow flex items-center gap-1.5">
+                        <Trophy className="h-3.5 w-3.5" aria-hidden="true" />
+                        {t('fantasy.smart.ideal')}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted">{t(live ? 'fantasy.smart.idealLive' : 'fantasy.smart.idealHint')}</p>
+                </div>
+                <p className="shrink-0 font-display text-3xl font-extrabold leading-none tabular-nums">{credits(ideal.total, i18n.language)}</p>
+            </div>
+            {entry.lineup.length > 0 && (
+                <div>
+                    <div className="h-2 overflow-hidden rounded-full bg-raised" role="meter" aria-label={t('fantasy.smart.ideal')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+                        <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${pct}%` }} />
+                    </div>
+                    <p className="mt-1 text-xs font-semibold text-muted">{t('fantasy.smart.idealYou', { pts: credits(mine, i18n.language), ideal: credits(ideal.total, i18n.language), pct })}</p>
+                </div>
+            )}
+            <button type="button" onClick={() => setOpen((v) => !v)} className="text-sm font-semibold text-accent-ink" aria-expanded={open}>
+                {open ? t('fantasy.smart.idealHide') : t('fantasy.smart.idealShow')}
+            </button>
+            {open && <LineupList day={day} lineup={ideal.lineup} captain={ideal.captain} metric="points" />}
+        </section>
+    );
+};
+
 const teamOf = (day: FantasyDay | undefined, player: FantasyPlayer) => {
     const team = day?.teams[player.teamId];
     return team ? { id: team.id, logo: team.logo, color: team.color } : null;
@@ -431,6 +628,7 @@ const teamOf = (day: FantasyDay | undefined, player: FantasyPlayer) => {
 const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role: 'B' | 'P') => void }> = ({ day, entry, onPick }) => {
     const { t } = useTranslation();
     const [rules, setRules] = useState(false);
+    const owners = useOwners(day);
     const chosen = entry.lineup.map((id) => day.players.find((p) => p.id === id)).filter((p): p is FantasyPlayer => !!p);
     const batters = chosen.filter((p) => p.role === 'B');
     const pitchers = chosen.filter((p) => p.role === 'P');
@@ -444,7 +642,9 @@ const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role: 'B' |
     return (
         <section className="space-y-3" aria-label={t('fantasy.myTeam')}>
             <p className="text-sm text-muted">{t(day.credits ? 'fantasy.rulesShortCredits' : 'fantasy.rulesShort', { batters: RULES.batters, perTeam: perTeamLimit(day) })}</p>
+            <LockNotice day={day} entry={entry} />
             <CreditsMeter day={day} entry={entry} />
+            <SmartActions day={day} entry={entry} />
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 {slots.map((slot, index) =>
                     typeof slot === 'string' ? (
@@ -455,10 +655,12 @@ const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role: 'B' |
                             {slot === 'P' ? t('fantasy.addPitcher') : t('fantasy.addBatter')}
                         </button>
                     ) : (
-                        <PlayerSlot key={slot.id} day={day} entry={entry} player={slot} />
+                        <PlayerSlot key={slot.id} day={day} entry={entry} player={slot} owned={owners.get(slot.id)} />
                     )
                 )}
             </div>
+
+            <IdealCard day={day} entry={entry} />
 
             <button type="button" onClick={() => setRules((v) => !v)} className="flex items-center gap-2 text-sm font-semibold text-accent-ink" aria-expanded={rules}>
                 <Info className="h-4 w-4" />
@@ -469,7 +671,7 @@ const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role: 'B' |
     );
 };
 
-const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPlayer }> = ({ day, entry, player }) => {
+const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPlayer; owned?: { pct: number; captainPct: number } }> = ({ day, entry, player, owned }) => {
     const { t, i18n } = useTranslation();
     const team = day.teams[player.teamId];
     const locked = isLocked(day, player);
@@ -489,13 +691,26 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
                         {team?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')} · {gameStatus(day, player.gamePk, i18n.language, t)}
                         {day.credits && player.price !== undefined ? ` · ${t('fantasy.credits.price', { price: credits(player.price, i18n.language) })}` : ''}
                     </p>
-                    {line && <p className="truncate text-xs text-muted">{line}</p>}
+                    {line ? (
+                        <p className="truncate text-xs text-muted">{line}</p>
+                    ) : (
+                        !locked &&
+                        player.proj !== undefined && (
+                            <p className="truncate text-xs font-semibold text-accent-ink">
+                                {t('fantasy.smart.proj', { pts: credits(player.proj, i18n.language) })}
+                                {player.rest ? ` · ${t('fantasy.smart.restShort')}` : ''}
+                            </p>
+                        )
+                    )}
                 </div>
             </button>
             <div className="flex flex-col items-end gap-1">
-                <span className="font-display text-2xl font-extrabold leading-none tabular-nums">{playerScore(entry, player)}</span>
+                <span className="font-display text-2xl font-extrabold leading-none tabular-nums">{credits(playerScore(entry, player), i18n.language)}</span>
                 {locked ? (
-                    <Lock className="h-3.5 w-3.5 text-faint" aria-label={t('fantasy.locked')} />
+                    <span className="flex items-center gap-1 text-[11px] font-semibold text-faint">
+                        {owned && <span title={t('fantasy.smart.owned', { pct: credits(owned.pct, i18n.language) })}>{credits(owned.pct, i18n.language)} %</span>}
+                        <Lock className="h-3.5 w-3.5" aria-label={t('fantasy.locked')} />
+                    </span>
                 ) : (
                     <span className="flex gap-1">
                         <button type="button" onClick={() => setCaptain(day, entry, player)} className={`flex h-7 w-7 items-center justify-center rounded-full ${captain ? 'bg-gold text-white' : 'bg-raised text-muted'}`} aria-label={t('fantasy.makeCaptain')} aria-pressed={captain}>
@@ -534,6 +749,13 @@ const ScoringTable: React.FC<{ day: FantasyDay }> = ({ day }) => {
                 <p className="mt-1 text-xs text-muted">{t('fantasy.pickRule', { pts: RULES.pick })}</p>
                 {day.credits && <p className="mt-1 text-xs text-muted">{t('fantasy.credits.rule', { budget: day.credits.budget, min: day.credits.min, max: day.credits.max })}</p>}
             </div>
+            <div className="sm:col-span-2">
+                <p className="eyebrow mb-1">{t('fantasy.smart.howTitle')}</p>
+                <p className="text-xs text-muted">{t('fantasy.smart.howProj')}</p>
+                <p className="mt-1 text-xs text-muted">{t('fantasy.smart.howValue')}</p>
+                <p className="mt-1 text-xs text-muted">{t('fantasy.smart.howOwned')}</p>
+                <p className="mt-1 text-xs text-muted">{t('fantasy.smart.howBest')}</p>
+            </div>
         </div>
     );
 };
@@ -550,6 +772,11 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
     // PRO: puntos de fantasy por juego en la temporada, para escoger con datos
     const pro = useIsPro();
     const season = usePlayers(day.league);
+    const owners = useOwners(day);
+    const hasProj = day.players.some((p) => p.proj !== undefined);
+    type Sort = 'proj' | 'value' | 'price' | 'points';
+    const [sort, setSort] = useState<Sort>(started ? 'points' : hasProj ? 'proj' : 'points');
+    const metric = (p: FantasyPlayer) => (sort === 'proj' ? p.proj ?? -1 : sort === 'value' ? valueOf(p) ?? -1 : sort === 'price' ? p.price ?? 0 : p.points);
     const averages = useMemo(() => (pro ? new Map((season.data?.players ?? []).map((row) => [row.id, row])) : null), [pro, season.data]);
     const normalized = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -559,12 +786,12 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
                 .filter((p) => p.role === role && (teamId === null || p.teamId === teamId) && (!search || normalized(p.name).includes(normalized(search))))
                 .sort(
                     (a, b) =>
-                        (started ? b.points - a.points : 0) ||
+                        (hasProj ? metric(b) - metric(a) : started ? b.points - a.points : 0) ||
                         (averages ? (averages.get(b.id)?.ppg ?? 0) - (averages.get(a.id)?.ppg ?? 0) : 0) ||
                         Number(b.starter) - Number(a.starter) ||
                         a.name.localeCompare(b.name)
                 ),
-        [day.players, role, teamId, search, started, averages]
+        [day.players, role, teamId, search, started, averages, hasProj, sort] // eslint-disable-line react-hooks/exhaustive-deps
     );
 
     const left = creditsLeft(day, entry);
@@ -606,6 +833,20 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
                         { value: 'P', label: t('fantasy.pitchers') }
                     ]}
                 />
+                {hasProj && (
+                    <Segmented<Sort>
+                        size="sm"
+                        label={t('fantasy.smart.sort')}
+                        value={sort}
+                        onChange={setSort}
+                        options={[
+                            { value: 'proj', label: t('fantasy.smart.sortProj') },
+                            { value: 'value', label: t('fantasy.smart.sortValue') },
+                            { value: 'price', label: t('fantasy.smart.sortPrice') },
+                            ...(started ? [{ value: 'points' as Sort, label: t('fantasy.smart.sortPoints') }] : [])
+                        ]}
+                    />
+                )}
                 <label className="flex h-11 items-center gap-2 rounded-2xl bg-surface px-3 shadow-card">
                     <Search className="h-4 w-4 text-muted" />
                     <span className="sr-only">{t('fantasy.search')}</span>
@@ -647,6 +888,14 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
                                                 {t('pro.fantasyAvg', { ppg: averages.get(player.id)!.ppg, g: averages.get(player.id)!.g })}
                                             </p>
                                         )}
+                                        {player.proj !== undefined && (
+                                            <p className="truncate text-[11px] font-semibold text-muted">
+                                                {t('fantasy.smart.proj', { pts: credits(player.proj, i18n.language) })}
+                                                {valueOf(player) !== null ? ` · ${t('fantasy.smart.value', { v: valueText(valueOf(player)!, i18n.language) })}` : ''}
+                                                {player.rest ? ` · ${t('fantasy.smart.restShort')}` : ''}
+                                                {owners.get(player.id) ? ` · ${t('fantasy.smart.owned', { pct: credits(owners.get(player.id)!.pct, i18n.language) })}` : ''}
+                                            </p>
+                                        )}
                                         {problem && problem !== 'already' && <p className="text-[11px] font-semibold text-faint">{problemText(problem)}</p>}
                                     </div>
                                 </button>
@@ -655,7 +904,7 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
                                         {t('fantasy.credits.price', { price: credits(player.price, i18n.language) })}
                                     </span>
                                 )}
-                                {started && <span className="w-9 text-right font-display text-lg font-extrabold tabular-nums">{player.points}</span>}
+                                {started && <span className="w-9 text-right font-display text-lg font-extrabold tabular-nums">{credits(player.points, i18n.language)}</span>}
                                 <button
                                     type="button"
                                     disabled={inTeam ? lockedIn : !!problem}
@@ -710,6 +959,8 @@ const PickerAction: React.FC<{ day: FantasyDay; entry: DayEntry; player: Fantasy
 
 const PicksTab: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, entry }) => {
     const { t, i18n } = useTranslation();
+    const started = day.games.some((game) => gameStarted(game));
+    const owners = useFantasyOwners(day.league, day.date, accountEnabled() && started);
     return (
         <section className="space-y-2.5" aria-label={t('fantasy.picks')}>
             <p className="text-sm text-muted">{t('fantasy.picksHint', { pts: RULES.pick })}</p>
@@ -749,6 +1000,18 @@ const PicksTab: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, entry }
                                 );
                             })}
                         </div>
+                        {locked && owners.data?.picks[game.gamePk] && (
+                            <div className="mt-2">
+                                <div className="flex h-1.5 overflow-hidden rounded-full bg-raised" role="img" aria-label={t('fantasy.smart.picksSplit', { away: game.away.abbrev, a: owners.data.picks[game.gamePk][game.away.id] ?? 0, home: game.home.abbrev, h: owners.data.picks[game.gamePk][game.home.id] ?? 0 })}>
+                                    <span style={{ width: `${owners.data.picks[game.gamePk][game.away.id] ?? 0}%`, backgroundColor: game.away.color }} />
+                                    <span style={{ width: `${owners.data.picks[game.gamePk][game.home.id] ?? 0}%`, backgroundColor: game.home.color }} />
+                                </div>
+                                <p className="mt-1 flex justify-between text-[11px] font-semibold text-muted">
+                                    <span>{t('fantasy.smart.picksPct', { pct: credits(owners.data.picks[game.gamePk][game.away.id] ?? 0, i18n.language) })}</span>
+                                    <span>{t('fantasy.smart.picksPct', { pct: credits(owners.data.picks[game.gamePk][game.home.id] ?? 0, i18n.language) })}</span>
+                                </p>
+                            </div>
+                        )}
                     </div>
                 );
             })}

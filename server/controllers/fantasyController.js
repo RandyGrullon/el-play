@@ -62,4 +62,19 @@ const getFantasySeason = async (req, res, next) => {
     }
 };
 
-module.exports = { getFantasyDay, getFantasyFan, getFantasySeason };
+// % de elección del día (solo de los juegos que ya empezaron)
+const getFantasyOwners = async (req, res, next) => {
+    try {
+        const date = typeof req.query.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date) ? req.query.date : undefined;
+        if (req.query.date && !date) return res.set('Cache-Control', 'no-store').status(400).json({ error: 'invalid_date' });
+        if (!fans.accountsEnabled()) return res.set('Cache-Control', 'no-store').status(503).json({ error: 'accounts_disabled' });
+        const league = leagueFrom(req);
+        const data = await fans.dayOwners(league, date || fans.todayIn(LEAGUES[league].timeZone));
+        cacheFor(res, 60);
+        res.json(data);
+    } catch (error) {
+        if (!accountsFailure(res, error)) next(error);
+    }
+};
+
+module.exports = { getFantasyDay, getFantasyFan, getFantasySeason, getFantasyOwners };

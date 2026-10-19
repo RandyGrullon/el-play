@@ -54,11 +54,11 @@ const tableOf = (splits, group, scoring) => {
 };
 
 /**
- * Precios de un rol: puntos por juego regresados hacia un «promedio bajo» y pasados a percentil dentro del rol.
- * `weighted` es una lista de { table, weight } (tabla id → { points, games } de cada temporada con su peso).
- * Devuelve id → precio.
+ * Precio y proyección de un rol: puntos por juego regresados hacia un «promedio bajo» (la proyección) y pasados a
+ * percentil dentro del rol (el precio). `weighted` es una lista de { table, weight } (tabla id → { points, games } de
+ * cada temporada con su peso). Devuelve { prices: id → precio, ppg: id → puntos por juego esperados, prior }.
  */
-const priceTable = (weighted) => {
+const rateTable = (weighted) => {
     const sums = new Map();
     for (const { table, weight } of weighted) {
         for (const [id, row] of table) {
@@ -70,7 +70,8 @@ const priceTable = (weighted) => {
     }
     const rows = [...sums.values()];
     const prices = new Map();
-    if (!rows.length) return prices;
+    const ppg = new Map();
+    if (!rows.length) return { prices, ppg, prior: 0 };
     // El «promedio bajo»: el percentil 35 de los puntos por juego de quienes jugaron al menos 3 juegos
     const steady = rows.filter((row) => row.games >= 3).map((row) => row.points / row.games).sort((a, b) => a - b);
     const all = rows.map((row) => row.points / row.games).sort((a, b) => a - b);
@@ -83,9 +84,13 @@ const priceTable = (weighted) => {
         const equal = sorted.filter((value) => value === row.ppg).length;
         const percentile = sorted.length > 1 ? (below + (equal - 1) / 2) / (sorted.length - 1) : 0.5;
         prices.set(row.id, roundHalf(CREDITS.min + (CREDITS.max - CREDITS.min) * percentile));
+        ppg.set(row.id, Math.round(row.ppg * 10) / 10);
     }
-    return prices;
+    return { prices, ppg, prior: Math.round(prior * 10) / 10 };
 };
+
+/** Solo los precios (id → precio) */
+const priceTable = (weighted) => rateTable(weighted).prices;
 
 /** Una temporada pasada completa de la liga (ya no cambia: una semana en caché) */
 const pastSeason = (league, season, group) =>
@@ -118,13 +123,32 @@ const dayPrices = (leagueKey, date, scoring) => {
                 { table: tableOf(now, group, scoring), weight: 1 },
                 ...PAST_WEIGHTS.map((weight, i) => ({ table: tableOf(past[i * 2 + offset], group, scoring), weight }))
             ];
-            const batters = priceTable(seasons(hitNow, 0, 'hitting'));
-            const pitchers = priceTable(seasons(pitchNow, 1, 'pitching'));
-            if (batters.size + pitchers.size < MIN_PLAYERS) return null;
-            return { budget: CREDITS.budget, prices: { B: [...batters], P: [...pitchers] } };
+            const batters = rateTable(seasons(hitNow, 0, 'hitting'));
+            const pitchers = rateTable(seasons(pitchNow, 1, 'pitching'));
+            if (batters.prices.size + pitchers.prices.size < MIN_PLAYERS) return null;
+            return {
+                budget: CREDITS.budget,
+                prices: { B: [...batters.prices], P: [...pitchers.prices] },
+                ppg: { B: [...batters.ppg], P: [...pitchers.ppg] },
+                prior: { B: batters.prior, P: pitchers.prior }
+            };
         },
         { staleSec: 6 * 3600 }
     );
 };
 
-module.exports = { CREDITS, CREDITS_FROM, dayPrices, priceTable, tableOf, seasonOfDay };
+/**
+ * Puntos que se esperan de un pelotero ese día: sus puntos por juego (o la mitad del «promedio bajo» si no tiene
+ * historia), menos si es suplente (no estuvo en la alineación del último juego de su equipo) y casi nada si es el
+ * lanzador que abrió ese último juego (le toca descansar). En LIDOM no se anuncian abridores: es una estimación.
+ */
+const projectionOf = (table, player) => {
+    const role = player.role === 'P' ? 'P' : 'B';
+    const list = table?.ppg?.[role];
+    const known = Array.isArray(list) ? list.find(([id]) => id === player.id) : null;
+    const base = known ? known[1] : (table?.prior?.[role] ?? 0) * 0.5;
+    const factor = role === 'B' ? (player.starter ? 1 : 0.35) : player.rest ? 0.1 : 1;
+    return Math.round(base * factor * 10) / 10;
+};
+
+module.exports = { CREDITS, CREDITS_FROM, dayPrices, priceTable, rateTable, tableOf, seasonOfDay, projectionOf };

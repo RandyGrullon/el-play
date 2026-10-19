@@ -3,7 +3,7 @@ const season = require('./season');
 const env = require('../utils/env');
 const { cached } = require('../utils/cache');
 const { LEAGUES } = require('../config/constants');
-const { toEntry, hasPlay, dayResult, dayStarted, round1 } = require('./fantasyScore');
+const { toEntry, hasPlay, dayResult, dayStarted, round1, effectiveEntry, lockTime } = require('./fantasyScore');
 
 // Perfil de cada fanático (sus días y su temporada) y tabla de la temporada del fantasy.
 // Los equipos están en Supabase (fantasy_entries, lectura pública con la llave publishable) y los puntos de cada día
@@ -286,4 +286,54 @@ const seasonRanking = async (league, { today = todayIn(RD), users = null } = {})
     return { ...result.data, ranking };
 };
 
-module.exports = { isUuid, todayIn, dayTtl, dayTtlOn, cachedDay, computeDays, accountsEnabled, AccountsError, seasonRange, fanSummary, seasonRanking, MAX_USERS };
+// ---------------------------------------------------------------- % de elección (como el «% drafted» de los fantasy)
+
+const OWNERS_ROWS = 5000;
+
+/**
+ * Cuántos fanáticos eligieron a cada pelotero (y de capitán) y a cada equipo en los pronósticos, con el equipo que
+ * cuenta (effectiveEntry). Solo de los juegos que ya empezaron: antes no se muestra para que nadie copie.
+ */
+const computeOwners = async (league, date, now = Date.now()) => {
+    const [day, { rows, cut }] = await Promise.all([cachedDay(league, date), allRows(`fantasy_entries?league=eq.${league}&day=eq.${date}&select=*&order=user_id.asc`, OWNERS_ROWS)]);
+    const entries = rowsOf(rows).filter((item) => item.date === date);
+    const locked = new Set(day.games.filter((game) => lockTime(game) <= now).map((game) => game.gamePk));
+    const players = new Map();
+    const picks = {};
+    for (const { entry } of entries) {
+        const used = effectiveEntry(day, entry);
+        for (const id of used.lineup) {
+            const player = day.players.find((p) => p.id === id);
+            if (!player || !locked.has(player.gamePk)) continue;
+            const count = players.get(id) || { picked: 0, captain: 0 };
+            count.picked += 1;
+            if (used.captain === id) count.captain += 1;
+            players.set(id, count);
+        }
+        for (const [gamePk, teamId] of Object.entries(used.picks)) {
+            if (!locked.has(Number(gamePk))) continue;
+            picks[gamePk] = picks[gamePk] || {};
+            picks[gamePk][teamId] = (picks[gamePk][teamId] || 0) + 1;
+        }
+    }
+    // Sobre los equipos con peloteros (un fanático que solo pronosticó no cuenta para el % de los peloteros)
+    const total = entries.filter(({ entry }) => entry.lineup.length > 0).length;
+    const pct = (count) => (total ? Math.round((count / total) * 1000) / 10 : 0);
+    return {
+        league,
+        date,
+        teams: total,
+        players: [...players].map(([id, count]) => ({ id, pct: pct(count.picked), captainPct: pct(count.captain) })).sort((a, b) => b.pct - a.pct),
+        picks: Object.fromEntries(Object.entries(picks).map(([gamePk, counts]) => {
+            const sum = Object.values(counts).reduce((a, b) => a + b, 0);
+            return [gamePk, Object.fromEntries(Object.entries(counts).map(([teamId, count]) => [teamId, sum ? Math.round((count / sum) * 1000) / 10 : 0]))];
+        })),
+        partial: cut,
+        updatedAt: new Date(now).toISOString()
+    };
+};
+
+/** % de elección del día, un minuto en caché (se recalcula al empezar cada juego) */
+const dayOwners = (league, date) => cached(`fantasy_owners_${league}_${date}`, 60, () => computeOwners(league, date), { staleSec: 120 });
+
+module.exports = { computeOwners, dayOwners, isUuid, todayIn, dayTtl, dayTtlOn, cachedDay, computeDays, accountsEnabled, AccountsError, seasonRange, fanSummary, seasonRanking, MAX_USERS };
