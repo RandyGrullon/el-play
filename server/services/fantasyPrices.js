@@ -17,6 +17,10 @@ const PRIOR_GAMES = 4;
 const PRIOR_PERCENTILE = 0.35;
 // Con menos peloteros con datos que esto (p. ej. un torneo corto sin historia) no se juega con créditos
 const MIN_PLAYERS = 20;
+// Qué parte de sus puntos por juego se espera de cada uno ese día, medido con la temporada 2025-26
+// (scripts/backtest-fantasy.js): el titular del último juego no siempre batea hoy y el suplente entra poco; un
+// lanzador entra en 1 de cada 4 juegos y el que abrió el último juego casi nunca. Sin historia: la mitad del «promedio bajo».
+const PROJECTION = { starter: 0.85, bench: 0.3, pitcher: 0.25, rest: 0.025, unknown: 0.5 };
 
 const shiftDay = (day, days) => new Date(Date.parse(`${day}T12:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
 const todayIn = (timeZone) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -139,16 +143,17 @@ const dayPrices = (leagueKey, date, scoring) => {
 
 /**
  * Puntos que se esperan de un pelotero ese día: sus puntos por juego (o la mitad del «promedio bajo» si no tiene
- * historia), menos si es suplente (no estuvo en la alineación del último juego de su equipo) y casi nada si es el
- * lanzador que abrió ese último juego (le toca descansar). En LIDOM no se anuncian abridores: es una estimación.
+ * historia) por la parte que se espera que juegue (PROJECTION): menos si es suplente (no estuvo en la alineación del
+ * último juego de su equipo), la cuarta parte si es lanzador y casi nada si es el lanzador que abrió ese último juego
+ * (le toca descansar). En LIDOM no se anuncian alineaciones ni abridores: es una estimación.
  */
 const projectionOf = (table, player) => {
     const role = player.role === 'P' ? 'P' : 'B';
     const list = table?.ppg?.[role];
     const known = Array.isArray(list) ? list.find(([id]) => id === player.id) : null;
-    const base = known ? known[1] : (table?.prior?.[role] ?? 0) * 0.5;
-    const factor = role === 'B' ? (player.starter ? 1 : 0.35) : player.rest ? 0.1 : 1;
+    const base = known ? known[1] : (table?.prior?.[role] ?? 0) * PROJECTION.unknown;
+    const factor = role === 'B' ? (player.starter ? PROJECTION.starter : PROJECTION.bench) : player.rest ? PROJECTION.rest : PROJECTION.pitcher;
     return Math.round(base * factor * 10) / 10;
 };
 
-module.exports = { CREDITS, CREDITS_FROM, dayPrices, priceTable, rateTable, tableOf, seasonOfDay, projectionOf };
+module.exports = { CREDITS, CREDITS_FROM, PAST_WEIGHTS, PRIOR_GAMES, PRIOR_PERCENTILE, PROJECTION, dayPrices, priceTable, rateTable, tableOf, seasonOfDay, projectionOf };

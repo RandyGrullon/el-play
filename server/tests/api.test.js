@@ -944,14 +944,16 @@ describe('fantasy con créditos: precio por pelotero y tope del equipo', () => {
 
     it('proyección del día: puntos por juego (con las temporadas pasadas) según si batea de titular o le toca descansar', () => {
         const table = { ppg: { B: [[1, 6], [2, 3]], P: [[9, 10]] }, prior: { B: 2, P: 4 } };
-        expect(prices.projectionOf(table, { id: 1, role: 'B', starter: true })).toBe(6);
-        // Suplente: entra poco
-        expect(prices.projectionOf(table, { id: 2, role: 'B', starter: false })).toBe(1);
+        // Titular del último juego: no siempre batea hoy (×0,85)
+        expect(prices.projectionOf(table, { id: 1, role: 'B', starter: true })).toBe(5.1);
+        // Suplente: entra poco (×0,3)
+        expect(prices.projectionOf(table, { id: 2, role: 'B', starter: false })).toBe(0.9);
         // Sin estadísticas: la mitad del «promedio bajo» de su rol
-        expect(prices.projectionOf(table, { id: 5, role: 'B', starter: true })).toBe(1);
-        // Lanzador: abrió el último juego, hoy descansa
-        expect(prices.projectionOf(table, { id: 9, role: 'P', starter: false })).toBe(10);
-        expect(prices.projectionOf(table, { id: 9, role: 'P', starter: false, rest: true })).toBe(1);
+        expect(prices.projectionOf(table, { id: 5, role: 'B', starter: true })).toBe(0.9);
+        // Lanzador: entra en 1 de cada 4 juegos; si abrió el último juego, hoy descansa
+        expect(prices.projectionOf(table, { id: 9, role: 'P', starter: false })).toBe(2.5);
+        expect(prices.projectionOf(table, { id: 9, role: 'P', starter: false, rest: true })).toBe(0.3);
+        expect(prices.projectionOf(table, { id: 5, role: 'P', starter: false })).toBe(0.5);
         // rateTable da los puntos por juego regresados y el «promedio bajo» de cada tabla
         const rated = prices.rateTable([{ table: new Map([[10, { points: 30, games: 3 }], [11, { points: 3, games: 3 }], [12, { points: 15, games: 3 }]]), weight: 1 }]);
         expect(rated.ppg.get(10)).toBeGreaterThan(rated.ppg.get(12));
