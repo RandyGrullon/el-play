@@ -102,14 +102,12 @@ const boxOf = async (gamePk) => ({ liveData: { boxscore: await get(`${MLB_API_BA
 // Mismos parámetros y en el mismo orden que statsOf de fantasyPrices (así comparten la caché)
 const statsOf = (params) => http.mlbGet(`${MLB_API_BASE}/stats`, { gameType: 'R', leagueId: league.leagueId, playerPool: 'ALL', limit: 2000, ...params }).then((data) => data?.stats?.[0]?.splits || []);
 
-// bestLineup de la app (TypeScript): se compila al vuelo con el esbuild que ya trae Vite. Con `uncapped` mira a todos
-// los peloteros y no solo a los 45 bateadores y 20 lanzadores de más proyección (que a veces no caben en el presupuesto)
-const loadBest = (uncapped = false) => {
+// bestLineup de la app (TypeScript): se compila al vuelo con el esbuild que ya trae Vite
+const loadBest = () => {
     const entry = path.join(__dirname, '../src/lib/fantasyBest.ts');
     const { outputFiles } = require('esbuild').buildSync({ entryPoints: [entry], bundle: true, write: false, platform: 'node', format: 'cjs', external: ['react', '@tanstack/react-query'], logLevel: 'error' });
-    const code = uncapped ? outputFiles[0].text.replace(/MAX_BATTERS = \d+/, 'MAX_BATTERS = Infinity').replace(/MAX_PITCHERS = \d+/, 'MAX_PITCHERS = Infinity') : outputFiles[0].text;
     const module = { exports: {} };
-    new Function('module', 'exports', 'require', code)(module, module.exports, createRequire(entry));
+    new Function('module', 'exports', 'require', outputFiles[0].text)(module, module.exports, createRequire(entry));
     return module.exports;
 };
 
@@ -362,10 +360,8 @@ const GROUPS = [
 /**
  * Proyección de cada pelotero de cada día y el equipo sugerido contra el ideal. `project(day)` da, para ese día,
  * { projOf: pelotero → puntos, priceOf: pelotero → créditos, knownOf: pelotero → si tiene estadísticas }.
- * El sugerido sale dos veces: con bestLineup tal cual (`capped`) y mirando a todos los peloteros (`full`); el ideal,
- * siempre mirando a todos.
  */
-const evaluate = (days, bests, project) => {
+const evaluate = (days, best, project) => {
     const rows = [];
     const lineups = [];
     for (const day of days) {
@@ -373,10 +369,10 @@ const evaluate = (days, bests, project) => {
         const pool = day.pool.map((player) => ({ ...player, proj: projOf(player), price: priceOf(player), points: 0, played: false }));
         for (const player of pool) rows.push({ day: day.day, half: day.half, role: player.role, starter: player.starter, rest: !!player.rest, known: knownOf(player), proj: player.proj, y: player.y });
         const credits = { budget: CREDITS.budget, min: CREDITS.min, max: CREDITS.max };
-        const ideal = bests.full.bestLineup({ games: day.games, players: [...day.actual.values()].map((player) => ({ ...player, price: priceOf(player) })), credits }, { metric: 'points', ignoreLocks: true });
+        const ideal = best.bestLineup({ games: day.games, players: [...day.actual.values()].map((player) => ({ ...player, price: priceOf(player) })), credits }, { metric: 'points', ignoreLocks: true });
         if (!ideal) continue;
         const byId = new Map(pool.map((player) => [player.id, player]));
-        const scoreOf = (best) => {
+        const scoreOf = () => {
             const suggested = best.bestLineup({ games: day.games, players: pool, credits }, { metric: 'proj', ignoreLocks: true });
             if (!suggested) return null;
             const realOf = (id) => byId.get(id)?.y ?? 0;
@@ -388,23 +384,23 @@ const evaluate = (days, bests, project) => {
                 captainPitcher: byId.get(suggested.captain)?.role === 'P'
             };
         };
-        lineups.push({ day: day.day, half: day.half, ideal: ideal.total, capped: scoreOf(bests.capped), full: scoreOf(bests.full) });
+        lineups.push({ day: day.day, half: day.half, ideal: ideal.total, suggested: scoreOf() });
     }
     return { rows, lineups };
 };
 
-const lineupSummary = (list, kind) => {
-    const found = list.filter((item) => item[kind]);
+const lineupSummary = (list) => {
+    const found = list.filter((item) => item.suggested);
     const mean = (f) => found.reduce((sum, item) => sum + f(item), 0) / found.length;
     return {
         days: list.length,
         missing: list.length - found.length,
-        projected: mean((item) => item[kind].projected),
-        real: mean((item) => item[kind].real),
+        projected: mean((item) => item.suggested.projected),
+        real: mean((item) => item.suggested.real),
         ideal: mean((item) => item.ideal),
-        share: found.reduce((sum, item) => sum + item[kind].real, 0) / found.reduce((sum, item) => sum + item.ideal, 0),
-        pitcherPitched: mean((item) => (item[kind].pitcherPitched ? 1 : 0)),
-        captainPitcher: mean((item) => (item[kind].captainPitcher ? 1 : 0))
+        share: found.reduce((sum, item) => sum + item.suggested.real, 0) / found.reduce((sum, item) => sum + item.ideal, 0),
+        pitcherPitched: mean((item) => (item.suggested.pitcherPitched ? 1 : 0)),
+        captainPitcher: mean((item) => (item.suggested.captainPitcher ? 1 : 0))
     };
 };
 
@@ -428,10 +424,8 @@ const printReport = (title, { rows, lineups }) => {
             console.log(`| ${name.trim()}${name.startsWith(' ') ? ' ·' : ''} | ${s.n} | ${fmt(s.real)} | ${fmt(s.proj)} | ${fmt(s.bias)} | ${fmt(s.mae)} | ${fmt(s.rmse)} | ${fmt(s.rho)} |`);
         }
         const scopedLineups = lineups.filter((item) => half === null || item.half === half);
-        const full = lineupSummary(scopedLineups, 'full');
-        const capped = lineupSummary(scopedLineups, 'capped');
-        console.log(`\nEquipo sugerido (${full.days} días): proyectaba ${fmt(full.projected, 1)} e hizo ${fmt(full.real, 1)}; el ideal hizo ${fmt(full.ideal, 1)} → ${pct(full.share)} del ideal. Su lanzador lanzó ${pct(full.pitcherPitched)} de los días y el capitán fue lanzador ${pct(full.captainPitcher)}.`);
-        console.log(`Con bestLineup tal cual (45/20 candidatos): sin sugerido ${capped.missing} días; los demás hizo ${fmt(capped.real, 1)} → ${pct(capped.share)} del ideal.\n`);
+        const l = lineupSummary(scopedLineups);
+        console.log(`\nEquipo sugerido (${l.days} días, ${l.missing} sin sugerido): proyectaba ${fmt(l.projected, 1)} e hizo ${fmt(l.real, 1)}; el ideal hizo ${fmt(l.ideal, 1)} → ${pct(l.share)} del ideal. Su lanzador lanzó ${pct(l.pitcherPitched)} de los días y el capitán fue lanzador ${pct(l.captainPitcher)}.\n`);
     }
 };
 
@@ -575,7 +569,7 @@ const main = async () => {
     console.error(`${season.days.length} días con juegos (${season.days[0]} a ${season.days.at(-1)})`);
     const days = (await loadDays(season)).filter((day) => day.pool.length);
     console.error(`${days.length} días con roster de la víspera · ${requests} pedidos a MLB en esta corrida`);
-    const best = { capped: loadBest(), full: loadBest(true) };
+    const best = loadBest();
 
     // Con el código del servidor (los valores que tenga fantasyPrices.js ahora)
     const server = evaluate(days, best, (day) => ({

@@ -130,6 +130,59 @@ describe('equipo sugerido e ideal: el mejor con las reglas y los créditos', () 
         expect(ideal.total).toBe(18 * 1.5 + 9 + 7 + 5 + 4 + 15);
     });
 
+    it('aunque los de más proyección no quepan en los créditos, mira a los baratos (antes salía vacío)', () => {
+        // 48 bateadores y 21 lanzadores estrella de 12 créditos: con 5 + 1 de ellos no se cabe en 50
+        const stars = [...Array.from({ length: 48 }, (_, i) => p(100 + i, 'B', (i % 4) + 1, 12, 10)), ...Array.from({ length: 21 }, (_, i) => p(300 + i, 'P', (i % 4) + 1, 12, 8))];
+        const cheap = [p(200, 'B', 1, 4, 1), p(201, 'B', 2, 4, 1), p(202, 'B', 3, 4, 1), p(203, 'B', 4, 4, 1), p(400, 'P', 4, 4, 2)];
+        const best = bestLineup(day([...stars, ...cheap]), { metric: 'proj' })!;
+        // 3 estrellas (36) + 2 baratos (8) + el lanzador barato (4) = 48 créditos: 30 + 2 + 2 + el capitán (5) = 39
+        expect(best).not.toBeNull();
+        expect(best.cost).toBe(48);
+        expect(best.total).toBe(39);
+    });
+
+    it('da lo mismo que probar todos los equipos posibles (días al azar, con peloteros ya puestos y capitán fijo)', () => {
+        // Generador con semilla: siempre los mismos días
+        let seed = 20261020;
+        const random = () => {
+            seed = (seed * 1103515245 + 12345) % 2147483648;
+            return seed / 2147483648;
+        };
+        for (let round = 0; round < 60; round++) {
+            const players = [
+                ...Array.from({ length: 12 }, (_, i) => p(i + 1, 'B', (i % 4) + 1, 4 + Math.floor(random() * 17) / 2, Math.floor(random() * 11))),
+                ...Array.from({ length: 4 }, (_, i) => p(i + 21, 'P', i + 1, 4 + Math.floor(random() * 17) / 2, Math.floor(random() * 11)))
+            ];
+            const keep = round % 3 === 0 ? [1 + (round % 12)] : [];
+            const captain = round % 6 === 0 ? keep[0] : null;
+            // Fuerza bruta: todos los equipos de 5 + 1 que respetan el máximo por equipo y los créditos (sin los de
+            // proyección 0, que el sugerido no propone, salvo el que ya está puesto)
+            let brute: number | null = null;
+            const candidates = players.filter((x) => (x.proj ?? 0) > 0 || keep.includes(x.id));
+            const batters = candidates.filter((x) => x.role === 'B');
+            const pick = (start: number, acc: FantasyPlayer[]) => {
+                if (acc.length === 5) {
+                    for (const pitcher of candidates.filter((x) => x.role === 'P')) {
+                        const team = [...acc, pitcher];
+                        if (!keep.every((id) => team.some((x) => x.id === id))) continue;
+                        if (team.reduce((s, x) => s + (x.price ?? 0), 0) > 50) continue;
+                        const counts = new Map<number, number>();
+                        team.forEach((x) => counts.set(x.teamId, (counts.get(x.teamId) ?? 0) + 1));
+                        if ([...counts.values()].some((n) => n > 2)) continue;
+                        const sum = team.reduce((s, x) => s + (x.proj ?? 0), 0);
+                        const bonus = captain !== null ? players.find((x) => x.id === captain)!.proj! : Math.max(...team.map((x) => x.proj ?? 0));
+                        brute = Math.max(brute ?? -Infinity, sum + bonus * 0.5);
+                    }
+                    return;
+                }
+                for (let i = start; i < batters.length; i++) pick(i + 1, [...acc, batters[i]]);
+            };
+            pick(0, []);
+            const best = bestLineup(day(players), { metric: 'proj', keep, captain });
+            expect(best?.total ?? null).toBe(brute);
+        }
+    });
+
     it('valor = proyección por crédito', () => {
         expect(valueOf({ proj: 8.4, price: 12 })).toBe(0.7);
         expect(valueOf({ proj: undefined, price: 12 })).toBeNull();
