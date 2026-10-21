@@ -17,6 +17,7 @@ import { TableTab } from '../../components/fantasy/TableTab';
 import { TeamTab } from '../../components/fantasy/TeamTab';
 import { shift, useOpenPlayer } from '../../components/fantasy/shared';
 import { FanSearch } from '../../components/fantasy/FanSearch';
+import { ProFantasy } from '../../components/pro/fantasy/ProFantasy';
 import { useLocalText } from '../../components/fantasy/texts';
 import { accountEnabled, pushEntry, syncFantasy, useSession } from '../../lib/account';
 import { entryKey, fetchFantasyDay, getStore, history, pickPoints, settleDay, teamPoints, unsettledDays, useEntry, useFantasyDay, useFantasyStore } from '../../lib/fantasy';
@@ -54,7 +55,7 @@ export default function FantasyScreen() {
     const openPlayer = useOpenPlayer();
     const L = useLocalText();
     // Perfil de un fanático: su propia pantalla (atrás vuelve aquí)
-    const openFan = (id: string) => router.push(`/fantasy/fan/${id}`);
+    const openFan = (id: string) => router.push({ pathname: '/fantasy/fan/[id]', params: { id } });
     // El Fantasy se juega con cuenta; sin ella se ve la portada para entrar
     const playing = accountEnabled() && !!session;
 
@@ -112,6 +113,11 @@ export default function FantasyScreen() {
     const dayLabel = (key: string) => (key === today ? t('games.today') : key < (today ?? '') ? t('games.yesterday') : t('games.tomorrow'));
     const offline = !day && query.fetchStatus === 'paused';
     const dateText = day ? formatLongDate(day.date, i18n.language) : t(`leagues.${activeLeague}.name`);
+
+    // PRO (cuenta abierta + modo PRO): la misma partida con más datos; el Lite sigue igual debajo
+    if (pro && playing) {
+        return <ProFantasy league={activeLeague} query={query} date={date} onDate={setDate} today={today} tab={tab} onTab={setTab} entry={entry} onOpenFan={(id) => openFan(id)} />;
+    }
 
     return (
         <Screen onRefresh={() => query.refetch()}>

@@ -3,9 +3,9 @@
 // el buscador y el equipo de un día se leen directo de Supabase (los perfiles y los equipos son públicos).
 import { useQuery } from '@tanstack/react-query';
 import type { LeagueId } from '../../types';
-import { ApiError } from '../../lib/api';
+import { ApiError, networkErrorCode } from '../../lib/api';
 import { API_BASE } from '../../lib/config';
-import type { DayEntry } from '../../lib/fantasy';
+import type { DayEntry, EntryHistory } from '../../lib/fantasy';
 import { sbRest } from '../account/supabase';
 
 export interface FanDay {
@@ -56,9 +56,10 @@ export const isFanId = (value: string | null | undefined): value is string => !!
 // ---------------------------------------------------------------- servidor
 
 const getJson = async <T>(path: string, signal?: AbortSignal): Promise<T> => {
-    const response = await fetch(`${API_BASE}${path}`, { signal, headers: { Accept: 'application/json' } }).catch((error: Error) => {
+    const response = await fetch(`${API_BASE}${path}`, { signal, headers: { Accept: 'application/json' } }).catch(async (error: Error) => {
         if (error.name === 'AbortError') throw error;
-        throw new ApiError(error.message, typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'network');
+        // navigator.onLine no existe en el teléfono: el estado real lo da NetInfo
+        throw new ApiError(error.message, await networkErrorCode());
     });
     if (!response.ok) {
         const body = await response.json().catch(() => ({}));
@@ -69,6 +70,26 @@ const getJson = async <T>(path: string, signal?: AbortSignal): Promise<T> => {
 
 // Un perfil que no existe o las cuentas apagadas no se arreglan reintentando
 const retry = (failureCount: number, error: Error) => !(error instanceof ApiError && [400, 404, 503].includes(error.status)) && failureCount < 2;
+
+/** % de elección del día (solo de los juegos que ya empezaron), como el «% drafted» de los fantasy */
+export interface FantasyOwners {
+    league: LeagueId;
+    date: string;
+    teams: number;
+    players: { id: number; pct: number; captainPct: number }[];
+    /** gamePk → teamId → % de los pronósticos */
+    picks: Record<string, Record<string, number>>;
+}
+
+export const useFantasyOwners = (league: LeagueId, date: string | undefined, enabled: boolean) =>
+    useQuery({
+        queryKey: ['fantasy-owners', league, date],
+        queryFn: ({ signal }) => getJson<FantasyOwners>(`/api/v2/fantasy/owners?league=${league}&date=${date}`, signal),
+        enabled: enabled && !!date,
+        staleTime: 60000,
+        refetchInterval: enabled ? 60000 : false,
+        retry
+    });
 
 export const useFanProfile = (userId: string | null, league: LeagueId) =>
     useQuery({
@@ -81,10 +102,12 @@ export const useFanProfile = (userId: string | null, league: LeagueId) =>
         retry
     });
 
-export const useSeasonRanking = (league: LeagueId) =>
+/** `enabled` solo lo usa el PRO (respaldo si su ruta no existe); el Lite la monta siempre */
+export const useSeasonRanking = (league: LeagueId, enabled = true) =>
     useQuery({
         queryKey: ['fantasy-season', league],
         queryFn: ({ signal }) => getJson<SeasonRanking>(`/api/v2/fantasy/season?league=${league}`, signal),
+        enabled,
         staleTime: 5 * 60000,
         // Si se cortó por tiempo, en un rato está completa
         refetchInterval: (query) => (query.state.data?.partial ? 60000 : false),
@@ -140,11 +163,12 @@ export const useFanSearch = (q: string) => {
 /** Lo que armó una cuenta un día (equipo, capitán y pronósticos), directo de Supabase */
 export const fanEntry = async (userId: string, league: LeagueId, day: string): Promise<DayEntry | null> => {
     if (!isFanId(userId) || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
-    const rows = await sbRest<{ lineup: number[] | null; captain: number | null; picks: Record<string, number> | null; saved_at: number }[]>(
-        `fantasy_entries?user_id=eq.${userId}&league=eq.${encodeURIComponent(league)}&day=eq.${day}&select=lineup,captain,picks,saved_at&limit=1`
+    const rows = await sbRest<{ lineup: number[] | null; captain: number | null; picks: Record<string, number> | null; saved_at: number; history?: EntryHistory | null }[]>(
+        // select=* trae el historial antitrampa si la base ya lo tiene
+        `fantasy_entries?user_id=eq.${userId}&league=eq.${encodeURIComponent(league)}&day=eq.${day}&select=*&limit=1`
     );
     const row = rows?.[0];
-    return row ? { lineup: row.lineup || [], captain: row.captain, picks: row.picks || {}, savedAt: row.saved_at } : null;
+    return row ? { lineup: row.lineup || [], captain: row.captain, picks: row.picks || {}, savedAt: row.saved_at, history: row.history ?? null } : null;
 };
 
 export const useFanEntry = (userId: string, league: LeagueId, day: string | undefined, enabled = true) =>

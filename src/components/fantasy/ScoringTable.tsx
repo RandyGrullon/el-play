@@ -1,4 +1,4 @@
-// Cuántos puntos da cada jugada (viene del servidor con el día)
+// Cuántos puntos da cada jugada (viene del servidor con el día) y, los días con créditos, cuánto cuesta cada pelotero
 import React from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -39,6 +39,21 @@ export const ScoringTable: React.FC<{ day: FantasyDay }> = ({ day }) => {
                 <Txt size={12} tone="muted" style={{ marginTop: 4 }}>
                     {t('fantasy.pickRule', { pts: RULES.pick })}
                 </Txt>
+                {day.credits && (
+                    <Txt size={12} tone="muted" style={{ marginTop: 4 }}>
+                        {t('fantasy.credits.rule', { budget: day.credits.budget, min: day.credits.min, max: day.credits.max })}
+                    </Txt>
+                )}
+            </View>
+            <View style={{ gap: 4 }}>
+                <Txt eyebrow style={{ marginBottom: 2 }}>
+                    {t('fantasy.smart.howTitle')}
+                </Txt>
+                {(['howProj', 'howValue', 'howOwned', 'howBest'] as const).map((key) => (
+                    <Txt key={key} size={12} tone="muted">
+                        {t(`fantasy.smart.${key}`)}
+                    </Txt>
+                ))}
             </View>
         </Card>
     );

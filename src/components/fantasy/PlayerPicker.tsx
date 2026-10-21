@@ -1,17 +1,22 @@
-// Hoja para escoger peloteros: bateadores o lanzadores, buscar, filtrar por equipo y (en PRO) ordenar por promedio
+// Hoja para escoger peloteros: bateadores o lanzadores, buscar, filtrar por equipo, precio en créditos, proyección y valor
+// (ordenar por proyección, valor, precio o puntos) y (en PRO) el promedio de la temporada
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Lock, Plus, Search, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { RULES, addPlayer, canAdd, removePlayer, type AddProblem, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
+import { addPlayer, canAdd, creditsLeft, perTeamLimit, removePlayer, type AddProblem, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
 import { useIsPro } from '../../lib/pro';
 import { usePlayers } from '../../lib/stats';
 import { useColors } from '../../theme/theme';
 import { alpha, radius, shadow } from '../../theme/tokens';
 import { PlayerPhoto, ProBadge, Row, Segmented, Sheet, TeamLogo, Txt } from '../ui';
 import { Field } from '../account/Field';
-import { gameStatus, lineText, teamOf } from './shared';
+import { formatCredits, gameStatus, lineText, teamOf } from './shared';
+import { valueOf } from '../../lib/fantasyBest';
+import { formatValue, useOwners } from './Smart';
+
+type Sort = 'proj' | 'value' | 'price' | 'points';
 
 /** Lo que el selector recuerda al ir a la ficha de un pelotero y volver */
 export interface PickerState {
@@ -35,25 +40,28 @@ export const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; initial:
     const [teamId, setTeamId] = useState<number | null>(initial.teamId);
     const [search, setSearch] = useState(initial.search);
     const started = day.games.some((game) => game.state !== 'preview');
+    const hasProj = day.players.some((p) => p.proj !== undefined);
+    const owners = useOwners(day);
+    const [sort, setSort] = useState<Sort>(started ? 'points' : hasProj ? 'proj' : 'points');
     // PRO: puntos de fantasy por juego en la temporada, para escoger con datos
     const pro = useIsPro();
     const season = usePlayers(day.league);
     const averages = useMemo(() => (pro ? new Map((season.data?.players ?? []).map((row) => [row.id, row])) : null), [pro, season.data]);
 
-    const list = useMemo(
-        () =>
-            day.players
+    const list = useMemo(() => {
+        const metric = (p: FantasyPlayer) => (sort === 'proj' ? p.proj ?? -1 : sort === 'value' ? valueOf(p) ?? -1 : sort === 'price' ? p.price ?? 0 : p.points);
+        return day.players
                 .filter((p) => p.role === role && (teamId === null || p.teamId === teamId) && (!search || normalized(p.name).includes(normalized(search))))
                 .sort(
                     (a, b) =>
-                        (started ? b.points - a.points : 0) ||
+                        (hasProj ? metric(b) - metric(a) : started ? b.points - a.points : 0) ||
                         (averages ? (averages.get(b.id)?.ppg ?? 0) - (averages.get(a.id)?.ppg ?? 0) : 0) ||
                         Number(b.starter) - Number(a.starter) ||
                         a.name.localeCompare(b.name)
-                ),
-        [day.players, role, teamId, search, started, averages]
-    );
+                );
+    }, [day.players, role, teamId, search, started, averages, sort, hasProj]);
 
+    const left = creditsLeft(day, entry);
     const problemText = (problem: AddProblem) =>
         problem === 'locked'
             ? t('fantasy.problem.locked')
@@ -62,10 +70,12 @@ export const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; initial:
                   ? t('fantasy.problem.fullP')
                   : t('fantasy.problem.fullB')
               : problem === 'team'
-                ? t('fantasy.problem.team', { n: RULES.perTeam })
-                : problem === 'already'
-                  ? t('fantasy.problem.already')
-                  : '';
+                ? t('fantasy.problem.team', { n: perTeamLimit(day) })
+                : problem === 'budget'
+                  ? t('fantasy.problem.budget', { left: formatCredits(Math.max(0, left ?? 0), i18n.language) })
+                  : problem === 'already'
+                    ? t('fantasy.problem.already')
+                    : '';
 
     const chip = (active: boolean) => ({ flexDirection: 'row', alignItems: 'center', gap: 6, height: 30, borderRadius: radius.pill, backgroundColor: active ? colors.ink : colors.raised }) as const;
 
@@ -75,6 +85,7 @@ export const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; initial:
         const team = day.teams[player.teamId];
         const line = lineText(player, t);
         const average = averages?.get(player.id);
+        const price = day.credits && player.price !== undefined ? formatCredits(player.price, i18n.language) : null;
         return (
             <Row gap={12} style={{ paddingVertical: 10, borderTopWidth: index ? 1 : 0, borderTopColor: colors.line }}>
                 <Pressable
@@ -106,6 +117,14 @@ export const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; initial:
                                 {t('pro.fantasyAvg', { ppg: average.ppg, g: average.g })}
                             </Txt>
                         )}
+                        {player.proj !== undefined && (
+                            <Txt size={11} weight="semibold" tone="muted" numberOfLines={1}>
+                                {t('fantasy.smart.proj', { pts: formatCredits(player.proj, i18n.language) })}
+                                {valueOf(player) !== null ? ` · ${t('fantasy.smart.value', { v: formatValue(valueOf(player)!, i18n.language) })}` : ''}
+                                {player.rest ? ` · ${t('fantasy.smart.restShort')}` : player.startedAgo !== undefined ? ` · ${t('fantasy.smart.startedAgo', { count: player.startedAgo })}` : ''}
+                                {owners.players.get(player.id) ? ` · ${t('fantasy.smart.owned', { pct: formatCredits(owners.players.get(player.id)!.pct, i18n.language) })}` : ''}
+                            </Txt>
+                        )}
                         {problem && problem !== 'already' && (
                             <Txt size={11} weight="semibold" tone="faint">
                                 {problemText(problem)}
@@ -113,10 +132,23 @@ export const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; initial:
                         )}
                     </View>
                 </Pressable>
-                {started && (
-                    <Txt size={18} weight="extrabold" tabular style={{ width: 36, textAlign: 'right' }}>
-                        {player.points}
-                    </Txt>
+                {(started || price !== null) && (
+                    // Puntos y precio en una sola columna (puntos arriba, como en Mi equipo): uno al lado del otro le
+                    // quitaban al nombre casi 50 px y a 320 px todos los nombres salían cortados
+                    <View style={{ flexShrink: 0, alignItems: 'flex-end', gap: 2 }}>
+                        {started && (
+                            <Txt size={18} weight="extrabold" tabular style={{ minWidth: 36, textAlign: 'right' }}>
+                                {formatCredits(player.points, i18n.language)}
+                            </Txt>
+                        )}
+                        {price !== null && (
+                            <View style={{ borderRadius: radius.pill, backgroundColor: colors.raised, paddingHorizontal: 8, paddingVertical: 4 }}>
+                                <Txt size={12} weight="extrabold" tabular accessibilityLabel={t('fantasy.credits.priceLong', { price })}>
+                                    {t('fantasy.credits.price', { price })}
+                                </Txt>
+                            </View>
+                        )}
+                    </View>
                 )}
                 <Pressable
                     disabled={!inTeam && !!problem}
@@ -147,6 +179,11 @@ export const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; initial:
                         </Txt>
                     </Row>
                 )}
+                {day.credits && left !== null && (
+                    <Txt size={14} weight="bold" tabular tone={left < -1e-9 ? 'live' : 'ink'}>
+                        {t('fantasy.credits.pickerLeft', { left: formatCredits(left, i18n.language), budget: formatCredits(day.credits.budget, i18n.language) })}
+                    </Txt>
+                )}
                 <Segmented<'B' | 'P'>
                     small
                     value={role}
@@ -156,6 +193,21 @@ export const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; initial:
                         { value: 'P', label: t('fantasy.pitchers') }
                     ]}
                 />
+                {hasProj && (
+                    <View accessibilityLabel={t('fantasy.smart.sort')}>
+                        <Segmented<Sort>
+                            small
+                            value={sort}
+                            onChange={setSort}
+                            options={[
+                                { value: 'proj', label: t('fantasy.smart.sortProj') },
+                                { value: 'value', label: t('fantasy.smart.sortValue') },
+                                { value: 'price', label: t('fantasy.smart.sortPrice') },
+                                ...(started ? [{ value: 'points' as Sort, label: t('fantasy.smart.sortPoints') }] : [])
+                            ]}
+                        />
+                    </View>
+                )}
                 <View style={[{ borderRadius: 16 }, shadow('card')]}>
                     <View pointerEvents="none" style={{ position: 'absolute', left: 14, top: 0, bottom: 0, justifyContent: 'center', zIndex: 1 }}>
                         <Search size={16} color={colors.muted} />

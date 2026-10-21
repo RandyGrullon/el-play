@@ -7,12 +7,15 @@ import * as Haptics from 'expo-haptics';
 import { RULES, gameStarted, pickResult, setPick, type DayEntry, type FantasyDay } from '../../lib/fantasy';
 import { formatTime } from '../../lib/format';
 import { useColors } from '../../theme/theme';
-import { inkOn } from '../../theme/tokens';
+import { inkOn, radius } from '../../theme/tokens';
 import { Card, Row, TeamLogo, Txt } from '../ui';
+import { formatCredits } from './shared';
+import { useOwners } from './Smart';
 
 export const PicksTab: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, entry }) => {
     const { t, i18n } = useTranslation();
     const colors = useColors();
+    const owners = useOwners(day);
     return (
         <View style={{ gap: 10 }} accessibilityLabel={t('fantasy.picks')}>
             <Txt size={14} tone="muted">
@@ -87,6 +90,27 @@ export const PicksTab: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, 
                                 );
                             })}
                         </Row>
+                        {locked && owners.data?.picks[game.gamePk] && (
+                            <View style={{ gap: 4 }}>
+                                <View
+                                    accessible
+                                    accessibilityRole="image"
+                                    accessibilityLabel={t('fantasy.smart.picksSplit', { away: game.away.abbrev, a: owners.data.picks[game.gamePk][game.away.id] ?? 0, home: game.home.abbrev, h: owners.data.picks[game.gamePk][game.home.id] ?? 0 })}
+                                    style={{ flexDirection: 'row', height: 6, borderRadius: radius.pill, overflow: 'hidden', backgroundColor: colors.raised }}
+                                >
+                                    <View style={{ width: `${owners.data.picks[game.gamePk][game.away.id] ?? 0}%`, backgroundColor: game.away.color }} />
+                                    <View style={{ width: `${owners.data.picks[game.gamePk][game.home.id] ?? 0}%`, backgroundColor: game.home.color }} />
+                                </View>
+                                <Row justify="space-between">
+                                    <Txt size={11} weight="semibold" tone="muted" tabular>
+                                        {t('fantasy.smart.picksPct', { pct: formatCredits(owners.data.picks[game.gamePk][game.away.id] ?? 0, i18n.language) })}
+                                    </Txt>
+                                    <Txt size={11} weight="semibold" tone="muted" tabular>
+                                        {t('fantasy.smart.picksPct', { pct: formatCredits(owners.data.picks[game.gamePk][game.home.id] ?? 0, i18n.language) })}
+                                    </Txt>
+                                </Row>
+                            </View>
+                        )}
                     </Card>
                 );
             })}

@@ -20,7 +20,7 @@ export const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ 
     const started = !!day?.games.some((game) => game.state !== 'preview');
     const top = day && started ? day.players.filter((p) => p.played).sort((a, b) => b.points - a.points).slice(0, 5) : [];
     const steps = [
-        { Icon: Users, text: t('fantasy.gate.step1', { batters: RULES.batters, perTeam: RULES.perTeam }) },
+        { Icon: Users, text: t('fantasy.gate.step1', { batters: RULES.batters, perTeam: RULES.perTeam, budget: RULES.budget }) },
         { Icon: Crown, text: t('fantasy.gate.step2', { x: RULES.captain }) },
         { Icon: Trophy, text: t('fantasy.gate.step3', { pts: RULES.pick }) }
     ];

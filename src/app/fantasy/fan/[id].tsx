@@ -9,6 +9,8 @@ import { EmptyState, IconButton, Row, Txt } from '../../../components/ui';
 import { FanProfileView, useFanName } from '../../../components/fantasy/FanProfile';
 import { isFanId } from '../../../components/fantasy/fans';
 import { useLocalText } from '../../../components/fantasy/texts';
+import { ProFanProfile } from '../../../components/pro/fanaticos/ProFanProfile';
+import { useIsPro } from '../../../lib/pro';
 import { useLeague } from '../../../state/league';
 import { useColors } from '../../../theme/theme';
 
@@ -22,6 +24,10 @@ export default function FanScreen() {
     const L = useLocalText();
     const { own, name } = useFanName(userId, activeLeague);
     const back = () => (router.canGoBack() ? router.back() : router.replace('/fantasy'));
+    const pro = useIsPro();
+
+    // PRO: el perfil con su temporada, su equipo de hoy, «Comparar conmigo» y sus días; el Lite sigue igual debajo
+    if (pro) return <ProFanProfile userId={userId} league={activeLeague} onBack={back} />;
 
     return (
         <Screen contentStyle={{ gap: 20 }}>

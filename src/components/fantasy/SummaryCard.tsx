@@ -5,11 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { Sparkles } from 'lucide-react-native';
 import { radius, shadow } from '../../theme/tokens';
 import { Gradient, Row, Txt } from '../ui';
+import { formatCredits } from './shared';
 
 const round = (value: number) => Math.round(value * 10) / 10;
 
 export const SummaryCard: React.FC<{ points: number; picks: number; season: number; past: { date: string; points: number }[] }> = ({ points, picks, season, past }) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    // Con la coma o el punto del idioma (141,5 en español), como la web
+    const num = (value: number) => formatCredits(round(value), i18n.language);
     return (
         <View style={[{ borderRadius: radius.card }, shadow('float')]}>
             <Gradient style={{ borderRadius: radius.card, padding: 20, overflow: 'hidden' }}>
@@ -20,17 +23,17 @@ export const SummaryCard: React.FC<{ points: number; picks: number; season: numb
                     {t('fantasy.yourPoints')}
                 </Txt>
                 <Txt size={64} weight="extrabold" tone="white" tabular style={{ lineHeight: 70, marginTop: 4 }} accessibilityRole="text">
-                    {round(points + picks)}
+                    {num(points + picks)}
                 </Txt>
                 <Row wrap gap={4} style={{ columnGap: 20, marginTop: 8 }}>
                     <Txt size={14} weight="semibold" tone="white">
-                        {t('fantasy.teamPts', { pts: points })}
+                        {t('fantasy.teamPts', { pts: num(points) })}
                     </Txt>
                     <Txt size={14} weight="semibold" tone="white">
-                        {t('fantasy.picksPts', { pts: picks })}
+                        {t('fantasy.picksPts', { pts: num(picks) })}
                     </Txt>
                     <Txt size={14} weight="semibold" tone="white">
-                        {t('fantasy.seasonPts', { pts: round(season), days: past.length })}
+                        {t('fantasy.seasonPts', { pts: num(season), count: past.length, days: past.length })}
                     </Txt>
                 </Row>
                 {past.length > 0 && <HistoryBars days={past.slice(0, 7).reverse()} />}

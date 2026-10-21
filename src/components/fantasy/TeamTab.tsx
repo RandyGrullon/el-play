@@ -1,20 +1,25 @@
-// «Mi equipo»: 5 bateadores + 1 lanzador; corona para el capitán, X para quitar y candado cuando empieza su juego
+// «Mi equipo»: 5 bateadores + 1 lanzador; créditos del día, corona para el capitán, X para quitar y candado cuando empieza su juego.
+// Con las ayudas de la web: aviso del próximo cierre, proyección, equipo sugerido, equipo ideal y % elegido al cerrar.
 import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Crown, Lock, Plus, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { RULES, isLocked, playerScore, removePlayer, setCaptain, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
+import { RULES, isLocked, perTeamLimit, playerScore, removePlayer, setCaptain, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
 import { useColors } from '../../theme/theme';
 import { shadow } from '../../theme/tokens';
 import { PlayerPhoto, Row, Txt } from '../ui';
-import { RulesToggle, gameStatus, lineText, teamOf, useOpenPlayer } from './shared';
+import { RulesToggle, formatCredits, gameStatus, lineText, teamOf, useOpenPlayer } from './shared';
 import { ScoringTable } from './ScoringTable';
+import { CreditsMeter } from './CreditsMeter';
+import { IdealCard, LockNotice, SmartActions, useOwners } from './Smart';
+import type { FantasyOwners } from './fans';
 
 export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role: 'B' | 'P') => void }> = ({ day, entry, onPick }) => {
     const { t } = useTranslation();
     const colors = useColors();
     const [rules, setRules] = useState(false);
+    const owners = useOwners(day);
     const chosen = entry.lineup.map((id) => day.players.find((p) => p.id === id)).filter((p): p is FantasyPlayer => !!p);
     const batters = chosen.filter((p) => p.role === 'B');
     const pitchers = chosen.filter((p) => p.role === 'P');
@@ -28,8 +33,11 @@ export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role
     return (
         <View style={{ gap: 12 }} accessibilityLabel={t('fantasy.myTeam')}>
             <Txt size={14} tone="muted">
-                {t('fantasy.rulesShort', { batters: RULES.batters, perTeam: RULES.perTeam })}
+                {t(day.credits ? 'fantasy.rulesShortCredits' : 'fantasy.rulesShort', { batters: RULES.batters, perTeam: perTeamLimit(day) })}
             </Txt>
+            <LockNotice day={day} entry={entry} />
+            <CreditsMeter day={day} entry={entry} />
+            <SmartActions day={day} entry={entry} />
             <View style={{ gap: 10 }}>
                 {slots.map((slot, index) =>
                     typeof slot === 'string' ? (
@@ -47,10 +55,12 @@ export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role
                             </Txt>
                         </Pressable>
                     ) : (
-                        <PlayerSlot key={slot.id} day={day} entry={entry} player={slot} />
+                        <PlayerSlot key={slot.id} day={day} entry={entry} player={slot} owned={owners.players.get(slot.id)} />
                     )
                 )}
             </View>
+
+            <IdealCard day={day} entry={entry} />
 
             <RulesToggle open={rules} onToggle={() => setRules((v) => !v)} />
             {rules && <ScoringTable day={day} />}
@@ -58,7 +68,7 @@ export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role
     );
 };
 
-const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPlayer }> = ({ day, entry, player }) => {
+const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPlayer; owned?: FantasyOwners['players'][number] }> = ({ day, entry, player, owned }) => {
     const { t, i18n } = useTranslation();
     const colors = useColors();
     const openPlayer = useOpenPlayer();
@@ -66,13 +76,19 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
     const locked = isLocked(day, player);
     const captain = entry.captain === player.id;
     const line = lineText(player, t);
+    // Precio del día (solo días con créditos): al final de la línea de la hora, como en la web. Si no cabe, lo que se
+    // recorta es el precio (la hora no se encoge por él y solo se corta si ella sola no cabe), así la hora de cierre
+    // se sigue viendo. El lector lo dice completo en la etiqueta del botón
+    const price = day.credits && player.price !== undefined ? formatCredits(player.price, i18n.language) : null;
     const small = { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' } as const;
     return (
         <View style={[{ height: 84, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 12, borderRadius: 22, backgroundColor: colors.surface }, shadow('card')]}>
             <Pressable
                 onPress={() => openPlayer(player.id)}
                 accessibilityRole="button"
-                accessibilityLabel={t('statsPage.viewPlayer', { name: player.name })}
+                accessibilityLabel={
+                    price === null ? t('statsPage.viewPlayer', { name: player.name }) : `${t('statsPage.viewPlayer', { name: player.name })}, ${t('fantasy.credits.priceLong', { price })}`
+                }
                 style={({ pressed }) => ({ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.7 : 1 })}
             >
                 <PlayerPhoto personId={player.id} name={player.name} size={56} team={teamOf(day, player)} />
@@ -83,22 +99,42 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
                             {player.name}
                         </Txt>
                     </Row>
-                    <Txt size={12} weight="semibold" tone="muted" numberOfLines={1}>
-                        {team?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')} · {gameStatus(day, player.gamePk, i18n.language, t)}
-                    </Txt>
+                    <Row gap={0}>
+                        <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} style={{ flexShrink: 0, maxWidth: '100%' }}>
+                            {team?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')} · {gameStatus(day, player.gamePk, i18n.language, t)}
+                        </Txt>
+                        {price !== null && (
+                            // Espacio duro al empezar: en un texto de una línea aparte el espacio normal se pierde (en la web)
+                            <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} style={{ flexShrink: 1, minWidth: 0 }}>
+                                {`\u00a0· ${t('fantasy.credits.price', { price })}`}
+                            </Txt>
+                        )}
+                    </Row>
                     {line && (
                         <Txt size={12} tone="muted" numberOfLines={1}>
                             {line}
+                        </Txt>
+                    )}
+                    {!locked && player.proj !== undefined && (
+                        <Txt size={12} weight="bold" tone="accentInk" numberOfLines={1}>
+                            {t('fantasy.smart.proj', { pts: formatCredits(player.proj, i18n.language) })}
                         </Txt>
                     )}
                 </View>
             </Pressable>
             <View style={{ alignItems: 'flex-end', gap: 6 }}>
                 <Txt size={24} weight="extrabold" tabular style={{ lineHeight: 26 }}>
-                    {playerScore(entry, player)}
+                    {formatCredits(playerScore(entry, player), i18n.language)}
                 </Txt>
                 {locked ? (
-                    <Lock size={14} color={colors.faint} accessibilityLabel={t('fantasy.locked')} />
+                    <Row gap={4}>
+                        {owned && (
+                            <Txt size={11} weight="semibold" tone="faint" tabular accessibilityLabel={t('fantasy.smart.owned', { pct: formatCredits(owned.pct, i18n.language) })}>
+                                {`${formatCredits(owned.pct, i18n.language)} %`}
+                            </Txt>
+                        )}
+                        <Lock size={14} color={colors.faint} accessibilityLabel={t('fantasy.locked')} />
+                    </Row>
                 ) : (
                     <Row gap={4}>
                         <Pressable

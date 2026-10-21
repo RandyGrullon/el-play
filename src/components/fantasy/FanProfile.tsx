@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown, Crown, Lock, Sparkles, User } from 'lucide-react-native';
 import type { LeagueId } from '../../types';
 import { useSession } from '../../lib/account';
-import { RULES, entryKey, gameStarted, isLocked, pickPoints, pickResult, playerScore, teamPoints, useFantasyDay, useFantasyStore, type DayEntry, type FantasyPlayer } from '../../lib/fantasy';
+import { RULES, effectiveEntry, entryKey, gameStarted, isLocked, pickPoints, pickResult, playerScore, teamPoints, useFantasyDay, useFantasyStore, type DayEntry, type FantasyPlayer } from '../../lib/fantasy';
 import { formatTime, localeFor, seasonLabel, todayKey } from '../../lib/format';
 import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
@@ -263,7 +263,9 @@ const DayDetail: React.FC<DayDetailProps> = ({ userId, league, own, fanDay, date
     const useLocal = !!local && local.savedAt > 0;
     const remote = useFanEntry(userId, league, key, !useLocal);
 
-    const entry: DayEntry | null = useLocal ? local! : (remote.data ?? (fanDay && remote.isError ? { lineup: fanDay.lineup, captain: fanDay.captain, picks: {}, savedAt: 0 } : null));
+    // Lo de Supabase se puntúa como estaba al empezar cada juego (lo cambiado después no cuenta)
+    const saved: DayEntry | null = useLocal ? local! : (remote.data ?? (fanDay && remote.isError ? { lineup: fanDay.lineup, captain: fanDay.captain, picks: {}, savedAt: 0 } : null));
+    const entry = saved && day ? effectiveEntry(day, saved) : saved;
     const picksKnown = useLocal || !!remote.data;
 
     if (dayQuery.fetchStatus === 'paused' && !day) return <OfflineState />;

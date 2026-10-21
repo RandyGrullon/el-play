@@ -1,4 +1,4 @@
-// Ayudas del Fantasy compartidas por sus pestañas: textos cortos del pelotero, estado del juego, días y la ficha.
+// Ayudas del Fantasy compartidas por sus pestañas: textos cortos del pelotero, estado del juego, créditos, días y la ficha.
 import React, { useCallback } from 'react';
 import { Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -34,6 +34,24 @@ export const gameStatus = (day: FantasyDay, gamePk: number, lang: string, t: TFu
     if (game.state === 'final') return t('fantasy.final');
     if (game.state === 'live' && game.live) return inningName({ n: game.live.inning, isTop: game.live.isTop, state: game.live.inningState }, lang, true);
     return formatTime(game.date, lang);
+};
+
+const creditFormats = new Map<string, Intl.NumberFormat>();
+
+/** Créditos con la coma o el punto del idioma (8,5 / 8.5), como la web: con el idioma de la app, no con el locale de fechas */
+export const formatCredits = (value: number, lang: string) => {
+    try {
+        let format = creditFormats.get(lang);
+        if (!format) {
+            format = new Intl.NumberFormat(lang, { maximumFractionDigits: 1 });
+            creditFormats.set(lang, format);
+        }
+        return format.format(value);
+    } catch {
+        // Sin Intl.NumberFormat para ese idioma: el mismo redondeo y el separador a mano
+        const text = String(Math.round(value * 10) / 10);
+        return lang.startsWith('en') ? text : text.replace('.', ',');
+    }
 };
 
 export const teamOf = (day: FantasyDay | undefined, player: FantasyPlayer): LogoTeam | null => {

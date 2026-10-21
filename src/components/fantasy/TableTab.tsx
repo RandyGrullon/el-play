@@ -5,7 +5,7 @@ import { ScrollView, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { createLeague, dayEntries, joinLeague, myLeagues, useSession } from '../../lib/account';
-import { pickPoints, teamPoints, type FantasyDay } from '../../lib/fantasy';
+import { effectiveEntry, pickPoints, teamPoints, type FantasyDay } from '../../lib/fantasy';
 import { Card, Row, Segmented, Skeleton, Txt } from '../ui';
 import { AccountCard } from '../account/AccountCard';
 import { Field, FieldButton } from '../account/Field';
@@ -41,7 +41,11 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (
 
     if (!session) return null;
 
-    const ranking = (rivals || []).map((rival) => ({ ...rival, points: teamPoints(day, rival.entry) + pickPoints(day, rival.entry) })).sort((a, b) => b.points - a.points);
+    // Cada equipo como estaba al empezar cada juego (lo cambiado después no cuenta)
+    const ranking = (rivals || [])
+        .map((rival) => ({ ...rival, entry: effectiveEntry(day, rival.entry) }))
+        .map((rival) => ({ ...rival, points: teamPoints(day, rival.entry) + pickPoints(day, rival.entry) }))
+        .sort((a, b) => b.points - a.points);
 
     const create = async () => {
         if (!name.trim() || busy) return;
@@ -74,7 +78,8 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (
                     <AccountCard />
                 </View>
             )}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+            {/* Margen vertical para que el área táctil de 44 px del Segmented no quede recortada por el ScrollView */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, marginVertical: -6, flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 6, gap: 8 }}>
                 <Segmented<'day' | 'season'>
                     small
                     value={period}
