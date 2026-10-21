@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { Appearance, Platform, useColorScheme } from 'react-native';
 import { dark, light, type Palette } from './tokens';
 import { readJson, writeJson } from '../lib/storage';
 import { useLeague } from '../state/league';
@@ -22,6 +22,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const { leagueConfig } = useLeague();
     const [preference, setPreferenceState] = useState<ThemePreference>(() => readJson<ThemePreference>(KEY, 'system'));
     const isDark = preference === 'dark' || (preference === 'system' && system === 'dark');
+    // El tema escogido también para lo nativo (teclado, alertas, selectores); 'auto' vuelve a seguir al sistema.
+    // En la web no existe setColorScheme.
+    useEffect(() => {
+        if (Platform.OS !== 'web') Appearance.setColorScheme(preference === 'system' ? 'auto' : preference);
+    }, [preference]);
     const value = useMemo<ThemeValue>(() => {
         const base = isDark ? dark : light;
         return {

@@ -101,10 +101,66 @@ export const inkOn = (hex: string) => {
     return 0.299 * r + 0.587 * g + 0.114 * b > 160 ? '#14151a' : '#ffffff';
 };
 
-/** Color con transparencia: alpha('#2563eb', 0.1) */
+/** Color con transparencia: alpha('#2563eb', 0.1); también con rgb(…) y rgba(…) (se cambia su transparencia) */
 export const alpha = (color: string, opacity: number) => {
-    if (color.startsWith('rgb(')) return color.replace('rgb(', 'rgba(').replace(')', `,${opacity})`);
+    const channels = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/.exec(color);
+    if (channels) return `rgba(${channels[1]},${channels[2]},${channels[3]},${opacity})`;
     const hex = color.replace('#', '');
     const value = parseInt(hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex.slice(0, 6), 16);
     return `rgba(${(value >> 16) & 255},${(value >> 8) & 255},${value & 255},${opacity})`;
 };
+
+// ---------------------------------------------------------------- Modo PRO
+// Colores extra del PRO (los mismos de la web: variables --pro-* de styles.css). Cada uno pasa 4.5:1 sobre su fondo
+// en su tema. Se leen con useProColors() del kit (src/components/pro/kit), que escoge claro u oscuro según el tema.
+
+export interface ProPalette {
+    /** Variación o dato para bien (verde) */
+    up: string;
+    /** Variación o dato para mal (rojo) */
+    down: string;
+    /** Ámbar: avisos, presión, datos viejos */
+    warn: string;
+    /** Texto rojo «en vivo» sobre fondo suave */
+    live: string;
+    /** Color propio del Fantasy (no el degradado) */
+    fantasy: string;
+    /** Escala de probabilidad 0 → 50 → 100 % (en contra, parejo, a favor): rellenos con texto blanco legible */
+    probability: readonly [string, string, string];
+}
+
+export const proLight: ProPalette = {
+    up: rgb('21 128 61'),
+    down: rgb('200 30 30'),
+    warn: rgb('154 103 0'),
+    live: rgb('210 25 60'),
+    fantasy: rgb('109 40 217'),
+    probability: ['#b91c1c', '#64748b', '#15803d']
+};
+
+export const proDark: ProPalette = {
+    up: rgb('52 199 120'),
+    down: rgb('255 90 95'),
+    warn: rgb('242 184 75'),
+    live: rgb('255 107 130'),
+    fantasy: rgb('167 139 250'),
+    probability: ['#c2410c', '#64748b', '#15803d']
+};
+
+/** Degradado PRO: el de la marca en diagonal (insignia, bordes, botón principal) */
+export const PRO_GRADIENT = BRAND_GRADIENT;
+/** Inicio y fin del degradado en diagonal (135°) y en horizontal (la línea del encabezado de módulo) */
+export const PRO_GRADIENT_DIAGONAL = { start: { x: 0, y: 0 }, end: { x: 1, y: 1 } } as const;
+export const PRO_GRADIENT_LINE = { start: { x: 0, y: 0.5 }, end: { x: 1, y: 0.5 } } as const;
+
+/**
+ * Escalas de calor de tres paradas (iguales en claro y oscuro: colores medios con texto blanco legible encima).
+ * - heat: frío azul → gris → caliente rojo (zonas calientes, percentiles de la ficha)
+ * - zone: verde azulado → ámbar → magenta (mapa de calor de la zona de strike)
+ * - percentile: peor naranja → gris → mejor azul (celdas de Estadísticas)
+ */
+export const PRO_HEAT_SCALES = {
+    heat: ['#2563eb', '#64748b', '#e11d48'],
+    zone: ['#0f766e', '#b45309', '#be185d'],
+    percentile: ['#c2410c', '#64748b', '#2563eb']
+} as const;

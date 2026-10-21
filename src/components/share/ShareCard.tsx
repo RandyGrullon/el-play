@@ -133,7 +133,9 @@ const Result: React.FC<PartProps<ResultPost>> = ({ data, pal, s, story, pill }) 
             )}
         </View>
     );
-    const innings = (data.linescore ?? []).slice(0, 12);
+    // Todas las entradas (los extra innings también); pasadas las 12 la letra se achica para que quepan
+    const innings = data.linescore ?? [];
+    const fit = Math.min(1, 12 / Math.max(innings.length, 1));
     return (
         <>
             {pill(data.status)}
@@ -149,7 +151,7 @@ const Result: React.FC<PartProps<ResultPost>> = ({ data, pal, s, story, pill }) 
                                 {side === 'n' ? '' : data[side].abbrev}
                             </Txt>
                             {innings.map((inning) => (
-                                <Txt key={inning.n} size={s(side === 'n' ? 10 : 12)} weight={side === 'n' ? 'semibold' : 'bold'} color={side === 'n' ? pal.muted : pal.ink} tabular center style={{ flex: 1 }}>
+                                <Txt key={inning.n} size={s((side === 'n' ? 10 : 12) * fit)} weight={side === 'n' ? 'semibold' : 'bold'} color={side === 'n' ? pal.muted : pal.ink} tabular center style={{ flex: 1 }}>
                                     {side === 'n' ? inning.n : inning[side] === null ? '–' : inning[side]}
                                 </Txt>
                             ))}

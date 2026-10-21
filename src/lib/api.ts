@@ -1,7 +1,14 @@
+import NetInfo from '@react-native-community/netinfo';
 import type { GameDetail, LeagueId, Leaders, Schedule, Standings } from '../types';
 import { API_BASE } from './config';
 
 const TIMEOUT_MS = 10000;
+
+/** Código de un fallo de red: 'offline' si el teléfono no tiene conexión (en RN no existe navigator.onLine) */
+export const networkErrorCode = async (): Promise<'offline' | 'network'> => {
+    const state = await NetInfo.fetch().catch(() => null);
+    return state?.isConnected === false ? 'offline' : 'network';
+};
 
 export class ApiError extends Error {
     code: string;
@@ -35,7 +42,7 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
             if (signal?.aborted) throw error;
             throw new ApiError('timeout', 'timeout');
         }
-        throw new ApiError((error as Error).message, typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'network');
+        throw new ApiError((error as Error).message, await networkErrorCode());
     } finally {
         clearTimeout(timeout);
         signal?.removeEventListener('abort', abort);

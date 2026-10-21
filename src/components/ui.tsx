@@ -1,14 +1,42 @@
 // Piezas básicas con el estilo de El Play (las equivalentes de las clases de Tailwind de la web).
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Animated, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type TextProps, type TextStyle, type ViewStyle } from 'react-native';
+import React, { useEffect, useId, useState, useSyncExternalStore } from 'react';
+import { AccessibilityInfo, ActivityIndicator, Animated, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type TextProps, type TextStyle, type ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FullWindowOverlay } from 'react-native-screens';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { usePathname } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { RotateCw, WifiOff, X } from 'lucide-react-native';
 import { useColors } from '../theme/theme';
 import { BRAND_GRADIENT, alpha, fonts, radius, shadow } from '../theme/tokens';
 import type { Palette } from '../theme/tokens';
 import { photoSources, rememberMiss, usePhotoIndex } from '../lib/photos';
+import { hideToast, useToast } from '../lib/toast';
+
+// ---------------------------------------------------------------- «Reducir movimiento» del sistema
+
+let reduceMotion = false;
+const motionListeners = new Set<() => void>();
+const setReduceMotion = (value: boolean) => {
+    reduceMotion = value;
+    motionListeners.forEach((listener) => listener());
+};
+AccessibilityInfo.isReduceMotionEnabled?.()
+    .then(setReduceMotion)
+    .catch(() => undefined);
+AccessibilityInfo.addEventListener?.('reduceMotionChanged', setReduceMotion);
+
+/** true si el usuario pidió menos movimiento (iOS, Android y la web): las animaciones que se repiten se quedan quietas */
+export const useReduceMotion = () =>
+    useSyncExternalStore(
+        (listener) => {
+            motionListeners.add(listener);
+            return () => motionListeners.delete(listener);
+        },
+        () => reduceMotion,
+        () => false
+    );
 
 // ---------------------------------------------------------------- texto
 
@@ -111,23 +139,25 @@ export const Button: React.FC<{ label: string; onPress?: () => void; icon?: Reac
     );
 };
 
+/** Escoger una opción entre pocas: para el lector de pantalla es un grupo de botones de radio */
 export function Segmented<T extends string>({ value, options, onChange, small }: { value: T; options: { value: T; label: string }[]; onChange: (value: T) => void; small?: boolean }) {
     const colors = useColors();
+    // El botón se ve de ~25 px (small) o ~32 px; crece hacia arriba y abajo (margen negativo) hasta ~44 px para el dedo
+    // sin mover nada. Se sale del riel 6 px (small) o 3 px: si el padre recorta (un ScrollView horizontal), el padre
+    // necesita ese espacio de sobra (paddingVertical y marginVertical negativo). role y aria-checked (no
+    // accessibilityState): así también los lee la web.
+    const reach = small ? 10 : 7;
     return (
-        <View style={{ flexDirection: 'row', alignSelf: 'flex-start', backgroundColor: colors.raised, borderRadius: radius.pill, padding: 4 }} accessibilityRole="tablist">
+        <View style={{ flexDirection: 'row', alignSelf: 'flex-start', backgroundColor: colors.raised, borderRadius: radius.pill, padding: 4 }} role="radiogroup">
             {options.map((option) => {
                 const active = option.value === value;
                 return (
-                    <Pressable
-                        key={option.value}
-                        onPress={() => onChange(option.value)}
-                        accessibilityRole="tab"
-                        accessibilityState={{ selected: active }}
-                        style={[{ borderRadius: radius.pill, paddingHorizontal: small ? 12 : 16, paddingVertical: small ? 5 : 7 }, active && [{ backgroundColor: colors.surface }, shadow('card')]]}
-                    >
-                        <Txt size={small ? 12 : 14} weight="semibold" tone={active ? 'ink' : 'muted'}>
-                            {option.label}
-                        </Txt>
+                    <Pressable key={option.value} onPress={() => onChange(option.value)} role="radio" aria-checked={active} style={{ paddingVertical: reach, marginVertical: -reach }}>
+                        <View style={[{ borderRadius: radius.pill, paddingHorizontal: small ? 12 : 16, paddingVertical: small ? 5 : 7 }, active && [{ backgroundColor: colors.surface }, shadow('card')]]}>
+                            <Txt size={small ? 12 : 14} weight="semibold" tone={active ? 'ink' : 'muted'}>
+                                {option.label}
+                            </Txt>
+                        </View>
                     </Pressable>
                 );
             })}
@@ -148,8 +178,10 @@ export const IconButton: React.FC<{ onPress?: () => void; children: React.ReactN
 
 export const Skeleton: React.FC<{ height: number; width?: ViewStyle['width']; style?: StyleProp<ViewStyle>; round?: number }> = ({ height, width = '100%', style, round = radius.card }) => {
     const colors = useColors();
+    const reduce = useReduceMotion();
     const [pulse] = useState(() => new Animated.Value(0.5));
     useEffect(() => {
+        if (reduce) return;
         const loop = Animated.loop(
             Animated.sequence([
                 Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: Platform.OS !== 'web' }),
@@ -158,8 +190,9 @@ export const Skeleton: React.FC<{ height: number; width?: ViewStyle['width']; st
         );
         loop.start();
         return () => loop.stop();
-    }, [pulse]);
-    return <Animated.View style={[{ height, width, borderRadius: round, backgroundColor: colors.raised, opacity: pulse }, style]} />;
+    }, [pulse, reduce]);
+    // Con «Reducir movimiento» no late: se queda quieto a medio tono
+    return <Animated.View style={[{ height, width, borderRadius: round, backgroundColor: colors.raised, opacity: reduce ? 0.75 : pulse }, style]} />;
 };
 
 export const ErrorState: React.FC<{ message: string; onRetry?: () => void }> = ({ message, onRetry }) => {
@@ -292,13 +325,110 @@ export const PlayerPhoto: React.FC<{ personId: number | null | undefined; name: 
     );
 };
 
+// ---------------------------------------------------------------- aviso corto
+
+// Hojas abiertas, la última encima. En Android y la web el Modal de la hoja tapa la raíz: el aviso se pinta dentro de la
+// de arriba. En iOS va en una capa nativa sobre toda la ventana, pero lo que UIKit presenta después (una hoja, un modal
+// de Expo Router) queda encima de la capa: por eso se vuelve a montar (key nueva) cuando terminan de abrirse.
+let openSheets: string[] = [];
+let overlayTurn = 0;
+const sheetListeners = new Set<() => void>();
+const subscribeSheets = (listener: () => void) => {
+    sheetListeners.add(listener);
+    return () => sheetListeners.delete(listener);
+};
+const setOpenSheets = (next: string[]) => {
+    openSheets = next;
+    sheetListeners.forEach((listener) => listener());
+};
+/** iOS: vuelve a subir la capa del aviso encima de lo último que se presentó */
+const raiseOverlay = () => {
+    overlayTurn += 1;
+    sheetListeners.forEach((listener) => listener());
+};
+const useTopSheet = () => useSyncExternalStore(subscribeSheets, () => openSheets[openSheets.length - 1] ?? null, () => null);
+const useOverlayTurn = () => useSyncExternalStore(subscribeSheets, () => overlayTurn, () => 0);
+
+const ToastBox: React.FC<{ bottom: number }> = ({ bottom }) => {
+    const toast = useToast();
+    const colors = useColors();
+    const insets = useSafeAreaInsets();
+    if (!toast) return null;
+    return (
+        <View pointerEvents="box-none" style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + bottom }}>
+            <View accessibilityRole="alert" style={[{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.ink, borderRadius: radius.tile, padding: 12, paddingLeft: 16, maxWidth: 480, alignSelf: 'center', width: '100%' }, shadow('float')]}>
+                <Txt size={14} weight="medium" color={colors.bg} style={{ flex: 1 }}>
+                    {toast.text}
+                </Txt>
+                {toast.action && (
+                    <Pressable
+                        onPress={() => {
+                            toast.action?.run();
+                            hideToast();
+                        }}
+                        style={{ backgroundColor: colors.accent, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 }}
+                    >
+                        <Txt size={13} weight="semibold" tone="white">
+                            {toast.action.label}
+                        </Txt>
+                    </Pressable>
+                )}
+                <Pressable onPress={hideToast} hitSlop={8}>
+                    <X size={16} color={colors.bg} />
+                </Pressable>
+            </View>
+        </View>
+    );
+};
+
+/** El aviso global (va en la raíz, después del Stack): encima de la barra de abajo, de los modales y de las hojas */
+export const Toast: React.FC = () => {
+    const toast = useToast();
+    const topSheet = useTopSheet();
+    const turn = useOverlayTurn();
+    const pathname = usePathname();
+    // iOS: react-native-screens presenta el modal de Expo Router un instante después de cambiar la ruta; después de eso
+    // se sube la capa (el aviso queda debajo del modal mientras sube, unos 0,4 s)
+    useEffect(() => {
+        if (Platform.OS !== 'ios') return;
+        const timer = setTimeout(raiseOverlay, 400);
+        return () => clearTimeout(timer);
+    }, [pathname]);
+    if (!toast) return null;
+    // key: un aviso nuevo, una hoja que terminó de abrirse o un modal nuevo vuelven a montar la capa encima de todo.
+    // No modal para VoiceOver: el resto de la pantalla se sigue pudiendo leer mientras está el aviso.
+    if (Platform.OS === 'ios') {
+        return (
+            <FullWindowOverlay key={`${toast.id}-${turn}`} unstable_accessibilityContainerViewIsModal={false}>
+                <ToastBox bottom={96} />
+            </FullWindowOverlay>
+        );
+    }
+    return topSheet ? null : <ToastBox bottom={96} />;
+};
+
 // ---------------------------------------------------------------- hoja que sube desde abajo
 
 export const Sheet: React.FC<{ open: boolean; onClose: () => void; title: string; children: React.ReactNode; scroll?: boolean }> = ({ open, onClose, title, children, scroll = true }) => {
     const colors = useColors();
     const { t } = useTranslation();
+    const id = useId();
+    const topSheet = useTopSheet();
+    useEffect(() => {
+        if (!open) return;
+        setOpenSheets([...openSheets, id]);
+        return () => setOpenSheets(openSheets.filter((sheet) => sheet !== id));
+    }, [open, id]);
     return (
-        <Modal visible={open} animationType="slide" presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'} onRequestClose={onClose} transparent={false}>
+        <Modal
+            visible={open}
+            animationType="slide"
+            presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
+            onRequestClose={onClose}
+            // iOS: ya abierta, el aviso que estaba puesto vuelve a quedar encima
+            onShow={Platform.OS === 'ios' ? raiseOverlay : undefined}
+            transparent={false}
+        >
             <View style={{ flex: 1, backgroundColor: colors.bg }}>
                 <View style={{ alignItems: 'center', paddingTop: 8 }}>
                     <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: colors.faint, opacity: 0.5 }} />
@@ -312,6 +442,7 @@ export const Sheet: React.FC<{ open: boolean; onClose: () => void; title: string
                     </Pressable>
                 </Row>
                 {scroll ? <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 16 }}>{children}</ScrollView> : <View style={{ flex: 1, padding: 16 }}>{children}</View>}
+                {Platform.OS !== 'ios' && topSheet === id && <ToastBox bottom={24} />}
             </View>
         </Modal>
     );

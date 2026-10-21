@@ -1,6 +1,6 @@
 // Ficha del pelotero (igual que PlayerSheet de la web): quién es, cómo va en el fantasy, su temporada,
-// métricas avanzadas en PRO, juego a juego y su carrera en la liga. La usa la pantalla /jugador/[id];
-// `PlayerProfile` es solo el contenido, por si otra pantalla la quiere dentro de su propia hoja (con `action`).
+// juego a juego y su carrera en la liga. La usa la pantalla /jugador/[id]; `PlayerProfile` es solo el contenido,
+// por si otra pantalla la quiere dentro de su propia hoja (con `action`). En PRO es la ficha de pro/ficha.
 import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
@@ -9,14 +9,14 @@ import { ChevronRight, Sparkles } from 'lucide-react-native';
 import { useLeague } from '../../state/league';
 import { localeFor, seasonLabel } from '../../lib/format';
 import { gameLine, usePlayer, type CareerRow, type GameLogRow, type PlayerDetail, type PlayersData } from '../../lib/stats';
-import { battingAdvanced, fmtDec, fmtPct, fmtRate, pitchingAdvanced } from '../../lib/advanced';
 import { useIsPro } from '../../lib/pro';
 import type { Leaders, Schedule, Standings, StandingRow } from '../../types';
 import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
-import { Card, ErrorState, Gradient, PlayerPhoto, ProBadge, Row, Segmented, Skeleton, TeamLogo, Txt, useErrorText, type LogoTeam } from '../ui';
+import { Card, ErrorState, Gradient, PlayerPhoto, Row, Segmented, Skeleton, TeamLogo, Txt, useErrorText, type LogoTeam } from '../ui';
 import { CellText, FrozenTable, HeadText, type FrozenColumn } from './FrozenTable';
 import { MoreButton } from './common';
+import { PlayerProfilePro } from '../pro/ficha/PlayerProfilePro';
 
 export interface PlayerProfileProps {
     id: number;
@@ -29,6 +29,9 @@ export interface PlayerProfileProps {
     onOpenGame: (gamePk: number) => void;
     /** Botón extra (p. ej. «Agregar a mi equipo» desde el fantasy) */
     action?: React.ReactNode;
+    /** Solo PRO: la pantalla pidió compartir la ficha como imagen (botón de arriba) */
+    shareOpen?: boolean;
+    onShareClose?: () => void;
 }
 
 /** «16 oct» (las fechas del juego a juego vienen como día, sin hora) */
@@ -64,7 +67,12 @@ export const useCachedTeam = (teamId: number | null | undefined) => {
     return team;
 };
 
-export const PlayerProfile: React.FC<PlayerProfileProps> = ({ id, name, team, season, onSeasonChange, onOpenGame, action }) => {
+export const PlayerProfile: React.FC<PlayerProfileProps> = (props) => {
+    const pro = useIsPro();
+    return pro ? <PlayerProfilePro {...props} /> : <PlayerProfileLite {...props} />;
+};
+
+const PlayerProfileLite: React.FC<PlayerProfileProps> = ({ id, name, team, season, onSeasonChange, onOpenGame, action }) => {
     const { t } = useTranslation();
     const errorText = useErrorText();
     const { activeLeague } = useLeague();
@@ -116,10 +124,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ id, name, team, se
                     )}
                     <FantasyCard player={player} />
                     {player.g > 0 ? (
-                        <>
-                            <SeasonGrid player={player} />
-                            <AdvancedGrid player={player} />
-                        </>
+                        <SeasonGrid player={player} />
                     ) : (
                         player.season > player.currentSeason - 2 && <MoreButton label={t('statsPage.seePrevious', { season: seasonLabel(player.season - 1, activeLeague) })} onPress={() => onSeasonChange(player.season - 1)} />
                     )}
@@ -285,50 +290,6 @@ const SeasonGrid: React.FC<{ player: PlayerDetail }> = ({ player }) => {
                     </Txt>
                 </Card>
             )}
-        </View>
-    );
-};
-
-/** Modo PRO: métricas avanzadas de la temporada */
-const AdvancedGrid: React.FC<{ player: PlayerDetail }> = ({ player }) => {
-    const { t } = useTranslation();
-    const pro = useIsPro();
-    if (!pro) return null;
-    const l = (key: string) => t(`pro.short.${key}`);
-    let tiles: TileData[] = [];
-    if (player.role === 'P' && player.pitching) {
-        const a = pitchingAdvanced(player.pitching);
-        tiles = [
-            [l('fip'), fmtDec(a.fip)],
-            [l('k9'), fmtDec(a.k9)],
-            [l('bb9'), fmtDec(a.bb9)],
-            [l('kBb'), fmtDec(a.kBb)],
-            [l('h9'), fmtDec(a.h9)],
-            [l('hr9'), fmtDec(a.hr9)],
-            [l('kPct'), fmtPct(a.kPct)],
-            [l('ppi'), fmtDec(a.pitchesPerInning, 1)]
-        ];
-    } else if (player.hitting) {
-        const a = battingAdvanced(player.hitting);
-        tiles = [
-            [l('iso'), fmtRate(a.iso)],
-            [l('babip'), fmtRate(a.babip)],
-            [l('kPct'), fmtPct(a.kPct)],
-            [l('bbPct'), fmtPct(a.bbPct)],
-            [l('bbK'), fmtDec(a.bbK)],
-            [l('abHr'), fmtDec(a.abHr, 1)],
-            [l('xbh'), String(a.xbh)],
-            [l('slg'), player.hitting.slg]
-        ];
-    }
-    if (!tiles.length) return null;
-    return (
-        <View style={{ gap: 8 }} accessibilityLabel={t('pro.advanced')}>
-            <Row gap={8}>
-                <Txt eyebrow>{t('pro.advanced')}</Txt>
-                <ProBadge />
-            </Row>
-            <TileGrid tiles={tiles} />
         </View>
     );
 };

@@ -5,7 +5,7 @@
 import { useSyncExternalStore } from 'react';
 import { Platform } from 'react-native';
 import type { LeagueId } from '../types';
-import { getStore, replaceStore, setStoreOwner, takeLegacyStore, type DayEntry } from './fantasy';
+import { getStore, replaceStore, setStoreOwner, takeLegacyStore, type DayEntry, type EntryHistory } from './fantasy';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { SUPABASE_ANON, SUPABASE_URL } from './config';
@@ -478,8 +478,13 @@ interface EntryRow {
     captain: number | null;
     picks: Record<string, number>;
     saved_at: number;
+    /** Lo escribe la base (antitrampa); no viene si todavía no se corrió el SQL */
+    history?: EntryHistory | null;
     profiles?: { display_name: string | null } | null;
 }
+
+/** Mismos peloteros, capitán y pronósticos (el resultado calculado con uno vale para el otro) */
+const sameTeam = (a: DayEntry, b: DayEntry) => JSON.stringify([a.lineup, a.captain, a.picks]) === JSON.stringify([b.lineup, b.captain, b.picks]);
 
 /** Junta lo del teléfono con lo de la cuenta: en cada día gana lo último que se guardó (y lo armado sin cuenta pasa a ella) */
 export const syncFantasy = async () => {
@@ -491,8 +496,11 @@ export const syncFantasy = async () => {
     const merged = { ...legacy, ...local };
     for (const row of remote || []) {
         const key = `${row.league}:${row.day}`;
-        if (!merged[key] || merged[key].savedAt < row.saved_at) {
-            merged[key] = { lineup: row.lineup || [], captain: row.captain, picks: row.picks || {}, savedAt: row.saved_at, result: merged[key]?.result };
+        const mine = merged[key];
+        if (!mine || mine.savedAt < row.saved_at) {
+            const entry: DayEntry = { lineup: row.lineup || [], captain: row.captain, picks: row.picks || {}, savedAt: row.saved_at };
+            // El resultado guardado se sacó con el equipo de este teléfono: si el de la cuenta es otro, se vuelve a calcular
+            merged[key] = mine?.result && sameTeam(mine, entry) ? { ...entry, result: mine.result } : entry;
         }
     }
     replaceStore(merged);
@@ -527,14 +535,17 @@ export interface Rival {
     entry: DayEntry;
 }
 
-/** Todos los equipos de un día (de una liga privada si se pasa `members`) */
+/**
+ * Todos los equipos de un día (de una liga privada si se pasa `members`), con su historial para puntuar solo lo que
+ * había al empezar cada juego (effectiveEntry). select=* trae history si la base ya lo tiene y no falla si todavía no.
+ */
 export const dayEntries = async (league: LeagueId, day: string, members?: string[]): Promise<Rival[]> => {
     const filter = members?.length ? `&user_id=in.(${members.join(',')})` : '';
-    const rows = await rest<EntryRow[]>(`fantasy_entries?league=eq.${league}&day=eq.${day}${filter}&select=user_id,lineup,captain,picks,saved_at,profiles(display_name)&limit=500`);
+    const rows = await rest<EntryRow[]>(`fantasy_entries?league=eq.${league}&day=eq.${day}${filter}&select=*,profiles(display_name)&limit=500`);
     return (rows || []).map((row) => ({
         userId: row.user_id,
         name: row.profiles?.display_name || 'Fanático',
-        entry: { lineup: row.lineup || [], captain: row.captain, picks: row.picks || {}, savedAt: row.saved_at }
+        entry: { lineup: row.lineup || [], captain: row.captain, picks: row.picks || {}, savedAt: row.saved_at, history: row.history ?? null }
     }));
 };
 

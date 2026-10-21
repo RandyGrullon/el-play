@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { ScheduleGame, ScheduleTeam } from '../../types';
+import { isNotPlayed } from '../../lib/baseball';
 import { teamDisplayName } from '../../lib/teams';
 import { useColors } from '../../theme/theme';
 import { alpha } from '../../theme/tokens';
@@ -29,12 +30,13 @@ export const TeamStories: React.FC<TeamStoriesProps> = ({ allGames, dayGames, se
         teams.set(game.away.id, game.away);
         teams.set(game.home.id, game.home);
     }
-    const status = (teamId: number): Status => {
-        const game = dayGames.find((item) => item.away.id === teamId || item.home.id === teamId);
-        if (!game) return 'none';
-        return game.state === 'live' ? 'live' : game.state === 'final' ? 'final' : 'later';
-    };
     const rank = { live: 0, later: 1, final: 2, none: 3 };
+    // En doble cartelera manda el juego que más importa ahora (en vivo, luego el que falta); pospuestos y cancelados no cuentan
+    const status = (teamId: number): Status =>
+        dayGames
+            .filter((item) => (item.away.id === teamId || item.home.id === teamId) && !isNotPlayed(item.detailedState))
+            .map((item): Status => (item.state === 'live' ? 'live' : item.state === 'final' ? 'final' : 'later'))
+            .reduce<Status>((best, item) => (rank[item] < rank[best] ? item : best), 'none');
     const ordered = [...teams.values()].sort((a, b) => rank[status(a.id)] - rank[status(b.id)] || a.name.localeCompare(b.name));
     if (!ordered.length) return null;
 

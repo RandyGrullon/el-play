@@ -1,6 +1,7 @@
 // iPhone: Live Activity en la pantalla bloqueada y la isla dinámica
 import { after, type LiveActivity } from 'expo-widgets';
 import { liveGame } from './LiveGame';
+import { prepareLogos } from './logoFiles';
 import type { LiveGameProps, LiveSurface } from './types';
 
 /** Si la app deja de mandar lecturas, el sistema la marca como desactualizada pasado este tiempo */
@@ -14,6 +15,7 @@ const staleDate = () => new Date(Date.now() + STALE_MS);
 const find = (id: string): LiveActivity<LiveGameProps> | undefined => liveGame.getInstances().find((instance) => instance.getId() === id);
 
 export const surface: LiveSurface = {
+    // En el iPhone no hay permiso que pedir: las Actividades en vivo se apagan en Ajustes (ask no cambia nada)
     start: async (props) => {
         try {
             const instance = liveGame.start(props, `elplay://juego/${props.gamePk}`, staleDate());
@@ -43,5 +45,6 @@ export const surface: LiveSurface = {
     // getInstances no trae las que ya terminaron (las del marcador final)
     active: async () => liveGame.getInstances().map((instance) => ({ id: instance.getId(), gamePk: null, stopped: false, final: false })),
     // En el iPhone se deja de seguir deslizando la actividad o desde la app
-    onStop: () => () => undefined
+    onStop: () => () => undefined,
+    logos: prepareLogos
 };

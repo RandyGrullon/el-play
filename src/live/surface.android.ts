@@ -3,6 +3,7 @@ import { AndroidImportance, AndroidNotificationVisibility, getPermissionsAsync, 
 import { addUserInteractionListener } from 'expo-widgets';
 import i18n from '../i18n';
 import { gameNotification } from './GameNotification';
+import { prepareLogos } from './logoFiles';
 import type { LiveGameProps, LiveSurface } from './types';
 
 const CHANNEL = 'segundo-plano';
@@ -14,8 +15,9 @@ const FINAL_MS = 20 * 60 * 1000;
 const idOf = (gamePk: number) => `juego-${gamePk}`;
 const gamePkOf = (id: string) => (/^juego-(\d+)$/.test(id) ? Number(id.slice(6)) : null);
 
-// Canal propio de importancia baja: no suena ni vibra en cada jugada; visible en la pantalla bloqueada
-const ensureChannel = async () => {
+// Canal propio de importancia baja: no suena ni vibra en cada jugada; visible en la pantalla bloqueada.
+// ask: false (empezó sola para tu equipo) no pide el permiso: sin permiso no se sigue
+const ensureChannel = async (ask = true) => {
     const es = !i18n.language.startsWith('en');
     await setNotificationChannelAsync(CHANNEL, {
         name: es ? 'Juego en segundo plano' : 'Game in the background',
@@ -27,7 +29,7 @@ const ensureChannel = async () => {
     });
     const current = await getPermissionsAsync();
     if (current.granted) return true;
-    if (!current.canAskAgain) return false;
+    if (!current.canAskAgain || !ask) return false;
     return (await requestPermissionsAsync()).granted;
 };
 
@@ -37,9 +39,9 @@ const texts = (props: LiveGameProps) => ({
 });
 
 export const surface: LiveSurface = {
-    start: async (props) => {
+    start: async (props, options) => {
         try {
-            if (!(await ensureChannel())) return { ok: false, reason: 'blocked' };
+            if (!(await ensureChannel(options?.ask !== false))) return { ok: false, reason: 'blocked' };
             const notification = await gameNotification.post(props, {
                 id: idOf(props.gamePk),
                 channelId: CHANNEL,
@@ -90,5 +92,6 @@ export const surface: LiveSurface = {
             if (event.source === gameNotification.name && event.notificationId) listener(event.notificationId);
         });
         return () => subscription.remove();
-    }
+    },
+    logos: prepareLogos
 };

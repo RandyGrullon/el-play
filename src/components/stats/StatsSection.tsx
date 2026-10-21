@@ -1,24 +1,34 @@
 // Estadísticas de todos los peloteros (igual que StatsPage de la web): buscar sin tildes, bateadores o lanzadores,
 // temporada actual o pasada, filtro por equipo, orden (también por puntos de fantasy), podio y lista con «Ver más».
-// En PRO, la tabla completa con métricas avanzadas.
+// En PRO, la pantalla de pro/estadisticas (vistas por percentil, dispersión, cara a cara y la pestaña Equipos).
 import React, { useMemo, useState } from 'react';
 import { Platform, Pressable, TextInput, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Search, X } from 'lucide-react-native';
 import { useLeague } from '../../state/league';
-import { seasonLabel } from '../../lib/format';
+import { lastName, seasonLabel } from '../../lib/format';
 import { useIsPro } from '../../lib/pro';
 import { SORTS, normalize, seasonSummary, sortPlayers, usePlayers, type PlayerRow, type SortKey, type StatsTeam } from '../../lib/stats';
 import { useColors } from '../../theme/theme';
 import { fonts, inkOn, radius, shadow } from '../../theme/tokens';
 import { Screen } from '../layout';
 import { Card, ErrorState, OfflineState, Pill, PlayerPhoto, Row, Segmented, Skeleton, TeamLogo, Txt, useErrorText } from '../ui';
-import { StatsTable } from '../pro/StatsTable';
+import { StatsPro } from '../pro/estadisticas/StatsPro';
+import { TeamsScreen } from '../pro/estadisticas/TeamsPanel';
 import { ChipRow, MoreButton, Notice, SectionHeader, openPlayer, waitingForNetwork } from './common';
 
 const PAGE = 40;
 
 export const StatsSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
+    const pro = useIsPro();
+    const params = useLocalSearchParams<{ vista?: string }>();
+    // El PRO trae sus propias pestañas (con «Equipos»): ?vista=equipos abre esa vista
+    if (pro) return params.vista === 'equipos' ? <TeamsScreen /> : <StatsPro />;
+    return <StatsLite tabs={tabs} />;
+};
+
+const StatsLite: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
     const { t } = useTranslation();
     const colors = useColors();
     const errorText = useErrorText();
@@ -30,7 +40,6 @@ export const StatsSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
     const [search, setSearch] = useState('');
     const [limit, setLimit] = useState(PAGE);
     const query = usePlayers(activeLeague, season);
-    const pro = useIsPro();
     const data = query.data;
 
     // Otra liga: temporada actual y todos los equipos. Otro filtro: primera página. Se ajusta en el render, sin efecto
@@ -74,7 +83,6 @@ export const StatsSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
             <SectionHeader
                 subtitle={`${t(`leagues.${activeLeague}.name`)}${data ? ` · ${t('common.season', { season: seasonLabel(data.season, activeLeague) })}` : ''}`}
                 title={t('statsPage.title')}
-                pro={pro}
                 lead={t('statsPage.lead')}
             />
 
@@ -133,26 +141,24 @@ export const StatsSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
                 </ChipRow>
             )}
 
-            {!pro && (
-                <ChipRow label={t('statsPage.sortBy')}>
-                    {SORTS[role].map((option) => {
-                        const active = option.key === sort.key;
-                        return (
-                            <Pressable
-                                key={option.key}
-                                onPress={() => setSortKey(option.key)}
-                                accessibilityRole="tab"
-                                accessibilityState={{ selected: active }}
-                                style={{ height: 36, borderRadius: radius.pill, paddingHorizontal: 14, justifyContent: 'center', backgroundColor: active ? colors.accent : colors.raised }}
-                            >
-                                <Txt size={13} weight="bold" color={active ? '#fff' : colors.muted}>
-                                    {t(`statsPage.sort.${option.key}`)}
-                                </Txt>
-                            </Pressable>
-                        );
-                    })}
-                </ChipRow>
-            )}
+            <ChipRow label={t('statsPage.sortBy')}>
+                {SORTS[role].map((option) => {
+                    const active = option.key === sort.key;
+                    return (
+                        <Pressable
+                            key={option.key}
+                            onPress={() => setSortKey(option.key)}
+                            accessibilityRole="tab"
+                            accessibilityState={{ selected: active }}
+                            style={{ height: 36, borderRadius: radius.pill, paddingHorizontal: 14, justifyContent: 'center', backgroundColor: active ? colors.accent : colors.raised }}
+                        >
+                            <Txt size={13} weight="bold" color={active ? '#fff' : colors.muted}>
+                                {t(`statsPage.sort.${option.key}`)}
+                            </Txt>
+                        </Pressable>
+                    );
+                })}
+            </ChipRow>
 
             {waitingForNetwork(query) ? (
                 <OfflineState />
@@ -169,8 +175,6 @@ export const StatsSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
                 </View>
             ) : query.isError && !data ? (
                 <ErrorState message={errorText(query.error)} onRetry={() => query.refetch()} />
-            ) : data && pro ? (
-                filtered.length ? <StatsTable rows={filtered} role={role} teams={data.teams} teamGames={teamGames} limit={limit} onOpen={open} onMore={() => setLimit((value) => value + PAGE)} /> : empty
             ) : data ? (
                 <>
                     {top.length > 0 && <Podium rows={top} teams={data.teams} show={sort.show} unit={t(`statsPage.unit.${sort.key}`)} onOpen={open} />}
@@ -213,7 +217,7 @@ const Podium: React.FC<{ rows: PlayerRow[]; teams: Record<string, StatsTeam>; sh
                 const team = row.teamId ? teams[row.teamId] : undefined;
                 const color = team?.color || '#2563eb';
                 const ink = inkOn(color);
-                const last = row.name.split(' ').slice(-1)[0];
+                const last = lastName(row.name);
                 return (
                     <Pressable
                         key={row.id}

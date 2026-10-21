@@ -1,5 +1,6 @@
 // Posiciones (igual que StandingsPage de la web): fases de LIDOM, líder en tarjeta con el color del equipo,
-// filas con rango, logo, G-P, JD y estrella de favorito; Clásico por grupos y Serie del Caribe. En PRO, la tabla ancha.
+// filas con rango, logo, G-P, JD y estrella de favorito; Clásico por grupos y Serie del Caribe. El PRO es otra pantalla
+// (pro/posiciones/ProStandings.tsx): posiciones.tsx elige cuál.
 import React, { useState } from 'react';
 import { Pressable, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +16,6 @@ import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Screen } from '../layout';
 import { Card, ErrorState, OfflineState, Pill, Row, Skeleton, TeamLogo, Txt, useErrorText } from '../ui';
-import { StandingsTable } from '../pro/StandingsTable';
 import { ChipRow, HeaderButton, Notice, SectionHeader, poolTitle, shareText, waitingForNetwork } from './common';
 
 type Phase = 'regular' | 'roundRobin' | 'final';
@@ -150,8 +150,7 @@ export const StandingsSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) 
     const phaseLabel = activePhase ? t(`standings.${activePhase}`) : '';
     const share = (tableRows: StandingRow[], subtitle: string) => shareText(tableText(tableRows, `${t('standings.title')} ${leagueName} · ${subtitle}`, i18n.language));
 
-    const table = (tableRows: StandingRow[], cutoff: number | undefined, cutoffLabel: string) =>
-        pro ? <StandingsTable rows={tableRows} cutoff={cutoff} /> : <StandingCards rows={tableRows} cutoff={cutoff} cutoffLabel={cutoffLabel} />;
+    const table = (tableRows: StandingRow[], cutoff: number | undefined, cutoffLabel: string) => <StandingCards rows={tableRows} cutoff={cutoff} cutoffLabel={cutoffLabel} />;
 
     return (
         <Screen onRefresh={() => standings.refetch()}>

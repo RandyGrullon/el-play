@@ -4,12 +4,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import type { BottomTabBarProps } from 'expo-router/tabs';
 import { useTranslation } from 'react-i18next';
-import { BarChart3, Home, Menu, Radio, Sparkles, X } from 'lucide-react-native';
+import { BarChart3, Home, Menu, Radio, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useColors } from '../theme/theme';
-import { radius, shadow } from '../theme/tokens';
+import { shadow } from '../theme/tokens';
 import { Txt } from './ui';
-import { hideToast, useToast } from '../lib/toast';
 import { useSchedule } from '../lib/queries';
 import { useLeague } from '../state/league';
 
@@ -47,7 +46,7 @@ export const Screen: React.FC<{ children: React.ReactNode; onRefresh?: () => Pro
 const ICONS: Record<string, typeof Home> = { index: Home, posiciones: BarChart3, fantasy: Sparkles, mas: Menu };
 
 /** Igual que la web: barra oscura flotante, cuatro secciones y el botón rojo de los juegos en vivo en el centro */
-export const ElPlayTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigateToTab }) => {
+export const ElPlayTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, emitter, navigateToTab }) => {
     const insets = useSafeAreaInsets();
     const colors = useColors();
     const { t } = useTranslation();
@@ -70,7 +69,9 @@ export const ElPlayTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, 
                 accessibilityState={{ selected: focused }}
                 accessibilityLabel={labels[name]}
                 onPress={() => {
-                    if (!focused) navigateToTab(route.key);
+                    // Como la barra de Expo Router: avisa tabPress (lo usan useScrollToTop y los listeners) y deja cancelarlo
+                    const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+                    if (!focused && !event.defaultPrevented) navigateToTab(route.key);
                     Haptics.selectionAsync().catch(() => undefined);
                 }}
                 style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, height: 64 }}
@@ -120,34 +121,5 @@ export const ElPlayTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, 
 
 // ---------------------------------------------------------------- aviso corto
 
-export const Toast: React.FC = () => {
-    const toast = useToast();
-    const colors = useColors();
-    const insets = useSafeAreaInsets();
-    if (!toast) return null;
-    return (
-        <View pointerEvents="box-none" style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 96 }}>
-            <View accessibilityRole="alert" style={[{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.ink, borderRadius: radius.tile, padding: 12, paddingLeft: 16, maxWidth: 480, alignSelf: 'center', width: '100%' }, shadow('float')]}>
-                <Txt size={14} weight="medium" color={colors.bg} style={{ flex: 1 }}>
-                    {toast.text}
-                </Txt>
-                {toast.action && (
-                    <Pressable
-                        onPress={() => {
-                            toast.action?.run();
-                            hideToast();
-                        }}
-                        style={{ backgroundColor: colors.accent, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 }}
-                    >
-                        <Txt size={13} weight="semibold" tone="white">
-                            {toast.action.label}
-                        </Txt>
-                    </Pressable>
-                )}
-                <Pressable onPress={hideToast} hitSlop={8}>
-                    <X size={16} color={colors.bg} />
-                </Pressable>
-            </View>
-        </View>
-    );
-};
+// Vive en ui.tsx porque la hoja (Sheet) también lo pinta: así no hay import circular
+export { Toast } from './ui';

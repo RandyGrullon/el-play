@@ -171,7 +171,8 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame; onShare?: (game: Sched
                         </Txt>
                     ) : null}
                     <View style={{ marginLeft: 'auto', flexDirection: 'row', gap: 4 }}>
-                        {final && onShare && (
+                        {/* MLB da los pospuestos y cancelados como «final»: sin Compartir (saldría «0 - 0») */}
+                        {final && !notPlayed && onShare && (
                             <Pressable
                                 onPress={() => onShare(game)}
                                 accessibilityRole="button"

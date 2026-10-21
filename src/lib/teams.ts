@@ -1,4 +1,5 @@
 import { localeFor } from './format';
+import { nationalTeamName } from './nationalTeams';
 
 // Selecciones nacionales (Clásico, Serie del Caribe): MLB manda el nombre en inglés ("Dominican Republic").
 // Con la sigla se busca el código de país y el navegador da el nombre en el idioma activo.
@@ -27,5 +28,6 @@ const regionNames = (lang: string) => {
 export const teamDisplayName = (team: { name: string; abbrev: string; flag?: string | null }, lang: string) => {
     const region = team.flag ? COUNTRY_BY_ABBREV[team.abbrev] : undefined;
     if (!region) return team.name;
-    return regionNames(lang)?.of(region) || team.name;
+    // Hermes (el motor de la app en el teléfono) no trae Intl.DisplayNames: ahí van los nombres propios
+    return regionNames(lang)?.of(region) || nationalTeamName(team.abbrev, lang) || team.name;
 };

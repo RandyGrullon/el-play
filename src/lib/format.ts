@@ -52,5 +52,15 @@ export const formatCountdown = (ms: number, lang: string) => {
     return es ? `en ${rest} min` : `in ${rest} min`;
 };
 
+/** Sufijos que van después del apellido: Mel Rojas Jr., Victor Scott II */
+const NAME_SUFFIX = /^(jr|sr|ii|iii|iv)\.?$/i;
+
+/** Apellido para los espacios cortos: la última palabra del nombre, saltando Jr., Sr., II, III o IV */
+export const lastName = (name: string) => {
+    const words = name.trim().split(/\s+/);
+    while (words.length > 1 && NAME_SUFFIX.test(words[words.length - 1])) words.pop();
+    return words[words.length - 1] ?? '';
+};
+
 /** Temporada de invierno: 2025 → "2025-26" */
 export const seasonLabel = (season: number, league: string) => (league === 'lidom' ? `${season}-${String(season + 1).slice(2)}` : String(season));

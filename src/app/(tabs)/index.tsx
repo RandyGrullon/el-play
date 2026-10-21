@@ -19,6 +19,7 @@ import { LeagueSheet } from '../../components/feed/LeagueSheet';
 import { LogoMark } from '../../components/feed/LogoMark';
 import { useShare } from '../../components/share/ShareSheet';
 import { resultFromSchedule } from '../../components/share/subjects';
+import { ProPortada } from '../../components/pro/portada/ProPortada';
 
 const ORDER = { live: 0, preview: 1, final: 2 } as const;
 
@@ -81,6 +82,15 @@ export default function GamesScreen() {
             text: `${game.away.name} ${game.away.score ?? ''} - ${game.home.score ?? ''} ${game.home.name} · El Play`,
             path: `/juego/${game.gamePk}`
         });
+
+    // Modo PRO: la portada PRO (src/components/pro/portada); el Lite de abajo sigue igual
+    if (pro)
+        return (
+            <>
+                <ProPortada schedule={schedule} byDay={byDay} days={days} today={today} day={day} timeZone={timeZone} onSelectDay={setSelected} team={team} onSelectTeam={setTeam} onShare={shareGame} />
+                {sheet}
+            </>
+        );
 
     let content: React.ReactNode;
     if (waitingForNetwork(schedule)) content = <OfflineState />;

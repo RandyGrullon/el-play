@@ -8,6 +8,21 @@ export interface LiveTeam {
     color: string;
     ink: string;
     runs: string;
+    /** PRO: el color del equipo aclarado para leerlo sobre negro (y oscurecido para fondo claro) */
+    light: string;
+    dark: string;
+    /** PRO: logo ya descargado (file://…png en widgetsDirectory); vacío si no hay: va la sigla */
+    logo: string;
+    /** PRO: nombre corto («Tigres», «Leones»; el país en las selecciones) */
+    short: string;
+}
+
+/** PRO: una jugada con su etiqueta («SENCILLO») y el tono de la etiqueta */
+export interface LivePlay {
+    label: string;
+    text: string;
+    /** hit · hr · out · k · walk · other (colores de la etiqueta) */
+    tone: string;
 }
 
 export interface LiveGameProps {
@@ -47,6 +62,50 @@ export interface LiveGameProps {
     stoppedText: string;
     /** Android: el botón «Dejar de seguir» de la notificación lo pone en true */
     stopped: boolean;
+
+    // ---------------------------------------------------------------- Solo PRO (en el Lite van vacíos)
+
+    /** Modo PRO: la vista pinta logos, duelo, últimas jugadas y probabilidad de ganar */
+    pro: boolean;
+    /** «▲ 7.ª» (pantalla bloqueada) */
+    inningMark: string;
+    /** Quién va ganando: away · home · '' (empate) */
+    leader: string;
+    /** Rótulos: «Al bate», «Lanzando», «B:», «L:» */
+    batterLabel: string;
+    pitcherLabel: string;
+    batterTag: string;
+    pitcherTag: string;
+    /** «E. Florial», «hoy 2-3», «Florial» */
+    batterName: string;
+    batterToday: string;
+    batterLast: string;
+    /** «I. Armstrong», «43 pitcheos», «Armstrong» */
+    pitcherName: string;
+    pitcherPitches: string;
+    pitcherLast: string;
+    /** Último pitcheo del turno: «95.3 mph Sinker · foul» */
+    pitch: string;
+    /** Apellido del corredor en cada base (vacío si no se sabe) */
+    firstName: string;
+    secondName: string;
+    thirdName: string;
+    /** Tono de la última jugada (lastLabel) */
+    lastTone: string;
+    /** Las 3 últimas jugadas, la más nueva primero */
+    plays: LivePlay[];
+    /** Probabilidad de ganar del visitante (0-100); -1 si no hay */
+    wpAway: number;
+    /** «LIC 99.9 %», «ESC 0.1 %» y el del que va arriba */
+    wpAwayText: string;
+    wpHomeText: string;
+    wpLeadText: string;
+    /** «Prob. de ganar» */
+    wpLabel: string;
+    /** Probabilidad del visitante turno a turno (0-100), muestreada: la gráfica de Android */
+    wpSeries: number[];
+    /** Para el lector de pantalla: «Licey 11, Escogido 1, alta de la 7.ª, 2 outs» */
+    summary: string;
 }
 
 /** Una actividad o notificación viva: id del sistema y el juego */
@@ -61,9 +120,16 @@ export interface LiveHandle {
 
 export type LiveStart = { ok: true; id: string } | { ok: false; reason: 'blocked' | 'error' };
 
+/** Un equipo cuyo logo hace falta en la actividad (id y URL del logo de MLB) */
+export interface LogoTeam {
+    id: number;
+    logo: string;
+}
+
 /** Lo que cada sistema sabe hacer (iPhone: Live Activity; Android: notificación fija) */
 export interface LiveSurface {
-    start: (props: LiveGameProps) => Promise<LiveStart>;
+    /** ask: false = sin pedir permisos (cuando empieza sola para tu equipo) */
+    start: (props: LiveGameProps, options?: { ask?: boolean }) => Promise<LiveStart>;
     /** false si ya no existe (el usuario la quitó o el sistema la terminó) */
     update: (id: string, props: LiveGameProps) => Promise<boolean>;
     /** Con props: final del juego (queda un rato con el marcador). Sin props: quitarla ya */
@@ -71,4 +137,6 @@ export interface LiveSurface {
     active: () => Promise<LiveHandle[]>;
     /** Android: «Dejar de seguir» desde la notificación con la app abierta */
     onStop: (listener: (id: string) => void) => () => void;
+    /** PRO: baja los logos (PNG) a la carpeta que comparte con la actividad; devuelve id → file:// de los que hay */
+    logos?: (teams: LogoTeam[]) => Promise<Record<number, string>>;
 }
