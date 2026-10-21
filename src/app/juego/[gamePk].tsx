@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Platform, Pressable, View, useWindowDimensions } from 'react-native';
+import { AppState, Linking, Platform, Pressable, View, useWindowDimensions } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,9 +8,9 @@ import { ArrowLeft, Bell, BellRing, CircleCheck, CloudSun, ListOrdered, MapPin, 
 import type { GameDetail, TopPerformer } from '../../types';
 import { findScheduledGame, useGame } from '../../lib/queries';
 import { ApiError } from '../../lib/api';
-import { atBatForZone, isNotPlayed } from '../../lib/baseball';
-import { formatCountdown, formatShortDate, formatTime } from '../../lib/format';
-import { forMode, newPlayEvents, type PlayEvent } from '../../lib/playEvents';
+import { atBatForZone, inningBreak, isNotPlayed } from '../../lib/baseball';
+import { formatCountdown, formatShortDate, formatTime, lastName } from '../../lib/format';
+import { STALE_READ_MS, forMode, playsSince, queuePlays, type PlayEvent } from '../../lib/playEvents';
 import { useIsPro } from '../../lib/pro';
 import { teamDisplayName } from '../../lib/teams';
 import { toggleFollow, useFollow, useFollowSync } from '../../lib/follow';
@@ -31,9 +31,12 @@ import { StrikeZonePanel } from '../../components/game/StrikeZonePanel';
 import { uniformColors } from '../../components/game/BatterFigure';
 import { SprayChart } from '../../components/game/SprayChart';
 import { Matchup } from '../../components/game/Matchup';
+import { InningBreakMini } from '../../components/game/InningBreak';
 import { PlayByPlay } from '../../components/game/PlayByPlay';
 import { BoxScore } from '../../components/game/BoxScore';
-import { LiveProPanel } from '../../components/pro/LiveProPanel';
+import { ProGame } from '../../components/pro/juego/ProGame';
+import { HeroPulse, ProScoreBar } from '../../components/pro/juego/vivo/ScoreBar';
+import { ProGameScroll, ProScrollProvider, useProScrollState } from '../../components/pro/juego/vivo/scroll';
 import { useAlertToggle } from '../../components/feed/alerts';
 import { capitalize, waitingForNetwork } from '../../components/feed/DayChips';
 import { useNow } from '../../components/feed/useNow';
@@ -61,8 +64,6 @@ const ActionButton: React.FC<{ icon: (color: string) => React.ReactNode; label: 
         </Pressable>
     );
 };
-
-const lastName = (name: string) => name.split(' ').slice(-1)[0];
 
 // Textos del segundo plano (la web no lo tiene: no están en los JSON)
 const FOLLOW_TEXTS = {
@@ -149,10 +150,12 @@ const FollowButton: React.FC<{ game: GameDetail }> = ({ game }) => {
 const LiveView: React.FC<{ game: GameDetail; open: (sheet: SheetName) => void; onShare: () => void }> = ({ game, open, onShare }) => {
     const { t } = useTranslation();
     const colors = useColors();
-    const pro = useIsPro();
     const { atBat } = atBatForZone(game);
     const batting = game.inning?.isTop ? game.away : game.home;
     const between = game.inning?.state === 'Middle' || game.inning?.state === 'End';
+    // Tras el tercer out, hasta el primer bateador de la otra mitad: la zona espera y la situación dice quién abre
+    const pause = inningBreak(game);
+    const leadoff = pause?.dueUp[0] ?? null;
     // En teléfonos angostos la mini zona y las bases se achican para que quepa el duelo
     const narrow = useWindowDimensions().width < 360;
 
@@ -170,7 +173,16 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: SheetName) => void; o
                         </Txt>
                         <OutsDots outs={game.count.outs} style={{ marginTop: 6 }} />
                     </View>
-                    {game.matchup && (
+                    {pause ? (
+                        <View style={{ minWidth: 0, flexShrink: 1, alignItems: 'center' }}>
+                            <Txt size={14} weight="bold" numberOfLines={1}>
+                                {leadoff ? lastName(leadoff.name) : pause.next.abbrev}
+                            </Txt>
+                            <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} center>
+                                {leadoff ? t('zone.breakLeadsOff', { team: pause.next.abbrev }) : t('zone.breakStatus')}
+                            </Txt>
+                        </View>
+                    ) : game.matchup && (
                         <View style={{ minWidth: 0, flexShrink: 1, alignItems: 'center' }}>
                             <Txt size={14} weight="bold" numberOfLines={1}>
                                 {lastName(game.matchup.batter.name)}
@@ -182,7 +194,9 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: SheetName) => void; o
                     )}
                 </View>
                 <Pressable onPress={() => open('zone')} accessibilityRole="button" accessibilityLabel={t('zone.open')} style={[{ width: narrow ? 84 : 104, borderRadius: 24, backgroundColor: colors.surface, padding: 6, justifyContent: 'center' }, shadow('float')]}>
-                    {atBat ? (
+                    {pause ? (
+                        <InningBreakMini pause={pause} />
+                    ) : atBat ? (
                         <StrikeZone pitches={atBat.pitches} batterSide={atBat.batter.side} uniform={uniformColors(atBat.top ? game.away : game.home, !atBat.top)} showLegend={false} />
                     ) : (
                         <View style={{ alignItems: 'center', paddingVertical: 24 }}>
@@ -200,11 +214,6 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: SheetName) => void; o
             <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
                 <SprayChart game={game} />
             </View>
-            {pro && (
-                <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
-                    <LiveProPanel game={game} />
-                </View>
-            )}
             <Row gap={8} style={{ paddingHorizontal: 16, paddingTop: 20 }}>
                 <ActionButton icon={(color) => <Table2 size={16} color={color} />} label={t('game.tabs.box')} onPress={() => open('box')} />
                 <ActionButton icon={(color) => <Target size={16} color={color} />} label={t('zone.full')} onPress={() => open('zone')} />
@@ -216,12 +225,10 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: SheetName) => void; o
 
 const FinalView: React.FC<{ game: GameDetail; open: (sheet: SheetName) => void; onShare: () => void; onSharePerformer: (performer: TopPerformer) => void }> = ({ game, open, onShare, onSharePerformer }) => {
     const { t } = useTranslation();
-    const pro = useIsPro();
     return (
         <View style={{ gap: 16, paddingHorizontal: 16, paddingTop: 16 }}>
             <StoryRecap game={game} onSharePerformer={onSharePerformer} />
             <SprayChart game={game} />
-            {pro && <LiveProPanel game={game} />}
             <Row gap={8}>
                 <ActionButton icon={(color) => <ListOrdered size={16} color={color} />} label={t('game.tabs.plays')} onPress={() => open('plays')} />
                 <ActionButton icon={(color) => <Table2 size={16} color={color} />} label={t('game.tabs.box')} onPress={() => open('box')} />
@@ -282,8 +289,8 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                         );
                     })}
                 </View>
-                {/* MLB no recibe los abridores de LIDOM: se dice en vez de dejar el hueco */}
-                {!game.probables.away && !game.probables.home && (
+                {/* MLB no recibe los abridores de LIDOM: se dice en vez de dejar el hueco (no en pospuestos ni cancelados) */}
+                {!notPlayed && !game.probables.away && !game.probables.home && (
                     <Txt size={14} tone="muted" style={{ marginTop: 12 }}>
                         {t('preview.probablesLater')}
                     </Txt>
@@ -321,16 +328,19 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                 )}
             </Card>
 
-            <Row gap={8}>
-                {!notPlayed && game.date && (
-                    <ActionButton
-                        icon={(color) => (subscribed ? <BellRing size={16} color={color} /> : <Bell size={16} color={color} />)}
-                        label={subscribed ? t('preview.notifyOff') : t('preview.notifyOn')}
-                        onPress={() => toggleAlert({ gamePk, date: game.date!, away: game.away, home: game.home })}
-                    />
-                )}
-                <ActionButton icon={(color) => <Share2 size={16} color={color} />} label={t('share.short')} onPress={onShare} primary />
-            </Row>
+            {/* Pospuesto o cancelado: ni aviso ni Compartir (saldría «0 - 0») */}
+            {!notPlayed && (
+                <Row gap={8}>
+                    {game.date && (
+                        <ActionButton
+                            icon={(color) => (subscribed ? <BellRing size={16} color={color} /> : <Bell size={16} color={color} />)}
+                            label={subscribed ? t('preview.notifyOff') : t('preview.notifyOn')}
+                            onPress={() => toggleAlert({ gamePk, date: game.date!, away: game.away, home: game.home })}
+                        />
+                    )}
+                    <ActionButton icon={(color) => <Share2 size={16} color={color} />} label={t('share.short')} onPress={onShare} primary />
+                </Row>
+            )}
         </View>
     );
 };
@@ -350,21 +360,44 @@ export default function GameScreen() {
     const { share, sheet: shareSheet } = useShare();
     const [sheet, setSheet] = useState<SheetName>(null);
     const { animationMode, favoriteTeamId } = usePreferences();
-    const previous = useRef<GameDetail | null>(null);
+    // Modo PRO (cuenta abierta + PRO en «Más»): debajo de la misma cabecera va el juego PRO; el Lite queda igual
+    const pro = useIsPro();
+    // PRO: el scroll va en un shared value para la barra de mando y las pestañas pegadas (el Lite usa Screen igual que antes)
+    const scrollState = useProScrollState();
+    const previous = useRef<{ game: GameDetail; at: number } | null>(null);
     const shown = useRef(new Set<string>());
     const [plays, setPlays] = useState<PlayEvent[]>([]);
+    const readAt = query.dataUpdatedAt;
     // Si este juego se sigue en segundo plano, cada lectura nueva va a la pantalla bloqueada / notificación
-    useFollowSync(game, query.dataUpdatedAt);
+    useFollowSync(game, readAt);
 
-    // Jugadas nuevas entre una lectura del juego y la siguiente → animación (en cola si llegan juntas)
+    // Jugadas nuevas entre una lectura del juego y la siguiente → animación (en cola si llegan juntas). Corre en cada
+    // lectura: si la anterior es vieja (volvió de segundo plano) o la app no está a la vista, no repite jugadas pasadas.
     useEffect(() => {
         if (!game) return;
-        const fresh = forMode(newPlayEvents(previous.current, game), animationMode, favoriteTeamId, [game.away.id, game.home.id]).filter((play) => !shown.current.has(play.key));
-        previous.current = game;
+        const before = previous.current;
+        previous.current = { game, at: readAt };
+        const events = playsSince(before, game, readAt, AppState.currentState === 'background');
+        const fresh = forMode(events, animationMode, favoriteTeamId, [game.away.id, game.home.id]).filter((play) => !shown.current.has(play.key));
         if (!fresh.length) return;
         fresh.forEach((play) => shown.current.add(play.key));
-        setPlays((queue) => [...queue, ...fresh].slice(-4));
-    }, [game, animationMode, favoriteTeamId]);
+        setPlays((queue) => queuePlays(queue, fresh));
+    }, [game, readAt, animationMode, favoriteTeamId]);
+
+    // Al volver tras un rato fuera, la cola ya es vieja (y en iOS la que se veía quedó congelada a medias): se vacía.
+    // Una salida corta (centro de control, una llamada) no la toca.
+    useEffect(() => {
+        let leftAt: number | null = null;
+        const subscription = AppState.addEventListener('change', (status) => {
+            if (status !== 'active') {
+                leftAt ??= Date.now();
+                return;
+            }
+            if (leftAt !== null && Date.now() - leftAt > STALE_READ_MS) setPlays([]);
+            leftAt = null;
+        });
+        return () => subscription?.remove();
+    }, []);
 
     const leagueName = t(`leagues.${game?.league ?? leagueConfig.id}.name`);
     const shareGame = () =>
@@ -388,6 +421,7 @@ export default function GameScreen() {
     // Juego que no existe o enlace roto: se dice claro y se ofrece volver
     const notFoundCode = !game && query.error instanceof ApiError && ['game_not_found', 'invalid_game'].includes(query.error.code) ? query.error.code : null;
     const title = game ? `${game.away.abbrev} ${game.away.runs}-${game.home.runs} ${game.home.abbrev} · El Play` : 'El Play';
+    const notPlayed = !!game && isNotPlayed(game.detailedState);
 
     let body: React.ReactNode;
     if (notFoundCode) {
@@ -435,36 +469,61 @@ export default function GameScreen() {
                 <Skeleton height={260} />
             </View>
         );
-    } else if (game.state === 'live') body = <LiveView game={game} open={setSheet} onShare={shareGame} />;
-    else if (game.state === 'final') body = <FinalView game={game} open={setSheet} onShare={shareGame} onSharePerformer={sharePerformer} />;
+    } else if (pro) body = <ProGame game={game} onShare={shareGame} onSharePerformer={sharePerformer} fetchedAt={readAt} follow={<FollowButton game={game} />} />;
+    else if (game.state === 'live') body = <LiveView game={game} open={setSheet} onShare={shareGame} />;
+    // MLB da los pospuestos y cancelados como «final»: van con la previa (sin resumen ni marcador 0 - 0)
+    else if (game.state === 'final' && !notPlayed) body = <FinalView game={game} open={setSheet} onShare={shareGame} onSharePerformer={sharePerformer} />;
     else body = <PreviewView game={game} onShare={shareGame} />;
 
+    const hero = model ? <GameHero model={model} onShare={game && !notPlayed ? shareGame : undefined} /> : notFoundCode ? null : <HeroSkeleton />;
+    const liveGame = game?.state === 'live' ? game : null;
+    const contentStyle = { paddingTop: 0, gap: 0, paddingBottom: insets.bottom + 40 };
+
     return (
-        <View style={{ flex: 1, backgroundColor: colors.bg }}>
-            <Stack.Screen options={{ title }} />
-            <Screen padded={false} onRefresh={() => query.refetch()} contentStyle={{ paddingTop: 0, gap: 0, paddingBottom: insets.bottom + 40 }}>
-                {model ? <GameHero model={model} onShare={game ? shareGame : undefined} /> : notFoundCode ? null : <HeroSkeleton />}
-                {body}
-            </Screen>
+        <ProScrollProvider value={scrollState}>
+            <View style={{ flex: 1, backgroundColor: colors.bg }}>
+                <Stack.Screen options={{ title }} />
+                {pro ? (
+                    <ProGameScroll state={scrollState} onRefresh={() => query.refetch()} contentStyle={contentStyle}>
+                        {/* En vivo, la mitad del equipo que anota destella sobre la cabecera de siempre */}
+                        {liveGame && hero ? (
+                            <View>
+                                {hero}
+                                <HeroPulse game={liveGame} />
+                            </View>
+                        ) : (
+                            hero
+                        )}
+                        {body}
+                    </ProGameScroll>
+                ) : (
+                    <Screen padded={false} onRefresh={() => query.refetch()} contentStyle={contentStyle}>
+                        {hero}
+                        {body}
+                    </Screen>
+                )}
+                {pro && liveGame && <ProScoreBar game={liveGame} fetchedAt={readAt} />}
 
-            {plays[0] && <PlayAnimation key={plays[0].key} event={plays[0]} onDone={() => setPlays((queue) => queue.slice(1))} />}
+                {plays[0] && <PlayAnimation key={plays[0].key} event={plays[0]} onDone={() => setPlays((queue) => queue.slice(1))} />}
 
-            {game && (
-                <>
-                    <Sheet open={sheet === 'zone'} onClose={() => setSheet(null)} title={t('zone.title')}>
-                        <StrikeZonePanel game={game} />
-                        <Matchup game={game} />
-                    </Sheet>
-                    <Sheet open={sheet === 'plays'} onClose={() => setSheet(null)} title={t('plays.title')}>
-                        <PlayByPlay game={game} />
-                    </Sheet>
-                    <Sheet open={sheet === 'box'} onClose={() => setSheet(null)} title={t('game.tabs.box')}>
-                        <BoxScore game={game} />
-                    </Sheet>
-                </>
-            )}
-            {shareSheet}
-        </View>
+                {game && (
+                    <>
+                        <Sheet open={sheet === 'zone'} onClose={() => setSheet(null)} title={t('zone.title')}>
+                            <StrikeZonePanel game={game} />
+                            {/* En la pausa entre entradas el duelo es el del último out: la zona ya dice a quién le toca */}
+                            {!inningBreak(game) && <Matchup game={game} />}
+                        </Sheet>
+                        <Sheet open={sheet === 'plays'} onClose={() => setSheet(null)} title={t('plays.title')}>
+                            <PlayByPlay game={game} />
+                        </Sheet>
+                        <Sheet open={sheet === 'box'} onClose={() => setSheet(null)} title={t('game.tabs.box')}>
+                            <BoxScore game={game} />
+                        </Sheet>
+                    </>
+                )}
+                {shareSheet}
+            </View>
+        </ProScrollProvider>
     );
 }
 

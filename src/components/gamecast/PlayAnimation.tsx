@@ -3,17 +3,47 @@ import { AccessibilityInfo, Animated, Easing, Platform, Pressable, StyleSheet, V
 import Svg, { Circle, Defs, G, LinearGradient, Path, Pattern, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { lastName } from '../../lib/format';
 import type { OutVariant, PlayEvent } from '../../lib/playEvents';
-import { fonts, inkOn } from '../../theme/tokens';
+import { useIsPro } from '../../lib/pro';
+import { useMotion } from '../../lib/motion';
+import { legsOf, runnerPaths, type RunnerPath } from '../../lib/runners';
+import { alpha, fonts, inkOn } from '../../theme/tokens';
 import { PlayerPhoto, TeamLogo, Txt } from '../ui';
+import { ProPlayAnimation } from '../pro/animaciones/ProPlayAnimation';
+import { MissedCard } from '../pro/animaciones/MissedCard';
+import { playHaptic } from '../pro/animaciones/haptics';
+import { hasProScene } from '../pro/animaciones/scenes';
 import { Confetti, type Burst } from './Confetti';
+import { HomeRunFlight, homeRunFlightMs } from './HomeRunFlight';
 
 // Animaciones de jugada en el juego en vivo (calcadas de la web): fin de entrada, ponche, hit, doble, triple, jonrón,
 // outs, emergentes, la victoria al terminar y el campeonato cuando ese juego da el título; con el logo y los colores del
 // equipo protagonista. Se cierran solas o al tocarlas y solo ocupan la parte de arriba. Con «reducir movimiento» en el
 // teléfono solo aparecen y desaparecen.
 
-const HOLD: Record<PlayEvent['kind'], number> = { inning: 2800, k: 2300, single: 2120, double: 2340, triple: 2560, hr: 3300, win: 3400, champion: 6000, pinchHitter: 2800, pinchRunner: 2800, out: 2300 };
+// Las del modo PRO (base por bolas, error, robo…) no llegan al Lite; si alguna llegara, dura como un hit
+const HOLD: Record<PlayEvent['kind'], number> = {
+    inning: 2800,
+    k: 2300,
+    single: 2120,
+    double: 2340,
+    triple: 2560,
+    hr: 3300,
+    win: 3400,
+    champion: 6000,
+    pinchHitter: 2800,
+    pinchRunner: 2800,
+    out: 2300,
+    walk: 2120,
+    error: 2120,
+    steal: 2120,
+    wildPitch: 2120,
+    pitchingChange: 2800,
+    run: 2120,
+    noHitter: 2800,
+    missed: 2120
+};
 const STAGE_H = 430;
 const EXIT = 380;
 
@@ -39,6 +69,18 @@ const BASES: [number, number][] = [
 const DIAMOND = 92; // el cuadrito de 100×100 se pinta a 92 px
 const k = DIAMOND / 100;
 
+// El jonrón con el batazo marcado: el campo aparece, la bola sale a los 450 ms y la tarjeta espera a que caiga
+const FLIGHT_DELAY = 450;
+// …y la escena es más alta (sin tapar la barra de abajo)
+const FLIGHT_STAGE_H = 570;
+
+// Hits: los corredores salen a la vez (380 ms por base) cuando ya entró la tarjeta
+const RUN_START = 620;
+const RUN_LEG = 380;
+
+/** Puntos del diamante (cuadro de 100) que recorre un corredor; anotar es volver a home */
+const routeOf = (path: Pick<RunnerPath, 'from' | 'to'>) => Array.from({ length: path.to - path.from + 1 }, (_, step) => BASES[(path.from + step) % 4]);
+
 // Curvas de la web
 const EASE = Easing.bezier(0.2, 0.8, 0.2, 1);
 const BOUNCE = Easing.bezier(0.3, 1.5, 0.5, 1);
@@ -52,10 +94,11 @@ AccessibilityInfo.isReduceMotionEnabled?.()
     .catch(() => undefined);
 AccessibilityInfo.addEventListener?.('reduceMotionChanged', (value) => (reduceMotion = value));
 
-const lastName = (name: string) => name.split(' ').slice(-1)[0];
-
-const NAMES = ['stage', 'card', 'logo', 'sub', 'kicker', 'runner', 'rays', 'trail', 'ball', 'zone', 'k', 'shake', 'label', 'wipe', 'scoreline', 'glow', 'trophy', 'panel', 'shutter', 'nextLogo', 'outP', 'inP', 'arrows', 'm0', 'm1', 'm2', 'd0', 'd1', 'd2', 'b1', 'b2', 'b3'] as const;
+// r0…r3: cada corredor del hit (bases recorridas); g0…g3: el que anota se desvanece; field: el vuelo del jonrón
+const NAMES = ['stage', 'card', 'logo', 'sub', 'kicker', 'runner', 'rays', 'trail', 'ball', 'zone', 'k', 'shake', 'label', 'wipe', 'scoreline', 'glow', 'trophy', 'panel', 'shutter', 'nextLogo', 'outP', 'inP', 'arrows', 'm0', 'm1', 'm2', 'd0', 'd1', 'd2', 'b1', 'b2', 'b3', 'r0', 'r1', 'r2', 'r3', 'g0', 'g1', 'g2', 'g3', 'field', 'rbiPop', 'plus', 'scorePop'] as const;
 type Name = (typeof NAMES)[number];
+// Empiezan «en reposo» (1): los saltos de «+N» y del marcador, que se reinician con cada carrera
+const REST: Name[] = ['rbiPop', 'scorePop'];
 
 /** Punto de la curva del jonrón (Q de 30,400 a 330,70 pasando por 150,-60) con el avance suave de la web */
 const homerPoint = (t: number) => {
@@ -91,14 +134,52 @@ const Badge: React.FC<{ team: PlayEvent['team']; size: number; pad: number; ring
     </View>
 );
 
+/**
+ * La animación de jugada del juego en vivo. En el modo PRO las jugadas con datos reales (batazo, corredores, base por
+ * bolas, robo, error, relevo, sin hit…) y «Te lo perdiste» las pinta el PRO (components/pro/animaciones); el resto
+ * (fin de entrada, emergentes, victoria y campeonato) sigue con la del Lite. El Lite no cambia.
+ */
 export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> = ({ event, onDone }) => {
+    const pro = useIsPro();
+    return pro ? <ProPlay event={event} onDone={onDone} /> : <LitePlayAnimation event={event} onDone={onDone} />;
+};
+
+const ProPlay: React.FC<{ event: PlayEvent; onDone: () => void }> = ({ event, onDone }) => {
+    const motion = useMotion();
+    const lite = event.kind !== 'missed' && !hasProScene(event);
+    // Las del Lite en PRO también vibran (victoria y campeonato); las PRO vibran en su momento
+    useEffect(() => {
+        if (lite) playHaptic(event.kind, motion.animate);
+        // Una vez por jugada
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    if (event.kind === 'missed') return event.missed ? <MissedCard summary={event.missed} away={event.away} home={event.home} onClose={onDone} /> : <Skip onDone={onDone} />;
+    if (!lite) return <ProPlayAnimation event={event} onDone={onDone} />;
+    return <LitePlayAnimation event={event} onDone={onDone} />;
+};
+
+/** Sin nada que mostrar: pasa la cola */
+const Skip: React.FC<{ onDone: () => void }> = ({ onDone }) => {
+    useEffect(() => {
+        onDone();
+        // Una vez
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    return null;
+};
+
+/** La animación del Lite (en PRO también la de fin de entrada, emergentes, victoria y campeonato) */
+export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> = ({ event, onDone }) => {
     const { t } = useTranslation();
     const insets = useSafeAreaInsets();
     const window = useWindowDimensions();
     const W = Math.min(window.width, 480);
-    const H = STAGE_H + insets.top;
+    // Jonrón: cuánto vuela la bola (null si MLB no marcó dónde cayó: entonces va la curva de siempre)
+    const flight = event.kind === 'hr' ? homeRunFlightMs(event.atBat) : null;
+    const landAt = flight !== null ? FLIGHT_DELAY + flight : 0;
+    const H = (flight !== null ? Math.min(FLIGHT_STAGE_H, Math.max(STAGE_H, window.height - 120)) : STAGE_H) + insets.top;
     const [reduce] = useState(() => reduceMotion);
-    const [v] = useState(() => Object.fromEntries(NAMES.map((name) => [name, new Animated.Value(name === 'stage' && !reduce ? 1 : 0)])) as Record<Name, Animated.Value>);
+    const [v] = useState(() => Object.fromEntries(NAMES.map((name) => [name, new Animated.Value((name === 'stage' && !reduce) || REST.includes(name) ? 1 : 0)])) as Record<Name, Animated.Value>);
     const [letterValues] = useState(() => Array.from({ length: 18 }, () => new Animated.Value(0)));
     const doneRef = useRef(onDone);
     useEffect(() => {
@@ -112,7 +193,15 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
     const second = team.color2 || on;
     const outPath = kind === 'out' && event.out ? OUT_PATHS[event.out.variant] : null;
     const outTotal = outPath ? outPath.legs.length * LEG_MS + (event.out?.variant === 'fly' || event.out?.variant === 'sac' ? 260 : 0) : 0;
-    const bases = kind === 'single' ? 1 : kind === 'double' ? 2 : 3;
+    // Hits: quién corre y cuántas entran (del marcador; si no se sabe, las impulsadas)
+    const rbi = atBat?.rbi ?? 0;
+    const scored = event.runs ? event.runs.count : rbi;
+    const hitPaths = kind === 'single' || kind === 'double' || kind === 'triple' ? runnerPaths(kind, event.bases ?? null, scored) : [];
+    const runLegs = Math.max(0, ...hitPaths.map(legsOf));
+    // Marcador del equipo al bate antes y después de la jugada: sube con cada corredor que pisa home
+    const runsSide = team.id === event.away.id ? 'away' : 'home';
+    const score = event.runs ? { before: event.runs[runsSide] - event.runs.count, after: event.runs[runsSide] } : null;
+    const [runsIn, setRunsIn] = useState(() => (reduce ? hitPaths.filter((path) => path.to === 4).length : 0));
 
     useLayoutEffect(() => {
         const running: Animated.CompositeAnimation[] = [];
@@ -142,8 +231,36 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
             go(v.logo, 1, 520, 220);
             letters(word(t(`anim.${kind}`)), 300, 300, 60);
             go(v.sub, 1, 300, 650);
-            go(v.runner, bases, 380 * bases, 600, Easing.linear);
-            (['b1', 'b2', 'b3'] as const).slice(0, bases).forEach((name, index) => go(v[name], 1, 120, 600 + 380 * (index + 1)));
+            // Todos corren a la vez: el bateador a su base, los que anotan cruzan home (+1 y sube el marcador) y el resto
+            // avanza. Sin movimiento cada uno queda ya en su base (los que anotaron no se ven) y la cuenta, completa.
+            let runs = 0;
+            const score = () => {
+                runs += 1;
+                setRunsIn(runs);
+                v.rbiPop.setValue(0);
+                go(v.rbiPop, 1, 360, 0, BOUNCE_BIG);
+                v.plus.setValue(0);
+                go(v.plus, 1, 700, 0, Easing.out(Easing.quad));
+                v.scorePop.setValue(0);
+                go(v.scorePop, 1, 320, 0, BOUNCE_BIG);
+            };
+            hitPaths.forEach((path, index) => {
+                const legs = legsOf(path);
+                const arrive = RUN_START + RUN_LEG * legs;
+                if (legs > 0) go(v[`r${index}` as Name], legs, RUN_LEG * legs, RUN_START, Easing.linear);
+                if (path.to === 4) {
+                    go(v[`g${index}` as Name], 1, 200, arrive);
+                    if (!reduce) timers.push(setTimeout(score, arrive));
+                } else go(v[`b${path.to}` as Name], 1, 120, arrive);
+            });
+        } else if (kind === 'hr' && flight !== null) {
+            // El batazo de verdad: primero el vuelo sobre el parque y, al caer, el logo, «¡JONRÓN!» y el confeti
+            go(v.rays, 1, landAt + 2600, 0, Easing.out(Easing.quad));
+            go(v.field, 1, 380, 60);
+            go(v.kicker, 1, 300, 120);
+            go(v.logo, 1, 650, landAt + 80);
+            letters(word(t('anim.hr')), 360, landAt + 300, 55, BOUNCE_BIG);
+            go(v.sub, 1, 300, landAt + 800);
         } else if (kind === 'hr') {
             go(v.rays, 1, 3600, 0, Easing.out(Easing.quad));
             go(v.trail, 1, 900, 100, Easing.in(Easing.quad));
@@ -216,8 +333,15 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
             timers.push(setTimeout(() => doneRef.current(), EXIT + 160));
         };
         closeRef.current = close;
-        const hold = outPath ? HOLD.out + (outPath.legs.length - 1) * LEG_MS : HOLD[kind];
-        timers.push(setTimeout(close, reduce ? Math.min(hold, 1600) : hold));
+        const hold = outPath
+            ? HOLD.out + (outPath.legs.length - 1) * LEG_MS
+            : flight !== null
+              ? landAt + 2900
+              : hitPaths.length
+                ? Math.max(HOLD[kind], RUN_START + runLegs * RUN_LEG + 1300)
+                : HOLD[kind];
+        // Con menos movimiento el jonrón sale ya caído: un poco más de tiempo para leer la distancia
+        timers.push(setTimeout(close, reduce ? Math.min(hold, flight !== null ? 3200 : 1600) : hold));
 
         return () => {
             closed = true;
@@ -280,7 +404,7 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
     // ---------------------------------------------------------------- cada jugada
     let body: React.ReactNode;
     if (kind === 'single' || kind === 'double' || kind === 'triple') {
-        const rbi = atBat?.rbi ?? 0;
+        const drivesIn = rbi > 0 ? t('anim.drivesIn', { count: rbi }) : undefined;
         body = (
             <Animated.View
                 style={[
@@ -305,11 +429,22 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                         {team.abbrev} · {atBat?.batter.name}
                     </Txt>
                     {letters(t(`anim.${kind}`), 74)}
-                    <Animated.Text style={[subStyle, fade(v.sub, 0.9)]} numberOfLines={1}>
-                        {rbi > 0 ? t('anim.rbi', { count: rbi }) : t('anim.vs', { pitcher: atBat?.pitcher.name ?? '' })}
-                    </Animated.Text>
+                    <Animated.View style={[{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 2 }, fade(v.sub, 0.9)]}>
+                        <Txt style={[subStyle, { flexShrink: 1 }]} numberOfLines={1}>
+                            {drivesIn ?? t('anim.vs', { pitcher: atBat?.pitcher.name ?? '' })}
+                        </Txt>
+                        {/* El marcador del equipo, que sube con cada carrera que entra */}
+                        {score && score.after > score.before && (
+                            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, paddingHorizontal: 8, paddingVertical: 1, borderRadius: 999, backgroundColor: alpha(on, 0.16) }}>
+                                <Txt style={[subStyle, { fontFamily: fonts.extrabold }]}>{team.abbrev}</Txt>
+                                <Animated.Text style={[big(16), { lineHeight: 18, transform: [{ scale: v.scorePop.interpolate({ inputRange: [0, 1], outputRange: [1.5, 1] }) }] }]}>
+                                    {Math.min(score.after, score.before + runsIn)}
+                                </Animated.Text>
+                            </View>
+                        )}
+                    </Animated.View>
                 </View>
-                <View style={{ width: DIAMOND, height: DIAMOND }}>
+                <View style={{ width: DIAMOND, height: DIAMOND }} accessible={!!drivesIn} accessibilityRole={drivesIn ? 'image' : undefined} accessibilityLabel={drivesIn}>
                     <Svg width={DIAMOND} height={DIAMOND} viewBox="0 0 100 100" style={StyleSheet.absoluteFill}>
                         <Path d="M50 88 L86 52 L50 16 L14 52 Z" fill="none" stroke={on} strokeOpacity={0.45} strokeWidth={3} />
                     </Svg>
@@ -328,38 +463,88 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                             }}
                         />
                     ))}
+                    {/* Carreras que entran: el total en el centro del diamante y un «+1» que salta en home */}
+                    {scored > 0 && (
+                        <Animated.View
+                            pointerEvents="none"
+                            style={{
+                                position: 'absolute',
+                                left: 0,
+                                right: 0,
+                                top: 52 * k - 13,
+                                alignItems: 'center',
+                                opacity: v.rbiPop.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }),
+                                transform: [{ scale: v.rbiPop.interpolate({ inputRange: [0, 1], outputRange: [1.6, 1] }) }]
+                            }}
+                        >
+                            <Txt style={[big(26), { lineHeight: 26 }]}>+{runsIn}</Txt>
+                        </Animated.View>
+                    )}
                     <Animated.View
+                        pointerEvents="none"
                         style={{
                             position: 'absolute',
-                            left: 50 * k - 7,
-                            top: 88 * k - 7,
-                            width: 14,
-                            height: 14,
-                            borderRadius: 7,
-                            backgroundColor: '#fff',
-                            borderWidth: 2,
-                            borderColor: second,
-                            transform: [
-                                { translateX: v.runner.interpolate({ inputRange: BASES.slice(0, bases + 1).map((_, index) => index), outputRange: BASES.slice(0, bases + 1).map(([x]) => (x - 50) * k) }) },
-                                { translateY: v.runner.interpolate({ inputRange: BASES.slice(0, bases + 1).map((_, index) => index), outputRange: BASES.slice(0, bases + 1).map(([, y]) => (y - 88) * k) }) }
-                            ]
+                            left: 0,
+                            right: 0,
+                            top: 74 * k - 9,
+                            alignItems: 'center',
+                            opacity: v.plus.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 1, 0] }),
+                            transform: [{ translateY: v.plus.interpolate({ inputRange: [0, 0.3, 1], outputRange: [4, -6, -16] }) }]
                         }}
-                    />
+                    >
+                        <Txt size={15} weight="black" color={on} style={{ lineHeight: 18 }}>
+                            +1
+                        </Txt>
+                    </Animated.View>
+                    {hitPaths.map((path, index) => {
+                        const route = routeOf(path);
+                        const [x0, y0] = route[0];
+                        const size = path.batter ? 14 : 12;
+                        const value = v[`r${index}` as Name];
+                        const steps = route.map((_, step) => step);
+                        return (
+                            <Animated.View
+                                key={index}
+                                style={{
+                                    position: 'absolute',
+                                    left: x0 * k - size / 2,
+                                    top: y0 * k - size / 2,
+                                    width: size,
+                                    height: size,
+                                    borderRadius: size / 2,
+                                    backgroundColor: '#fff',
+                                    borderWidth: 2,
+                                    borderColor: second,
+                                    opacity: path.to === 4 ? v[`g${index}` as Name].interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) : 1,
+                                    transform:
+                                        route.length > 1
+                                            ? [
+                                                  { translateX: value.interpolate({ inputRange: steps, outputRange: route.map(([x]) => (x - x0) * k) }) },
+                                                  { translateY: value.interpolate({ inputRange: steps, outputRange: route.map(([, y]) => (y - y0) * k) }) }
+                                              ]
+                                            : []
+                                }}
+                            />
+                        );
+                    })}
                 </View>
             </Animated.View>
         );
     } else if (kind === 'hr') {
-        const rbi = atBat?.rbi ?? 1;
         const dist = atBat?.pitches.find((pitch) => pitch.hit?.dist)?.hit?.dist ?? null;
-        const what = rbi >= 4 ? t('anim.grandSlam') : rbi <= 1 ? t('anim.solo') : t('anim.hrRuns', { count: rbi });
+        const homeRuns = Math.max(1, rbi);
+        const what = homeRuns >= 4 ? t('anim.grandSlam') : homeRuns <= 1 ? t('anim.solo') : t('anim.hrRuns', { count: homeRuns });
         // La curva de la bola en el cuadro de 340×430 de la web, recortado para llenar la pantalla
         const scale = Math.max(W / 340, H / 430);
         const offsetX = (W - 340 * scale) / 2;
         const offsetY = (H - 430 * scale) / 2;
         const samples = Array.from({ length: 21 }, (_, index) => index / 20);
         const points = samples.map(homerPoint);
+        // Con el batazo marcado: el parque arriba y la tarjeta más compacta. El campo (360 × 250) cabe a lo ancho y, en
+        // pantallas bajas, en el alto que dejan el logo, «¡JONRÓN!», las cifras y el texto (~255 px)
+        const flightWidth = Math.round(Math.min(W - 24, 400, Math.max(200, ((H - insets.top - 255) * 360) / 250)));
         body = (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: team.color, alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: insets.top, overflow: 'hidden' }]}>
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: team.color, alignItems: 'center', justifyContent: 'center', gap: flight !== null ? 4 : 6, paddingTop: insets.top, paddingHorizontal: flight !== null ? 12 : 0, overflow: 'hidden' }]}>
                 <Animated.View
                     pointerEvents="none"
                     style={{
@@ -380,38 +565,52 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                         })}
                     </Svg>
                 </Animated.View>
-                <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, fade(v.trail, 0.6)]}>
-                    <Svg width={W} height={H} viewBox="0 0 340 430" preserveAspectRatio="xMidYMid slice">
-                        <Path d="M30 400 Q 150 -60 330 70" fill="none" stroke={on} strokeWidth={4} strokeLinecap="round" strokeDasharray="6 10" />
-                    </Svg>
-                </Animated.View>
-                <Animated.View
-                    pointerEvents="none"
-                    style={{
-                        position: 'absolute',
-                        left: -11 * scale,
-                        top: -11 * scale,
-                        width: 22 * scale,
-                        height: 22 * scale,
-                        borderRadius: 11 * scale,
-                        backgroundColor: '#fff',
-                        borderWidth: 2,
-                        borderColor: second,
-                        transform: [
-                            { translateX: v.ball.interpolate({ inputRange: samples, outputRange: points.map(([x]) => offsetX + x * scale) }) },
-                            { translateY: v.ball.interpolate({ inputRange: samples, outputRange: points.map(([, y]) => offsetY + y * scale) }) }
-                        ]
-                    }}
-                />
+                {flight === null && (
+                    <>
+                        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, fade(v.trail, 0.6)]}>
+                            <Svg width={W} height={H} viewBox="0 0 340 430" preserveAspectRatio="xMidYMid slice">
+                                <Path d="M30 400 Q 150 -60 330 70" fill="none" stroke={on} strokeWidth={4} strokeLinecap="round" strokeDasharray="6 10" />
+                            </Svg>
+                        </Animated.View>
+                        <Animated.View
+                            pointerEvents="none"
+                            style={{
+                                position: 'absolute',
+                                left: -11 * scale,
+                                top: -11 * scale,
+                                width: 22 * scale,
+                                height: 22 * scale,
+                                borderRadius: 11 * scale,
+                                backgroundColor: '#fff',
+                                borderWidth: 2,
+                                borderColor: second,
+                                transform: [
+                                    { translateX: v.ball.interpolate({ inputRange: samples, outputRange: points.map(([x]) => offsetX + x * scale) }) },
+                                    { translateY: v.ball.interpolate({ inputRange: samples, outputRange: points.map(([, y]) => offsetY + y * scale) }) }
+                                ]
+                            }}
+                        />
+                    </>
+                )}
                 <Animated.Text style={[kicker, fade(v.kicker, 0.85)]} numberOfLines={1}>
                     {team.abbrev} · {atBat?.batter.name}
                 </Animated.Text>
+                {flight !== null && (
+                    <Animated.View
+                        style={{
+                            opacity: v.field,
+                            transform: [{ translateY: v.field.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }, { scale: v.field.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) }]
+                        }}
+                    >
+                        <HomeRunFlight atBat={atBat} venue={event.venue} color={team.color} ink={on} accent={second} delay={FLIGHT_DELAY} reduce={reduce} bases={event.bases ?? null} scored={scored} width={flightWidth} />
+                    </Animated.View>
+                )}
                 <Animated.View style={{ opacity: v.logo.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 1, 1] }), transform: [{ scale: v.logo.interpolate({ inputRange: [0, 0.6, 0.8, 1], outputRange: [0, 1.25, 0.95, 1] }) }] }}>
-                    <Badge team={team} size={132} pad={14} ring />
+                    {flight !== null ? <Badge team={team} size={84} pad={10} ring /> : <Badge team={team} size={132} pad={14} ring />}
                 </Animated.View>
-                {letters(t('anim.hr'), 78)}
+                {letters(t('anim.hr'), flight !== null ? 62 : 78)}
                 <Animated.Text style={[subStyle, fade(v.sub, 0.9)]}>{dist && dist > 200 ? `${what} · ${t('anim.feet', { ft: dist })}` : what}</Animated.Text>
-                {!reduce && <Confetti width={W} height={H} colors={[team.color, second, '#ffffff']} bursts={[{ at: 1150, count: 70 }]} />}
+                {!reduce && <Confetti width={W} height={H} colors={[team.color, second, '#ffffff']} bursts={[{ at: flight !== null ? landAt + 250 : 1150, count: 70 }]} />}
             </View>
         );
     } else if (kind === 'k') {

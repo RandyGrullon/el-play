@@ -2,13 +2,15 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { AtBat, GameDetail } from '../../types';
-import { arsenal, atBatForZone, battersFaced, eventName, pitchTypeColor, pitchesByPitcher } from '../../lib/baseball';
+import { arsenal, atBatForZone, battersFaced, eventName, inningBreak, isWhiff, pitchTypeColor, pitchesByPitcher } from '../../lib/baseball';
+import { lastName } from '../../lib/format';
 import { useColors } from '../../theme/theme';
 import { alpha, radius } from '../../theme/tokens';
 import { Card, Row, Segmented, Txt } from '../ui';
 import { StrikeZone } from './StrikeZone';
 import { uniformColors } from './BatterFigure';
 import { PitchList } from './PitchList';
+import { InningBreak } from './InningBreak';
 
 type Mode = 'atBat' | 'pitcher';
 
@@ -36,6 +38,8 @@ export const StrikeZonePanel: React.FC<{ game: GameDetail; atBat?: AtBat | null 
     const [mode, setMode] = useState<Mode>('atBat');
     const { atBat: automatic, isPrevious } = atBatForZone(game);
     const atBat = forced ?? automatic;
+    // Tras el tercer out y hasta el primer bateador de la otra mitad: espera animada en vez del último turno
+    const pause = forced ? null : inningBreak(game);
 
     // El pitcheo marcado vale para ese turno y esa vista; al cambiar de turno se limpia solo
     const [selection, setSelection] = useState<{ key: string; index: number | null }>({ key: '', index: null });
@@ -63,7 +67,7 @@ export const StrikeZonePanel: React.FC<{ game: GameDetail; atBat?: AtBat | null 
             { label: t('zone.sumPitches'), value: String(pitcherPitches.length) },
             { label: t('zone.sumStrikes'), value: pitcherPitches.length ? `${strikes} · ${Math.round((strikes / pitcherPitches.length) * 100)}%` : '0' },
             { label: t('zone.sumBalls'), value: String(count((_, r) => r === 'ball' || r === 'hbp')) },
-            { label: t('zone.whiffs'), value: String(count((code) => code === 'S' || code === 'W' || code === 'M' || code === 'Q')) },
+            { label: t('zone.whiffs'), value: String(pitcherPitches.filter(isWhiff).length) },
             { label: t('zone.sumFouls'), value: String(count((code) => code === 'F' || code === 'T' || code === 'L' || code === 'O' || code === 'R')) },
             { label: t('zone.inPlay'), value: String(count((_, r) => r === 'inplay')) }
         ];
@@ -99,7 +103,19 @@ export const StrikeZonePanel: React.FC<{ game: GameDetail; atBat?: AtBat | null 
             </Row>
 
             <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-                {mode === 'atBat' ? (
+                {mode === 'atBat' && pause ? (
+                    <Row gap={8} wrap>
+                        <Txt size={14} weight="semibold">
+                            {t(pause.endedTop ? 'anim.inningEnd_top' : 'anim.inningEnd_bottom', { n: pause.inning })}
+                        </Txt>
+                        <Row gap={4} style={{ borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: colors.raised }}>
+                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: pause.next.color }} />
+                            <Txt size={11} weight="semibold" tone="muted">
+                                {t('zone.breakStatus')}
+                            </Txt>
+                        </Row>
+                    </Row>
+                ) : mode === 'atBat' ? (
                     <Row gap={8} wrap>
                         <Txt size={14}>
                             <Txt size={14} weight="semibold">
@@ -139,7 +155,7 @@ export const StrikeZonePanel: React.FC<{ game: GameDetail; atBat?: AtBat | null 
                                     key={batter.id}
                                     active={batterId === batter.id}
                                     onPress={() => setBatterPick(batter.id === atBat.batter.id ? null : batter.id)}
-                                    label={batter.name.split(' ').slice(-1)[0]}
+                                    label={lastName(batter.name)}
                                     live={batter.id === atBat.batter.id && !atBat.complete}
                                 />
                             ))}
@@ -149,7 +165,9 @@ export const StrikeZonePanel: React.FC<{ game: GameDetail; atBat?: AtBat | null 
                 )}
             </View>
 
-            {mode === 'atBat' ? (
+            {mode === 'atBat' && pause ? (
+                <InningBreak pause={pause} />
+            ) : mode === 'atBat' ? (
                 <View style={{ padding: 16, gap: 16 }}>
                     <StrikeZone pitches={atBat.pitches} batterSide={atBat.batter.side} uniform={uniformColors(atBat.top ? game.away : game.home, !atBat.top)} selected={selected} onSelect={setSelected} />
                     <PitchList pitches={atBat.pitches} selected={selected} onSelect={setSelected} />

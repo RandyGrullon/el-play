@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Share2, Star } from 'lucide-react-native';
@@ -9,9 +9,11 @@ import { finalLabel, inningName, isNotPlayed, stateName } from '../../lib/baseba
 import { formatCountdown, formatShortDate, formatTime } from '../../lib/format';
 import { teamDisplayName } from '../../lib/teams';
 import { usePreferences } from '../../state/preferences';
+import { useIsPro } from '../../lib/pro';
 import { useColors } from '../../theme/theme';
-import { inkOn, radius } from '../../theme/tokens';
-import { Txt } from '../ui';
+import { fonts, inkOn, radius } from '../../theme/tokens';
+import { ProBadge, Txt } from '../ui';
+import { Odometer, PlusOne } from '../pro/kit';
 import { PulseDot } from '../feed/PulseDot';
 import { useNow } from '../feed/useNow';
 
@@ -57,12 +59,40 @@ export const goBack = () => {
     else router.replace('/');
 };
 
+/** PRO: cuántas carreras acaban de entrar (para el «+N» del marcador) y un contador que sube con cada vez */
+const useRunJump = (score: number | null) => {
+    const [seen, setSeen] = useState(score);
+    const [jump, setJump] = useState({ count: 0, runs: 0 });
+    // Ajustar el estado cuando cambia el marcador (el patrón de React para «el valor anterior»)
+    if (score !== seen) {
+        setSeen(score);
+        if (score !== null && seen !== null && score > seen) setJump({ count: jump.count + 1, runs: score - seen });
+    }
+    return jump;
+};
+
+/** PRO: el marcador como odómetro (cada dígito rueda, 400 ms) con «+N» al anotar */
+const ProScore: React.FC<{ score: number; color: string; dim: boolean; end: boolean }> = ({ score, color, dim, end }) => {
+    const jump = useRunJump(score);
+    return (
+        <View style={{ opacity: dim ? 0.6 : 1 }}>
+            <Odometer value={score} size={76} color={color} textStyle={{ fontFamily: fonts.condensed }} />
+            <PlusOne trigger={jump.count} style={{ top: -6, [end ? 'left' : 'right']: -30 }}>
+                <Txt size={20} weight="extrabold" color={color}>
+                    +{jump.runs}
+                </Txt>
+            </PlusOne>
+        </View>
+    );
+};
+
 // Cabecera del juego: dos mitades con el color de cada equipo y el marcador gigante
 export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({ model, onShare }) => {
     const { t, i18n } = useTranslation();
     const colors = useColors();
     const insets = useSafeAreaInsets();
     const { favoriteTeamId, toggleFavoriteTeam } = usePreferences();
+    const pro = useIsPro();
     const notPlayed = isNotPlayed(model.detailedState);
     const showScores = model.state !== 'preview' && !notPlayed;
     const now = useNow();
@@ -96,7 +126,9 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
                     </Txt>
                     <Star size={16} color={ink} fill={favorite ? ink : 'transparent'} style={{ opacity: favorite ? 1 : 0.5 }} />
                 </Pressable>
-                {showScores ? (
+                {showScores && pro ? (
+                    <ProScore score={team.score ?? 0} color={ink} dim={dim} end={end} />
+                ) : showScores ? (
                     <Txt size={76} weight="extrabold" color={ink} tabular style={{ lineHeight: 72, opacity: dim ? 0.6 : 1 }}>
                         {team.score ?? 0}
                     </Txt>
@@ -116,7 +148,7 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
 
     const glass = { width: 44, height: 44, borderRadius: radius.tile, backgroundColor: 'rgba(255,255,255,0.85)', alignItems: 'center' as const, justifyContent: 'center' as const };
 
-    return (
+    const hero = (
         <View style={{ flexDirection: 'row', overflow: 'hidden' }} accessibilityLabel={t('game.scoreboard')}>
             {half(model.away, 'start')}
             {half(model.home, 'end')}
@@ -135,8 +167,12 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
                     <Txt size={13} weight="bold" color={model.state === 'live' ? '#fff' : '#14151a'} numberOfLines={1} style={{ flexShrink: 1 }}>
                         {status}
                     </Txt>
+                    {pro && <ProBadge />}
                 </View>
             </View>
         </View>
     );
+    // PRO en iPhone (iOS 18+): la tarjeta del juego que lo abre con Link.AppleZoom se agranda hasta esta cabecera.
+    // Sin esa tarjeta (o en Android y la web) no hace nada.
+    return pro ? <Link.AppleZoomTarget>{hero}</Link.AppleZoomTarget> : hero;
 };
