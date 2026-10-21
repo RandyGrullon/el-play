@@ -1,0 +1,438 @@
+{
+  "es": {
+    "title": "Jugada a jugada",
+    "totals": "{{plays}} · {{pitches}}",
+    "play": "Jugada",
+    "inProgress": "En curso",
+    "atBatNow": "{{batter}} batea contra {{pitcher}}",
+    "pressure": "Presión ×{{value}}",
+    "score": "Marcador: {{away}} {{awayRuns}}, {{home}} {{homeRuns}}",
+    "zone_one": "Ubicación del pitcheo a {{batter}}",
+    "zone_other": "Ubicación de los {{count}} pitcheos a {{batter}}",
+    "and": "y",
+    "proLoading": "Cargando corredores, eventos y retos de cada jugada…",
+    "proError": "No se pudieron cargar los detalles PRO de las jugadas; se ve lo básico.",
+    "wpa": {
+      "aria": "Cambio en la probabilidad de ganar: {{value}} para {{team}}",
+      "even": "La probabilidad de ganar no cambió"
+    },
+    "filter": {
+      "label": "Filtrar jugadas",
+      "all": "Todas",
+      "scoring": "Anotadoras",
+      "key": "Clave"
+    },
+    "legend": {
+      "wpa": "Cambio en prob. de ganar",
+      "pressure": "índice de presión mayor que ×2.00"
+    },
+    "empty": {
+      "all": "Todavía no hay jugadas.",
+      "scoring": "Todavía no hay jugadas anotadoras.",
+      "key": "Sin jugadas clave: la probabilidad de ganar aún no llega."
+    },
+    "end_one": "Final · {{count}} turno",
+    "end_other": "Final · {{count}} turnos",
+    "half": {
+      "title": "{{inning}} · {{team}} {{runs}} C, {{hits}} H",
+      "aria": "{{half}} de la {{inning}}: {{team}}, {{runs}} y {{hits}}",
+      "top": "Alta",
+      "bottom": "Baja",
+      "now": "en juego",
+      "vs_one": "vs {{pitchers}} · {{count}} turno",
+      "vs_other": "vs {{pitchers}} · {{count}} turnos",
+      "runs_one": "{{count}} carrera",
+      "runs_other": "{{count}} carreras",
+      "hits_one": "{{count}} hit",
+      "hits_other": "{{count}} hits"
+    },
+    "summary": {
+      "oneTwoThree": "1-2-3 de {{pitcher}} con {{count}} pitcheos",
+      "enters": "entra {{name}}",
+      "rally": "rally de {{runs}} C",
+      "play": "{{event}} de {{name}}",
+      "rbi": "{{event}} de {{name}} ({{count}} CI)",
+      "stranded_one": "deja {{count}} en base",
+      "stranded_other": "deja {{count}} en base",
+      "quiet": "sin carreras"
+    },
+    "base": {
+      "1B": "1.ª",
+      "2B": "2.ª",
+      "3B": "3.ª",
+      "score": "home"
+    },
+    "bases": {
+      "loaded": "bases llenas",
+      "empty": "sin corredores",
+      "on_one": "con {{count}} en base",
+      "on_other": "con {{count}} en base"
+    },
+    "detail": {
+      "called": "cantado",
+      "swinging": "abanicando",
+      "walk_one": "en {{count}} pitcheo",
+      "walk_other": "en {{count}} pitcheos",
+      "lob_one": "deja {{count}}",
+      "lob_other": "deja {{count}}",
+      "runnerOut": "{{name}} out",
+      "loaded": "bases llenas",
+      "advance": "{{name}} a {{base}}",
+      "reach": "llega a {{base}}",
+      "trajDir": "{{traj}} {{where}}",
+      "dir": {
+        "1": "al lanzador",
+        "2": "al receptor",
+        "3": "a primera",
+        "4": "a segunda",
+        "5": "a tercera",
+        "6": "al campocorto",
+        "7": "al izquierdo",
+        "8": "al central",
+        "9": "al derecho"
+      },
+      "traj": {
+        "ground_ball": "rodado",
+        "fly_ball": "elevado",
+        "line_drive": "línea",
+        "popup": "elevado corto",
+        "bunt_grounder": "toque",
+        "bunt_popup": "toque elevado"
+      }
+    },
+    "line": {
+      "vs": "vs {{pitcher}}",
+      "pitches_one": "{{count}} pitcheo",
+      "pitches_other": "{{count}} pitcheos",
+      "count": "conteo {{balls}}-{{strikes}}"
+    },
+    "batted": {
+      "ev": "{{value}} mph",
+      "dist": "{{value}} pies",
+      "pitches_one": "{{count}} P",
+      "pitches_other": "{{count}} P"
+    },
+    "event": {
+      "pitching_change": "Cambio de lanzador",
+      "mound_visit": "Visita al montículo",
+      "stolen_base": "Robo de base",
+      "caught_stealing": "Atrapado robando",
+      "pickoff": "Revire",
+      "wild_pitch": "Lanzamiento descontrolado",
+      "passed_ball": "Bola pasada",
+      "balk": "Balk",
+      "pinch_hitter": "Bateador emergente",
+      "pinch_runner": "Corredor emergente",
+      "defense": "Cambio defensivo",
+      "other": "Jugada",
+      "steal": "{{name}} se roba la {{base}}",
+      "stealHome": "{{name}} se roba el home",
+      "outAt": "{{name}}, out en {{base}}",
+      "safeAt": "{{name}}, quieto en {{base}}",
+      "onLastPitch": "{{name}}, en el último pitcheo",
+      "to": "{{name}} a {{base}}",
+      "scores": "anota {{name}}",
+      "for": "{{name}} por {{out}}"
+    },
+    "change": {
+      "title": "Cambio de lanzador · {{team}}",
+      "out": "Sale",
+      "in": "Entra",
+      "line": "{{ip}} IP · {{h}} H · {{r}} C · {{bb}} BB · {{k}} K",
+      "lineEr": "{{ip}} IP · {{h}} H · {{r}} C ({{er}} CL) · {{bb}} BB · {{k}} K",
+      "pitches_one": "{{count}} P",
+      "pitches_other": "{{count}} P",
+      "final": "Línea final: {{line}}",
+      "today": "Hoy: {{line}}",
+      "at": "{{name}} en {{base}}",
+      "inherits_one": "Hereda {{count}} corredor ({{who}})",
+      "inherits_other": "Hereda {{count}} corredores ({{who}})",
+      "noneScored_one": "no anotó",
+      "noneScored_other": "no anotó ninguno",
+      "scored_one": "anotó {{count}}",
+      "scored_other": "anotaron {{count}}"
+    },
+    "abs": {
+      "title": "Reto ABS",
+      "who": "{{name}} ({{team}})",
+      "what": "{{call}} en el {{pitch}} pitcheo; {{result}}",
+      "ball": "bola cantada",
+      "strike": "strike cantado",
+      "call": "pitcheo cantado",
+      "toStrike": "pasó a strike",
+      "toStrike3": "pasó a strike 3",
+      "toBall": "pasó a bola",
+      "toBall4": "pasó a bola 4",
+      "overturned": "se revocó",
+      "kept": "se mantuvo",
+      "left_one": "Retos que le quedan a {{team}}: {{count}}",
+      "left_other": "Retos que le quedan a {{team}}: {{count}}",
+      "over": "Revocada",
+      "upheld": "Confirmada",
+      "zone": "zona ABS"
+    },
+    "review": {
+      "title": "Revisión de video"
+    },
+    "chart": {
+      "title": "Probabilidad de ganar",
+      "aria": "Probabilidad de ganar después de cada jugada ({{away}} arriba, {{home}} abajo, partida en el 50 %): {{away}} {{awayPct}}, {{home}} {{homePct}}",
+      "marker": "{{event}} de {{name}} en la {{inning}}: {{value}} para {{team}}. Abrir la jugada",
+      "keyPlays": "Jugadas que más movieron la probabilidad",
+      "finalLead": "final",
+      "nowLead": "ahora"
+    },
+    "now": {
+      "title": "Al bate ahora",
+      "count": "{{balls}}-{{strikes}} · {{outs}}",
+      "vs": "contra",
+      "runners": "con corredores en {{bases}}",
+      "loaded": "con las bases llenas",
+      "empty": "sin corredores en base",
+      "waiting": "esperando el {{n}} pitcheo"
+    },
+    "tab": {
+      "summary": "{{plays}} · {{scoring}}",
+      "onlyScoring": "Solo anotadoras",
+      "batting": "{{inning}} · {{team}} al bate",
+      "line": "{{runs}} C · {{hits}} H",
+      "lineLob": "{{runs}} C · {{hits}} H · {{lob}} LOB",
+      "inProgress": "en curso",
+      "oneTwoThree": "Entrada 1-2-3",
+      "earlier": "Antes",
+      "earlierHint_one": "{{count}} media entrada · toca para abrirla",
+      "earlierHint_other": "{{count}} medias entradas · toca una para abrirla",
+      "relieves": "{{name}} releva a {{out}}",
+      "absOver": "Reto ABS revocado",
+      "absKept": "Reto ABS confirmado",
+      "hbp": "Golpeado · {{name}}",
+      "error": "Error · {{name}}",
+      "errorThrow": "Error · {{name}} (tiro)",
+      "all": "Jugada a jugada y box completo"
+    },
+    "count": {
+      "plays_one": "{{count}} turno",
+      "plays_other": "{{count}} turnos",
+      "scoring_one": "{{count}} anotadora",
+      "scoring_other": "{{count}} anotadoras"
+    }
+  },
+  "en": {
+    "title": "Play by play",
+    "totals": "{{plays}} · {{pitches}}",
+    "play": "Play",
+    "inProgress": "In progress",
+    "atBatNow": "{{batter}} batting against {{pitcher}}",
+    "pressure": "Leverage ×{{value}}",
+    "score": "Score: {{away}} {{awayRuns}}, {{home}} {{homeRuns}}",
+    "zone_one": "Location of the pitch to {{batter}}",
+    "zone_other": "Location of the {{count}} pitches to {{batter}}",
+    "and": "and",
+    "proLoading": "Loading runners, events and challenges for each play…",
+    "proError": "Couldn't load the PRO play details; showing the basics.",
+    "wpa": {
+      "aria": "Win probability change: {{value}} for {{team}}",
+      "even": "Win probability didn't change"
+    },
+    "filter": {
+      "label": "Filter plays",
+      "all": "All",
+      "scoring": "Scoring",
+      "key": "Key"
+    },
+    "legend": {
+      "wpa": "Win prob. change",
+      "pressure": "leverage index above ×2.00"
+    },
+    "empty": {
+      "all": "No plays yet.",
+      "scoring": "No scoring plays yet.",
+      "key": "No key plays: win probability isn't available yet."
+    },
+    "end_one": "Final · {{count}} PA",
+    "end_other": "Final · {{count}} PA",
+    "half": {
+      "title": "{{inning}} · {{team}} {{runs}} R, {{hits}} H",
+      "aria": "{{half}} of the {{inning}}: {{team}}, {{runs}} and {{hits}}",
+      "top": "Top",
+      "bottom": "Bottom",
+      "now": "now",
+      "vs_one": "vs {{pitchers}} · {{count}} PA",
+      "vs_other": "vs {{pitchers}} · {{count}} PA",
+      "runs_one": "{{count}} run",
+      "runs_other": "{{count}} runs",
+      "hits_one": "{{count}} hit",
+      "hits_other": "{{count}} hits"
+    },
+    "summary": {
+      "oneTwoThree": "1-2-3 for {{pitcher}} on {{count}} pitches",
+      "enters": "{{name}} enters",
+      "rally": "{{runs}}-run rally",
+      "play": "{{event}} by {{name}}",
+      "rbi": "{{event}} by {{name}} ({{count}} RBI)",
+      "stranded_one": "{{count}} left on base",
+      "stranded_other": "{{count}} left on base",
+      "quiet": "no runs"
+    },
+    "base": {
+      "1B": "1st",
+      "2B": "2nd",
+      "3B": "3rd",
+      "score": "home"
+    },
+    "bases": {
+      "loaded": "bases loaded",
+      "empty": "bases empty",
+      "on_one": "{{count}} on",
+      "on_other": "{{count}} on"
+    },
+    "detail": {
+      "called": "called",
+      "swinging": "swinging",
+      "walk_one": "on {{count}} pitch",
+      "walk_other": "on {{count}} pitches",
+      "lob_one": "strands {{count}}",
+      "lob_other": "strands {{count}}",
+      "runnerOut": "{{name}} out",
+      "loaded": "bases loaded",
+      "advance": "{{name}} to {{base}}",
+      "reach": "reaches {{base}}",
+      "trajDir": "{{traj}} {{where}}",
+      "dir": {
+        "1": "to pitcher",
+        "2": "to catcher",
+        "3": "to first",
+        "4": "to second",
+        "5": "to third",
+        "6": "to short",
+        "7": "to left",
+        "8": "to center",
+        "9": "to right"
+      },
+      "traj": {
+        "ground_ball": "grounder",
+        "fly_ball": "fly",
+        "line_drive": "liner",
+        "popup": "popup",
+        "bunt_grounder": "bunt",
+        "bunt_popup": "bunt popup"
+      }
+    },
+    "line": {
+      "vs": "vs {{pitcher}}",
+      "pitches_one": "{{count}} pitch",
+      "pitches_other": "{{count}} pitches",
+      "count": "{{balls}}-{{strikes}} count"
+    },
+    "batted": {
+      "ev": "{{value}} mph",
+      "dist": "{{value}} ft",
+      "pitches_one": "{{count}} P",
+      "pitches_other": "{{count}} P"
+    },
+    "event": {
+      "pitching_change": "Pitching change",
+      "mound_visit": "Mound visit",
+      "stolen_base": "Stolen base",
+      "caught_stealing": "Caught stealing",
+      "pickoff": "Pickoff",
+      "wild_pitch": "Wild pitch",
+      "passed_ball": "Passed ball",
+      "balk": "Balk",
+      "pinch_hitter": "Pinch hitter",
+      "pinch_runner": "Pinch runner",
+      "defense": "Defensive change",
+      "other": "Play",
+      "steal": "{{name}} steals {{base}}",
+      "stealHome": "{{name}} steals home",
+      "outAt": "{{name}} out at {{base}}",
+      "safeAt": "{{name}} safe at {{base}}",
+      "onLastPitch": "{{name}}, on the last pitch",
+      "to": "{{name}} to {{base}}",
+      "scores": "{{name}} scores",
+      "for": "{{name}} for {{out}}"
+    },
+    "change": {
+      "title": "Pitching change · {{team}}",
+      "out": "Out",
+      "in": "In",
+      "line": "{{ip}} IP · {{h}} H · {{r}} R · {{bb}} BB · {{k}} K",
+      "lineEr": "{{ip}} IP · {{h}} H · {{r}} R ({{er}} ER) · {{bb}} BB · {{k}} K",
+      "pitches_one": "{{count}} P",
+      "pitches_other": "{{count}} P",
+      "final": "Final line: {{line}}",
+      "today": "Today: {{line}}",
+      "at": "{{name}} on {{base}}",
+      "inherits_one": "Inherits {{count}} runner ({{who}})",
+      "inherits_other": "Inherits {{count}} runners ({{who}})",
+      "noneScored_one": "didn't score",
+      "noneScored_other": "none scored",
+      "scored_one": "{{count}} scored",
+      "scored_other": "{{count}} scored"
+    },
+    "abs": {
+      "title": "ABS challenge",
+      "who": "{{name}} ({{team}})",
+      "what": "{{call}} on the {{pitch}} pitch; {{result}}",
+      "ball": "called ball",
+      "strike": "called strike",
+      "call": "called pitch",
+      "toStrike": "changed to a strike",
+      "toStrike3": "changed to strike 3",
+      "toBall": "changed to a ball",
+      "toBall4": "changed to ball 4",
+      "overturned": "overturned",
+      "kept": "upheld",
+      "left_one": "Challenges left for {{team}}: {{count}}",
+      "left_other": "Challenges left for {{team}}: {{count}}",
+      "over": "Overturned",
+      "upheld": "Upheld",
+      "zone": "ABS zone"
+    },
+    "review": {
+      "title": "Video review"
+    },
+    "chart": {
+      "title": "Win probability",
+      "aria": "Win probability after each play ({{away}} on top, {{home}} below, split at 50%): {{away}} {{awayPct}}, {{home}} {{homePct}}",
+      "marker": "{{event}} by {{name}} in the {{inning}}: {{value}} for {{team}}. Open the play",
+      "keyPlays": "Plays that moved win probability the most",
+      "finalLead": "final",
+      "nowLead": "now"
+    },
+    "now": {
+      "title": "At bat now",
+      "count": "{{balls}}-{{strikes}} · {{outs}}",
+      "vs": "vs",
+      "runners": "runners on {{bases}}",
+      "loaded": "bases loaded",
+      "empty": "bases empty",
+      "waiting": "waiting for the {{n}} pitch"
+    },
+    "tab": {
+      "summary": "{{plays}} · {{scoring}}",
+      "onlyScoring": "Scoring only",
+      "batting": "{{inning}} · {{team}} batting",
+      "line": "{{runs}} R · {{hits}} H",
+      "lineLob": "{{runs}} R · {{hits}} H · {{lob}} LOB",
+      "inProgress": "in progress",
+      "oneTwoThree": "1-2-3 inning",
+      "earlier": "Earlier",
+      "earlierHint_one": "{{count}} half-inning · tap to open",
+      "earlierHint_other": "{{count}} half-innings · tap one to open",
+      "relieves": "{{name}} relieves {{out}}",
+      "absOver": "ABS challenge overturned",
+      "absKept": "ABS challenge upheld",
+      "hbp": "Hit by pitch · {{name}}",
+      "error": "Error · {{name}}",
+      "errorThrow": "Error · {{name}} (throw)",
+      "all": "Full play by play and box"
+    },
+    "count": {
+      "plays_one": "{{count}} PA",
+      "plays_other": "{{count}} PA",
+      "scoring_one": "{{count}} scoring",
+      "scoring_other": "{{count}} scoring"
+    }
+  }
+}

@@ -1,0 +1,494 @@
+{
+  "es": {
+    "fallback": {
+      "title_one": "La {{current}} lleva {{count}} juego por equipo.",
+      "title_other": "La {{current}} lleva {{count}} juegos por equipo.",
+      "body": "Mientras se juntan números, ves los líderes de la {{season}} completa ({{games}} juegos).",
+      "show": "Ver la {{current}}",
+      "bodyNoGames": "Mientras se juntan números, ves los líderes de la {{season}} completa."
+    },
+    "current": {
+      "title_one": "Ves la {{current}}: {{count}} juego por equipo.",
+      "title_other": "Ves la {{current}}: {{count}} juegos por equipo.",
+      "body": "Con tan pocos juegos los líderes cambian cada noche.",
+      "back": "Volver a la {{season}}"
+    },
+    "crown": {
+      "title": "Triple corona",
+      "and": " y ",
+      "more": "{{names}} y {{count}} más",
+      "sweep": "{{name}} lidera las tres: triple corona.",
+      "none": "Nadie lidera las tres.",
+      "inAll": "En el top 10 de AVG, HR y CI están {{names}}.",
+      "inAllNone": "Nadie está en el top 10 de las tres.",
+      "tileAria": "{{stat}}: N.º 1 {{name}} ({{team}}), {{value}}. Ver la ficha.",
+      "pitchAria": "{{stat}}: {{value}}, {{names}}. Ver la ficha.",
+      "spreadAria": "Distribución de {{stat}} entre {{count}} bateadores calificados; en color, el tramo del N.º 1.",
+      "tied": "Empatados en el 1.º",
+      "overSecond": "{{value}} sobre el 2.º",
+      "bars": "Barras: los {{count}} bateadores calificados; en color, el tramo del N.º 1.",
+      "tile": "Ver la ficha de {{name}}"
+    },
+    "phases": {
+      "championship": "Final",
+      "regular": "Serie regular",
+      "roundRobin": "Round Robin",
+      "final": "Serie final",
+      "pool": "Grupos",
+      "quarterfinal": "Cuartos de final",
+      "semifinal": "Semifinal",
+      "tournament": "Torneo"
+    },
+    "phasesShort": {
+      "regular": "Regular",
+      "roundRobin": "Round Robin",
+      "final": "Final",
+      "pool": "Grupos",
+      "quarterfinal": "Cuartos",
+      "semifinal": "Semifinal",
+      "tournament": "Torneo"
+    },
+    "phasesOf": {
+      "regular": "la regular",
+      "roundRobin": "el Round Robin",
+      "final": "la final",
+      "pool": "los grupos",
+      "quarterfinal": "los cuartos",
+      "semifinal": "la semifinal",
+      "tournament": "el torneo"
+    },
+    "phasesLabel": "Fase de los líderes",
+    "phaseEmpty": "{{phase}}: sin juegos todavía",
+    "groups": {
+      "power": "Poder",
+      "contact": "Contacto",
+      "discipline": "Disciplina",
+      "pitching": "Pitcheo",
+      "fantasy": "Fantasy"
+    },
+    "groupsLabel": "Grupo de categorías",
+    "board": {
+      "title": "Tablero · {{phase}} · {{group}}",
+      "top": "Top 10",
+      "empty": "Nadie con más de 0 todavía.",
+      "emptyRate": "Nadie califica todavía.",
+      "phaseEmpty": "Esta fase todavía no tiene juegos.",
+      "share": "Compartir al N.º 1 de {{category}}",
+      "heroAria": "{{category}}: {{rank}}, {{name}} ({{team}}), {{value}}. Ver la ficha.",
+      "rank": "N.º 1 · {{team}}",
+      "rankTied": "T-{{rank}} · {{team}}",
+      "rowAria": "{{rank}}. {{name}} ({{team}}): {{value}}",
+      "tiedOut_one": "+{{count}} empatado",
+      "tiedOut_other": "+{{count}} empatados",
+      "tiedOutDetail": "En el puesto {{rank}} con {{value}}: {{names}}.",
+      "league": "Liga",
+      "tiedOutShow": "Ver quiénes",
+      "tiedOutHide": "Ocultar"
+    },
+    "categories": {
+      "hr": {
+        "title": "Jonrones",
+        "abbr": "HR"
+      },
+      "rbi": {
+        "title": "Impulsadas",
+        "abbr": "CI"
+      },
+      "slg": {
+        "title": "Slugging",
+        "abbr": "SLG"
+      },
+      "iso": {
+        "title": "Poder aislado",
+        "abbr": "ISO"
+      },
+      "avg": {
+        "title": "Promedio",
+        "abbr": "AVG"
+      },
+      "h": {
+        "title": "Hits",
+        "abbr": "H"
+      },
+      "ops": {
+        "title": "OPS",
+        "abbr": "OBP+SLG"
+      },
+      "d": {
+        "title": "Dobles",
+        "abbr": "2B"
+      },
+      "obp": {
+        "title": "Embasarse",
+        "abbr": "OBP"
+      },
+      "bb": {
+        "title": "Boletos",
+        "abbr": "BB"
+      },
+      "bbPct": {
+        "title": "% de boletos",
+        "abbr": "BB%"
+      },
+      "kPct": {
+        "title": "% de ponches",
+        "abbr": "K%"
+      },
+      "era": {
+        "title": "Efectividad",
+        "abbr": "EFE"
+      },
+      "k": {
+        "title": "Ponches",
+        "abbr": "K"
+      },
+      "w": {
+        "title": "Victorias",
+        "abbr": "G"
+      },
+      "sv": {
+        "title": "Salvados",
+        "abbr": "SV"
+      },
+      "pts": {
+        "title": "Puntos",
+        "abbr": "PTS"
+      },
+      "ppgB": {
+        "title": "Bateadores",
+        "abbr": "PTS/J"
+      },
+      "ppgP": {
+        "title": "Lanzadores",
+        "abbr": "PTS/J"
+      },
+      "ptsRP": {
+        "title": "Relevistas",
+        "abbr": "PTS"
+      },
+      "sb": {
+        "title": "Bases robadas",
+        "abbr": "BR"
+      },
+      "whip": {
+        "title": "BB+H por IP",
+        "abbr": "WHIP"
+      },
+      "ip": {
+        "title": "Entradas",
+        "abbr": "IP"
+      },
+      "k9": {
+        "title": "Ponches por 9",
+        "abbr": "K/9"
+      },
+      "bb9": {
+        "title": "Boletos por 9",
+        "abbr": "BB/9"
+      },
+      "fip": {
+        "title": "Pitcheo independiente",
+        "abbr": "FIP"
+      },
+      "hld": {
+        "title": "Holds",
+        "abbr": "HLD"
+      }
+    },
+    "detail": {
+      "hr": "1 HR cada {{ab}} VB · {{g}} J",
+      "rbi": "{{perGame}} por juego · {{hr}} HR",
+      "slg": "{{tb}} BT en {{ab}} VB",
+      "iso": "{{d}} 2B · {{t}} 3B · {{hr}} HR",
+      "avg": "{{h}} H en {{ab}} VB",
+      "h": "{{avg}} AVG · {{g}} J",
+      "ops": "{{obp}} OBP · {{slg}} SLG",
+      "d": "{{xbh}} extrabases · {{g}} J",
+      "obp": "En base {{onBase}} veces en {{pa}} AP",
+      "bb": "{{pct}} % de sus AP",
+      "bbPct": "{{bb}} BB en {{pa}} AP",
+      "kPct": "{{k}} K en {{pa}} AP",
+      "sb_one": "{{count}} vez atrapado · {{g}} J",
+      "sb_other": "{{count}} veces atrapado · {{g}} J",
+      "era": "{{w}}-{{l}} · {{ip}} IP",
+      "k": "{{k9}} K/9 · {{ip}} IP",
+      "w": "{{w}}-{{l}} · {{era}} EFE",
+      "sv": "{{sv}} SV en {{g}} J",
+      "whip": "{{h}} H y {{bb}} BB en {{ip}} IP",
+      "ip": "{{gs}} aperturas en {{g}} J",
+      "k9": "{{k}} K en {{ip}} IP",
+      "bb9": "{{bb}} BB en {{ip}} IP",
+      "fip": "{{era}} EFE",
+      "hld": "{{hld}} HLD en {{g}} J",
+      "pts": "{{ppg}} por juego · {{g}} J",
+      "ppg": "{{pts}} pts en {{g}} J",
+      "ptsRP": "{{sv}} SV · {{hld}} HLD · {{g}} J"
+    },
+    "advanced": {
+      "title": "Categorías avanzadas",
+      "aside": "Siempre {{phase}}",
+      "caption": "N.º 1 de cada categoría avanzada, {{phase}} {{season}} (no cambia con la fase)",
+      "cols": {
+        "category": "Categoría",
+        "first": "N.º 1",
+        "value": "Valor",
+        "vsSecond": "Vs. 2.º"
+      },
+      "second": "2.º {{name}}",
+      "secondAria": ". Segundo: {{name}}, {{value}}",
+      "outs_one": "+{{count}} out",
+      "outs_other": "+{{count}} outs",
+      "fipConstant": "Constante {{c}}",
+      "more": "Ver el top 10 de cada una en Estadísticas"
+    },
+    "qualified": "Calificados igual que en Estadísticas: bateadores con {{pa}}+ AP (2 por juego del equipo) y lanzadores con {{ip}}+ IP (0.4 por juego del equipo). En las tasas (AVG, OBP, SLG, OPS, ISO, BB%, K%, EFE, WHIP, K/9, BB/9, FIP y PTS/J) solo cuentan los calificados y la barra arranca en el promedio de la liga («Liga» en cada tarjeta); en los conteos arranca en 0 y nadie entra con 0. Empates: T-n, y «+N empatados» cuando no caben en el top 10.",
+    "fipNote": "FIP con la constante de {{league}} {{season}} ({{c}}).",
+    "source": "Datos: MLB StatsAPI · {{league}} {{season}}."
+  },
+  "en": {
+    "fallback": {
+      "title_one": "The {{current}} season has {{count}} game per team.",
+      "title_other": "The {{current}} season has {{count}} games per team.",
+      "body": "While the numbers pile up, you see the leaders of the full {{season}} season ({{games}} games).",
+      "show": "See {{current}}",
+      "bodyNoGames": "While the numbers pile up, you see the leaders of the full {{season}} season."
+    },
+    "current": {
+      "title_one": "You're seeing {{current}}: {{count}} game per team.",
+      "title_other": "You're seeing {{current}}: {{count}} games per team.",
+      "body": "With so few games the leaders change every night.",
+      "back": "Back to {{season}}"
+    },
+    "crown": {
+      "title": "Triple crown",
+      "and": " and ",
+      "more": "{{names}} and {{count}} more",
+      "sweep": "{{name}} leads all three: triple crown.",
+      "none": "Nobody leads all three.",
+      "inAll": "In the top 10 of AVG, HR and RBI: {{names}}.",
+      "inAllNone": "Nobody is in the top 10 of all three.",
+      "tileAria": "{{stat}}: #1 {{name}} ({{team}}), {{value}}. Open profile.",
+      "pitchAria": "{{stat}}: {{value}}, {{names}}. Open profile.",
+      "spreadAria": "Spread of {{stat}} among {{count}} qualified hitters; in color, the #1's bucket.",
+      "tied": "Tied for first",
+      "overSecond": "{{value}} over #2",
+      "bars": "Bars: the {{count}} qualified hitters; in color, the #1's bucket.",
+      "tile": "Open {{name}}"
+    },
+    "phases": {
+      "championship": "Final",
+      "regular": "Regular season",
+      "roundRobin": "Round Robin",
+      "final": "Final",
+      "pool": "Pool play",
+      "quarterfinal": "Quarterfinals",
+      "semifinal": "Semifinals",
+      "tournament": "Tournament"
+    },
+    "phasesShort": {
+      "regular": "Regular",
+      "roundRobin": "Round Robin",
+      "final": "Final",
+      "pool": "Pools",
+      "quarterfinal": "Quarters",
+      "semifinal": "Semis",
+      "tournament": "Tournament"
+    },
+    "phasesOf": {
+      "regular": "the regular season",
+      "roundRobin": "the Round Robin",
+      "final": "the final",
+      "pool": "pool play",
+      "quarterfinal": "the quarterfinals",
+      "semifinal": "the semifinals",
+      "tournament": "the tournament"
+    },
+    "phasesLabel": "Leaders phase",
+    "phaseEmpty": "{{phase}}: no games yet",
+    "groups": {
+      "power": "Power",
+      "contact": "Contact",
+      "discipline": "Discipline",
+      "pitching": "Pitching",
+      "fantasy": "Fantasy"
+    },
+    "groupsLabel": "Category group",
+    "board": {
+      "title": "Board · {{phase}} · {{group}}",
+      "top": "Top 10",
+      "empty": "Nobody above 0 yet.",
+      "emptyRate": "Nobody qualifies yet.",
+      "phaseEmpty": "This phase has no games yet.",
+      "share": "Share the {{category}} leader",
+      "heroAria": "{{category}}: {{rank}}, {{name}} ({{team}}), {{value}}. Open profile.",
+      "rank": "#1 · {{team}}",
+      "rankTied": "T-{{rank}} · {{team}}",
+      "rowAria": "{{rank}}. {{name}} ({{team}}): {{value}}",
+      "tiedOut_one": "+{{count}} tied",
+      "tiedOut_other": "+{{count}} tied",
+      "tiedOutDetail": "Tied at {{rank}} with {{value}}: {{names}}.",
+      "league": "League",
+      "tiedOutShow": "See who",
+      "tiedOutHide": "Hide"
+    },
+    "categories": {
+      "hr": {
+        "title": "Home runs",
+        "abbr": "HR"
+      },
+      "rbi": {
+        "title": "Runs batted in",
+        "abbr": "RBI"
+      },
+      "slg": {
+        "title": "Slugging",
+        "abbr": "SLG"
+      },
+      "iso": {
+        "title": "Isolated power",
+        "abbr": "ISO"
+      },
+      "avg": {
+        "title": "Batting average",
+        "abbr": "AVG"
+      },
+      "h": {
+        "title": "Hits",
+        "abbr": "H"
+      },
+      "ops": {
+        "title": "OPS",
+        "abbr": "OBP+SLG"
+      },
+      "d": {
+        "title": "Doubles",
+        "abbr": "2B"
+      },
+      "obp": {
+        "title": "On-base",
+        "abbr": "OBP"
+      },
+      "bb": {
+        "title": "Walks",
+        "abbr": "BB"
+      },
+      "bbPct": {
+        "title": "Walk rate",
+        "abbr": "BB%"
+      },
+      "kPct": {
+        "title": "Strikeout rate",
+        "abbr": "K%"
+      },
+      "era": {
+        "title": "ERA",
+        "abbr": "ERA"
+      },
+      "k": {
+        "title": "Strikeouts",
+        "abbr": "K"
+      },
+      "w": {
+        "title": "Wins",
+        "abbr": "W"
+      },
+      "sv": {
+        "title": "Saves",
+        "abbr": "SV"
+      },
+      "pts": {
+        "title": "Points",
+        "abbr": "PTS"
+      },
+      "ppgB": {
+        "title": "Hitters",
+        "abbr": "PTS/G"
+      },
+      "ppgP": {
+        "title": "Pitchers",
+        "abbr": "PTS/G"
+      },
+      "ptsRP": {
+        "title": "Relievers",
+        "abbr": "PTS"
+      },
+      "sb": {
+        "title": "Stolen bases",
+        "abbr": "SB"
+      },
+      "whip": {
+        "title": "Walks + hits per IP",
+        "abbr": "WHIP"
+      },
+      "ip": {
+        "title": "Innings",
+        "abbr": "IP"
+      },
+      "k9": {
+        "title": "Strikeouts per 9",
+        "abbr": "K/9"
+      },
+      "bb9": {
+        "title": "Walks per 9",
+        "abbr": "BB/9"
+      },
+      "fip": {
+        "title": "Fielding independent",
+        "abbr": "FIP"
+      },
+      "hld": {
+        "title": "Holds",
+        "abbr": "HLD"
+      }
+    },
+    "detail": {
+      "hr": "1 HR every {{ab}} AB · {{g}} G",
+      "rbi": "{{perGame}} per game · {{hr}} HR",
+      "slg": "{{tb}} TB in {{ab}} AB",
+      "iso": "{{d}} 2B · {{t}} 3B · {{hr}} HR",
+      "avg": "{{h}} H in {{ab}} AB",
+      "h": "{{avg}} AVG · {{g}} G",
+      "ops": "{{obp}} OBP · {{slg}} SLG",
+      "d": "{{xbh}} extra-base hits · {{g}} G",
+      "obp": "On base {{onBase}} times in {{pa}} PA",
+      "bb": "{{pct}}% of his PA",
+      "bbPct": "{{bb}} BB in {{pa}} PA",
+      "kPct": "{{k}} K in {{pa}} PA",
+      "sb_one": "caught {{count}} time · {{g}} G",
+      "sb_other": "caught {{count}} times · {{g}} G",
+      "era": "{{w}}-{{l}} · {{ip}} IP",
+      "k": "{{k9}} K/9 · {{ip}} IP",
+      "w": "{{w}}-{{l}} · {{era}} ERA",
+      "sv": "{{sv}} SV in {{g}} G",
+      "whip": "{{h}} H and {{bb}} BB in {{ip}} IP",
+      "ip": "{{gs}} starts in {{g}} G",
+      "k9": "{{k}} K in {{ip}} IP",
+      "bb9": "{{bb}} BB in {{ip}} IP",
+      "fip": "{{era}} ERA",
+      "hld": "{{hld}} HLD in {{g}} G",
+      "pts": "{{ppg}} per game · {{g}} G",
+      "ppg": "{{pts}} pts in {{g}} G",
+      "ptsRP": "{{sv}} SV · {{hld}} HLD · {{g}} G"
+    },
+    "advanced": {
+      "title": "Advanced categories",
+      "aside": "Always {{phase}}",
+      "caption": "Leader of each advanced category, {{phase}} {{season}} (does not change with the phase)",
+      "cols": {
+        "category": "Category",
+        "first": "#1",
+        "value": "Value",
+        "vsSecond": "Vs. #2"
+      },
+      "second": "#2 {{name}}",
+      "secondAria": ". Second: {{name}}, {{value}}",
+      "outs_one": "+{{count}} out",
+      "outs_other": "+{{count}} outs",
+      "fipConstant": "Constant {{c}}",
+      "more": "See each one's top 10 in Stats"
+    },
+    "qualified": "Qualified like in Stats: hitters with {{pa}}+ PA (2 per team game) and pitchers with {{ip}}+ IP (0.4 per team game). Rate stats (AVG, OBP, SLG, OPS, ISO, BB%, K%, ERA, WHIP, K/9, BB/9, FIP and PTS/G) only count qualified players and the bar starts at the league average («League» on each card); counting stats start at 0 and nobody gets in with 0. Ties: T-n, and «+N tied» when they don't fit in the top 10.",
+    "fipNote": "FIP with the {{league}} {{season}} constant ({{c}}).",
+    "source": "Data: MLB StatsAPI · {{league}} {{season}}."
+  }
+}

@@ -1,0 +1,1158 @@
+{
+  "es": {
+    "intro": "Filtra, ordena por percentil y compara a dos peloteros.",
+    "seasonEyebrow": "Temporada {{season}}",
+    "glossaryTitle": "Estadísticas",
+    "glossaryIntro": "Cada sigla de las tablas, con su fórmula. El percentil compara con los calificados de la liga.",
+    "phaseLabel": "Fase",
+    "viewsLabel": "Vista de columnas",
+    "phases": {
+      "regular": "Serie regular",
+      "roundRobin": "Round Robin",
+      "final": "Serie final",
+      "pool": "Ronda de grupos",
+      "quarterfinal": "Cuartos de final",
+      "semifinal": "Semifinal",
+      "tournament": "Torneo"
+    },
+    "phasesShort": {
+      "regular": "Regular",
+      "roundRobin": "Round Robin",
+      "final": "Final",
+      "pool": "Grupos",
+      "quarterfinal": "Cuartos",
+      "semifinal": "Semis",
+      "tournament": "Torneo"
+    },
+    "views": {
+      "clasico": "Clásico",
+      "poder": "Poder",
+      "disciplina": "Disciplina",
+      "corrido": "Corrido",
+      "fantasy": "Fantasy",
+      "dominio": "Dominio",
+      "control": "Control",
+      "relevo": "Relevo",
+      "defensa": "Defensa"
+    },
+    "viewNotes": {
+      "B_clasico": "OPS+ compara con la liga (100 = promedio) · CI carreras impulsadas.",
+      "B_poder": "ISO poder aislado (SLG − AVG) · EXB extrabases · VB/HR turnos por jonrón (menos es mejor).",
+      "B_disciplina": "BB% y K% por aparición al plato · en K% menos es mejor.",
+      "B_corrido": "BR bases robadas · AR atrapado robando · BR% éxito robando · DP rodados de doble play (menos es mejor).",
+      "B_fantasy": "Puntos del Fantasy de El Play en la {{season}} · Últ. 5: puntos en sus últimos 5 juegos de la fase (MLB los da desde el 5.º juego).",
+      "P_clasico": "EFE+ compara la EFE con la liga (100 = promedio, más es mejor) · G-P ganados y perdidos · IP entradas lanzadas.",
+      "P_dominio": "FIP ajustado a la liga en la {{season}} (constante {{fip}}) · K% ponches por bateador.",
+      "P_control": "Por 9 entradas y por bateador · en esta vista menos es mejor.",
+      "P_relevo": "Relevistas sin aperturas · BE bateadores enfrentados."
+    },
+    "rule": {
+      "batters": "Calificado: 2 AP por juego del equipo ({{pa}} AP en {{games}} juegos).",
+      "pitchers": "Lanzadores con {{ip}}+ IP (0.4 por juego del equipo; {{games}} juegos).",
+      "relievers": "Relevistas: {{games}}+ juegos y ninguna apertura."
+    },
+    "notes": {
+      "autoPrevious_one": "La {{current}} lleva {{count}} juego por equipo: muy poco para percentiles. Ves la {{previous}} completa ({{games}} juegos).",
+      "autoPrevious_other": "La {{current}} lleva {{count}} juegos por equipo: muy poco para percentiles. Ves la {{previous}} completa ({{games}} juegos).",
+      "tinySample_one": "Muestra pequeña: {{count}} juego por equipo. Los percentiles se mueven mucho todavía.",
+      "tinySample_other": "Muestra pequeña: {{count}} juegos por equipo. Los percentiles se mueven mucho todavía.",
+      "noLeague": "No llegaron los promedios de la liga: OPS+, EFE+ y FIP quedan en blanco.",
+      "proMissing": "Por ahora solo la serie regular: las otras fases llegan con la próxima actualización del servidor."
+    },
+    "search": {
+      "found": "1 resaltado",
+      "none": "sin resultado",
+      "notInPool_batters": "«{{q}}» no aparece entre los bateadores calificados.",
+      "notInPool_pitchers": "«{{q}}» no aparece entre estos lanzadores.",
+      "notInPool_relievers": "«{{q}}» no aparece entre estos relevistas.",
+      "openOther": "Ficha de {{name}}",
+      "clearTeam": "Ver todos los equipos",
+      "elsewhere": "{{name}} califica, pero juega con {{team}} (el filtro es {{filter}}).",
+      "elsewhereBadge": "en {{team}}",
+      "clear": "Borrar la búsqueda",
+      "label": "Buscar pelotero"
+    },
+    "lead": {
+      "search": "Tu búsqueda",
+      "leader": "Líder · {{view}}",
+      "teamLeader": "Líder de {{team}}",
+      "sheet": "Ficha",
+      "games_one": "{{count}} J",
+      "games_other": "{{count}} J",
+      "rank": "#{{rank}} en {{column}}",
+      "aria": "Protagonista: {{name}}",
+      "barsAria": "Percentiles de {{name}} en la vista {{view}}: {{list}}"
+    },
+    "table": {
+      "title_batters": "Tabla · {{count}} calificados",
+      "title_pitchers": "Tabla · {{count}} lanzadores",
+      "title_relievers": "Tabla · {{count}} relevistas",
+      "player": "Pelotero",
+      "pinned": "Fijado por la búsqueda · #{{rank}} en {{column}}",
+      "rowAria": "{{name}}, {{sub}}, abrir ficha",
+      "sortAria": "Ordenar por {{column}}{{extra}}",
+      "lowerBetter": " (menos es mejor)",
+      "caption": "{{role}}, vista {{view}}, ordenados por {{column}}",
+      "empty_batters": "Todavía no hay bateadores calificados con estos filtros.",
+      "empty_pitchers": "Todavía no hay lanzadores con entradas suficientes con estos filtros.",
+      "empty_relievers": "Todavía no hay relevistas con juegos suficientes con estos filtros.",
+      "all_batters": "Ver los {{count}} calificados",
+      "all_pitchers": "Ver los {{count}} lanzadores",
+      "all_relievers": "Ver los {{count}} relevistas",
+      "less": "Ver solo los 10 primeros",
+      "neutral": "J, IP, BE y G-P van sin color: son volumen, no calidad.",
+      "pinnedAria": "Fijado por la búsqueda",
+      "rowsAria": "{{count}} filas"
+    },
+    "legend": {
+      "title": "Percentil",
+      "low": "0 · peor",
+      "high": "100 · mejor"
+    },
+    "league": {
+      "titleB": "La liga {{season}} · base de OPS+",
+      "titleP": "La liga {{season}} · base de EFE+ y FIP",
+      "obp": "OBP liga",
+      "slg": "SLG liga",
+      "avg": "AVG liga",
+      "era": "EFE liga",
+      "kPct": "K% liga",
+      "bbPct": "BB% liga",
+      "fromPlayers": "Calculada con las líneas de los {{count}} peloteros de la liga.",
+      "fromPlayersShort": "sumando a todos los peloteros"
+    },
+    "scatter": {
+      "eyebrowB": "Perfil · OBP vs SLG · {{season}}",
+      "eyebrowP": "Perfil · K% vs BB% · {{season}}",
+      "titleB": "¿Quién se embasa y quién pega duro?",
+      "titleP": "¿Quién poncha y quién regala bases?",
+      "countB_one": "{{count}} calificado",
+      "countB_other": "{{count}} calificados",
+      "countP_one": "{{count}} lanzador",
+      "countP_other": "{{count}} lanzadores",
+      "teamHighlight": "resaltados los de {{team}}",
+      "averages": "Promedio de la liga: {{x}} {{xv}} · {{y}} {{yv}}",
+      "lines": "las líneas son el promedio de la liga",
+      "xB": "OBP · se embasa más",
+      "yB": "↑ SLG · pega más duro",
+      "xP": "BB% · regala más bases",
+      "yP": "↑ K% · poncha más",
+      "aria": "Gráfica de dispersión: {{x}} contra {{y}}, un punto por pelotero en el color de su equipo",
+      "league": "Liga {{value}}",
+      "q": {
+        "power": "Solo poder",
+        "elite": "Élite",
+        "below": "Por debajo",
+        "onBase": "Se embasa",
+        "strikeouts": "Solo ponches",
+        "control": "Solo control",
+        "trouble": "En apuros"
+      },
+      "legend": "Colores de los equipos",
+      "near": "Cerca en la gráfica",
+      "nearAria": "Ver a {{name}} en la gráfica",
+      "bySearch": "Resaltado por la búsqueda.",
+      "hintChosen": "Toca otro punto para cambiar; si hay varios juntos, elige en «Cerca».",
+      "hint": "Toca un punto para ver quién es y abrir su ficha (o búscalo arriba)."
+    },
+    "compare": {
+      "title": "Cara a cara",
+      "aside": "percentil P0–P100",
+      "aria": "Cara a cara entre {{a}} y {{b}}",
+      "fantasy": "Fantasy",
+      "tie_one": "Empate: {{count}} métrica cada uno",
+      "tie_other": "Empate: {{count}} métricas cada uno",
+      "wins": "{{name}} gana {{count}} de {{total}} métricas",
+      "ties_one": "{{count}} empate",
+      "ties_other": "{{count}} empates",
+      "replay": "Repetir la animación",
+      "change": "Cambiar peloteros",
+      "share": "Compartir imagen",
+      "slot": "A quién cambiar",
+      "pickHint": "Toca un pelotero para ponerlo en lugar de {{name}}. El buscador de arriba también suma candidatos.",
+      "pickAria": "Poner a {{name}} en lugar de {{other}}",
+      "done": "Listo",
+      "percentile": "percentil {{pct}}",
+      "winner": "gana {{name}}",
+      "even": "empate",
+      "imageTitle": "Cara a cara",
+      "imageFooter": "Percentiles contra los calificados",
+      "downloaded": "Imagen guardada en tus descargas.",
+      "shareError": "No se pudo crear la imagen. Intenta de nuevo.",
+      "sheetTitle": "Compartir cara a cara",
+      "shareText": "{{a}} vs {{b}} en la {{season}}: {{score}} en métricas.",
+      "scoreAria": "Marcador de métricas: {{a}} {{wa}}, {{b}} {{wb}}"
+    },
+    "teams": {
+      "title": "Equipos",
+      "new": "Nuevo",
+      "open": "Abrir",
+      "back": "Estadísticas",
+      "previewIntro": "Vista previa de la pestaña Equipos · {{phase}} {{season}}, del mejor al peor. Cada barra sale del promedio de la liga: a la derecha, mejor; a la izquierda, peor. EFE, WHIP y K son del pitcheo.",
+      "intro": "Los 6 equipos en cada métrica, del mejor al peor. Cada barra sale del promedio de la liga: a la derecha, mejor.",
+      "league": "liga {{value}}",
+      "lower": "menos es mejor",
+      "chartAria": "{{metric}} por equipo, del mejor al peor, contra el promedio de la liga",
+      "hitting": "Bateo",
+      "pitching": "Pitcheo",
+      "games_one": "{{count}} juego por equipo",
+      "games_other": "{{count}} juegos por equipo",
+      "empty": "Todavía no hay juegos de {{phase}} en esta temporada.",
+      "note": "Promedios de la liga con las sumas de los 6 equipos (no promedio de promedios). FIP con la constante de la liga ({{fip}}).",
+      "metrics": {
+        "avg": {
+          "short": "AVG",
+          "long": "Promedio de bateo"
+        },
+        "obp": {
+          "short": "OBP",
+          "long": "Promedio de embasarse"
+        },
+        "slg": {
+          "short": "SLG",
+          "long": "Slugging"
+        },
+        "ops": {
+          "short": "OPS",
+          "long": "Embase + slugging"
+        },
+        "hr": {
+          "short": "HR",
+          "long": "Jonrones"
+        },
+        "rpg": {
+          "short": "C/J",
+          "long": "Carreras anotadas por juego"
+        },
+        "sb": {
+          "short": "BR",
+          "long": "Bases robadas"
+        },
+        "kPct": {
+          "short": "K%",
+          "long": "Ponches por aparición del bateo"
+        },
+        "bbPct": {
+          "short": "BB%",
+          "long": "Boletos por aparición del bateo"
+        },
+        "era": {
+          "short": "EFE",
+          "long": "Efectividad"
+        },
+        "whip": {
+          "short": "WHIP",
+          "long": "Boletos + hits por entrada"
+        },
+        "k": {
+          "short": "K",
+          "long": "Ponches del pitcheo"
+        },
+        "k9": {
+          "short": "K/9",
+          "long": "Ponches por 9 entradas"
+        },
+        "bb9": {
+          "short": "BB/9",
+          "long": "Boletos por 9 entradas"
+        },
+        "hr9": {
+          "short": "HR/9",
+          "long": "Jonrones por 9 entradas"
+        },
+        "sv": {
+          "short": "SV",
+          "long": "Salvados"
+        },
+        "fip": {
+          "short": "FIP",
+          "long": "EFE independiente de la defensa"
+        }
+      },
+      "openAria": "Abrir la pestaña Equipos",
+      "missing": "Los totales por equipo llegan con la próxima actualización del servidor de El Play."
+    },
+    "fielding": {
+      "title": "Defensa · por posición",
+      "posFilter": "Filtrar por posición",
+      "allPositions": "Todas",
+      "positions": {
+        "C": "Receptor",
+        "1B": "Primera base",
+        "2B": "Segunda base",
+        "3B": "Tercera base",
+        "SS": "Campocorto",
+        "LF": "Jardín izquierdo",
+        "CF": "Jardín central",
+        "RF": "Jardín derecho"
+      },
+      "caption": "Defensa · {{pos}}",
+      "cols": {
+        "pos": {
+          "short": "Pos",
+          "long": "Posición"
+        },
+        "inn": {
+          "short": "Ent",
+          "long": "Entradas a la defensa"
+        },
+        "a": {
+          "short": "A",
+          "long": "Asistencias"
+        },
+        "e": {
+          "short": "E",
+          "long": "Errores"
+        },
+        "fpct": {
+          "short": "%Fil",
+          "long": "Porcentaje de fildeo"
+        },
+        "rf9": {
+          "short": "Alc/9",
+          "long": "Factor de alcance por 9 entradas"
+        },
+        "dp": {
+          "short": "DP",
+          "long": "Doble plays"
+        },
+        "csPct": {
+          "short": "AR%",
+          "long": "Porcentaje de atrapados robando"
+        },
+        "pb": {
+          "short": "PB",
+          "long": "Passed balls"
+        }
+      },
+      "empty": "MLB todavía no tiene la defensa de esta fase.",
+      "emptyFilter": "Nadie con entradas suficientes en esta posición.",
+      "all": "Ver los {{count}} defensores",
+      "note": "Defensa de MLB (no estaba en la app): con {{inn}}+ entradas en la posición. El color compara con los de su misma posición; en errores y passed balls menos es mejor.",
+      "more_one": "Ver {{count}} más (de {{total}})",
+      "more_other": "Ver {{count}} más (de {{total}})"
+    },
+    "cols": {
+      "pts": {
+        "short": "Pts",
+        "long": "Puntos de fantasy"
+      },
+      "ppg": {
+        "short": "Pts/J",
+        "long": "Puntos de fantasy por juego"
+      },
+      "g": {
+        "short": "J",
+        "long": "Juegos"
+      },
+      "gs": {
+        "short": "JI",
+        "long": "Juegos iniciados"
+      },
+      "pa": {
+        "short": "AP",
+        "long": "Apariciones al plato"
+      },
+      "ab": {
+        "short": "VB",
+        "long": "Veces al bate"
+      },
+      "h": {
+        "short": "H",
+        "long": "Hits"
+      },
+      "d": {
+        "short": "2B",
+        "long": "Dobles"
+      },
+      "t": {
+        "short": "3B",
+        "long": "Triples"
+      },
+      "hr": {
+        "short": "HR",
+        "long": "Jonrones"
+      },
+      "rbi": {
+        "short": "CI",
+        "long": "Carreras impulsadas"
+      },
+      "r": {
+        "short": "C",
+        "long": "Carreras anotadas"
+      },
+      "bb": {
+        "short": "BB",
+        "long": "Bases por bolas"
+      },
+      "k": {
+        "short": "K",
+        "long": "Ponches"
+      },
+      "sb": {
+        "short": "BR",
+        "long": "Bases robadas"
+      },
+      "cs": {
+        "short": "AR",
+        "long": "Atrapado robando"
+      },
+      "gidp": {
+        "short": "DP",
+        "long": "Rodados de doble play"
+      },
+      "avg": {
+        "short": "AVG",
+        "long": "Promedio de bateo"
+      },
+      "obp": {
+        "short": "OBP",
+        "long": "Promedio de embasarse"
+      },
+      "slg": {
+        "short": "SLG",
+        "long": "Slugging"
+      },
+      "ops": {
+        "short": "OPS",
+        "long": "Embase + slugging"
+      },
+      "opsPlus": {
+        "short": "OPS+",
+        "long": "OPS ajustado a la liga (100 = promedio)"
+      },
+      "iso": {
+        "short": "ISO",
+        "long": "Poder aislado"
+      },
+      "babip": {
+        "short": "BABIP",
+        "long": "Promedio de bolas en juego"
+      },
+      "kPct": {
+        "short": "K%",
+        "long": "Porcentaje de ponches por aparición"
+      },
+      "bbPct": {
+        "short": "BB%",
+        "long": "Porcentaje de boletos por aparición"
+      },
+      "bbK": {
+        "short": "BB/K",
+        "long": "Boletos por ponche"
+      },
+      "abHr": {
+        "short": "VB/HR",
+        "long": "Turnos por jonrón"
+      },
+      "xbh": {
+        "short": "EXB",
+        "long": "Extrabases"
+      },
+      "sbPct": {
+        "short": "BR%",
+        "long": "Éxito robando"
+      },
+      "last5": {
+        "short": "Últ. 5",
+        "long": "Puntos de fantasy en los últimos 5 juegos"
+      },
+      "ip": {
+        "short": "IP",
+        "long": "Entradas lanzadas"
+      },
+      "wl": {
+        "short": "G-P",
+        "long": "Ganados y perdidos"
+      },
+      "bf": {
+        "short": "BE",
+        "long": "Bateadores enfrentados"
+      },
+      "w": {
+        "short": "G",
+        "long": "Ganados"
+      },
+      "l": {
+        "short": "P",
+        "long": "Perdidos"
+      },
+      "sv": {
+        "short": "SV",
+        "long": "Salvados"
+      },
+      "hld": {
+        "short": "HLD",
+        "long": "Holds"
+      },
+      "er": {
+        "short": "CL",
+        "long": "Carreras limpias"
+      },
+      "era": {
+        "short": "EFE",
+        "long": "Efectividad"
+      },
+      "whip": {
+        "short": "WHIP",
+        "long": "Boletos + hits por entrada"
+      },
+      "eraPlus": {
+        "short": "EFE+",
+        "long": "EFE ajustada a la liga (100 = promedio)"
+      },
+      "fip": {
+        "short": "FIP",
+        "long": "Efectividad independiente de la defensa"
+      },
+      "k9": {
+        "short": "K/9",
+        "long": "Ponches por 9 entradas"
+      },
+      "bb9": {
+        "short": "BB/9",
+        "long": "Boletos por 9 entradas"
+      },
+      "h9": {
+        "short": "H/9",
+        "long": "Hits por 9 entradas"
+      },
+      "hr9": {
+        "short": "HR/9",
+        "long": "Jonrones por 9 entradas"
+      },
+      "kBb": {
+        "short": "K/BB",
+        "long": "Ponches por boleto"
+      }
+    },
+    "glossary": {
+      "formula": {
+        "avg": "AVG = H / VB",
+        "obp": "OBP = (H + BB + GP) / (VB + BB + GP + ES)",
+        "slg": "SLG = bases totales / VB",
+        "ops": "OPS = OBP + SLG",
+        "opsPlus": "OPS+ = 100 × (OBP / OBP liga + SLG / SLG liga − 1)",
+        "iso": "ISO = SLG − AVG",
+        "babip": "BABIP = (H − HR) / (VB − K − HR + ES)",
+        "kPct": "K% = K / AP",
+        "bbPct": "BB% = BB / AP",
+        "bbK": "BB/K = BB / K",
+        "abHr": "VB/HR = VB / HR",
+        "sbPct": "BR% = BR / (BR + AR)",
+        "era": "EFE = 9 × CL / IP",
+        "eraPlus": "EFE+ = 100 × EFE liga / EFE",
+        "whip": "WHIP = (BB + H) / IP",
+        "fip": "FIP = (13 × HR + 3 × (BB + GP) − 2 × K) / IP + constante de la liga",
+        "k9": "K/9 = 9 × K / IP",
+        "bb9": "BB/9 = 9 × BB / IP",
+        "h9": "H/9 = 9 × H / IP",
+        "hr9": "HR/9 = 9 × HR / IP",
+        "kBb": "K/BB = K / BB"
+      },
+      "desc": {
+        "opsPlus": "Con 100 está en el promedio de la liga; 130 es un 30 % mejor.",
+        "eraPlus": "Con 100 está en el promedio de la liga; más es mejor.",
+        "fip": "Lo que depende solo del lanzador (ponches, boletos y jonrones), en la escala de la EFE de esta liga.",
+        "last5": "Puntos de fantasy de sus últimos 5 juegos de la fase. MLB los da cuando ya jugó 5.",
+        "pts": "Puntos del Fantasy de El Play con la misma regla del juego."
+      },
+      "percentile": {
+        "term": "P",
+        "name": "Percentil",
+        "desc": "De 0 (el peor del grupo) a 100 (el mejor). En «menos es mejor» se invierte."
+      },
+      "qualified": {
+        "term": "Calificado",
+        "name": "Quién entra en la tabla",
+        "descB": "2 apariciones al plato por juego del equipo, igual en Líderes, Estadísticas y la ficha.",
+        "descP": "Lanzadores con 0.4 entradas por juego del equipo; en Relevo, 1 juego por cada 4 del equipo y ninguna apertura."
+      }
+    },
+    "tabs": {
+      "label": "Secciones de estadísticas",
+      "newAria": "{{label}} (nuevo)"
+    },
+    "phaseSheet": "Fase de la temporada",
+    "phaseAria": "Fase: {{phase}}. Cambiar",
+    "loading": "Cargando estadísticas"
+  },
+  "en": {
+    "intro": "Filter, sort by percentile and compare two players.",
+    "seasonEyebrow": "{{season}} season",
+    "glossaryTitle": "Stats",
+    "glossaryIntro": "Every abbreviation in the tables, with its formula. Percentiles compare against the league's qualified players.",
+    "phaseLabel": "Phase",
+    "viewsLabel": "Column view",
+    "phases": {
+      "regular": "Regular season",
+      "roundRobin": "Round Robin",
+      "final": "Final series",
+      "pool": "Pool play",
+      "quarterfinal": "Quarterfinals",
+      "semifinal": "Semifinal",
+      "tournament": "Tournament"
+    },
+    "phasesShort": {
+      "regular": "Regular",
+      "roundRobin": "Round Robin",
+      "final": "Final",
+      "pool": "Pools",
+      "quarterfinal": "Quarters",
+      "semifinal": "Semis",
+      "tournament": "Tournament"
+    },
+    "views": {
+      "clasico": "Classic",
+      "poder": "Power",
+      "disciplina": "Discipline",
+      "corrido": "Baserunning",
+      "fantasy": "Fantasy",
+      "dominio": "Stuff",
+      "control": "Control",
+      "relevo": "Relief",
+      "defensa": "Defense"
+    },
+    "viewNotes": {
+      "B_clasico": "OPS+ compares with the league (100 = average) · RBI runs batted in.",
+      "B_poder": "ISO isolated power (SLG − AVG) · XBH extra-base hits · AB/HR at bats per homer (lower is better).",
+      "B_disciplina": "BB% and K% per plate appearance · for K% lower is better.",
+      "B_corrido": "SB stolen bases · CS caught stealing · SB% success rate · GDP double plays (lower is better).",
+      "B_fantasy": "El Play Fantasy points in {{season}} · Last 5: points in their last 5 games of the phase (MLB sends them from the 5th game).",
+      "P_clasico": "ERA+ compares ERA with the league (100 = average, higher is better) · W-L wins and losses · IP innings pitched.",
+      "P_dominio": "FIP scaled to the league in {{season}} (constant {{fip}}) · K% strikeouts per batter.",
+      "P_control": "Per 9 innings and per batter · in this view lower is better.",
+      "P_relevo": "Relievers with no starts · BF batters faced."
+    },
+    "rule": {
+      "batters": "Qualified: 2 PA per team game ({{pa}} PA in {{games}} games).",
+      "pitchers": "Pitchers with {{ip}}+ IP (0.4 per team game; {{games}} games).",
+      "relievers": "Relievers: {{games}}+ games and no starts."
+    },
+    "notes": {
+      "autoPrevious_one": "{{current}} has {{count}} game per team: too little for percentiles. You are seeing the full {{previous}} ({{games}} games).",
+      "autoPrevious_other": "{{current}} has {{count}} games per team: too little for percentiles. You are seeing the full {{previous}} ({{games}} games).",
+      "tinySample_one": "Small sample: {{count}} game per team. Percentiles still move a lot.",
+      "tinySample_other": "Small sample: {{count}} games per team. Percentiles still move a lot.",
+      "noLeague": "League averages did not load: OPS+, ERA+ and FIP are left blank.",
+      "proMissing": "Regular season only for now: the other phases arrive with the next server update."
+    },
+    "search": {
+      "found": "1 highlighted",
+      "none": "no match",
+      "notInPool_batters": "“{{q}}” is not among the qualified hitters.",
+      "notInPool_pitchers": "“{{q}}” is not among these pitchers.",
+      "notInPool_relievers": "“{{q}}” is not among these relievers.",
+      "openOther": "{{name}}'s profile",
+      "clearTeam": "Show every team",
+      "elsewhere": "{{name}} qualifies, but plays for {{team}} (the filter is {{filter}}).",
+      "elsewhereBadge": "on {{team}}",
+      "clear": "Clear search",
+      "label": "Search player"
+    },
+    "lead": {
+      "search": "Your search",
+      "leader": "Leader · {{view}}",
+      "teamLeader": "{{team}} leader",
+      "sheet": "Profile",
+      "games_one": "{{count}} G",
+      "games_other": "{{count}} G",
+      "rank": "#{{rank}} in {{column}}",
+      "aria": "Featured: {{name}}",
+      "barsAria": "{{name}}'s percentiles in the {{view}} view: {{list}}"
+    },
+    "table": {
+      "title_batters": "Table · {{count}} qualified",
+      "title_pitchers": "Table · {{count}} pitchers",
+      "title_relievers": "Table · {{count}} relievers",
+      "player": "Player",
+      "pinned": "Pinned by search · #{{rank}} in {{column}}",
+      "rowAria": "{{name}}, {{sub}}, open profile",
+      "sortAria": "Sort by {{column}}{{extra}}",
+      "lowerBetter": " (lower is better)",
+      "caption": "{{role}}, {{view}} view, sorted by {{column}}",
+      "empty_batters": "No qualified hitters with these filters yet.",
+      "empty_pitchers": "No pitchers with enough innings with these filters yet.",
+      "empty_relievers": "No relievers with enough games with these filters yet.",
+      "all_batters": "See all {{count}} qualified",
+      "all_pitchers": "See all {{count}} pitchers",
+      "all_relievers": "See all {{count}} relievers",
+      "less": "Show only the top 10",
+      "neutral": "G, IP, BF and W-L have no color: they are volume, not quality.",
+      "pinnedAria": "Pinned by your search",
+      "rowsAria": "{{count}} rows"
+    },
+    "legend": {
+      "title": "Percentile",
+      "low": "0 · worst",
+      "high": "100 · best"
+    },
+    "league": {
+      "titleB": "League {{season}} · OPS+ baseline",
+      "titleP": "League {{season}} · ERA+ and FIP baseline",
+      "obp": "League OBP",
+      "slg": "League SLG",
+      "avg": "League AVG",
+      "era": "League ERA",
+      "kPct": "League K%",
+      "bbPct": "League BB%",
+      "fromPlayers": "Computed from the lines of the league’s {{count}} players.",
+      "fromPlayersShort": "adding up every player"
+    },
+    "scatter": {
+      "eyebrowB": "Profile · OBP vs SLG · {{season}}",
+      "eyebrowP": "Profile · K% vs BB% · {{season}}",
+      "titleB": "Who gets on base and who hits hard?",
+      "titleP": "Who strikes out batters and who gives free passes?",
+      "countB_one": "{{count}} qualified",
+      "countB_other": "{{count}} qualified",
+      "countP_one": "{{count}} pitcher",
+      "countP_other": "{{count}} pitchers",
+      "teamHighlight": "{{team}} highlighted",
+      "averages": "League average: {{x}} {{xv}} · {{y}} {{yv}}",
+      "lines": "lines are the league average",
+      "xB": "OBP · gets on base more",
+      "yB": "↑ SLG · hits harder",
+      "xP": "BB% · walks more",
+      "yP": "↑ K% · strikes out more",
+      "aria": "Scatter chart: {{x}} against {{y}}, one dot per player in their team color",
+      "league": "League {{value}}",
+      "q": {
+        "power": "Power only",
+        "elite": "Elite",
+        "below": "Below",
+        "onBase": "On base",
+        "strikeouts": "Strikeouts only",
+        "control": "Control only",
+        "trouble": "In trouble"
+      },
+      "legend": "Team colors",
+      "near": "Nearby on the chart",
+      "nearAria": "Show {{name}} on the chart",
+      "bySearch": "Highlighted by your search.",
+      "hintChosen": "Tap another dot to switch; if several overlap, pick one under “Nearby”.",
+      "hint": "Tap a dot to see who it is and open their profile (or search above)."
+    },
+    "compare": {
+      "title": "Head to head",
+      "aside": "percentile P0–P100",
+      "aria": "Head to head between {{a}} and {{b}}",
+      "fantasy": "Fantasy",
+      "tie_one": "Tie: {{count}} metric each",
+      "tie_other": "Tie: {{count}} metrics each",
+      "wins": "{{name}} wins {{count}} of {{total}} metrics",
+      "ties_one": "{{count}} tie",
+      "ties_other": "{{count}} ties",
+      "replay": "Replay the animation",
+      "change": "Change players",
+      "share": "Share image",
+      "slot": "Who to replace",
+      "pickHint": "Tap a player to put them in place of {{name}}. The search above also adds candidates.",
+      "pickAria": "Put {{name}} in place of {{other}}",
+      "done": "Done",
+      "percentile": "percentile {{pct}}",
+      "winner": "{{name}} wins",
+      "even": "tie",
+      "imageTitle": "Head to head",
+      "imageFooter": "Percentiles against qualified players",
+      "downloaded": "Image saved to your downloads.",
+      "shareError": "Could not create the image. Try again.",
+      "sheetTitle": "Share head to head",
+      "shareText": "{{a}} vs {{b}} in {{season}}: {{score}} in metrics.",
+      "scoreAria": "Metrics score: {{a}} {{wa}}, {{b}} {{wb}}"
+    },
+    "teams": {
+      "title": "Teams",
+      "new": "New",
+      "open": "Open",
+      "back": "Stats",
+      "previewIntro": "Preview of the Teams tab · {{phase}} {{season}}, best to worst. Each bar starts at the league average: right is better, left is worse. ERA, WHIP and K are pitching.",
+      "intro": "All 6 teams in each metric, best to worst. Each bar starts at the league average: right is better.",
+      "league": "league {{value}}",
+      "lower": "lower is better",
+      "chartAria": "{{metric}} by team, best to worst, against the league average",
+      "hitting": "Hitting",
+      "pitching": "Pitching",
+      "games_one": "{{count}} game per team",
+      "games_other": "{{count}} games per team",
+      "empty": "No {{phase}} games this season yet.",
+      "note": "League averages from the sums of the 6 teams (not an average of averages). FIP with the league constant ({{fip}}).",
+      "metrics": {
+        "avg": {
+          "short": "AVG",
+          "long": "Batting average"
+        },
+        "obp": {
+          "short": "OBP",
+          "long": "On-base percentage"
+        },
+        "slg": {
+          "short": "SLG",
+          "long": "Slugging"
+        },
+        "ops": {
+          "short": "OPS",
+          "long": "On-base plus slugging"
+        },
+        "hr": {
+          "short": "HR",
+          "long": "Home runs"
+        },
+        "rpg": {
+          "short": "R/G",
+          "long": "Runs scored per game"
+        },
+        "sb": {
+          "short": "SB",
+          "long": "Stolen bases"
+        },
+        "kPct": {
+          "short": "K%",
+          "long": "Batting strikeout rate"
+        },
+        "bbPct": {
+          "short": "BB%",
+          "long": "Batting walk rate"
+        },
+        "era": {
+          "short": "ERA",
+          "long": "Earned run average"
+        },
+        "whip": {
+          "short": "WHIP",
+          "long": "Walks + hits per inning"
+        },
+        "k": {
+          "short": "K",
+          "long": "Pitching strikeouts"
+        },
+        "k9": {
+          "short": "K/9",
+          "long": "Strikeouts per 9 innings"
+        },
+        "bb9": {
+          "short": "BB/9",
+          "long": "Walks per 9 innings"
+        },
+        "hr9": {
+          "short": "HR/9",
+          "long": "Home runs per 9 innings"
+        },
+        "sv": {
+          "short": "SV",
+          "long": "Saves"
+        },
+        "fip": {
+          "short": "FIP",
+          "long": "Fielding independent pitching"
+        }
+      },
+      "openAria": "Open the Teams tab",
+      "missing": "Team totals arrive with the next El Play server update."
+    },
+    "fielding": {
+      "title": "Defense · by position",
+      "posFilter": "Filter by position",
+      "allPositions": "All",
+      "positions": {
+        "C": "Catcher",
+        "1B": "First base",
+        "2B": "Second base",
+        "3B": "Third base",
+        "SS": "Shortstop",
+        "LF": "Left field",
+        "CF": "Center field",
+        "RF": "Right field"
+      },
+      "caption": "Defense · {{pos}}",
+      "cols": {
+        "pos": {
+          "short": "Pos",
+          "long": "Position"
+        },
+        "inn": {
+          "short": "Inn",
+          "long": "Innings in the field"
+        },
+        "a": {
+          "short": "A",
+          "long": "Assists"
+        },
+        "e": {
+          "short": "E",
+          "long": "Errors"
+        },
+        "fpct": {
+          "short": "FPct",
+          "long": "Fielding percentage"
+        },
+        "rf9": {
+          "short": "RF/9",
+          "long": "Range factor per 9 innings"
+        },
+        "dp": {
+          "short": "DP",
+          "long": "Double plays"
+        },
+        "csPct": {
+          "short": "CS%",
+          "long": "Caught stealing rate"
+        },
+        "pb": {
+          "short": "PB",
+          "long": "Passed balls"
+        }
+      },
+      "empty": "MLB does not have defense for this phase yet.",
+      "emptyFilter": "Nobody with enough innings at this position.",
+      "all": "See all {{count}} fielders",
+      "note": "MLB defense (new in the app): {{inn}}+ innings at the position. Colors compare with players at the same position; for errors and passed balls lower is better.",
+      "more_one": "Show {{count}} more (of {{total}})",
+      "more_other": "Show {{count}} more (of {{total}})"
+    },
+    "cols": {
+      "pts": {
+        "short": "Pts",
+        "long": "Fantasy points"
+      },
+      "ppg": {
+        "short": "Pts/G",
+        "long": "Fantasy points per game"
+      },
+      "g": {
+        "short": "G",
+        "long": "Games"
+      },
+      "gs": {
+        "short": "GS",
+        "long": "Games started"
+      },
+      "pa": {
+        "short": "PA",
+        "long": "Plate appearances"
+      },
+      "ab": {
+        "short": "AB",
+        "long": "At bats"
+      },
+      "h": {
+        "short": "H",
+        "long": "Hits"
+      },
+      "d": {
+        "short": "2B",
+        "long": "Doubles"
+      },
+      "t": {
+        "short": "3B",
+        "long": "Triples"
+      },
+      "hr": {
+        "short": "HR",
+        "long": "Home runs"
+      },
+      "rbi": {
+        "short": "RBI",
+        "long": "Runs batted in"
+      },
+      "r": {
+        "short": "R",
+        "long": "Runs scored"
+      },
+      "bb": {
+        "short": "BB",
+        "long": "Walks"
+      },
+      "k": {
+        "short": "K",
+        "long": "Strikeouts"
+      },
+      "sb": {
+        "short": "SB",
+        "long": "Stolen bases"
+      },
+      "cs": {
+        "short": "CS",
+        "long": "Caught stealing"
+      },
+      "gidp": {
+        "short": "GDP",
+        "long": "Grounded into double plays"
+      },
+      "avg": {
+        "short": "AVG",
+        "long": "Batting average"
+      },
+      "obp": {
+        "short": "OBP",
+        "long": "On-base percentage"
+      },
+      "slg": {
+        "short": "SLG",
+        "long": "Slugging"
+      },
+      "ops": {
+        "short": "OPS",
+        "long": "On-base plus slugging"
+      },
+      "opsPlus": {
+        "short": "OPS+",
+        "long": "League-adjusted OPS (100 = average)"
+      },
+      "iso": {
+        "short": "ISO",
+        "long": "Isolated power"
+      },
+      "babip": {
+        "short": "BABIP",
+        "long": "Batting average on balls in play"
+      },
+      "kPct": {
+        "short": "K%",
+        "long": "Strikeout rate per plate appearance"
+      },
+      "bbPct": {
+        "short": "BB%",
+        "long": "Walk rate per plate appearance"
+      },
+      "bbK": {
+        "short": "BB/K",
+        "long": "Walks per strikeout"
+      },
+      "abHr": {
+        "short": "AB/HR",
+        "long": "At bats per home run"
+      },
+      "xbh": {
+        "short": "XBH",
+        "long": "Extra-base hits"
+      },
+      "sbPct": {
+        "short": "SB%",
+        "long": "Stolen base success"
+      },
+      "last5": {
+        "short": "Last 5",
+        "long": "Fantasy points in the last 5 games"
+      },
+      "ip": {
+        "short": "IP",
+        "long": "Innings pitched"
+      },
+      "wl": {
+        "short": "W-L",
+        "long": "Wins and losses"
+      },
+      "bf": {
+        "short": "BF",
+        "long": "Batters faced"
+      },
+      "w": {
+        "short": "W",
+        "long": "Wins"
+      },
+      "l": {
+        "short": "L",
+        "long": "Losses"
+      },
+      "sv": {
+        "short": "SV",
+        "long": "Saves"
+      },
+      "hld": {
+        "short": "HLD",
+        "long": "Holds"
+      },
+      "er": {
+        "short": "ER",
+        "long": "Earned runs"
+      },
+      "era": {
+        "short": "ERA",
+        "long": "Earned run average"
+      },
+      "whip": {
+        "short": "WHIP",
+        "long": "Walks + hits per inning"
+      },
+      "eraPlus": {
+        "short": "ERA+",
+        "long": "League-adjusted ERA (100 = average)"
+      },
+      "fip": {
+        "short": "FIP",
+        "long": "Fielding independent pitching"
+      },
+      "k9": {
+        "short": "K/9",
+        "long": "Strikeouts per 9 innings"
+      },
+      "bb9": {
+        "short": "BB/9",
+        "long": "Walks per 9 innings"
+      },
+      "h9": {
+        "short": "H/9",
+        "long": "Hits per 9 innings"
+      },
+      "hr9": {
+        "short": "HR/9",
+        "long": "Home runs per 9 innings"
+      },
+      "kBb": {
+        "short": "K/BB",
+        "long": "Strikeouts per walk"
+      }
+    },
+    "glossary": {
+      "formula": {
+        "avg": "AVG = H / AB",
+        "obp": "OBP = (H + BB + HBP) / (AB + BB + HBP + SF)",
+        "slg": "SLG = total bases / AB",
+        "ops": "OPS = OBP + SLG",
+        "opsPlus": "OPS+ = 100 × (OBP / lgOBP + SLG / lgSLG − 1)",
+        "iso": "ISO = SLG − AVG",
+        "babip": "BABIP = (H − HR) / (AB − K − HR + SF)",
+        "kPct": "K% = K / PA",
+        "bbPct": "BB% = BB / PA",
+        "bbK": "BB/K = BB / K",
+        "abHr": "AB/HR = AB / HR",
+        "sbPct": "SB% = SB / (SB + CS)",
+        "era": "ERA = 9 × ER / IP",
+        "eraPlus": "ERA+ = 100 × lgERA / ERA",
+        "whip": "WHIP = (BB + H) / IP",
+        "fip": "FIP = (13 × HR + 3 × (BB + HBP) − 2 × K) / IP + league constant",
+        "k9": "K/9 = 9 × K / IP",
+        "bb9": "BB/9 = 9 × BB / IP",
+        "h9": "H/9 = 9 × H / IP",
+        "hr9": "HR/9 = 9 × HR / IP",
+        "kBb": "K/BB = K / BB"
+      },
+      "desc": {
+        "opsPlus": "100 is league average; 130 is 30% better.",
+        "eraPlus": "100 is league average; higher is better.",
+        "fip": "Only what the pitcher controls (strikeouts, walks and homers), on this league's ERA scale.",
+        "last5": "Fantasy points in their last 5 games of the phase. MLB sends them once they have played 5.",
+        "pts": "El Play Fantasy points with the same scoring as the game."
+      },
+      "percentile": {
+        "term": "P",
+        "name": "Percentile",
+        "desc": "From 0 (worst in the group) to 100 (best). For “lower is better” it is inverted."
+      },
+      "qualified": {
+        "term": "Qualified",
+        "name": "Who makes the table",
+        "descB": "2 plate appearances per team game, the same in Leaders, Stats and the profile.",
+        "descP": "Pitchers with 0.4 innings per team game; in Relief, 1 game for every 4 team games and no starts."
+      }
+    },
+    "tabs": {
+      "label": "Stats sections",
+      "newAria": "{{label}} (new)"
+    },
+    "phaseSheet": "Season phase",
+    "phaseAria": "Phase: {{phase}}. Change",
+    "loading": "Loading stats"
+  }
+}

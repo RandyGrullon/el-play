@@ -1,0 +1,500 @@
+{
+  "es": {
+    "live": "Hay juegos en vivo: la tabla se renueva cada minuto",
+    "upToDate_one": "Al día: {{count}} final del {{day}}",
+    "upToDate_other": "Al día: {{count}} finales del {{day}}",
+    "phaseEmpty": "{{phase}}: sin juegos todavía",
+    "progress": {
+      "perTeam": "cada equipo juega {{count}}",
+      "played_one": "{{count}} jugado",
+      "played_other": "{{count}} jugados",
+      "bestOf": "al mejor de {{count}}",
+      "aria": "Avance: {{played}} de {{total}} juegos por equipo"
+    },
+    "race": {
+      "title": "Carrera por la clasificación",
+      "leadRegular": "Juegos sobre .500 en cada fecha. Los {{count}} primeros pasan al Round Robin: la franja azul es el corte.",
+      "leadRoundRobin": "Juegos sobre .500 en cada fecha del Round Robin. Los {{count}} primeros van a la final: la franja azul es el corte.",
+      "favorite": "Tu equipo va más grueso.",
+      "hint": "Toca un equipo para aislar su línea",
+      "teams": "Aislar la línea de un equipo",
+      "isolate": "Aislar la línea de {{name}}",
+      "readout": "{{abbrev}} {{record}}, {{over}}",
+      "place": "{{rank}}.º lugar",
+      "status": {
+        "in": "clasifica hoy",
+        "line": "en la línea de corte",
+        "tied": "mismo récord que el {{advance}}.º",
+        "behind_one": "a {{count}} juego del {{advance}}.º",
+        "behind_other": "a {{count}} juegos del {{advance}}.º",
+        "clinched": "clasificado",
+        "eliminated": "eliminado"
+      },
+      "start": "Inicio",
+      "today": "Hoy",
+      "pending": "Por jugar",
+      "pendingToday_one": "{{count}} juego hoy",
+      "pendingToday_other": "{{count}} juegos hoy",
+      "pendingDay_one": "{{count}} juego el {{day}}",
+      "pendingDay_other": "{{count}} juegos el {{day}}",
+      "cut": "Corte {{advance}}.º",
+      "aria": "Carrera por la clasificación: juegos sobre .500 de cada equipo al cierre de cada fecha. Ahora: {{summary}}.",
+      "early_one": "Temporada recién empezada: {{count}} fecha jugada. La gráfica se alarga con cada jornada.",
+      "early_other": "Temporada recién empezada: {{count}} fechas jugadas. La gráfica se alarga con cada jornada.",
+      "chartHint": "Toca la gráfica cerca de una línea o un equipo de abajo para aislarlo."
+    },
+    "today": {
+      "title": "Hoy mueven la carrera · {{day}}",
+      "titleNext": "Próxima fecha · {{day}}",
+      "vs": "{{a}}.º vs {{b}}.º",
+      "atCut": "en el corte",
+      "live": "En vivo",
+      "tbd": "Por anunciar",
+      "aria": "{{away}} visita a {{home}}. {{ranks}} {{cut}}. {{time}}, {{venue}}.",
+      "open": "Abrir el juego"
+    },
+    "table": {
+      "title": "Tabla",
+      "caption": "Tabla de posiciones, {{phase}}",
+      "rowName": "{{rank}}.º {{name}}",
+      "views": {
+        "label": "Vista de la tabla",
+        "summary": "Resumen",
+        "runs": "Carreras",
+        "situations": "Situaciones"
+      },
+      "cols": {
+        "team": "Equipo",
+        "record": "G-P",
+        "pct": "PCT",
+        "gb": "JD",
+        "streak": "Racha",
+        "last10": "Últ. 10",
+        "rs": "CA",
+        "ra": "CP",
+        "diff": "DIF",
+        "expected": "Esp.",
+        "luck": "Suerte"
+      },
+      "situations": {
+        "home": "Casa",
+        "away": "Visita",
+        "day": "Día",
+        "night": "Noche",
+        "left": "vs Z",
+        "right": "vs D",
+        "oneRun": "1 C",
+        "extraInning": "Ext.",
+        "winners": "+.500",
+        "lastTen": "Últ. 10"
+      },
+      "situationsLong": {
+        "home": "récord en casa",
+        "away": "récord de visita",
+        "day": "récord de día",
+        "night": "récord de noche",
+        "left": "récord contra abridor zurdo",
+        "right": "récord contra abridor derecho",
+        "oneRun": "récord en juegos de una carrera",
+        "extraInning": "récord en entradas extra",
+        "winners": "récord contra equipos de .500 o más",
+        "lastTen": "últimos 10"
+      },
+      "badge": {
+        "clinched": "Clasificado",
+        "eliminated": "Eliminado",
+        "elimination": "N.º elim. {{count}}"
+      },
+      "streakWon_one": "ganó {{count}} seguido",
+      "streakWon_other": "ganó {{count}} seguidos",
+      "streakLost_one": "perdió {{count}} seguido",
+      "streakLost_other": "perdió {{count}} seguidos",
+      "luckAria": "{{n}} contra el récord esperado",
+      "noteFavorite": "Tu equipo va resaltado en oro.",
+      "noteCut": "Sobre la línea de corte, los que hoy clasifican.",
+      "noteRuns": "La vista Carreras resalta DIF sin cambiar el orden de la tabla. Suerte: ganados de más (+) o de menos (−) contra el récord esperado de MLB.",
+      "noteSituations": "Toca una columna para ordenar.",
+      "noteSorted": "Ordenado por {{name}}: se oculta la línea de corte y el cuadrito sigue siendo el puesto en la tabla. Toca otra vez la columna para volver.",
+      "noteHidden": "Sin juegos aún: {{list}}.",
+      "legendLow": "0 %",
+      "legendHigh": "100 % ganados",
+      "legendEmpty": "sin juegos",
+      "and": " y ",
+      "situationsEmpty": "Todavía no hay juegos en ninguna situación (casa, visita, día, noche…). El mapa se llena con los primeros juegos de la fase.",
+      "sortedAria": "ordenada"
+    },
+    "glossary": {
+      "title": "Tabla de posiciones",
+      "intro": "Datos de MLB StatsAPI. Con juegos en vivo la tabla se renueva cada minuto.",
+      "record": {
+        "term": "G-P",
+        "name": "Ganados y perdidos"
+      },
+      "pct": {
+        "term": "PCT",
+        "name": "Porcentaje de victorias",
+        "formula": "PCT = G / (G + P)"
+      },
+      "gb": {
+        "term": "JD",
+        "name": "Juegos detrás del primero"
+      },
+      "streak": {
+        "term": "Racha",
+        "name": "Ganados o perdidos seguidos",
+        "description": "G3: ganó los últimos 3. P1: perdió el último."
+      },
+      "last10": {
+        "term": "Últ. 10",
+        "name": "Últimos 10 juegos",
+        "description": "Del más reciente al más viejo: punto verde ganó, rojo perdió; punteado, por jugar."
+      },
+      "rs": {
+        "term": "CA",
+        "name": "Carreras anotadas"
+      },
+      "ra": {
+        "term": "CP",
+        "name": "Carreras permitidas"
+      },
+      "diff": {
+        "term": "DIF",
+        "name": "Diferencia de carreras",
+        "formula": "DIF = CA − CP"
+      },
+      "expected": {
+        "term": "Esp.",
+        "name": "Récord esperado",
+        "description": "El récord que le tocaría por sus carreras anotadas y permitidas, según MLB."
+      },
+      "luck": {
+        "term": "Suerte",
+        "name": "Ganados de más o de menos",
+        "formula": "Suerte = G − G esperados",
+        "description": "Positivo: ha ganado más de lo que dicen sus carreras."
+      },
+      "homeAway": {
+        "term": "Casa · Visita",
+        "name": "Récord en casa y de visita"
+      },
+      "dayNight": {
+        "term": "Día · Noche",
+        "name": "Récord de día y de noche"
+      },
+      "leftRight": {
+        "term": "vs Z · vs D",
+        "name": "Contra abridor zurdo o derecho",
+        "description": "Según la mano del lanzador abridor del rival."
+      },
+      "oneRunExtra": {
+        "term": "1 C · Ext.",
+        "name": "Juegos de una carrera · entradas extra"
+      },
+      "winners": {
+        "term": "+.500",
+        "name": "Contra equipos de .500 o más"
+      },
+      "elimination": {
+        "term": "N.º elim.",
+        "name": "Número de eliminación",
+        "description": "Triunfos del último que clasifica o derrotas propias que faltan para quedar fuera."
+      },
+      "clinched": {
+        "term": "Clasificado",
+        "name": "Lugar asegurado",
+        "description": "Pasa aunque pierda todo lo que le falta."
+      },
+      "eliminated": {
+        "term": "Eliminado",
+        "name": "Fuera de la clasificación",
+        "description": "Ya no puede alcanzar la línea de corte."
+      }
+    },
+    "h2h": {
+      "title": "Enfrentamientos directos",
+      "lead": "Récord de la fila contra la columna. Si no se han visto, el día del próximo duelo.",
+      "caption": "Récord de cada equipo (fila) contra cada rival (columna)",
+      "teamColumn": "Equipo",
+      "self": "Mismo equipo",
+      "cellPlayed": "{{team}} contra {{rival}}: {{record}}{{next}}",
+      "nextAria": ", próximo duelo el {{day}}",
+      "cellPending": "{{team}} contra {{rival}}: sin jugar, próximo duelo el {{day}}",
+      "cellNone": "{{team}} contra {{rival}}: sin jugar",
+      "won": "Ganó",
+      "lost": "Perdió",
+      "none": "Sin jugar: día del duelo",
+      "allMet": "Las {{count}} parejas ya se vieron al menos una vez.",
+      "pendingBy": "Del {{from}} al {{to}} se cruzan las {{count}} parejas al menos una vez.",
+      "pendingCount_one": "Falta {{count}} pareja por cruzarse.",
+      "pendingCount_other": "Faltan {{count}} parejas por cruzarse."
+    },
+    "day": {
+      "title": "La fecha {{number}} en cifras",
+      "titleDay": "El {{day}} en cifras",
+      "games_one": "Juego jugado",
+      "games_other": "Juegos jugados",
+      "runs": "Carreras por juego",
+      "blowout": "{{winner}} {{score}} {{loser}}, mayor paliza",
+      "noBlowout": "Sin diferencia",
+      "margin": "{{winner}} {{score}} {{loser}}, mayor margen",
+      "aria": "{{games}}. {{runs}}. {{blowout}}"
+    },
+    "source": "Datos: MLB StatsAPI · {{league}} {{season}}.",
+    "tabs": {
+      "teams": "Equipos",
+      "new": "nuevo",
+      "label": "Secciones de Posiciones"
+    },
+    "calendarMissing": "La carrera, los enfrentamientos directos y la fecha en cifras salen cuando el servidor manda el calendario de la temporada.",
+    "shareTable": "Compartir la tabla"
+  },
+  "en": {
+    "live": "Games in progress: the table refreshes every minute",
+    "upToDate_one": "Up to date: {{count}} final from {{day}}",
+    "upToDate_other": "Up to date: {{count}} finals from {{day}}",
+    "phaseEmpty": "{{phase}}: no games yet",
+    "progress": {
+      "perTeam": "each team plays {{count}}",
+      "played_one": "{{count}} played",
+      "played_other": "{{count}} played",
+      "bestOf": "best of {{count}}",
+      "aria": "Progress: {{played}} of {{total}} games per team"
+    },
+    "race": {
+      "title": "Playoff race",
+      "leadRegular": "Games over .500 after each date. The top {{count}} advance to the Round Robin: the blue band is the cut line.",
+      "leadRoundRobin": "Games over .500 after each Round Robin date. The top {{count}} reach the final: the blue band is the cut line.",
+      "favorite": "Your team has the thicker line.",
+      "hint": "Tap a team to isolate its line",
+      "teams": "Isolate a team's line",
+      "isolate": "Isolate the {{name}} line",
+      "readout": "{{abbrev}} {{record}}, {{over}}",
+      "place": "#{{rank}}",
+      "status": {
+        "in": "in as of today",
+        "line": "on the cut line",
+        "tied": "same record as #{{advance}}",
+        "behind_one": "{{count}} game behind #{{advance}}",
+        "behind_other": "{{count}} games behind #{{advance}}",
+        "clinched": "clinched",
+        "eliminated": "eliminated"
+      },
+      "start": "Start",
+      "today": "Today",
+      "pending": "To play",
+      "pendingToday_one": "{{count}} game today",
+      "pendingToday_other": "{{count}} games today",
+      "pendingDay_one": "{{count}} game on {{day}}",
+      "pendingDay_other": "{{count}} games on {{day}}",
+      "cut": "Cut #{{advance}}",
+      "aria": "Playoff race: each team's games over .500 after each date. Now: {{summary}}.",
+      "early_one": "The season just started: {{count}} date played. The chart grows with every game day.",
+      "early_other": "The season just started: {{count}} dates played. The chart grows with every game day.",
+      "chartHint": "Tap the chart near a line, or a team below, to isolate it."
+    },
+    "today": {
+      "title": "Today's race games · {{day}}",
+      "titleNext": "Next game day · {{day}}",
+      "vs": "#{{a}} vs #{{b}}",
+      "atCut": "at the cut line",
+      "live": "Live",
+      "tbd": "TBD",
+      "aria": "{{away}} at {{home}}. {{ranks}} {{cut}}. {{time}}, {{venue}}.",
+      "open": "Open the game"
+    },
+    "table": {
+      "title": "Table",
+      "caption": "Standings, {{phase}}",
+      "rowName": "#{{rank}} {{name}}",
+      "views": {
+        "label": "Table view",
+        "summary": "Summary",
+        "runs": "Runs",
+        "situations": "Splits"
+      },
+      "cols": {
+        "team": "Team",
+        "record": "W-L",
+        "pct": "PCT",
+        "gb": "GB",
+        "streak": "Strk",
+        "last10": "L10",
+        "rs": "RS",
+        "ra": "RA",
+        "diff": "DIFF",
+        "expected": "Exp.",
+        "luck": "Luck"
+      },
+      "situations": {
+        "home": "Home",
+        "away": "Road",
+        "day": "Day",
+        "night": "Night",
+        "left": "vs L",
+        "right": "vs R",
+        "oneRun": "1-run",
+        "extraInning": "XInn",
+        "winners": "+.500",
+        "lastTen": "L10"
+      },
+      "situationsLong": {
+        "home": "home record",
+        "away": "road record",
+        "day": "day record",
+        "night": "night record",
+        "left": "record vs left-handed starters",
+        "right": "record vs right-handed starters",
+        "oneRun": "record in one-run games",
+        "extraInning": "record in extra innings",
+        "winners": "record vs .500 or better teams",
+        "lastTen": "last 10"
+      },
+      "badge": {
+        "clinched": "Clinched",
+        "eliminated": "Eliminated",
+        "elimination": "E# {{count}}"
+      },
+      "streakWon_one": "won {{count}} straight",
+      "streakWon_other": "won {{count}} straight",
+      "streakLost_one": "lost {{count}} straight",
+      "streakLost_other": "lost {{count}} straight",
+      "luckAria": "{{n}} vs expected record",
+      "noteFavorite": "Your team is highlighted in gold.",
+      "noteCut": "Above the cut line, the teams that qualify today.",
+      "noteRuns": "The Runs view highlights DIFF without changing the table order. Luck: wins above (+) or below (−) MLB's expected record.",
+      "noteSituations": "Tap a column to sort.",
+      "noteSorted": "Sorted by {{name}}: the cut line is hidden and the small box is still the standings place. Tap the column again to go back.",
+      "noteHidden": "No games yet: {{list}}.",
+      "legendLow": "0%",
+      "legendHigh": "100% won",
+      "legendEmpty": "no games",
+      "and": " and ",
+      "situationsEmpty": "No split has games yet (home, road, day, night…). The map fills in with the first games of the phase.",
+      "sortedAria": "sorted"
+    },
+    "glossary": {
+      "title": "Standings",
+      "intro": "Data from MLB StatsAPI. With games in progress the table refreshes every minute.",
+      "record": {
+        "term": "W-L",
+        "name": "Wins and losses"
+      },
+      "pct": {
+        "term": "PCT",
+        "name": "Winning percentage",
+        "formula": "PCT = W / (W + L)"
+      },
+      "gb": {
+        "term": "GB",
+        "name": "Games behind the leader"
+      },
+      "streak": {
+        "term": "Strk",
+        "name": "Wins or losses in a row",
+        "description": "W3: won the last 3. L1: lost the last one."
+      },
+      "last10": {
+        "term": "L10",
+        "name": "Last 10 games",
+        "description": "Most recent first: green dot won, red lost; dashed, still to play."
+      },
+      "rs": {
+        "term": "RS",
+        "name": "Runs scored"
+      },
+      "ra": {
+        "term": "RA",
+        "name": "Runs allowed"
+      },
+      "diff": {
+        "term": "DIFF",
+        "name": "Run differential",
+        "formula": "DIFF = RS − RA"
+      },
+      "expected": {
+        "term": "Exp.",
+        "name": "Expected record",
+        "description": "The record its runs scored and allowed point to, according to MLB."
+      },
+      "luck": {
+        "term": "Luck",
+        "name": "Wins above or below expected",
+        "formula": "Luck = W − expected W",
+        "description": "Positive: it has won more than its runs suggest."
+      },
+      "homeAway": {
+        "term": "Home · Road",
+        "name": "Home and road record"
+      },
+      "dayNight": {
+        "term": "Day · Night",
+        "name": "Day and night record"
+      },
+      "leftRight": {
+        "term": "vs L · vs R",
+        "name": "Against left- or right-handed starters",
+        "description": "By the throwing hand of the opposing starter."
+      },
+      "oneRunExtra": {
+        "term": "1-run · XInn",
+        "name": "One-run games · extra innings"
+      },
+      "winners": {
+        "term": "+.500",
+        "name": "Against .500 or better teams"
+      },
+      "elimination": {
+        "term": "E#",
+        "name": "Elimination number",
+        "description": "Wins by the last qualifying team or own losses left before being knocked out."
+      },
+      "clinched": {
+        "term": "Clinched",
+        "name": "Spot secured",
+        "description": "Advances even if it loses every remaining game."
+      },
+      "eliminated": {
+        "term": "Eliminated",
+        "name": "Out of the race",
+        "description": "Can no longer reach the cut line."
+      }
+    },
+    "h2h": {
+      "title": "Head to head",
+      "lead": "Row team's record against the column team. If they haven't met, the day of their next game.",
+      "caption": "Each team's record (row) against each opponent (column)",
+      "teamColumn": "Team",
+      "self": "Same team",
+      "cellPlayed": "{{team}} vs {{rival}}: {{record}}{{next}}",
+      "nextAria": ", next meeting {{day}}",
+      "cellPending": "{{team}} vs {{rival}}: not played yet, next meeting {{day}}",
+      "cellNone": "{{team}} vs {{rival}}: not played yet",
+      "won": "Won",
+      "lost": "Lost",
+      "none": "Not played: game day",
+      "allMet": "All {{count}} pairs have met at least once.",
+      "pendingBy": "Between {{from}} and {{to}} all {{count}} pairs meet at least once.",
+      "pendingCount_one": "{{count}} pair still has to meet.",
+      "pendingCount_other": "{{count}} pairs still have to meet."
+    },
+    "day": {
+      "title": "Game day {{number}} in numbers",
+      "titleDay": "{{day}} in numbers",
+      "games_one": "Game played",
+      "games_other": "Games played",
+      "runs": "Runs per game",
+      "blowout": "{{winner}} {{score}} {{loser}}, biggest rout",
+      "noBlowout": "No margin",
+      "margin": "{{winner}} {{score}} {{loser}}, widest margin",
+      "aria": "{{games}}. {{runs}}. {{blowout}}"
+    },
+    "source": "Data: MLB StatsAPI · {{league}} {{season}}.",
+    "tabs": {
+      "teams": "Teams",
+      "new": "new",
+      "label": "Standings sections"
+    },
+    "calendarMissing": "The race, head-to-head and date numbers show up once the server sends the season schedule.",
+    "shareTable": "Share the table"
+  }
+}

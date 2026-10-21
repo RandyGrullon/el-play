@@ -1,0 +1,152 @@
+{
+  "es": {
+    "time": {
+      "s": "{{count}} s",
+      "min": "{{count}} min",
+      "h": "{{count}} h",
+      "d": "{{count}} d"
+    },
+    "updated": {
+      "full": "Actualizado hace {{time}}",
+      "short": "hace {{time}}"
+    },
+    "delta": {
+      "up": "sube {{value}}",
+      "down": "baja {{value}}",
+      "same": "sin cambio"
+    },
+    "form": {
+      "win": "G",
+      "loss": "P",
+      "aria_one": "Último juego: {{wins}} ganado y {{losses}} perdido",
+      "aria_other": "Últimos {{count}}: {{wins}} ganados y {{losses}} perdidos"
+    },
+    "table": {
+      "sortBy": "Ordenar por {{column}}"
+    },
+    "glossary": {
+      "open": "Qué significa cada cifra: {{title}}",
+      "search": "Busca una métrica",
+      "empty": "Ninguna métrica coincide.",
+      "lowerBetter": "Menos es mejor"
+    },
+    "game": {
+      "detail": "Detalle del juego",
+      "sameAsLive": "igual que en vivo",
+      "tabs": {
+        "plays": "Jugadas",
+        "pitchers": "Lanzadores",
+        "contact": "Contacto",
+        "box": "Box",
+        "field": "En el terreno"
+      },
+      "situation": "Situación",
+      "fullZone": "Zona completa",
+      "zoneSheet": "Zona de strike",
+      "playsSheet": "Jugadas y box score",
+      "playsSwitch": "Jugadas o box score",
+      "playsView": "Jugadas",
+      "boxView": "Box score",
+      "allPlays": "Jugada a jugada y box completo",
+      "info": "Ficha del juego",
+      "phase": {
+        "R": "Serie regular",
+        "L": "Round Robin",
+        "W": "Serie final"
+      },
+      "series": "{{name}} · juego {{game}} de {{total}}",
+      "seriesGame": "{{name}} · juego {{game}}",
+      "seriesLead": "{{team}} lidera {{wins}}-{{losses}}",
+      "seriesTied": "Serie empatada {{wins}}-{{losses}}",
+      "seriesWon": "{{team}} gana la serie {{wins}}-{{losses}}",
+      "weather": "{{temp}} °C · {{condition}}",
+      "delay": "Demora: {{reason}}",
+      "scoreBar": "Marcador en vivo",
+      "count": "Conteo {{balls}}-{{strikes}}",
+      "outs_one": "{{count}} out",
+      "outs_other": "{{count}} outs",
+      "noTracking": "Los datos de rastreo aún no llegan.",
+      "share": "Compartir",
+      "probables": "Abridores probables",
+      "details": "Antes del juego",
+      "openZone": "Abrir la zona de strike completa",
+      "openPlays": "Ver la jugada a jugada completa",
+      "updatedLive": "Se actualiza solo cada pocos segundos"
+    }
+  },
+  "en": {
+    "time": {
+      "s": "{{count}}s",
+      "min": "{{count}} min",
+      "h": "{{count}} h",
+      "d": "{{count}} d"
+    },
+    "updated": {
+      "full": "Updated {{time}} ago",
+      "short": "{{time}} ago"
+    },
+    "delta": {
+      "up": "up {{value}}",
+      "down": "down {{value}}",
+      "same": "no change"
+    },
+    "form": {
+      "win": "W",
+      "loss": "L",
+      "aria_one": "Last game: {{wins}} won and {{losses}} lost",
+      "aria_other": "Last {{count}}: {{wins}} won and {{losses}} lost"
+    },
+    "table": {
+      "sortBy": "Sort by {{column}}"
+    },
+    "glossary": {
+      "open": "What each stat means: {{title}}",
+      "search": "Search a stat",
+      "empty": "No stat matches.",
+      "lowerBetter": "Lower is better"
+    },
+    "game": {
+      "detail": "Game detail",
+      "sameAsLive": "same as live",
+      "tabs": {
+        "plays": "Plays",
+        "pitchers": "Pitchers",
+        "contact": "Contact",
+        "box": "Box",
+        "field": "On the field"
+      },
+      "situation": "Situation",
+      "fullZone": "Full zone",
+      "zoneSheet": "Strike zone",
+      "playsSheet": "Plays and box score",
+      "playsSwitch": "Plays or box score",
+      "playsView": "Plays",
+      "boxView": "Box score",
+      "allPlays": "Play by play and full box",
+      "info": "Game info",
+      "phase": {
+        "R": "Regular season",
+        "L": "Round Robin",
+        "W": "Final series"
+      },
+      "series": "{{name}} · game {{game}} of {{total}}",
+      "seriesGame": "{{name}} · game {{game}}",
+      "seriesLead": "{{team}} leads {{wins}}-{{losses}}",
+      "seriesTied": "Series tied {{wins}}-{{losses}}",
+      "seriesWon": "{{team}} wins the series {{wins}}-{{losses}}",
+      "weather": "{{temp}} °C · {{condition}}",
+      "delay": "Delay: {{reason}}",
+      "scoreBar": "Live score",
+      "count": "Count {{balls}}-{{strikes}}",
+      "outs_one": "{{count}} out",
+      "outs_other": "{{count}} outs",
+      "noTracking": "Tracking data hasn't arrived yet.",
+      "share": "Share",
+      "probables": "Probable starters",
+      "details": "Before the game",
+      "openZone": "Open the full strike zone",
+      "openPlays": "See the full play-by-play",
+      "updatedLive": "Updates on its own every few seconds"
+    }
+  }
+}

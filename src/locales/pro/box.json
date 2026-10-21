@@ -1,0 +1,700 @@
+{
+  "es": {
+    "title": "Box score",
+    "final": "final",
+    "team": "Equipo del box",
+    "view": "Columnas del bateo",
+    "basic": "Básico",
+    "expanded": "Expandido",
+    "totals": "Totales",
+    "noLineup": "La alineación todavía no está disponible.",
+    "noPitchers": "Todavía no ha lanzado nadie.",
+    "proLoading": "Cargando el box ampliado (notas, heredados, árbitros)…",
+    "proError": "No se pudo cargar el box ampliado; se ve el básico.",
+    "line": {
+      "title": "Pizarra por entradas",
+      "metric": "Qué se ve en cada entrada",
+      "caption": "Pizarra por entradas: {{metric}} de cada equipo",
+      "team": "Equipo",
+      "runs": "Carreras",
+      "hits": "Hits",
+      "lob": "LOB",
+      "short": {
+        "r": "C",
+        "h": "H",
+        "e": "E",
+        "lob": "LOB"
+      },
+      "total": {
+        "r": "Carreras",
+        "h": "Hits",
+        "e": "Errores",
+        "lob": "Dejados en base"
+      },
+      "rowAria": "{{team}}, {{metric}} por entrada: {{values}}. Total: {{r}} carreras, {{h}} hits, {{e}} errores, {{lob}} dejados en base"
+    },
+    "dec": {
+      "W": "G",
+      "L": "P",
+      "S": "SV",
+      "H": "H",
+      "BS": "SD",
+      "noSave": "Sin salvado"
+    },
+    "bat": {
+      "title": "Bateo · {{team}}",
+      "caption": "Bateo de {{team}}",
+      "batter": "Bateador",
+      "ab": "VB",
+      "abTitle": "Veces al bate",
+      "r": "C",
+      "rTitle": "Carreras",
+      "h": "H",
+      "hTitle": "Hits",
+      "rbi": "CI",
+      "rbiTitle": "Carreras impulsadas",
+      "bb": "BB",
+      "bbTitle": "Bases por bolas",
+      "k": "K",
+      "kTitle": "Ponches",
+      "d": "2B",
+      "dTitle": "Dobles",
+      "t": "3B",
+      "tTitle": "Triples",
+      "sb": "BR",
+      "sbTitle": "Bases robadas",
+      "hbp": "GP",
+      "hbpTitle": "Golpeado por lanzamiento",
+      "sf": "ES",
+      "sfTitle": "Elevados de sacrificio",
+      "lob": "LOB",
+      "lobTitle": "Dejados en base",
+      "avg": "AVG",
+      "avgTitle": "Promedio de la temporada",
+      "obp": "OBP",
+      "obpTitle": "Promedio de embasarse de la temporada",
+      "ops": "OPS",
+      "opsTitle": "OPS de la temporada",
+      "teamLob_one": "{{count}} dejado en base",
+      "teamLob_other": "{{count}} dejados en base",
+      "season": "AVG, OBP y OPS de la temporada {{season}}",
+      "seasonGames_one": "AVG, OBP y OPS de la temporada {{season}} ({{count}} juego)",
+      "seasonGames_other": "AVG, OBP y OPS de la temporada {{season}} ({{count}} juegos)",
+      "hrAria_one": "{{count}} jonrón",
+      "hrAria_other": "{{count}} jonrones",
+      "totalsAria": "Totales: {{ab}} veces al bate, {{r}} carreras, {{h}} hits, {{rbi}} impulsadas, {{bb}} bases por bolas, {{k}} ponches, AVG {{avg}}"
+    },
+    "sub": {
+      "text": "{{verb}} como emergente por {{who}} en la {{inning}}.",
+      "ran": "Corredor emergente por {{who}} en la {{inning}}.",
+      "verb": {
+        "struck_out": "Ponchado",
+        "grounded_out": "Rodado de out",
+        "flied_out": "Elevado de out",
+        "lined_out": "Línea de out",
+        "popped_out": "Elevado al cuadro",
+        "fouled_out": "Foul de out",
+        "singled": "Sencillo",
+        "doubled": "Doble",
+        "tripled": "Triple",
+        "homered": "Jonrón",
+        "walked": "Base por bolas",
+        "intentionally_walked": "Base intencional",
+        "hit_by_pitch": "Golpeado",
+        "was_hit_by_a_pitch": "Golpeado",
+        "grounded_into_a_double_play": "Doble play",
+        "flied_into_a_double_play": "Doble play de elevado",
+        "lined_into_a_double_play": "Doble play de línea",
+        "grounded_into_a_force_out": "Out forzado",
+        "grounded_into_a_fielder_s_choice": "Selección",
+        "reached_on_error": "Se embasó por error",
+        "reached_on_a_fielding_error": "Se embasó por error",
+        "reached_on_a_throwing_error": "Se embasó por error en tiro",
+        "reached_on_a_fielder_s_choice": "Se embasó por selección",
+        "hit_a_sacrifice_fly": "Elevado de sacrificio",
+        "out_on_a_sacrifice_fly": "Elevado de sacrificio",
+        "sacrificed": "Toque de sacrificio",
+        "hit_a_sacrifice_bunt": "Toque de sacrificio"
+      }
+    },
+    "pit": {
+      "title": "Pitcheo · {{team}}",
+      "caption": "Pitcheo de {{team}}",
+      "pitcher": "Lanzador",
+      "ip": "IP",
+      "ipTitle": "Entradas lanzadas",
+      "h": "H",
+      "hTitle": "Hits permitidos",
+      "r": "C",
+      "rTitle": "Carreras",
+      "er": "CL",
+      "erTitle": "Carreras limpias",
+      "bb": "BB",
+      "bbTitle": "Bases por bolas",
+      "k": "K",
+      "kTitle": "Ponches",
+      "record": "Temp. {{record}}",
+      "era": "EFE {{era}}",
+      "bf": "Enfrentó {{count}}",
+      "go_one": "{{count}} rodado",
+      "go_other": "{{count}} rodados",
+      "ao_one": "{{count}} elevado",
+      "ao_other": "{{count}} elevados",
+      "inherited": "Heredados {{count}}-{{scored}}",
+      "hold": "Hold",
+      "blown": "Salvado desperdiciado",
+      "npAria": "{{np}}, {{st}}",
+      "totalPitches": "{{np}}, {{st}}",
+      "legend": "IP entradas lanzadas · C carreras · CL limpias · G/P ganado o perdido · EFE efectividad · la cifra, pitcheos-strikes; la barra, el % de strikes.",
+      "pitches_one": "{{count}} pitcheo",
+      "pitches_other": "{{count}} pitcheos",
+      "strikes_one": "{{count}} strike",
+      "strikes_other": "{{count}} strikes"
+    },
+    "notes": {
+      "title": "Notas del juego · {{team}}",
+      "block": {
+        "batting": "Bateo",
+        "running": "Corrido",
+        "fielding": "Defensa",
+        "pitching": "Pitcheo"
+      },
+      "hits_one": "{{count}} H",
+      "hits_other": "{{count}} H",
+      "risp": "{{h}}-{{ab}} con corr. en posición",
+      "rispLabel": "Corr. en posición",
+      "tb": "Bases totales",
+      "lob": "LOB",
+      "lispTwoOut_one": "{{count}} en posición con 2 outs",
+      "lispTwoOut_other": "{{count}} en posición con 2 outs",
+      "sb_one": "{{count}} BR",
+      "sb_other": "{{count}} BR",
+      "cs_one": "{{count}} AR",
+      "cs_other": "{{count}} AR",
+      "e_one": "{{count}} E",
+      "e_other": "{{count}} E",
+      "dp_one": "{{count}} DP",
+      "dp_other": "{{count}} DP",
+      "wp_one": "{{count}} lanz. descontrolado",
+      "wp_other": "{{count}} lanz. descontrolados",
+      "hbpBy_one": "{{count}} golpeado",
+      "hbpBy_other": "{{count}} golpeados",
+      "clean": "sin incidencias",
+      "none": "Sin notas de bateo.",
+      "noRunning": "Sin robos ni atrapados.",
+      "noFielding": "Sin errores ni dobles plays.",
+      "noPitching": "Sin lanzamientos descontrolados, golpeados ni balks.",
+      "label": {
+        "d": "2B",
+        "t": "3B",
+        "hr": "HR",
+        "tb": "Bases totales",
+        "rbi": "CI",
+        "rbi2": "CI con 2 outs",
+        "lisp2": "LOB con 2 outs",
+        "sf": "ES",
+        "sac": "Toque de sacrificio",
+        "gidp": "Doble play bateado",
+        "hbp": "Golpeado",
+        "ibb": "Base intencional",
+        "sb": "BR",
+        "cs": "Atrapado robando",
+        "po": "Out en revire",
+        "e": "E",
+        "dp": "DP",
+        "tp": "TP",
+        "pb": "Bola pasada",
+        "ofa": "Asistencias de jardineros",
+        "wp": "Lanz. descontrolado",
+        "bk": "Balk",
+        "timer": "Reloj de pitcheo",
+        "ir": "Heredados-anotados"
+      }
+    },
+    "strip": {
+      "label": "Ficha del juego",
+      "time": "T",
+      "delay": "demora {{time}}",
+      "noDelay": "sin demora",
+      "firstPitch": "primer lanzamiento {{time}}",
+      "windTitle": "Viento",
+      "wind": {
+        "speed": "{{speed}} km/h {{where}}",
+        "out": "hacia el {{field}}",
+        "in": "desde el {{field}} hacia home",
+        "cross": "cruzado",
+        "crossLR": "cruzado, de izquierda a derecha",
+        "crossRL": "cruzado, de derecha a izquierda",
+        "calm": "en calma",
+        "varies": "variable"
+      },
+      "field": {
+        "LF": "jardín izquierdo",
+        "CF": "jardín central",
+        "RF": "jardín derecho"
+      },
+      "sky": {
+        "clear": "Despejado",
+        "sunny": "Soleado",
+        "cloudy": "Nublado",
+        "partly_cloudy": "Parcialmente nublado",
+        "overcast": "Cubierto",
+        "rain": "Lluvia",
+        "drizzle": "Llovizna",
+        "snow": "Nieve",
+        "dome": "Techado",
+        "roof_closed": "Techo cerrado"
+      },
+      "umpires": "Árbitros",
+      "abs": "Retos ABS",
+      "absTeam": "{{team}} {{ok}} de {{total}}",
+      "absPlayer": "{{name}} {{ok}} de {{total}}"
+    },
+    "glossary": {
+      "ab": {
+        "term": "VB",
+        "name": "Veces al bate",
+        "text": "Turnos oficiales: no cuentan bases por bolas, golpeados ni sacrificios."
+      },
+      "r": {
+        "term": "C",
+        "name": "Carreras anotadas"
+      },
+      "h": {
+        "term": "H",
+        "name": "Hits"
+      },
+      "rbi": {
+        "term": "CI",
+        "name": "Carreras impulsadas"
+      },
+      "bb": {
+        "term": "BB",
+        "name": "Bases por bolas"
+      },
+      "k": {
+        "term": "K",
+        "name": "Ponches"
+      },
+      "avg": {
+        "term": "AVG",
+        "name": "Promedio de bateo de la temporada",
+        "formula": "AVG = H / VB",
+        "text": "En la fila de totales, el promedio del equipo en este juego."
+      },
+      "d": {
+        "term": "2B",
+        "name": "Dobles"
+      },
+      "t": {
+        "term": "3B",
+        "name": "Triples"
+      },
+      "sb": {
+        "term": "BR",
+        "name": "Bases robadas"
+      },
+      "hbp": {
+        "term": "GP",
+        "name": "Golpeado por lanzamiento"
+      },
+      "sf": {
+        "term": "ES",
+        "name": "Elevados de sacrificio"
+      },
+      "lob": {
+        "term": "LOB",
+        "name": "Dejados en base",
+        "text": "Por bateador: los corredores que había en base cuando hizo out. Debajo de la tabla, los del equipo al terminar cada entrada."
+      },
+      "obp": {
+        "term": "OBP",
+        "name": "Promedio de embasarse de la temporada",
+        "formula": "OBP = (H + BB + GP) / (VB + BB + GP + ES)"
+      },
+      "ops": {
+        "term": "OPS",
+        "name": "Embasarse más slugging de la temporada",
+        "formula": "OPS = OBP + SLG"
+      },
+      "ip": {
+        "term": "IP",
+        "name": "Entradas lanzadas",
+        "text": "El decimal son outs: 2.1 son 2 entradas y 1 out."
+      },
+      "er": {
+        "term": "CL",
+        "name": "Carreras limpias",
+        "text": "Las que no llegan por un error ni por una bola pasada."
+      },
+      "era": {
+        "term": "EFE",
+        "name": "Efectividad de la temporada",
+        "formula": "EFE = CL × 9 / IP"
+      },
+      "ps": {
+        "term": "P-S",
+        "name": "Pitcheos y strikes",
+        "text": "La barra muestra el porcentaje de strikes."
+      },
+      "bf": {
+        "term": "Enfrentó",
+        "name": "Bateadores enfrentados"
+      },
+      "goao": {
+        "term": "Rodados, elevados",
+        "name": "Outs por rodado y por elevado"
+      },
+      "ir": {
+        "term": "Heredados",
+        "name": "Corredores heredados y anotados",
+        "text": "Los que estaban en base cuando entró el relevista; si anotan, la carrera es del lanzador anterior."
+      },
+      "hold": {
+        "term": "Hold",
+        "name": "Relevista que mantiene la ventaja",
+        "text": "Entra con situación de salvado, la conserva y no termina el juego."
+      },
+      "risp": {
+        "term": "Corr. en posición",
+        "name": "Hits con corredores en 2.ª o 3.ª",
+        "formula": "H-VB con corredores en posición anotadora"
+      }
+    }
+  },
+  "en": {
+    "title": "Box score",
+    "final": "final",
+    "team": "Box score team",
+    "view": "Batting columns",
+    "basic": "Basic",
+    "expanded": "Expanded",
+    "totals": "Totals",
+    "noLineup": "The lineup isn't available yet.",
+    "noPitchers": "Nobody has pitched yet.",
+    "proLoading": "Loading the expanded box (notes, inherited runners, umpires)…",
+    "proError": "Couldn't load the expanded box; showing the basic one.",
+    "line": {
+      "title": "Line score",
+      "metric": "What each inning shows",
+      "caption": "Line score: {{metric}} for each team",
+      "team": "Team",
+      "runs": "Runs",
+      "hits": "Hits",
+      "lob": "LOB",
+      "short": {
+        "r": "R",
+        "h": "H",
+        "e": "E",
+        "lob": "LOB"
+      },
+      "total": {
+        "r": "Runs",
+        "h": "Hits",
+        "e": "Errors",
+        "lob": "Left on base"
+      },
+      "rowAria": "{{team}}, {{metric}} by inning: {{values}}. Total: {{r}} runs, {{h}} hits, {{e}} errors, {{lob}} left on base"
+    },
+    "dec": {
+      "W": "W",
+      "L": "L",
+      "S": "SV",
+      "H": "H",
+      "BS": "BS",
+      "noSave": "No save"
+    },
+    "bat": {
+      "title": "Batting · {{team}}",
+      "caption": "{{team}} batting",
+      "batter": "Batter",
+      "ab": "AB",
+      "abTitle": "At bats",
+      "r": "R",
+      "rTitle": "Runs",
+      "h": "H",
+      "hTitle": "Hits",
+      "rbi": "RBI",
+      "rbiTitle": "Runs batted in",
+      "bb": "BB",
+      "bbTitle": "Walks",
+      "k": "K",
+      "kTitle": "Strikeouts",
+      "d": "2B",
+      "dTitle": "Doubles",
+      "t": "3B",
+      "tTitle": "Triples",
+      "sb": "SB",
+      "sbTitle": "Stolen bases",
+      "hbp": "HBP",
+      "hbpTitle": "Hit by pitch",
+      "sf": "SF",
+      "sfTitle": "Sacrifice flies",
+      "lob": "LOB",
+      "lobTitle": "Left on base",
+      "avg": "AVG",
+      "avgTitle": "Season batting average",
+      "obp": "OBP",
+      "obpTitle": "Season on-base percentage",
+      "ops": "OPS",
+      "opsTitle": "Season OPS",
+      "teamLob_one": "{{count}} left on base",
+      "teamLob_other": "{{count}} left on base",
+      "season": "AVG, OBP and OPS for the {{season}} season",
+      "seasonGames_one": "AVG, OBP and OPS for the {{season}} season ({{count}} game)",
+      "seasonGames_other": "AVG, OBP and OPS for the {{season}} season ({{count}} games)",
+      "hrAria_one": "{{count}} home run",
+      "hrAria_other": "{{count}} home runs",
+      "totalsAria": "Totals: {{ab}} at bats, {{r}} runs, {{h}} hits, {{rbi}} RBI, {{bb}} walks, {{k}} strikeouts, AVG {{avg}}"
+    },
+    "sub": {
+      "text": "{{verb}} for {{who}} in the {{inning}}.",
+      "ran": "Ran for {{who}} in the {{inning}}.",
+      "verb": {}
+    },
+    "pit": {
+      "title": "Pitching · {{team}}",
+      "caption": "{{team}} pitching",
+      "pitcher": "Pitcher",
+      "ip": "IP",
+      "ipTitle": "Innings pitched",
+      "h": "H",
+      "hTitle": "Hits allowed",
+      "r": "R",
+      "rTitle": "Runs",
+      "er": "ER",
+      "erTitle": "Earned runs",
+      "bb": "BB",
+      "bbTitle": "Walks",
+      "k": "K",
+      "kTitle": "Strikeouts",
+      "record": "Season {{record}}",
+      "era": "ERA {{era}}",
+      "bf": "Faced {{count}}",
+      "go_one": "{{count}} groundout",
+      "go_other": "{{count}} groundouts",
+      "ao_one": "{{count}} flyout",
+      "ao_other": "{{count}} flyouts",
+      "inherited": "Inherited {{count}}-{{scored}}",
+      "hold": "Hold",
+      "blown": "Blown save",
+      "npAria": "{{np}}, {{st}}",
+      "totalPitches": "{{np}}, {{st}}",
+      "legend": "IP innings pitched · R runs · ER earned · W/L win or loss · ERA earned run average · the number is pitches-strikes; the bar, strike %.",
+      "pitches_one": "{{count}} pitch",
+      "pitches_other": "{{count}} pitches",
+      "strikes_one": "{{count}} strike",
+      "strikes_other": "{{count}} strikes"
+    },
+    "notes": {
+      "title": "Game notes · {{team}}",
+      "block": {
+        "batting": "Batting",
+        "running": "Baserunning",
+        "fielding": "Fielding",
+        "pitching": "Pitching"
+      },
+      "hits_one": "{{count}} H",
+      "hits_other": "{{count}} H",
+      "risp": "{{h}}-for-{{ab}} with RISP",
+      "rispLabel": "With RISP",
+      "tb": "Total bases",
+      "lob": "LOB",
+      "lispTwoOut_one": "{{count}} in scoring position with 2 outs",
+      "lispTwoOut_other": "{{count}} in scoring position with 2 outs",
+      "sb_one": "{{count}} SB",
+      "sb_other": "{{count}} SB",
+      "cs_one": "{{count}} CS",
+      "cs_other": "{{count}} CS",
+      "e_one": "{{count}} E",
+      "e_other": "{{count}} E",
+      "dp_one": "{{count}} DP",
+      "dp_other": "{{count}} DP",
+      "wp_one": "{{count}} wild pitch",
+      "wp_other": "{{count}} wild pitches",
+      "hbpBy_one": "{{count}} hit batter",
+      "hbpBy_other": "{{count}} hit batters",
+      "clean": "clean",
+      "none": "No batting notes.",
+      "noRunning": "No steals or caught stealing.",
+      "noFielding": "No errors or double plays.",
+      "noPitching": "No wild pitches, hit batters or balks.",
+      "label": {
+        "d": "2B",
+        "t": "3B",
+        "hr": "HR",
+        "tb": "TB",
+        "rbi": "RBI",
+        "rbi2": "2-out RBI",
+        "lisp2": "Left in scoring position, 2 out",
+        "sf": "SF",
+        "sac": "SAC",
+        "gidp": "GIDP",
+        "hbp": "HBP",
+        "ibb": "IBB",
+        "sb": "SB",
+        "cs": "CS",
+        "po": "PO",
+        "e": "E",
+        "dp": "DP",
+        "tp": "TP",
+        "pb": "PB",
+        "ofa": "Outfield assists",
+        "wp": "WP",
+        "bk": "Balk",
+        "timer": "Pitch timer",
+        "ir": "Inherited runners-scored"
+      }
+    },
+    "strip": {
+      "label": "Game info",
+      "time": "T",
+      "delay": "{{time}} delay",
+      "noDelay": "no delay",
+      "firstPitch": "first pitch {{time}}",
+      "windTitle": "Wind",
+      "wind": {
+        "speed": "{{speed}} km/h {{where}}",
+        "out": "out to {{field}}",
+        "in": "in from {{field}}",
+        "cross": "crosswind",
+        "crossLR": "left to right",
+        "crossRL": "right to left",
+        "calm": "calm",
+        "varies": "varies"
+      },
+      "field": {
+        "LF": "left field",
+        "CF": "center field",
+        "RF": "right field"
+      },
+      "sky": {
+        "clear": "Clear",
+        "sunny": "Sunny",
+        "cloudy": "Cloudy",
+        "partly_cloudy": "Partly cloudy",
+        "overcast": "Overcast",
+        "rain": "Rain",
+        "drizzle": "Drizzle",
+        "snow": "Snow",
+        "dome": "Dome",
+        "roof_closed": "Roof closed"
+      },
+      "umpires": "Umpires",
+      "abs": "ABS challenges",
+      "absTeam": "{{team}} {{ok}} of {{total}}",
+      "absPlayer": "{{name}} {{ok}} of {{total}}"
+    },
+    "glossary": {
+      "ab": {
+        "term": "AB",
+        "name": "At bats",
+        "text": "Official at bats: walks, hit-by-pitches and sacrifices don't count."
+      },
+      "r": {
+        "term": "R",
+        "name": "Runs scored"
+      },
+      "h": {
+        "term": "H",
+        "name": "Hits"
+      },
+      "rbi": {
+        "term": "RBI",
+        "name": "Runs batted in"
+      },
+      "bb": {
+        "term": "BB",
+        "name": "Walks"
+      },
+      "k": {
+        "term": "K",
+        "name": "Strikeouts"
+      },
+      "avg": {
+        "term": "AVG",
+        "name": "Season batting average",
+        "formula": "AVG = H / AB",
+        "text": "In the totals row, the team's average in this game."
+      },
+      "d": {
+        "term": "2B",
+        "name": "Doubles"
+      },
+      "t": {
+        "term": "3B",
+        "name": "Triples"
+      },
+      "sb": {
+        "term": "SB",
+        "name": "Stolen bases"
+      },
+      "hbp": {
+        "term": "HBP",
+        "name": "Hit by pitch"
+      },
+      "sf": {
+        "term": "SF",
+        "name": "Sacrifice flies"
+      },
+      "lob": {
+        "term": "LOB",
+        "name": "Left on base",
+        "text": "Per batter: runners on base when he made an out. Below the table, the team's at the end of each inning."
+      },
+      "obp": {
+        "term": "OBP",
+        "name": "Season on-base percentage",
+        "formula": "OBP = (H + BB + HBP) / (AB + BB + HBP + SF)"
+      },
+      "ops": {
+        "term": "OPS",
+        "name": "Season on-base plus slugging",
+        "formula": "OPS = OBP + SLG"
+      },
+      "ip": {
+        "term": "IP",
+        "name": "Innings pitched",
+        "text": "The decimal is outs: 2.1 means 2 innings and 1 out."
+      },
+      "er": {
+        "term": "ER",
+        "name": "Earned runs",
+        "text": "Runs that didn't come from an error or a passed ball."
+      },
+      "era": {
+        "term": "ERA",
+        "name": "Season earned run average",
+        "formula": "ERA = ER × 9 / IP"
+      },
+      "ps": {
+        "term": "P-S",
+        "name": "Pitches and strikes",
+        "text": "The bar shows the strike percentage."
+      },
+      "bf": {
+        "term": "Faced",
+        "name": "Batters faced"
+      },
+      "goao": {
+        "term": "Groundouts, flyouts",
+        "name": "Outs on the ground and in the air"
+      },
+      "ir": {
+        "term": "Inherited",
+        "name": "Inherited runners and how many scored",
+        "text": "Runners on base when the reliever came in; if they score, the run belongs to the previous pitcher."
+      },
+      "hold": {
+        "term": "Hold",
+        "name": "Reliever who protects the lead",
+        "text": "Enters in a save situation, keeps the lead and doesn't finish the game."
+      },
+      "risp": {
+        "term": "RISP",
+        "name": "Hits with runners on 2nd or 3rd",
+        "formula": "H-AB with runners in scoring position"
+      }
+    }
+  }
+}
