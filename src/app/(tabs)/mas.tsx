@@ -1,15 +1,17 @@
-// «Más»: cuenta, modo Lite/PRO, liga, tema, idioma, animaciones y privacidad (igual que MorePage de la web, sin instalar PWA).
-import React, { useId } from 'react';
+// «Más»: cuenta, modo Lite/PRO, liga, tema, idioma, animaciones, pasarle El Play a alguien (los pasos de la web para
+// instalarla según el navegador) y privacidad (igual que MorePage de la web).
+import React, { useId, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { useTranslation } from 'react-i18next';
-import { Check, ChevronRight } from 'lucide-react-native';
+import { Check, ChevronRight, Share2 } from 'lucide-react-native';
 import Svg, { Circle, Defs, G, LinearGradient, Path, Stop } from 'react-native-svg';
 import { Screen } from '../../components/layout';
 import { Card, Row, Segmented, Title, Txt } from '../../components/ui';
 import { AccountCard } from '../../components/account/AccountCard';
 import { ModeCard } from '../../components/pro/ModeCard';
+import { InstallGuide } from '../../components/install/InstallGuide';
 import { useLeague } from '../../state/league';
 import { usePreferences, type AnimationMode } from '../../state/preferences';
 import { useColors, useTheme, type ThemePreference } from '../../theme/theme';
@@ -40,6 +42,7 @@ export default function MoreScreen() {
     const { animationMode, setAnimationMode } = usePreferences();
     const lang = i18n.language.startsWith('en') ? 'en' : 'es';
     const version = Constants.expoConfig?.version ?? '1.0.0';
+    const [invite, setInvite] = useState(false);
 
     return (
         <Screen contentStyle={{ gap: 24 }}>
@@ -130,6 +133,22 @@ export default function MoreScreen() {
                     </Card>
                 </View>
             </Section>
+
+            <Card padded={false} style={{ overflow: 'hidden' }}>
+                <Pressable onPress={() => setInvite(true)} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, opacity: pressed ? 0.7 : 1 })}>
+                    <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.raised }}>
+                        <Share2 size={18} color={colors.ink} />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                        <Txt weight="semibold">{t('install.invite.row')}</Txt>
+                        <Txt size={14} tone="muted">
+                            {t('install.invite.rowHint')}
+                        </Txt>
+                    </View>
+                    <ChevronRight size={18} color={colors.muted} />
+                </Pressable>
+            </Card>
+            {invite && <InstallGuide onClose={() => setInvite(false)} />}
 
             <Card style={{ gap: 12 }}>
                 <Row gap={12}>
