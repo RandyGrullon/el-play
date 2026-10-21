@@ -950,14 +950,39 @@ describe('fantasy con créditos: precio por pelotero y tope del equipo', () => {
         expect(prices.projectionOf(table, { id: 2, role: 'B', starter: false })).toBe(0.9);
         // Sin estadísticas: la mitad del «promedio bajo» de su rol
         expect(prices.projectionOf(table, { id: 5, role: 'B', starter: true })).toBe(0.9);
-        // Lanzador: entra en 1 de cada 4 juegos; si abrió el último juego, hoy descansa
+        // Lanzador sin sus salidas recientes: entra en 1 de cada 4 juegos; si abrió el último juego, hoy descansa
         expect(prices.projectionOf(table, { id: 9, role: 'P', starter: false })).toBe(2.5);
         expect(prices.projectionOf(table, { id: 9, role: 'P', starter: false, rest: true })).toBe(0.3);
         expect(prices.projectionOf(table, { id: 5, role: 'P', starter: false })).toBe(0.5);
+        // Con sus salidas de los 10 días anteriores: le toca abrir (hace 5 o 6 días), descansa (2 a 4) o abrió hace más
+        expect(prices.projectionOf(table, { id: 9, role: 'P', outings: 2, startedAgo: 5 })).toBe(6);
+        expect(prices.projectionOf(table, { id: 9, role: 'P', outings: 2, startedAgo: 3 })).toBe(0.1);
+        expect(prices.projectionOf(table, { id: 9, role: 'P', outings: 1, startedAgo: 8 })).toBe(3.5);
+        expect(prices.projectionOf(table, { id: 9, role: 'P', outings: 2, startedAgo: 1, rest: true })).toBe(0.3);
+        // Relevista que ha salido, y el que no ha lanzado en esos días
+        expect(prices.projectionOf(table, { id: 9, role: 'P', outings: 3 })).toBe(3);
+        expect(prices.projectionOf(table, { id: 9, role: 'P', outings: 0 })).toBe(1.5);
         // rateTable da los puntos por juego regresados y el «promedio bajo» de cada tabla
         const rated = prices.rateTable([{ table: new Map([[10, { points: 30, games: 3 }], [11, { points: 3, games: 3 }], [12, { points: 15, games: 3 }]]), weight: 1 }]);
         expect(rated.ppg.get(10)).toBeGreaterThan(rated.ppg.get(12));
         expect(rated.prior).toBeGreaterThan(0);
+    });
+
+    it('rotación: de los juegos de los 10 días anteriores, hace cuántos días abrió cada lanzador y en cuántos lanzó', () => {
+        const games = [
+            { date: '2026-10-14', time: '2026-10-14T23:00:00Z', pitchers: [1, 5, 6] },
+            { date: '2026-10-16', time: '2026-10-16T23:00:00Z', pitchers: [2, 5] },
+            { date: '2026-10-18', time: '2026-10-18T23:00:00Z', pitchers: [1, 6] }
+        ];
+        // Vengan en el orden que vengan, cuenta la última apertura
+        const recent = fantasy.recentPitching([games[2], games[0], games[1]], '2026-10-20');
+        expect(recent.get(1)).toEqual({ outings: 2, startedAgo: 2 });
+        expect(recent.get(2)).toEqual({ outings: 1, startedAgo: 4 });
+        expect(recent.get(5)).toEqual({ outings: 2 });
+        expect(recent.has(7)).toBe(false);
+        expect(prices.projectionKey({ role: 'P', outings: 1, startedAgo: 6 })).toBe('due');
+        expect(prices.projectionKey({ role: 'P', outings: 2 })).toBe('reliever');
+        expect(prices.projectionKey({ role: 'P' })).toBe('pitcher');
     });
 
     it('lo que cuesta un equipo', () => {

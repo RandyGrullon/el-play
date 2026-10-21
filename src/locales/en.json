@@ -857,6 +857,8 @@
       "projShort": "proj.",
       "value": "Value {{v}}",
       "restShort": "started the last game (resting)",
+      "startedAgo_one": "started {{count}} day ago",
+      "startedAgo_other": "started {{count}} days ago",
       "owned": "{{pct}}% picked him",
       "fill": "Fill with the best",
       "suggest": "See suggested team",
@@ -879,7 +881,7 @@
       "picksPct": "{{pct}}%",
       "picksSplit": "{{a}}% picked {{away}} and {{h}}% picked {{home}}",
       "howTitle": "How the helpers work",
-      "howProj": "Projection: the points expected from each player today, from this season and the 3 previous LIDOM seasons (older ones count less). A pitcher gets into about 1 in 4 games, so he's expected to score a quarter of what he usually does when he pitches. If he wasn't in his team's last lineup he's expected to score less, and if he's the pitcher who started that game, almost nothing: he needs rest. LIDOM doesn't announce lineups or starters, so it's an estimate.",
+      "howProj": "Projection: the points expected from each player today, from this season and the 3 previous LIDOM seasons (older ones count less). If he wasn't in his team's last lineup he's expected to score less. For a pitcher it depends on his outings in the last 10 days: if he started 5 or 6 days ago he's usually due to start today; if he started more recently, almost nothing (he needs rest); a reliever pitches in about 3 of every 10 games. LIDOM doesn't announce lineups or starters, so it's an estimate.",
       "howValue": "Value: projected points per credit. It helps you find cheap players who deliver.",
       "howOwned": "% picked: how many fans put him on their team (and how many picked each team in the predictions). It shows once his game starts, so nobody copies.",
       "howBest": "Suggested and ideal team: the best possible team with 5 hitters and 1 pitcher, the per-team limit and the credits; the suggested one by projection and the ideal one by the points actually scored."

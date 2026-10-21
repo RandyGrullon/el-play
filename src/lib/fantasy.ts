@@ -26,6 +26,10 @@ export interface FantasyPlayer {
     proj?: number;
     /** Lanzador que abrió el último juego de su equipo: hoy le toca descansar */
     rest?: boolean;
+    /** Lanzador de un juego por empezar: hace cuántos días abrió por última vez (si abrió en los 10 días anteriores) */
+    startedAgo?: number;
+    /** Lanzador de un juego por empezar: en cuántos juegos de los 10 días anteriores lanzó */
+    outings?: number;
 }
 
 export interface FantasyGame extends ScheduleGame {

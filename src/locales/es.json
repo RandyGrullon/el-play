@@ -857,6 +857,8 @@
       "projShort": "proy.",
       "value": "Valor {{v}}",
       "restShort": "abrió el último juego (descansa)",
+      "startedAgo_one": "abrió hace {{count}} día",
+      "startedAgo_other": "abrió hace {{count}} días",
       "owned": "{{pct}} % lo eligió",
       "fill": "Completar con los mejores",
       "suggest": "Ver equipo sugerido",
@@ -879,7 +881,7 @@
       "picksPct": "{{pct}} %",
       "picksSplit": "{{a}} % eligió {{away}} y {{h}} % eligió {{home}}",
       "howTitle": "Cómo funcionan las ayudas",
-      "howProj": "Proyección: los puntos que se esperan de cada pelotero hoy, con esta temporada y las 3 anteriores de LIDOM (las viejas pesan menos). Un lanzador entra más o menos en 1 de cada 4 juegos, así que de él se espera la cuarta parte de lo que suele hacer cuando lanza. Si no bateó en la alineación del último juego de su equipo se espera menos, y si es el lanzador que abrió ese juego, casi nada: le toca descansar. En LIDOM no se anuncian alineaciones ni abridores, así que es una estimación.",
+      "howProj": "Proyección: los puntos que se esperan de cada pelotero hoy, con esta temporada y las 3 anteriores de LIDOM (las viejas pesan menos). Si no bateó en la alineación del último juego de su equipo se espera menos. De un lanzador se espera según sus salidas de los últimos 10 días: si abrió hace 5 o 6 días suele tocarle abrir hoy; si abrió hace menos, casi nada (le toca descansar), y un relevista lanza más o menos en 3 de cada 10 juegos. En LIDOM no se anuncian alineaciones ni abridores, así que es una estimación.",
       "howValue": "Valor: puntos proyectados por cada crédito. Sirve para encontrar peloteros baratos que rinden.",
       "howOwned": "% elegido: cuántos fanáticos lo pusieron en su equipo (y cuántos eligieron a cada equipo en los pronósticos). Se ve cuando empieza su juego, para que nadie copie.",
       "howBest": "Equipo sugerido e ideal: el mejor equipo posible con 5 bateadores y 1 lanzador, el máximo por equipo y los créditos; el sugerido con las proyecciones y el ideal con los puntos que se hicieron de verdad."

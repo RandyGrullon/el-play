@@ -16,7 +16,7 @@ const { createRequire } = require('module');
 const http = require('../server/services/http');
 const { MLB_API_BASE, LEAGUES } = require('../server/config/constants');
 const { gameState } = require('../server/utils/transformers');
-const { batterPoints, pitcherPoints, playersFromFeed } = require('../server/services/fantasy');
+const { batterPoints, pitcherPoints, playersFromFeed, recentPitching } = require('../server/services/fantasy');
 const prices = require('../server/services/fantasyPrices');
 
 const arg = (name, fallback) => {
@@ -130,12 +130,16 @@ const loadSeason = async () => {
     return { all, playedByPk, days };
 };
 
-/** Lo que fantasyDay sabe antes de un juego: roster del último juego de cada equipo, quién bateó en la alineación y quién abrió */
+/**
+ * Lo que fantasyDay sabe antes de un juego: roster del último juego de cada equipo, quién bateó en la alineación, quién
+ * abrió y las salidas de cada lanzador en los juegos de los 10 días anteriores (recentPitching)
+ */
 const pregame = async (season, day, todays) => {
     const window = season.all.filter((game) => game.officialDate >= shiftDay(day, -10) && game.officialDate < day);
     const pool = new Map();
     const lineup = new Set();
     const opener = new Set();
+    const recentByTeam = new Map();
     for (const game of todays) {
         for (const side of ['away', 'home']) {
             const teamId = game.teams?.[side]?.team?.id;
@@ -155,9 +159,25 @@ const pregame = async (season, day, todays) => {
             const roster = playersFromFeed(doc, game.gamePk, false).filter((player) => player.teamId === teamId);
             if (withLineup) roster.filter((player) => player.starter).forEach((player) => (player.role === 'P' ? opener : lineup).add(player.id));
             for (const player of roster) if (!pool.has(player.id)) pool.set(player.id, player);
+            const logs = [];
+            for (const g of mine.filter(wasPlayed)) {
+                const box = await get(`${MLB_API_BASE}/game/${g.gamePk}/boxscore`, {}, slimBox);
+                const mySide = box.teams.away.team.id === teamId ? 'away' : 'home';
+                logs.push({ date: g.officialDate, time: g.gameDate, pitchers: box.teams[mySide].pitchers });
+            }
+            recentByTeam.set(teamId, recentPitching(logs, day));
         }
     }
-    return [...pool.values()].map((player) => ({ ...player, starter: player.role === 'B' ? lineup.has(player.id) : false, ...(opener.has(player.id) ? { rest: true } : {}) }));
+    return [...pool.values()].map((player) => {
+        const recent = player.role === 'P' ? recentByTeam.get(player.teamId) : null;
+        const outing = recent?.get(player.id);
+        return {
+            ...player,
+            starter: player.role === 'B' ? lineup.has(player.id) : false,
+            ...(opener.has(player.id) ? { rest: true } : {}),
+            ...(recent ? { outings: outing?.outings ?? 0, ...(outing?.startedAgo !== undefined ? { startedAgo: outing.startedAgo } : {}) } : {})
+        };
+    });
 };
 
 /** Lo que pasó: cada pelotero con sus puntos del día (el primer juego en que aparece, como en fantasyDay) */
@@ -203,14 +223,8 @@ const loadDays = async (season) => {
 
 // --- Proyección con parámetros (espejo de rateTable y projectionOf, rápido para la rejilla) --------------------------
 
-// Los valores de fantasyPrices.js (en el espejo, «starter» del lanzador es el que puede lanzar)
-const BASELINE = {
-    weights: prices.PAST_WEIGHTS,
-    priorGames: prices.PRIOR_GAMES,
-    percentile: prices.PRIOR_PERCENTILE,
-    B: { starter: prices.PROJECTION.starter, bench: prices.PROJECTION.bench, unknown: prices.PROJECTION.unknown },
-    P: { starter: prices.PROJECTION.pitcher, rest: prices.PROJECTION.rest, unknown: prices.PROJECTION.unknown }
-};
+// Los valores de fantasyPrices.js
+const BASELINE = { weights: prices.PAST_WEIGHTS, priorGames: prices.PRIOR_GAMES, percentile: prices.PRIOR_PERCENTILE, factors: prices.PROJECTION };
 
 /** Como rateTable: puntos por juego regresados, precio por percentil y el «promedio bajo». `tables` = [ahora, -1, -2, -3] */
 const rateWith = (tables, { weights, priorGames, percentile }) => {
@@ -265,13 +279,12 @@ const rateWith = (tables, { weights, priorGames, percentile }) => {
     return { ppg, prices: pricesOf, prior: round1(prior) };
 };
 
-const projectWith = (rated, player, params) => {
+/** Como projectionOf, con el factor que le toca según projectionKey del servidor */
+const projectWith = (rated, player, { factors }) => {
     const role = player.role === 'P' ? 'P' : 'B';
-    const factors = params[role];
     const known = rated[role].ppg.get(player.id);
     const base = known !== undefined ? known : rated[role].prior * factors.unknown;
-    const factor = role === 'B' ? (player.starter ? factors.starter : factors.bench) : player.rest ? factors.rest : factors.starter;
-    return round1(base * factor);
+    return round1(base * factors[prices.projectionKey(player)]);
 };
 
 // --- Medidas -------------------------------------------------------------------------------------------------------
@@ -435,15 +448,15 @@ const PRIOR_GAMES = [0, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 25, 30];
 const PERCENTILES = [0.1, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6];
 
 /**
- * Error cuadrático de cada combinación. Primero junta, por combinación de pesos/prior/percentil y grupo, las sumas que
- * hacen falta (Σb², Σby, Σy², n con b = puntos por juego regresados o el prior de los desconocidos); con ellas el error
- * de cualquier factor sale al instante: Σ(f·b − y)² = f²Σb² − 2fΣby + Σy².
+ * Error cuadrático de cada combinación de pesos/prior/percentil con los mejores factores. Primero junta, por combinación
+ * y por grupo (rol, mitad, con o sin estadísticas y factor de projectionKey), las sumas que hacen falta: Σb², Σby, Σy² y
+ * n, con b = puntos por juego regresados o el prior de los desconocidos. Con ellas, para cada factor del desconocido,
+ * el mejor factor de cada grupo sale de una fórmula (mínimos cuadrados): f = (Σby + u·Σpy) / (Σb² + u²·Σp²).
  */
 const gridSearch = (days) => {
-    // Grupo: [rol][mitad][conocido 0/1][categoría 0/1] (B: titular/suplente; P: puede lanzar/descansa)
     const stats = new Map();
     const keyOf = (wi, pi, gi) => `${wi}|${pi}|${gi}`;
-    const empty = () => ({ n: 0, bb: 0, by: 0, yy: 0 });
+    const cell = (groups, key) => groups[key] || (groups[key] = { n: 0, bb: 0, by: 0, yy: 0 });
     WEIGHTS.forEach((weights, wi) => {
         for (const day of days) {
             for (const role of ['B', 'P']) {
@@ -461,17 +474,16 @@ const gridSearch = (days) => {
                 const rows = [...sums.values()];
                 const steady = rows.filter((row) => row.games >= 3).map((row) => row.points / row.games).sort((a, b) => a - b);
                 const base = steady.length ? steady : rows.map((row) => row.points / row.games).sort((a, b) => a - b);
-                const players = day.pool.filter((player) => player.role === role).map((player) => ({ sum: sums.get(player.id), cat: role === 'B' ? (player.starter ? 0 : 1) : player.rest ? 1 : 0, y: player.y }));
+                const players = day.pool.filter((player) => player.role === role).map((player) => ({ sum: sums.get(player.id), key: prices.projectionKey(player), y: player.y }));
                 PERCENTILES.forEach((percentile, pi) => {
                     const prior = base.length ? base[Math.min(base.length - 1, Math.floor(base.length * percentile))] : 0;
                     PRIOR_GAMES.forEach((priorGames, gi) => {
                         const key = keyOf(wi, pi, gi);
-                        if (!stats.has(key)) stats.set(key, { B: [[[empty(), empty()], [empty(), empty()]], [[empty(), empty()], [empty(), empty()]]], P: [[[empty(), empty()], [empty(), empty()]], [[empty(), empty()], [empty(), empty()]]] });
+                        if (!stats.has(key)) stats.set(key, { B: [{}, {}], P: [{}, {}] });
                         const groups = stats.get(key)[role][day.half];
                         for (const player of players) {
-                            const known = player.sum ? 1 : 0;
-                            const b = known ? (player.sum.points + priorGames * prior) / (player.sum.games + priorGames) : prior;
-                            const g = groups[known][player.cat];
+                            const b = player.sum ? (player.sum.points + priorGames * prior) / (player.sum.games + priorGames) : prior;
+                            const g = cell(groups, `${player.sum ? 'k' : 'u'}:${player.key}`);
                             g.n += 1;
                             g.bb += b * b;
                             g.by += b * player.y;
@@ -483,81 +495,76 @@ const gridSearch = (days) => {
         }
     });
 
-    const sse = (g, f) => f * f * g.bb - 2 * f * g.by + g.yy;
-    // Factores de cada grupo: conocido-cat0 = a, conocido-cat1 = c, desconocido-cat0 = a·u, desconocido-cat1 = c·u
-    const errorOf = (groups, a, c, u) => sse(groups[1][0], a) + sse(groups[1][1], c) + sse(groups[0][0], a * u) + sse(groups[0][1], c * u);
-    const countOf = (groups) => groups[0][0].n + groups[0][1].n + groups[1][0].n + groups[1][1].n;
+    const zero = { n: 0, bb: 0, by: 0, yy: 0 };
+    const keysOf = (groups) => [...new Set(Object.keys(groups).map((name) => name.slice(2)))].sort();
+    // Error de unos factores (`factors[key]` y `unknown`) con las sumas de una mitad
+    const errorOf = (groups, factors) => {
+        let sse = 0;
+        let n = 0;
+        for (const [name, g] of Object.entries(groups)) {
+            const f = factors[name.slice(2)] * (name[0] === 'u' ? factors.unknown : 1);
+            sse += f * f * g.bb - 2 * f * g.by + g.yy;
+            n += g.n;
+        }
+        return sse / n;
+    };
+    const fit = (groups) => {
+        let top = null;
+        for (const unknown of range(0, 1.5, 0.05)) {
+            const factors = { unknown };
+            for (const key of keysOf(groups)) {
+                const k = groups[`k:${key}`] || zero;
+                const u = groups[`u:${key}`] || zero;
+                const den = k.bb + unknown * unknown * u.bb;
+                factors[key] = den ? Math.max(0, (k.by + unknown * u.by) / den) : 0;
+            }
+            const train = errorOf(groups, factors);
+            if (!top || train < top.train) top = { train, factors };
+        }
+        return top;
+    };
 
     const results = { B: [], P: [] };
-    // Sin «libre», el factor del titular / del lanzador que puede lanzar se queda como está en fantasyPrices.js
-    const FIRST = { B: [BASELINE.B.starter], P: [BASELINE.P.starter] };
-    const FREE_FIRST = range(0.1, 1.5, 0.05);
-    const SECOND = { B: range(0, 1, 0.025), P: range(0, 0.6, 0.025) };
-    const UNKNOWN = range(0, 1.5, 0.05);
     for (const [key, roles] of stats) {
         const [wi, pi, gi] = key.split('|').map(Number);
         for (const role of ['B', 'P']) {
-            for (const free of [false, true]) {
-                let top = null;
-                for (const a of free ? FREE_FIRST : FIRST[role])
-                    for (const c of SECOND[role])
-                        for (const u of UNKNOWN) {
-                            const train = errorOf(roles[role][0], a, c, u);
-                            if (!top || train < top.train) top = { train, a, c, u };
-                        }
-                const test = errorOf(roles[role][1], top.a, top.c, top.u);
-                results[role].push({ free, weights: WEIGHTS[wi], priorGames: PRIOR_GAMES[gi], percentile: PERCENTILES[pi], a: top.a, c: top.c, u: top.u, trainMse: top.train / countOf(roles[role][0]), testMse: test / countOf(roles[role][1]) });
-            }
+            const top = fit(roles[role][0]);
+            results[role].push({ weights: WEIGHTS[wi], priorGames: PRIOR_GAMES[gi], percentile: PERCENTILES[pi], factors: top.factors, trainMse: top.train, testMse: errorOf(roles[role][1], top.factors) });
         }
     }
-    // El error con los valores de hoy, para comparar
+    // El error con los valores de ahora, para comparar
     const baseKey = keyOf(
         WEIGHTS.findIndex((w) => w.join(',') === BASELINE.weights.join(',')),
         PERCENTILES.indexOf(BASELINE.percentile),
         PRIOR_GAMES.indexOf(BASELINE.priorGames)
     );
-    const baseline = {
-        B: [0, 1].map((half) => errorOf(stats.get(baseKey).B[half], BASELINE.B.starter, BASELINE.B.bench, BASELINE.B.unknown) / countOf(stats.get(baseKey).B[half])),
-        P: [0, 1].map((half) => errorOf(stats.get(baseKey).P[half], BASELINE.P.starter, BASELINE.P.rest, BASELINE.P.unknown) / countOf(stats.get(baseKey).P[half]))
-    };
+    const baseline = Object.fromEntries(['B', 'P'].map((role) => [role, [0, 1].map((half) => errorOf(stats.get(baseKey)[role][half], BASELINE.factors))]));
     return { results, baseline };
 };
 
 // --- Lanzadores: quién lanza de verdad ------------------------------------------------------------------------------
 
-/** De los lanzadores que «pueden lanzar», cuántos lanzaron según su última salida (abrió hace N días o es relevista) */
-const pitcherReport = async (days, season) => {
-    const history = new Map();
-    const played = season.all.filter((game) => wasPlayed(game) && FANTASY_TYPES.includes(game.gameType)).sort((a, b) => a.gameDate.localeCompare(b.gameDate));
-    for (const game of played) {
-        const box = await get(`${MLB_API_BASE}/game/${game.gamePk}/boxscore`, {}, slimBox);
-        for (const side of ['away', 'home']) {
-            (box.teams[side].pitchers || []).forEach((id, i) => history.set(id, [...(history.get(id) || []), { day: game.officialDate, started: i === 0 }]));
-        }
-    }
+/** Lanzadores por el factor que les toca (projectionKey): cuántos lanzaron, sus puntos y lo que se les proyectó */
+const pitcherReport = (days, { rows }) => {
     const buckets = new Map();
+    let i = 0;
     for (const day of days) {
-        for (const player of day.pool.filter((p) => p.role === 'P' && !p.rest)) {
-            const before = (history.get(player.id) || []).filter((item) => item.day < day.day);
-            const last = before.at(-1);
-            const lastStart = before.filter((item) => item.started).at(-1);
-            const starts = before.filter((item) => item.started).length;
-            let label = 'sin salidas esta temporada';
-            if (last && starts >= Math.max(1, before.length / 2)) {
-                const gap = Math.round((Date.parse(day.day) - Date.parse(lastStart.day)) / 86400000);
-                label = `abridor, abrió hace ${gap >= 7 ? '7+' : gap} días`;
-            } else if (last) label = 'relevista';
-            const bucket = buckets.get(label) || { n: 0, pitched: 0, points: 0 };
+        for (const player of day.pool) {
+            const row = rows[i++];
+            if (player.role !== 'P') continue;
+            const key = prices.projectionKey(player);
+            const bucket = buckets.get(key) || { n: 0, pitched: 0, points: 0, proj: 0 };
             bucket.n += 1;
             bucket.pitched += player.pitched ? 1 : 0;
             bucket.points += player.y;
-            buckets.set(label, bucket);
+            bucket.proj += row.proj;
+            buckets.set(key, bucket);
         }
     }
-    console.log('\n### Lanzadores que «pueden lanzar»: quién lanzó\n');
-    console.log('| Última salida | n | Lanzó | Puntos medios |');
-    console.log('|---|---:|---:|---:|');
-    for (const [label, bucket] of [...buckets].sort()) console.log(`| ${label} | ${bucket.n} | ${pct(bucket.pitched / bucket.n)} | ${fmt(bucket.points / bucket.n)} |`);
+    console.log('\n### Lanzadores según sus salidas de los 10 días anteriores (projectionKey)\n');
+    console.log('| Factor | n | Lanzó | Puntos medios | Proyección media |');
+    console.log('|---|---:|---:|---:|---:|');
+    for (const [key, bucket] of [...buckets].sort()) console.log(`| ${key} (×${prices.PROJECTION[key]}) | ${bucket.n} | ${pct(bucket.pitched / bucket.n)} | ${fmt(bucket.points / bucket.n)} | ${fmt(bucket.proj / bucket.n)} |`);
 };
 
 // --- Principal -----------------------------------------------------------------------------------------------------
@@ -578,7 +585,7 @@ const main = async () => {
     }));
     printReport('Con fantasyPrices.js tal como está', server);
 
-    // El espejo con los valores de hoy tiene que dar exactamente lo mismo que el servidor
+    // El espejo con los valores de ahora tiene que dar exactamente lo mismo que el servidor
     const mirrorOf = (params) => (day) => {
         const rated = { B: rateWith(day.tables.B, params), P: rateWith(day.tables.P, params) };
         return {
@@ -591,31 +598,38 @@ const main = async () => {
     const mismatches = mirror.rows.filter((row, i) => row.proj !== server.rows[i].proj).length;
     console.error(`Espejo vs servidor con los valores de fantasyPrices.js: ${mismatches} proyecciones distintas de ${mirror.rows.length}`);
 
-    // --params='{"priorGames":8,"B":{"bench":0.3}}': los mismos días con otros valores (encima de los de antes)
+    // --params='{"priorGames":8,"factors":{"due":0.6}}': los mismos días con otros valores (encima de los de ahora)
     const custom = arg('params', null);
     if (custom) {
         const given = JSON.parse(custom);
-        const params = { ...BASELINE, ...given, B: { ...BASELINE.B, ...given.B }, P: { ...BASELINE.P, ...given.P } };
+        const params = { ...BASELINE, ...given, factors: { ...BASELINE.factors, ...given.factors } };
         printReport(`Con ${JSON.stringify(given)}`, evaluate(days, best, mirrorOf(params)));
     }
 
-    if (flag('pitchers')) await pitcherReport(days, season);
+    if (flag('pitchers')) pitcherReport(days, server);
 
     if (!flag('grid')) return;
     const { results, baseline } = gridSearch(days);
     fs.writeFileSync(path.join(CACHE, `grid-${SEASON}${FIX_POSTPONED ? '-fix' : ''}.json`), JSON.stringify(results));
+    const same = (item) => item.weights.join(',') === BASELINE.weights.join(',') && item.priorGames === BASELINE.priorGames && item.percentile === BASELINE.percentile;
     for (const role of ['B', 'P']) {
-        for (const free of [false, true]) {
-            const list = results[role].filter((item) => item.free === free).sort((a, b) => a.trainMse - b.trainMse);
-            console.log(`\n#### ${role === 'B' ? 'Bateadores' : 'Lanzadores'} · ${free ? 'con el factor del titular/«puede lanzar» libre' : `titular ×${BASELINE.B.starter} / «puede lanzar» ×${BASELINE.P.starter}`} (ahora: MSE ${fmt(baseline[role][0], 3)} / ${fmt(baseline[role][1], 3)})\n`);
-            console.log(`| Pesos pasadas | PRIOR_GAMES | Percentil | ${role === 'B' ? 'Titular' : 'Puede lanzar'} | ${role === 'B' ? 'Suplente' : 'Descansa'} | Desconocido | MSE 1.ª | MSE 2.ª |`);
-            console.log('|---|---:|---:|---:|---:|---:|---:|---:|');
-            for (const item of list.slice(0, 12)) console.log(`| ${item.weights.join(' / ')} | ${item.priorGames} | ${item.percentile} | ${item.a} | ${item.c} | ${item.u} | ${fmt(item.trainMse, 3)} | ${fmt(item.testMse, 3)} |`);
-        }
+        const list = results[role].sort((a, b) => a.trainMse - b.trainMse);
+        const keys = Object.keys(list[0].factors);
+        console.log(`\n#### ${role === 'B' ? 'Bateadores' : 'Lanzadores'} (ahora: MSE ${fmt(baseline[role][0], 3)} / ${fmt(baseline[role][1], 3)})\n`);
+        console.log(`| Pesos pasadas | PRIOR_GAMES | Percentil | ${keys.join(' | ')} | MSE 1.ª | MSE 2.ª |`);
+        console.log(`|---|---:|---:|${keys.map(() => '---:|').join('')}---:|---:|`);
+        // Los 10 mejores en la 1.ª mitad y los mejores factores con los pesos/prior/percentil de ahora (los que fijan los precios)
+        for (const item of [...list.slice(0, 10), list.find(same)])
+            console.log(`| ${same(item) ? '**ahora** ' : ''}${item.weights.join(' / ')} | ${item.priorGames} | ${item.percentile} | ${keys.map((key) => fmt(item.factors[key], 3)).join(' | ')} | ${fmt(item.trainMse, 3)} | ${fmt(item.testMse, 3)} |`);
     }
 };
 
-main().catch((problem) => {
-    console.error(problem.message);
-    process.exit(1);
-});
+// Con require (otro script de análisis) solo da las piezas
+if (require.main === module) {
+    main().catch((problem) => {
+        console.error(problem.message);
+        process.exit(1);
+    });
+}
+
+module.exports = { get, slimBox, boxOf, loadSeason, loadDays, loadBest, evaluate, summarize, printReport, rateWith, projectWith, BASELINE, wasPlayed, teamsOf, shiftDay };

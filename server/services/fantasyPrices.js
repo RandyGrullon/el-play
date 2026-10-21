@@ -18,9 +18,23 @@ const PRIOR_PERCENTILE = 0.35;
 // Con menos peloteros con datos que esto (p. ej. un torneo corto sin historia) no se juega con créditos
 const MIN_PLAYERS = 20;
 // Qué parte de sus puntos por juego se espera de cada uno ese día, medido con la temporada 2025-26
-// (scripts/backtest-fantasy.js): el titular del último juego no siempre batea hoy y el suplente entra poco; un
-// lanzador entra en 1 de cada 4 juegos y el que abrió el último juego casi nunca. Sin historia: la mitad del «promedio bajo».
-const PROJECTION = { starter: 0.85, bench: 0.3, pitcher: 0.25, rest: 0.025, unknown: 0.5 };
+// (scripts/backtest-fantasy.js): el titular del último juego no siempre batea hoy y el suplente entra poco. Un lanzador,
+// según sus salidas de los 10 días anteriores (projectionKey): el que abrió el último juego o hace 2 a 4 días casi
+// nunca lanza; el que abrió hace 5 o 6 días abre la mitad de las veces y el que abrió hace más, una de cada cuatro; un
+// relevista lanza en 3 de cada 10 juegos y el que no ha salido en esos días, mucho menos. `pitcher` es para el lanzador
+// sin ese dato (en LIDOM lanza en 1 de cada 4 juegos). Sin historia: la mitad del «promedio bajo».
+const PROJECTION = {
+    starter: 0.85,
+    bench: 0.3,
+    pitcher: 0.25,
+    rest: 0.025,
+    resting: 0.01,
+    due: 0.6,
+    late: 0.35,
+    reliever: 0.3,
+    idle: 0.15,
+    unknown: 0.5
+};
 
 const shiftDay = (day, days) => new Date(Date.parse(`${day}T12:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
 const todayIn = (timeZone) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -142,18 +156,29 @@ const dayPrices = (leagueKey, date, scoring) => {
 };
 
 /**
- * Puntos que se esperan de un pelotero ese día: sus puntos por juego (o la mitad del «promedio bajo» si no tiene
- * historia) por la parte que se espera que juegue (PROJECTION): menos si es suplente (no estuvo en la alineación del
- * último juego de su equipo), la cuarta parte si es lanzador y casi nada si es el lanzador que abrió ese último juego
- * (le toca descansar). En LIDOM no se anuncian alineaciones ni abridores: es una estimación.
+ * Qué factor de PROJECTION le toca a un pelotero de un juego por empezar. Bateador: titular o suplente (estuvo o no en
+ * la alineación del último juego de su equipo). Lanzador: `rest` (abrió el último juego) o, con sus salidas de los 10
+ * días anteriores (`outings` y `startedAgo`, de fantasyDay), si le toca abrir, descansa o es relevista.
  */
-const projectionOf = (table, player) => {
+const projectionKey = (player) => {
+    if (player.role !== 'P') return player.starter ? 'starter' : 'bench';
+    if (player.rest) return 'rest';
+    if (player.outings === undefined) return 'pitcher';
+    if (player.startedAgo !== undefined) return player.startedAgo <= 4 ? 'resting' : player.startedAgo <= 6 ? 'due' : 'late';
+    return player.outings ? 'reliever' : 'idle';
+};
+
+/**
+ * Puntos que se esperan de un pelotero ese día: sus puntos por juego (o la mitad del «promedio bajo» si no tiene
+ * historia) por la parte que se espera que juegue (PROJECTION, según projectionKey). En LIDOM no se anuncian
+ * alineaciones ni abridores: es una estimación. `factors` es para medir otros valores (scripts/backtest-fantasy.js).
+ */
+const projectionOf = (table, player, factors = PROJECTION) => {
     const role = player.role === 'P' ? 'P' : 'B';
     const list = table?.ppg?.[role];
     const known = Array.isArray(list) ? list.find(([id]) => id === player.id) : null;
-    const base = known ? known[1] : (table?.prior?.[role] ?? 0) * PROJECTION.unknown;
-    const factor = role === 'B' ? (player.starter ? PROJECTION.starter : PROJECTION.bench) : player.rest ? PROJECTION.rest : PROJECTION.pitcher;
-    return Math.round(base * factor * 10) / 10;
+    const base = known ? known[1] : (table?.prior?.[role] ?? 0) * factors.unknown;
+    return Math.round(base * factors[projectionKey(player)] * 10) / 10;
 };
 
-module.exports = { CREDITS, CREDITS_FROM, PAST_WEIGHTS, PRIOR_GAMES, PRIOR_PERCENTILE, PROJECTION, dayPrices, priceTable, rateTable, tableOf, seasonOfDay, projectionOf };
+module.exports = { CREDITS, CREDITS_FROM, PAST_WEIGHTS, PRIOR_GAMES, PRIOR_PERCENTILE, PROJECTION, dayPrices, priceTable, rateTable, tableOf, seasonOfDay, projectionKey, projectionOf };

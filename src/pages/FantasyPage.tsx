@@ -698,7 +698,7 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
                         player.proj !== undefined && (
                             <p className="truncate text-xs font-semibold text-accent-ink">
                                 {t('fantasy.smart.proj', { pts: credits(player.proj, i18n.language) })}
-                                {player.rest ? ` · ${t('fantasy.smart.restShort')}` : ''}
+                                {player.rest ? ` · ${t('fantasy.smart.restShort')}` : player.startedAgo !== undefined ? ` · ${t('fantasy.smart.startedAgo', { count: player.startedAgo })}` : ''}
                             </p>
                         )
                     )}
@@ -892,7 +892,7 @@ const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; role: 'B' | 'P'
                                             <p className="truncate text-[11px] font-semibold text-muted">
                                                 {t('fantasy.smart.proj', { pts: credits(player.proj, i18n.language) })}
                                                 {valueOf(player) !== null ? ` · ${t('fantasy.smart.value', { v: valueText(valueOf(player)!, i18n.language) })}` : ''}
-                                                {player.rest ? ` · ${t('fantasy.smart.restShort')}` : ''}
+                                                {player.rest ? ` · ${t('fantasy.smart.restShort')}` : player.startedAgo !== undefined ? ` · ${t('fantasy.smart.startedAgo', { count: player.startedAgo })}` : ''}
                                                 {owners.get(player.id) ? ` · ${t('fantasy.smart.owned', { pct: credits(owners.get(player.id)!.pct, i18n.language) })}` : ''}
                                             </p>
                                         )}
