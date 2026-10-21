@@ -205,6 +205,8 @@ export interface GameDetail {
         batter: PersonRef & { side: string | null; h: number | null; ab: number | null; avg: string | null };
         onDeck: PersonRef | null;
     } | null;
+    /** Pausa entre entradas: los tres que le toca batear al equipo que viene (`teamId`), si MLB los da */
+    dueUp?: { teamId: number | null; batters: PersonRef[] } | null;
     probables: { away: Decision | null; home: Decision | null };
     linescore: { n: number; away: number | null; home: number | null }[];
     atBats: AtBat[];

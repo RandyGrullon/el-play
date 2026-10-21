@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { gameInterval, scheduleInterval } from './polling';
-import { atBatForZone, arsenal, battedBalls, battersFaced, pitchesByPitcher, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName } from './baseball';
+import { atBatForZone, arsenal, battedBalls, battersFaced, inningBreak, pitchesByPitcher, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName } from './baseball';
 import { dayKey, dayRange, seasonLabel } from './format';
 import { nameKey, photoSources } from './photos';
 import { newPlayEvents, outVariant, titleClinch } from './playEvents';
@@ -782,5 +782,43 @@ describe('cuenta: renovar la sesión', () => {
         // Con el token nuevo vigente ya no se vuelve a pedir
         expect(await freshToken()).toBe('nuevo');
         expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('pausa entre entradas en la zona de strike', () => {
+    const team = (id: number, abbrev: string) => ({ id, abbrev, name: abbrev, logo: '', color: '#0069e0', record: null, teamName: abbrev, runs: 0, hits: 0, errors: 0, lob: 0, isWinner: false });
+    const third = { ...atBat(7, [pitch()], true), top: true, inning: 6, outs: 3 } as AtBat;
+    const game = (extra: Partial<GameDetail> = {}) =>
+        ({
+            gamePk: 1,
+            state: 'live',
+            atBats: [third],
+            currentAtBat: 7,
+            inning: { n: 6, ordinal: '6th', isTop: true, state: 'Middle' },
+            away: team(670, 'GIG'),
+            home: team(667, 'AGU'),
+            linescore: [{ n: 6, away: 2, home: null }],
+            dueUp: { teamId: 667, batters: [{ id: 1, name: 'Wandel Matos' }, { id: 2, name: 'Franmil Guzmán' }, { id: 3, name: 'Yunior Paulino' }] },
+            ...extra
+        }) as unknown as GameDetail;
+
+    it('tras el tercer out de la alta: viene el home club, lo que anotó el visitante y a quién le toca', () => {
+        expect(inningBreak(game())).toMatchObject({ endedTop: true, inning: 6, next: { abbrev: 'AGU' }, ended: { abbrev: 'GIG' }, runs: 2 });
+        expect(inningBreak(game())!.dueUp.map((batter) => batter.name)).toEqual(['Wandel Matos', 'Franmil Guzmán', 'Yunior Paulino']);
+        // Tras la baja («End») viene el visitante
+        expect(inningBreak(game({ inning: { n: 6, ordinal: '6th', isTop: false, state: 'End' }, atBats: [{ ...third, top: false }] }))).toMatchObject({ endedTop: false, next: { abbrev: 'GIG' } });
+        // Los que le tocan de otro equipo no se muestran
+        expect(inningBreak(game({ dueUp: { teamId: 670, batters: [{ id: 9, name: 'Otro' }] } }))!.dueUp).toEqual([]);
+    });
+
+    it('si MLB tarda en decir «Middle», basta el último turno terminado con 3 outs', () => {
+        expect(inningBreak(game({ inning: { n: 6, ordinal: '6th', isTop: true, state: 'Top' } }))).toMatchObject({ endedTop: true, next: { abbrev: 'AGU' } });
+    });
+
+    it('no hay pausa con un turno en curso, a mitad de entrada ni con el juego terminado', () => {
+        const next = { ...atBat(8, [], false), top: false, inning: 6, outs: 0 } as AtBat;
+        expect(inningBreak(game({ atBats: [third, next], currentAtBat: 8, inning: { n: 6, ordinal: '6th', isTop: false, state: 'Bottom' } }))).toBeNull();
+        expect(inningBreak(game({ atBats: [{ ...third, outs: 1 }], inning: { n: 6, ordinal: '6th', isTop: true, state: 'Top' } }))).toBeNull();
+        expect(inningBreak(game({ state: 'final' }))).toBeNull();
     });
 });

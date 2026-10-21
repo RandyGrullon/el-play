@@ -7,7 +7,7 @@ import type { GameDetail, ScheduleGame, TopPerformer } from '../types';
 import { findScheduledGame, useGame } from '../lib/queries';
 import { ApiError } from '../lib/api';
 import { alertsAvailable, useAlertToggle } from '../hooks/useAlertToggle';
-import { atBatForZone, isNotPlayed } from '../lib/baseball';
+import { atBatForZone, inningBreak, isNotPlayed } from '../lib/baseball';
 import { formatCountdown, formatShortDate, formatTime } from '../lib/format';
 import { teamDisplayName } from '../lib/teams';
 import { useAnalytics } from '../hooks/useAnalytics';
@@ -23,6 +23,7 @@ import { SprayChart } from '../components/game/SprayChart';
 import { PlayAnimation } from '../components/gamecast/PlayAnimation';
 import { forMode, newPlayEvents, type PlayEvent } from '../lib/playEvents';
 import { StrikeZonePanel } from '../components/game/StrikeZonePanel';
+import { InningBreakMini } from '../components/game/InningBreak';
 import { uniformColors } from '../components/game/BatterFigure';
 import { Matchup } from '../components/game/Matchup';
 import { PlayByPlay } from '../components/game/PlayByPlay';
@@ -79,6 +80,9 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
     const { atBat } = atBatForZone(game);
     const batting = game.inning?.isTop ? game.away : game.home;
     const between = game.inning?.state === 'Middle' || game.inning?.state === 'End';
+    // Tras el tercer out, hasta el primer bateador de la otra mitad: la zona espera y la situación dice quién abre
+    const pause = inningBreak(game);
+    const leadoff = pause?.dueUp[0] ?? null;
     const pro = useIsPro();
 
     return (
@@ -90,7 +94,12 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
                         <div className="text-[28px] font-extrabold leading-none tabular-nums">{between ? '—' : `${game.count.balls}-${game.count.strikes}`}</div>
                         <OutsDots outs={game.count.outs} className="mt-1.5" />
                     </div>
-                    {game.matchup && (
+                    {pause ? (
+                        <div className="min-w-0 text-center text-xs font-semibold text-muted">
+                            <b className="block truncate text-sm text-ink">{leadoff ? leadoff.name.split(' ').slice(-1)[0] : pause.next.abbrev}</b>
+                            {leadoff ? t('zone.breakLeadsOff', { team: pause.next.abbrev }) : t('zone.breakStatus')}
+                        </div>
+                    ) : game.matchup && (
                         <div className="min-w-0 text-center text-xs font-semibold text-muted">
                             <b className="block truncate text-sm text-ink">{game.matchup.batter.name.split(' ').slice(-1)[0]}</b>
                             {t('zone.facing')} {game.matchup.pitcher.name.split(' ').slice(-1)[0]}
@@ -98,7 +107,9 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
                     )}
                 </div>
                 <button type="button" onClick={() => open('zone')} className="w-[104px] shrink-0 rounded-[24px] bg-surface p-1.5 shadow-float" aria-label={t('zone.open')}>
-                    {atBat ? (
+                    {pause ? (
+                        <InningBreakMini pause={pause} />
+                    ) : atBat ? (
                         <StrikeZone pitches={atBat.pitches} batterSide={atBat.batter.side} uniform={uniformColors(atBat.top ? game.away : game.home, !atBat.top)} showLegend={false} />
                     ) : (
                         <Target className="mx-auto my-6 h-8 w-8 text-faint" />
@@ -327,7 +338,8 @@ export const GamePage: React.FC = () => {
                     <BottomSheet open={sheet === 'zone'} onClose={() => setSheet(null)} title={t('zone.title')} tall>
                         <div className="space-y-3">
                             <StrikeZonePanel game={game} />
-                            <Matchup game={game} />
+                            {/* En la pausa entre entradas el duelo es el del último out: la zona ya dice a quién le toca */}
+                            {!inningBreak(game) && <Matchup game={game} />}
                         </div>
                     </BottomSheet>
                     <BottomSheet open={sheet === 'plays'} onClose={() => setSheet(null)} title={t('plays.title')} tall>

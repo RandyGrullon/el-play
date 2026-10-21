@@ -369,8 +369,11 @@ const buildState = (game) => {
     for (const play of sim.plays) {
         const firstSeq = play.events[0].seq;
         const lastSeq = play.events[play.events.length - 1].seq;
+        // Como MLB: tras el tercer out, el turno siguiente no existe hasta su primer pitcheo (pausa entre entradas)
+        const previous = plays[plays.length - 1];
+        const breakAfter = previous?.complete && previous.play.after.outs >= 3;
         if (lastSeq <= revealed) plays.push({ play, events: play.events, complete: true });
-        else if (firstSeq <= revealed + 1) plays.push({ play, events: play.events.filter((e) => e.seq <= revealed), complete: false });
+        else if (firstSeq <= revealed + (breakAfter ? 0 : 1)) plays.push({ play, events: play.events.filter((e) => e.seq <= revealed), complete: false });
         if (lastSeq > revealed) break;
     }
     return { sim, revealed, finished: finished && game.mode !== 'preview', plays };
@@ -414,6 +417,20 @@ const buildLinescore = (game, state) => {
             third: personRef(at.bases[2])
         };
         linescore.defense = { pitcher: personRef(play.pitcher) };
+        // Pausa entre entradas: «Middle» tras la alta, «End» tras la baja; `offense` pasa al equipo que viene a batear
+        const next = complete && play.after.outs >= 3 ? state.sim.plays[state.sim.plays.indexOf(play) + 1] : null;
+        if (next) {
+            linescore.inningState = play.isTop ? 'Middle' : 'End';
+            const nextLineup = state.sim.teams[next.batting].hitters;
+            const nextIndex = nextLineup.findIndex((h) => h.id === next.batter.id);
+            linescore.offense = {
+                team: { id: next.batting === 'away' ? game.awayId : game.homeId },
+                batter: personRef(next.batter),
+                onDeck: personRef(nextLineup[(nextIndex + 1) % 9]),
+                inHole: personRef(nextLineup[(nextIndex + 2) % 9])
+            };
+            linescore.defense = { pitcher: personRef(next.pitcher) };
+        }
     } else if (current) {
         linescore.currentInning = current.play.inning;
         linescore.currentInningOrdinal = ordinal(current.play.inning);

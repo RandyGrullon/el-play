@@ -351,7 +351,16 @@
     "pitchesTo_one": "{{count}} pitcheo a {{batter}}",
     "pitchesTo_other": "{{count}} pitcheos a {{batter}}",
     "byBatter": "Pitcheos por bateador",
-    "allBatters": "Todos"
+    "allBatters": "Todos",
+    "breakStatus": "En espera",
+    "breakWaiting": "Esperando al primer bateador",
+    "breakNext": "Ahora batea",
+    "breakRuns_zero": "{{team}} no anotó en la entrada",
+    "breakRuns_one": "{{team}} anotó {{count}} carrera en la entrada",
+    "breakRuns_other": "{{team}} anotó {{count}} carreras en la entrada",
+    "breakDueUp": "Le toca batear",
+    "breakAria": "Cambio de entrada: esperando al primer bateador de {{team}}",
+    "breakLeadsOff": "abre por {{team}}"
   },
   "plays": {
     "title": "Jugada a jugada",

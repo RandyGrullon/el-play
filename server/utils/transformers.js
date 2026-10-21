@@ -226,6 +226,13 @@ const transformGame = (feed) => {
         };
     }
 
+    // Pausa entre entradas (MLB: inningState «Middle» tras la alta, «End» tras la baja): `offense` ya es el equipo que
+    // viene a batear y trae a los tres que les toca
+    const inningBreak = state === 'live' && (linescore.inningState === 'Middle' || linescore.inningState === 'End');
+    const dueUp = inningBreak
+        ? [offense.batter, offense.onDeck, offense.inHole].filter((person) => person?.id).map((person) => ({ id: person.id, name: person.fullName || '' }))
+        : [];
+
     const boxTeam = (side) => {
         const source = boxscore.teams?.[side] || {};
         const players = source.players || {};
@@ -367,6 +374,7 @@ const transformGame = (feed) => {
         },
         runners: { first: runner('first'), second: runner('second'), third: runner('third') },
         matchup,
+        dueUp: dueUp.length ? { teamId: offense.team?.id ?? null, batters: dueUp } : null,
         probables: { away: probable('away'), home: probable('home') },
         linescore: (linescore.innings || []).map((inning) => ({
             n: inning.num,

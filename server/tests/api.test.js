@@ -63,6 +63,32 @@ describe('transformGame con un juego real de LIDOM (826279, EST 6 - ESC 5)', () 
     });
 });
 
+describe('pausa entre entradas: a quién le toca batear', () => {
+    // El mismo juego real puesto «en vivo» justo tras el tercer out de la alta (como lo manda MLB en la pausa)
+    const feed = fixture('feed-826279');
+    const live = (inningState, offense) => ({
+        ...feed,
+        gameData: { ...feed.gameData, status: { ...feed.gameData.status, abstractGameState: 'Live', detailedState: 'In Progress', codedGameState: 'I' } },
+        liveData: { ...feed.liveData, linescore: { ...feed.liveData.linescore, inningState, offense } }
+    });
+    const offense = {
+        team: { id: 671 },
+        batter: { id: 1, fullName: 'Primero' },
+        onDeck: { id: 2, fullName: 'Segundo' },
+        inHole: { id: 3, fullName: 'Tercero' }
+    };
+
+    it('en «Middle» o «End» trae los tres que le tocan y su equipo', () => {
+        expect(transformGame(live('Middle', offense)).dueUp).toEqual({ teamId: 671, batters: [{ id: 1, name: 'Primero' }, { id: 2, name: 'Segundo' }, { id: 3, name: 'Tercero' }] });
+        expect(transformGame(live('End', { ...offense, inHole: undefined })).dueUp.batters).toHaveLength(2);
+    });
+
+    it('con un turno en curso (o el juego terminado) no hay pausa', () => {
+        expect(transformGame(live('Top', offense)).dueUp).toBeNull();
+        expect(transformGame(feed).dueUp).toBeNull();
+    });
+});
+
 describe('classifyPitch', () => {
     it('usa los códigos cuando faltan las banderas', () => {
         expect(classifyPitch({ code: 'F' })).toBe('strike');

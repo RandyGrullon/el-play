@@ -324,6 +324,38 @@ export const atBatForZone = (game: Pick<GameDetail, 'atBats' | 'currentAtBat' | 
     return { atBat: current, isPrevious: false };
 };
 
+export interface InningBreak {
+    /** Terminó la alta (si no, la baja) de la entrada `inning` */
+    endedTop: boolean;
+    inning: number;
+    /** El que viene a batear y el que acaba de salir */
+    next: GameDetail['home'];
+    ended: GameDetail['home'];
+    /** Carreras del que salió en esa mitad (null si no se sabe) */
+    runs: number | null;
+    dueUp: { id: number; name: string }[];
+}
+
+/**
+ * Pausa entre entradas: en vivo, tras el tercer out y hasta que llega el primer bateador de la otra mitad (MLB lo dice
+ * con inningState «Middle» o «End»; si tarda, el último turno terminado con 3 outs).
+ */
+export const inningBreak = (game: Pick<GameDetail, 'atBats' | 'currentAtBat' | 'state' | 'inning' | 'away' | 'home' | 'linescore' | 'dueUp'>): InningBreak | null => {
+    if (game.state !== 'live') return null;
+    const { atBat } = atBatForZone(game);
+    if (!atBat || !atBat.complete) return null;
+    const state = game.inning?.state;
+    if (state !== 'Middle' && state !== 'End' && (atBat.outs ?? 0) < 3) return null;
+    const endedTop = state === 'Middle' ? true : state === 'End' ? false : atBat.top;
+    const inning = game.inning?.n ?? atBat.inning;
+    const next = endedTop ? game.home : game.away;
+    const ended = endedTop ? game.away : game.home;
+    const half = game.linescore.find((row) => row.n === inning);
+    const runs = half ? (endedTop ? half.away : half.home) : null;
+    const dueUp = game.dueUp && (game.dueUp.teamId === null || game.dueUp.teamId === next.id) ? game.dueUp.batters : [];
+    return { endedTop, inning, next, ended, runs: runs ?? null, dueUp };
+};
+
 /** Pitcheos del lanzador en el juego; con `batterId`, solo los que le tiró a ese bateador (en todos sus turnos) */
 export const pitchesByPitcher = (atBats: AtBat[], pitcherId: number | null | undefined, batterId?: number | null) =>
     pitcherId

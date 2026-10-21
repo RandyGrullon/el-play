@@ -351,7 +351,16 @@
     "pitchesTo_one": "{{count}} pitch to {{batter}}",
     "pitchesTo_other": "{{count}} pitches to {{batter}}",
     "byBatter": "Pitches by batter",
-    "allBatters": "All"
+    "allBatters": "All",
+    "breakStatus": "Waiting",
+    "breakWaiting": "Waiting for the first batter",
+    "breakNext": "Now batting",
+    "breakRuns_zero": "{{team}} didn't score in the inning",
+    "breakRuns_one": "{{team}} scored {{count}} run in the inning",
+    "breakRuns_other": "{{team}} scored {{count}} runs in the inning",
+    "breakDueUp": "Due up",
+    "breakAria": "Inning break: waiting for the first {{team}} batter",
+    "breakLeadsOff": "leads off for {{team}}"
   },
   "plays": {
     "title": "Play by play",

@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AtBat, GameDetail } from '../../types';
-import { arsenal, atBatForZone, battersFaced, eventName, pitchTypeColor, pitchesByPitcher } from '../../lib/baseball';
+import { arsenal, atBatForZone, battersFaced, eventName, inningBreak, pitchTypeColor, pitchesByPitcher } from '../../lib/baseball';
 import { Segmented } from '../ui/Segmented';
 import { StrikeZone } from './StrikeZone';
 import { uniformColors } from './BatterFigure';
 import { PitchList } from './PitchList';
+import { InningBreak } from './InningBreak';
 
 type Mode = 'atBat' | 'pitcher';
 
@@ -22,6 +23,8 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
 
     const { atBat: automatic, isPrevious } = atBatForZone(game);
     const atBat = forced ?? automatic;
+    // Tras el tercer out y hasta el primer bateador de la otra mitad: espera animada en vez del último turno
+    const pause = forced ? null : inningBreak(game);
 
     // Vista del lanzador por bateador: sigue al bateador del turno (null) o al que se eligió; 'all' = todos
     const [batterPick, setBatterPick] = useState<number | 'all' | null>(null);
@@ -83,7 +86,15 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
             </header>
 
             <div className="px-4 pt-3">
-                {mode === 'atBat' ? (
+                {mode === 'atBat' && pause ? (
+                    <p className="text-sm" aria-live="polite">
+                        <span className="font-semibold">{t(pause.endedTop ? 'anim.inningEnd_top' : 'anim.inningEnd_bottom', { n: pause.inning })}</span>
+                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-raised px-2 py-0.5 text-[11px] font-semibold text-muted">
+                            <span className="zb-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: pause.next.color }} aria-hidden="true" />
+                            {t('zone.breakStatus')}
+                        </span>
+                    </p>
+                ) : mode === 'atBat' ? (
                     <p className="text-sm">
                         <span className="font-semibold">{atBat.batter.name}</span>
                         <span className="text-muted"> {t('zone.facing')} </span>
@@ -117,7 +128,9 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
                 )}
             </div>
 
-            {mode === 'atBat' ? (
+            {mode === 'atBat' && pause ? (
+                <InningBreak pause={pause} />
+            ) : mode === 'atBat' ? (
                 <div className="grid gap-4 p-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] sm:items-start">
                     <StrikeZone
                         pitches={atBat.pitches}
