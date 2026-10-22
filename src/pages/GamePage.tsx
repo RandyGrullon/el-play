@@ -92,7 +92,7 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
                 <div className="flex flex-1 items-center justify-around gap-2 rounded-[24px] bg-surface px-3 py-3.5 shadow-float">
                     <Bases runners={game.runners} size={48} color={batting.color} />
                     <div className="text-center">
-                        <div className="text-[28px] font-extrabold leading-none tabular-nums">{between ? '—' : `${game.count.balls}-${game.count.strikes}`}</div>
+                        <div className="whitespace-nowrap text-[28px] font-extrabold leading-none tabular-nums">{between ? '—' : `${game.count.balls}-${game.count.strikes}`}</div>
                         <OutsDots outs={game.count.outs} className="mt-1.5" />
                     </div>
                     {pause ? (

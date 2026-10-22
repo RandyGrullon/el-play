@@ -309,7 +309,13 @@
     "outsCount_one": "{{count}} out",
     "outsCount_other": "{{count}} outs",
     "notFoundHint": "The link may be wrong or MLB may have removed the game.",
-    "backToGames": "See today's games"
+    "backToGames": "See today's games",
+    "half": {
+      "Top": "Top",
+      "Bottom": "Bottom",
+      "Middle": "Middle",
+      "End": "End"
+    }
   },
   "zone": {
     "title": "Strike zone",

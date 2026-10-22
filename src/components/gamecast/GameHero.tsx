@@ -26,7 +26,33 @@ export const inkOn = (hex: string) => {
     return 0.299 * r + 0.587 * g + 0.114 * b > 160 ? '#14151a' : '#ffffff';
 };
 
-// Cabecera del juego: dos mitades con el color de cada equipo, marcador gigante
+/**
+ * La entrada en grande entre los dos marcadores (como en la transmisión): flecha arriba en la alta y abajo en la baja,
+ * el número y la palabra completa. Antes iba solo en la pastilla de arriba y mucha gente no la veía.
+ */
+const InningBadge: React.FC<{ inning: { n: number | null; isTop: boolean; state?: string | null } }> = ({ inning }) => {
+    const { t, i18n } = useTranslation();
+    const state = inning.state === 'Middle' || inning.state === 'End' ? inning.state : inning.isTop ? 'Top' : 'Bottom';
+    const between = state === 'Middle' || state === 'End';
+    const arrow = (up: boolean) => (
+        <svg viewBox="0 0 12 8" className={`h-2 w-3 text-live ${up ? '' : 'rotate-180'}`} aria-hidden="true">
+            <path d="M6 0 12 8H0z" fill="currentColor" />
+        </svg>
+    );
+    return (
+        <div
+            className="absolute bottom-5 left-1/2 z-10 flex w-[70px] -translate-x-1/2 flex-col items-center gap-0.5 rounded-[20px] bg-surface px-1 pb-1.5 pt-2 text-ink shadow-float"
+            role="img"
+            aria-label={`${t('game.inning')}: ${inningName(inning, i18n.language)}`}
+        >
+            {between ? <span className="h-2" aria-hidden="true" /> : arrow(state === 'Top')}
+            <span className="font-display text-[32px] font-extrabold leading-none tabular-nums">{inning.n}</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-muted">{t(`game.half.${state}`)}</span>
+        </div>
+    );
+};
+
+// Cabecera del juego: dos mitades con el color de cada equipo, marcador gigante y la entrada al centro
 export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({ model, onShare }) => {
     const { t, i18n } = useTranslation();
     const { favoriteTeamId, toggleFavoriteTeam } = usePreferences();
@@ -37,7 +63,8 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
     if (notPlayed) status = stateName(model.detailedState, i18n.language);
     else if (model.state === 'final') status = finalLabel(model.inningsPlayed, model.scheduledInnings, i18n.language);
     else if (model.state === 'live') {
-        status = model.inning?.n ? `${inningName(model.inning, i18n.language, true)} · ${t('game.outsCount', { count: model.outs })}` : stateName(model.detailedState, i18n.language);
+        // La entrada va en grande al centro: aquí «En vivo» y los outs
+        status = model.inning?.n ? `${t('game.tabs.live')} · ${t('game.outsCount', { count: model.outs })}` : stateName(model.detailedState, i18n.language);
     } else status = model.date ? `${formatShortDate(model.date, i18n.language)} · ${formatTime(model.date, i18n.language)}` : '';
 
     const half = (team: HeroModel['away'], align: 'start' | 'end') => {
@@ -85,6 +112,7 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
                 {status}
                 {model.state === 'preview' && startsIn > 0 && !notPlayed ? ` · ${formatCountdown(startsIn, i18n.language)}` : ''}
             </span>
+            {model.state === 'live' && !notPlayed && model.inning?.n ? <InningBadge inning={model.inning} /> : null}
         </section>
     );
 };

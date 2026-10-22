@@ -309,7 +309,13 @@
     "outsCount_one": "{{count}} out",
     "outsCount_other": "{{count}} outs",
     "notFoundHint": "Puede que el enlace esté mal o que MLB lo haya quitado.",
-    "backToGames": "Ver los juegos de hoy"
+    "backToGames": "Ver los juegos de hoy",
+    "half": {
+      "Top": "Alta",
+      "Bottom": "Baja",
+      "Middle": "Mitad",
+      "End": "Fin"
+    }
   },
   "zone": {
     "title": "Zona de strike",
