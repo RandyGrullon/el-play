@@ -7,7 +7,7 @@ const { getSchedule, getScheduleV2 } = require('../controllers/scheduleControlle
 const { getStandings, getLeaders, getLeadersV2 } = require('../controllers/statsController');
 const { getPhotos, getPhoto } = require('../controllers/photoController');
 const { getFantasyDay, getFantasyFan, getFantasySeason, getFantasyOwners } = require('../controllers/fantasyController');
-const { getPlayers, getPlayer } = require('../controllers/playersController');
+const { getPlayers, getPlayer, getTeamStats } = require('../controllers/playersController');
 
 // Una liga que no existe es un error (antes se respondía LIDOM sin avisar); sin `league` sigue siendo LIDOM
 router.use((req, res, next) => (req.query.league && !LEAGUES[req.query.league] ? res.status(400).json({ error: 'invalid_league' }) : next()));
@@ -24,6 +24,7 @@ router.get('/v2/fantasy/season', getFantasySeason);
 router.get('/v2/fantasy/owners', getFantasyOwners);
 router.get('/v2/fantasy', getFantasyDay);
 router.get('/v2/players', getPlayers);
+router.get('/v2/team-stats', getTeamStats);
 router.get('/v2/player/:id', getPlayer);
 
 // Modo PRO: cada parte del rediseño registra sus rutas en su archivo (requires explícitos para que Vercel los incluya)

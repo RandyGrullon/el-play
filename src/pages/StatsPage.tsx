@@ -16,22 +16,31 @@ import { PlayerSheet } from '../components/stats/PlayerSheet';
 import { StatsTable } from '../components/pro/StatsTable';
 import { ProBadge } from '../components/pro/ProBadge';
 import { useIsPro } from '../lib/pro';
+import { TeamStatsView } from '../components/stats/TeamStats';
+import { leagueAverage, teamSort, useTeamStats } from '../lib/teamStats';
 
 const PAGE = 40;
 
 // Estadísticas de todos los peloteros de la liga: buscar, filtrar por equipo, ordenar (también por puntos
 // de fantasy) y abrir la ficha de cada uno. `?jugador=<id>` abre la ficha directo (enlaces desde otras pantallas).
+// «Equipos»: las estadísticas colectivas de bateo y pitcheo de cada equipo (components/stats/TeamStats.tsx).
+
+type View = 'B' | 'P' | 'T';
 export const StatsPage: React.FC = () => {
     const { t } = useTranslation();
     const { activeLeague } = useLeague();
     const [params, setParams] = useSearchParams();
     const [season, setSeason] = useState<number | undefined>(undefined);
-    const [role, setRole] = useState<'B' | 'P'>('B');
+    const [view, setView] = useState<View>('B');
+    const role: 'B' | 'P' = view === 'P' ? 'P' : 'B';
+    const teamsView = view === 'T';
     const [teamId, setTeamId] = useState<number | null>(null);
     const [sortKey, setSortKey] = useState<SortKey>('pts');
     const [search, setSearch] = useState('');
     const [limit, setLimit] = useState(PAGE);
     const query = usePlayers(activeLeague, season);
+    // Las colectivas: para la vista de equipos y para el promedio de la liga en los promedios de los peloteros
+    const teamQuery = useTeamStats(activeLeague, season);
     const pro = useIsPro();
     const data = query.data;
 
@@ -72,6 +81,17 @@ export const StatsPage: React.FC = () => {
 
     const top = !search && rows.length >= 3 && rows[0].ranked ? rows.slice(0, 3).map((item) => item.row) : [];
     const rest = top.length ? rows.slice(3) : rows;
+    // El promedio de la liga para comparar el orden elegido (AVG y OPS de bateo; EFE y WHIP de pitcheo)
+    const averageKey = role === 'B' ? (sort.key === 'avg' || sort.key === 'ops' ? sort.key : null) : sort.key === 'era' || sort.key === 'whip' ? sort.key : null;
+    const averageSort = averageKey ? teamSort(role === 'B' ? 'bat' : 'pitch', averageKey) : null;
+    const average = averageSort && teamQuery.data?.teams.length ? leagueAverage(teamQuery.data.teams, averageSort) : null;
+    const showTeamPlayers = (id: number) => {
+        setView('B');
+        setTeamId(id);
+        setSortKey('pts');
+        setSearch('');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     return (
         <PullToRefresh onRefresh={async () => { await query.refetch(); }}>
@@ -99,6 +119,7 @@ export const StatsPage: React.FC = () => {
 
                 {/* Buscar y filtrar */}
                 <div className="space-y-3 px-4">
+                    {!teamsView && (
                     <label className="flex h-12 items-center gap-2 rounded-2xl bg-surface px-4 shadow-card">
                         <Search className="h-4 w-4 shrink-0 text-muted" />
                         <span className="sr-only">{t('statsPage.search')}</span>
@@ -109,17 +130,19 @@ export const StatsPage: React.FC = () => {
                             </button>
                         )}
                     </label>
+                    )}
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <Segmented<'B' | 'P'>
+                        <Segmented<View>
                             label={t('statsPage.role')}
-                            value={role}
+                            value={view}
                             onChange={(value) => {
-                                setRole(value);
+                                setView(value);
                                 setSortKey('pts');
                             }}
                             options={[
                                 { value: 'B', label: t('statsPage.batters') },
-                                { value: 'P', label: t('statsPage.pitchers') }
+                                { value: 'P', label: t('statsPage.pitchers') },
+                                { value: 'T', label: t('statsPage.teams') }
                             ]}
                         />
                         {data && (
@@ -134,7 +157,7 @@ export const StatsPage: React.FC = () => {
                     </div>
                 </div>
 
-                {teams.length > 1 && (
+                {!teamsView && teams.length > 1 && (
                     <div className="flex gap-2 overflow-x-auto px-4 scrollbar-none" role="group" aria-label={t('statsPage.filterTeam')}>
                         <button type="button" onClick={() => setTeamId(null)} aria-pressed={teamId === null} className={`h-10 shrink-0 rounded-full px-4 text-sm font-bold ${teamId === null ? 'bg-ink text-bg' : 'bg-surface text-muted shadow-card'}`}>
                             {t('statsPage.allTeams')}
@@ -148,7 +171,7 @@ export const StatsPage: React.FC = () => {
                     </div>
                 )}
 
-                {!pro && (
+                {!pro && !teamsView && (
                 <div className="flex gap-2 overflow-x-auto px-4 scrollbar-none" role="tablist" aria-label={t('statsPage.sortBy')}>
                     {SORTS[role].map((option) => (
                         <button
@@ -165,7 +188,30 @@ export const StatsPage: React.FC = () => {
                 </div>
                 )}
 
-                {waitingForNetwork(query) ? (
+                {!teamsView && average !== null && averageSort && (
+                    <p className="-mt-1 px-4 text-xs font-semibold text-muted">
+                        {t('statsPage.leagueAverageShort', { value: averageSort.show(average) })}
+                    </p>
+                )}
+
+                {teamsView ? (
+                    waitingForNetwork(teamQuery) ? (
+                        <div className="px-4"><OfflineState /></div>
+                    ) : teamQuery.isPending ? (
+                        <div className="space-y-3 px-4">
+                            <div className="grid grid-cols-2 gap-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[76px] rounded-[22px]" />)}</div>
+                            <Skeleton className="h-80 rounded-card" />
+                        </div>
+                    ) : teamQuery.isError && !teamQuery.data ? (
+                        <div className="px-4">
+                            <ErrorState error={teamQuery.error as Error} onRetry={() => teamQuery.refetch()} />
+                        </div>
+                    ) : teamQuery.data?.teams.length ? (
+                        <TeamStatsView teams={teamQuery.data.teams} players={data} onOpenPlayer={open} onShowPlayers={showTeamPlayers} />
+                    ) : (
+                        <p className="mx-4 rounded-card bg-surface px-4 py-8 text-center text-sm text-muted shadow-card">{t('statsPage.teamEmpty')}</p>
+                    )
+                ) : waitingForNetwork(query) ? (
 <div className="px-4"><OfflineState /></div>) : query.isPending ? (
                     <div className="space-y-3 px-4">
                         <div className="grid grid-cols-3 gap-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-40 rounded-[24px]" />)}</div>

@@ -8,6 +8,7 @@ import { canAdd, creditsLeft, effectiveEntry, entryCost, perTeamLimit, fantasyIn
 import { SORTS, normalize, sortPlayers, type PlayerRow } from './stats';
 import { camera, flightMs, flightOf, gamedayToFeet, groundAt, heightAt, parkFor, wallAt, wallCrossing } from './flight';
 import { battingAdvanced, fmtPct, fmtRate, pitchingAdvanced, pythagorean } from './advanced';
+import { leagueAverage, leagueRank, rankTeams, recordOf, teamSort, type TeamRow } from './teamStats';
 import { showAlert } from '../hooks/useGameAlerts';
 import type { AtBat, GameDetail, Pitch, Schedule, ScheduleGame } from '../types';
 
@@ -820,5 +821,29 @@ describe('pausa entre entradas en la zona de strike', () => {
         expect(inningBreak(game({ atBats: [third, next], currentAtBat: 8, inning: { n: 6, ordinal: '6th', isTop: false, state: 'Bottom' } }))).toBeNull();
         expect(inningBreak(game({ atBats: [{ ...third, outs: 1 }], inning: { n: 6, ordinal: '6th', isTop: true, state: 'Top' } }))).toBeNull();
         expect(inningBreak(game({ state: 'final' }))).toBeNull();
+    });
+});
+
+describe('estadísticas colectivas: orden, puesto en la liga, promedio y récord', () => {
+    const team = (id: number, abbrev: string, avg: string, era: string, runs: number, allowed: number, w: number, l: number) =>
+        ({ id, abbrev, name: abbrev, color: '#000', logo: '', hitting: { g: w + l, avg, r: runs, k: 30 }, pitching: { era, r: allowed, w, l } }) as unknown as TeamRow;
+    const teams = [team(1, 'LIC', '.279', '2.92', 32, 14, 3, 1), team(2, 'EST', '.298', '3.34', 26, 14, 2, 2), team(3, 'ESC', '.209', '5.91', 14, 28, 1, 3), { ...team(4, 'AGU', '.211', '4.24', 12, 17, 1, 3), pitching: null } as TeamRow];
+
+    it('AVG de mayor a menor; EFE de menor a mayor (y el que no tiene el dato, al final)', () => {
+        expect(rankTeams(teams, teamSort('bat', 'avg')).map((row) => row.team.abbrev)).toEqual(['EST', 'LIC', 'AGU', 'ESC']);
+        expect(rankTeams(teams, teamSort('pitch', 'era')).map((row) => row.team.abbrev)).toEqual(['LIC', 'EST', 'ESC', 'AGU']);
+        expect(teamSort('bat', 'avg').show(0.2789)).toBe('.279');
+    });
+
+    it('puesto en la liga y promedio de la liga', () => {
+        expect(leagueRank(teams, teams[0], teamSort('bat', 'avg'))).toBe(2);
+        expect(leagueRank(teams, teams[0], teamSort('pitch', 'era'))).toBe(1);
+        expect(leagueRank(teams, teams[3], teamSort('pitch', 'era'))).toBeNull();
+        expect(leagueAverage(teams, teamSort('pitch', 'era'))).toBeCloseTo((2.92 + 3.34 + 5.91) / 3, 5);
+    });
+
+    it('récord y diferencia de carreras', () => {
+        expect(recordOf(teams[0])).toMatchObject({ w: 3, l: 1, games: 4, scored: 32, allowed: 14, diff: 18 });
+        expect(recordOf(teams[3]).diff).toBeNull();
     });
 });

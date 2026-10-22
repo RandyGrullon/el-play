@@ -1084,6 +1084,52 @@ describe('fantasy con créditos: precio por pelotero y tope del equipo', () => {
     });
 });
 
+describe('estadísticas colectivas por equipo', () => {
+    const { fetchTeamStats } = require('../services/teamStats');
+    const realGet = http.mlbGet;
+    afterEach(() => {
+        http.mlbGet = realGet;
+    });
+
+    it('bateo y pitcheo de cada equipo con lo que es solo de equipo; antes del primer juego, la temporada anterior', async () => {
+        clearCache();
+        const calls = [];
+        http.mlbGet = async (url, params) => {
+            if (url.endsWith('/league/131')) return { leagues: [{ season: '2026', numGames: 50 }] };
+            calls.push({ url, ...params });
+            if (params.season === 2026) return { stats: [{ splits: [] }] };
+            const stat =
+                params.group === 'hitting'
+                    ? { gamesPlayed: 50, atBats: 1700, hits: 450, homeRuns: 30, runs: 220, avg: '.265', obp: '.340', slg: '.380', ops: '.720', leftOnBase: 330, babip: '.300' }
+                    : { gamesPitched: 50, outs: 1350, inningsPitched: '450.0', earnedRuns: 180, runs: 200, wins: 28, losses: 22, era: '3.60', whip: '1.30', avg: '.250', saves: 14, saveOpportunities: 20, blownSaves: 6 };
+            return { stats: [{ splits: [{ team: { id: 667, name: 'Águilas Cibaeñas' }, stat }] }] };
+        };
+        const data = await fetchTeamStats('lidom');
+        expect(data).toMatchObject({ season: 2025, currentSeason: 2026, isPreviousSeason: true });
+        expect(data.teams).toHaveLength(1);
+        expect(data.teams[0]).toMatchObject({
+            id: 667,
+            abbrev: 'AGU',
+            hitting: { avg: '.265', hr: 30, r: 220, lob: 330 },
+            pitching: { era: '3.60', w: 28, l: 22, r: 200, avg: '.250', sv: 14, svo: 20, bs: 6 }
+        });
+        expect(calls.every((call) => call.url.endsWith('/teams/stats') && call.sportIds === 17 && call.leagueIds === 131 && call.stats === 'season')).toBe(true);
+        // Una temporada pedida no salta a la anterior aunque esté vacía
+        expect(await fetchTeamStats('lidom', 2026)).toMatchObject({ season: 2026, isPreviousSeason: false, teams: [] });
+    });
+
+    it('ruta: temporada inválida 400', async () => {
+        const app = require('../app');
+        const server = app.listen(0);
+        await new Promise((resolve) => server.once('listening', resolve));
+        try {
+            expect((await fetch(`http://127.0.0.1:${server.address().port}/api/v2/team-stats?league=lidom&season=ayer`)).status).toBe(400);
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    });
+});
+
 describe('estadísticas de jugadores', () => {
     const { hittingOf, pitchingOf, pointsOf, fetchPlayers } = require('../services/players');
 

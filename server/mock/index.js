@@ -742,6 +742,38 @@ const seasonSplits = (group, season) => {
     return splits;
 };
 
+/** /teams/stats: la suma de los peloteros de cada equipo (los promedios se recalculan) */
+const teamSplits = (group, season) => {
+    const sums = new Map();
+    for (const split of seasonSplits(group, season)) {
+        const sum = sums.get(split.team.id) || { team: split.team, stat: {} };
+        for (const [key, value] of Object.entries(split.stat)) if (typeof value === 'number') sum.stat[key] = (sum.stat[key] || 0) + value;
+        sums.set(split.team.id, sum);
+    }
+    const games = Number(season) >= new Date().getUTCFullYear() ? 12 : 50;
+    const rate = (n, d, digits = 3) => (d ? (n / d).toFixed(digits).replace(/^0/, '') : '.000');
+    return [...sums.values()].map(({ team, stat }) => {
+        if (group === 'pitching') {
+            const outs = stat.outs || 0;
+            const runs = Math.round((stat.earnedRuns || 0) * 1.12);
+            const atBats = Math.round((outs || 0) + (stat.hits || 0));
+            return {
+                team,
+                stat: {
+                    ...stat, gamesPlayed: games, gamesPitched: games, gamesStarted: games, wins: 0, losses: 0, runs, inningsPitched: ipText(outs),
+                    era: outs ? ((stat.earnedRuns * 27) / outs).toFixed(2) : '-.--', whip: outs ? (((stat.hits + stat.baseOnBalls) * 3) / outs).toFixed(2) : '-.--',
+                    avg: rate(stat.hits, atBats), saveOpportunities: (stat.saves || 0) + 2, blownSaves: 2
+                }
+            };
+        }
+        const singles = stat.hits - (stat.doubles || 0) - (stat.triples || 0) - (stat.homeRuns || 0);
+        const totalBases = singles + 2 * (stat.doubles || 0) + 3 * (stat.triples || 0) + 4 * (stat.homeRuns || 0);
+        const obp = rate(stat.hits + (stat.baseOnBalls || 0), (stat.atBats || 0) + (stat.baseOnBalls || 0));
+        const slg = rate(totalBases, stat.atBats);
+        return { team, stat: { ...stat, gamesPlayed: games, avg: rate(stat.hits, stat.atBats), obp, slg, ops: (parseFloat(obp) + parseFloat(slg)).toFixed(3).replace(/^0/, ''), totalBases, leftOnBase: Math.round(games * 6.5) } };
+    });
+};
+
 const findPerson = (personId) => {
     const teamId = Math.floor(Number(personId) / 1000);
     if (!TEAMS[teamId]) return null;
@@ -810,6 +842,7 @@ const get = async (url, params = {}) => {
         if (params.playerPool === 'ALL' && !params.sortStat) return Number(params.leagueId) === 131 ? { stats: [{ splits: seasonSplits(params.group, params.season) }] } : { stats: [] };
         return stats(params);
     }
+    if (path === '/teams/stats') return Number(params.leagueIds) === 131 ? { stats: [{ splits: teamSplits(params.group, params.season) }] } : { stats: [] };
     if (path === '/teams') return { teams: TEAM_IDS.map((id) => ({ id, name: TEAMS[id].name, abbreviation: TEAMS[id].abbreviation })) };
     if ((match = path.match(/^\/teams\/(\d+)\/roster$/))) {
         const team = roster(Number(match[1]));

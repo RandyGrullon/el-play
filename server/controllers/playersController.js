@@ -1,5 +1,6 @@
 const { cached } = require('../utils/cache');
 const { fetchPlayers, fetchPlayer } = require('../services/players');
+const { fetchTeamStats } = require('../services/teamStats');
 const { LEAGUES } = require('../config/constants');
 
 const leagueFrom = (req) => (LEAGUES[req.query.league] ? req.query.league : 'lidom');
@@ -36,4 +37,18 @@ const getPlayer = async (req, res, next) => {
     }
 };
 
-module.exports = { getPlayers, getPlayer };
+// Estadísticas colectivas de bateo y pitcheo de cada equipo
+const getTeamStats = async (req, res, next) => {
+    try {
+        if (req.query.season && !seasonFrom(req)) return res.status(400).json({ error: 'invalid_season' });
+        const league = leagueFrom(req);
+        const season = seasonFrom(req);
+        const data = await cached(`team_stats_${league}_${season || 'actual'}`, ttlOf, () => fetchTeamStats(league, season), { staleSec: 3600 });
+        setCache(res, ttlOf(data));
+        res.json(data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { getPlayers, getPlayer, getTeamStats };
