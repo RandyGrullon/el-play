@@ -3,7 +3,8 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <!-- Como una app del teléfono: sin zoom (maximum-scale=1 también evita que iPhone amplíe al tocar un campo de texto) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>El Play · Béisbol en vivo</title>
   <meta name="description" content="LIDOM, Serie del Caribe y Clásico Mundial en vivo: marcador, zona de strike pitcheo a pitcheo, jugadas, box score, posiciones y líderes.">
   <meta name="theme-color" content="#090c11">
@@ -33,7 +34,7 @@
   <link rel="preconnect" href="https://www.mlbstatic.com" crossorigin>
   <style>
     /* Fondo inmediato mientras carga el JS (la animación de entrada la pinta React) */
-    html { background: #f6f6f9; touch-action: manipulation; /* sin zoom por doble toque; el pellizco sí amplía */ }
+    html { background: #f6f6f9; touch-action: pan-x pan-y; /* sin zoom: ni doble toque ni pellizco */ }
     @media (prefers-color-scheme: dark) { html:not([data-theme='light']) { background: #0b0c10; } }
     html[data-theme='dark'] { background: #0b0c10; }
   </style>

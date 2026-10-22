@@ -10,10 +10,10 @@ import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import App from './App';
-import { blockDoubleTapZoom } from './lib/noZoom';
+import { blockZoom } from './lib/noZoom';
 import './styles.css';
 
-blockDoubleTapZoom();
+blockZoom();
 
 // Vuelta desde el enlace del correo o desde Google: la sesión queda abierta (o se dice qué falló)
 const authMessage = (auth: AuthRedirect) => {

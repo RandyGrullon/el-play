@@ -1097,7 +1097,7 @@ const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: OpenFan 
                     {rivals && !ranking.length && <li className="px-4 py-6 text-center text-sm text-muted">{t('fantasy.emptyTable')}</li>}
                 </ol>
             )}
-            {scope !== 'all' && <p className="text-xs text-muted">{t('fantasy.leagueCode', { code: leagues.find((l) => l.id === scope)?.code })}</p>}
+            {scope !== 'all' && <p className="select-text text-xs text-muted">{t('fantasy.leagueCode', { code: leagues.find((l) => l.id === scope)?.code })}</p>}
 
             <div className="card grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
                 <form
@@ -1130,7 +1130,7 @@ const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: OpenFan 
                         {t('fantasy.join')}
                     </button>
                 </form>
-                {message && <p className="text-sm font-semibold sm:col-span-2">{message}</p>}
+                {message && <p className="select-text text-sm font-semibold sm:col-span-2">{message}</p>}
             </div>
         </section>
     );

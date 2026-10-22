@@ -90,16 +90,47 @@
 @layer base {
     html {
         -webkit-tap-highlight-color: transparent;
-        overscroll-behavior-x: none;
-        /* Sin zoom: solo desplazamiento (quita el pellizco y el doble toque) */
-        touch-action: pan-x pan-y;
+        /* Sin rebote ni la recarga del navegador al jalar: el desliza-para-recargar es el de la app */
+        overscroll-behavior: none;
         -webkit-text-size-adjust: 100%;
         text-size-adjust: 100%;
+    }
+
+    /* Sin zoom en ninguna parte: solo desplazamiento (quita el pellizco y el doble toque). touch-action no se hereda
+       dentro de lo que tiene su propio desplazamiento (los modales, las listas): por eso va en todos los elementos */
+    *,
+    *::before,
+    *::after {
+        touch-action: pan-x pan-y;
     }
 
     body {
         @apply bg-bg text-ink font-sans antialiased;
         font-feature-settings: 'cv11', 'ss01';
+        /* Como una app: los textos y las imágenes no se seleccionan ni abren el menú al dejar el dedo encima */
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+        /* Nada se sale de lado (clip no rompe los encabezados pegajosos como hidden) */
+        overflow-x: clip;
+    }
+
+    input,
+    textarea,
+    [contenteditable='true'],
+    .select-text {
+        -webkit-user-select: text;
+        user-select: text;
+        -webkit-touch-callout: default;
+    }
+
+    /* iPhone amplía la página al tocar un campo con letra de menos de 16 px: en pantallas táctiles nunca es menor */
+    @media (pointer: coarse) {
+        input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+        select,
+        textarea {
+            font-size: max(16px, 1em) !important;
+        }
     }
 
     ::selection {
