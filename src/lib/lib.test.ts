@@ -9,6 +9,7 @@ import { SORTS, normalize, sortPlayers, type PlayerRow } from './stats';
 import { camera, flightMs, flightOf, gamedayToFeet, groundAt, heightAt, parkFor, wallAt, wallCrossing } from './flight';
 import { battingAdvanced, fmtPct, fmtRate, pitchingAdvanced, pythagorean } from './advanced';
 import { leagueAverage, leagueRank, rankTeams, recordOf, teamSort, type TeamRow } from './teamStats';
+import { percents, winProbability } from './winProbability';
 import { showAlert } from '../hooks/useGameAlerts';
 import type { AtBat, GameDetail, Pitch, Schedule, ScheduleGame } from '../types';
 
@@ -845,5 +846,35 @@ describe('estadísticas colectivas: orden, puesto en la liga, promedio y récord
     it('récord y diferencia de carreras', () => {
         expect(recordOf(teams[0])).toMatchObject({ w: 3, l: 1, games: 4, scored: 32, allowed: 14, diff: 18 });
         expect(recordOf(teams[3]).diff).toBeNull();
+    });
+});
+
+describe('probabilidad de victoria antes del juego', () => {
+    const form = (w: number, l: number, scored: number | null = null, allowed: number | null = null) => ({ w, l, scored, allowed });
+
+    it('dos equipos iguales: el local un poco arriba (~54 %)', () => {
+        const even = winProbability(form(10, 10, 80, 80), form(10, 10, 80, 80));
+        expect(even.home).toBeGreaterThan(0.53);
+        expect(even.home).toBeLessThan(0.55);
+        expect(percents(even).home + percents(even).away).toBe(100);
+    });
+
+    it('con pocos juegos casi no se mueve de 50-50; con muchos sí, y nunca pasa de 80-20', () => {
+        const early = winProbability(form(3, 1, 32, 14), form(1, 3, 14, 28));
+        expect(early.early).toBe(true);
+        expect(early.home).toBeGreaterThan(0.6);
+        expect(early.home).toBeLessThan(0.75);
+        const late = winProbability(form(35, 15, 260, 170), form(15, 35, 170, 260));
+        expect(late.home).toBeGreaterThan(early.home);
+        expect(winProbability(form(50, 0, 500, 10), form(0, 50, 10, 500)).home).toBe(0.8);
+    });
+
+    it('los abridores mueven poco y solo si se saben los dos', () => {
+        const base = winProbability(form(10, 10), form(10, 10));
+        const better = winProbability(form(10, 10), form(10, 10), { homeEra: '1.50', awayEra: '6.00' });
+        expect(better.starters).toBe(true);
+        expect(better.home - base.home).toBeGreaterThan(0.03);
+        expect(better.home - base.home).toBeLessThan(0.07);
+        expect(winProbability(form(10, 10), form(10, 10), { homeEra: '1.50' }).starters).toBe(false);
     });
 });

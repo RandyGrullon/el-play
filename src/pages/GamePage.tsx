@@ -24,6 +24,7 @@ import { PlayAnimation } from '../components/gamecast/PlayAnimation';
 import { forMode, newPlayEvents, type PlayEvent } from '../lib/playEvents';
 import { StrikeZonePanel } from '../components/game/StrikeZonePanel';
 import { InningBreakMini } from '../components/game/InningBreak';
+import { WinProbabilityCard } from '../components/game/WinProbability';
 import { uniformColors } from '../components/game/BatterFigure';
 import { Matchup } from '../components/game/Matchup';
 import { PlayByPlay } from '../components/game/PlayByPlay';
@@ -168,6 +169,8 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
 
     return (
         <div className="space-y-3 px-4 pt-4">
+            {!notPlayed && <WinProbabilityCard game={game} />}
+
             <section className="card p-4" aria-label={t('preview.probables')}>
                 <h2 className="eyebrow mb-3">{t('preview.probables')}</h2>
                 <ul className="space-y-3">

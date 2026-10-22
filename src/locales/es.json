@@ -1269,5 +1269,20 @@
       "whiffs": "Abanic.",
       "hardest": "Batazos más duros"
     }
+  },
+  "winProb": {
+    "title": "Probabilidad de victoria",
+    "favorite": "Favorito · {{team}}",
+    "even": "Parejo",
+    "home": "Juega en casa",
+    "record": "Récord",
+    "diff": "Dif. carreras",
+    "era": "EFE",
+    "avg": "AVG",
+    "aria": "Probabilidad de victoria: {{away}} {{a}} %, {{home}} {{h}} %",
+    "note": "Estimación de El Play con el récord, las carreras anotadas y permitidas y la ventaja de jugar en casa.",
+    "noteStarters": "Estimación de El Play con el récord, las carreras anotadas y permitidas, la ventaja de jugar en casa y la efectividad de los abridores.",
+    "early": "Con pocos juegos jugados queda cerca del 50-50.",
+    "previous": "Con los números de la temporada pasada."
   }
 }

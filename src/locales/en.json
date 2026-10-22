@@ -1269,5 +1269,20 @@
       "whiffs": "Whiffs",
       "hardest": "Hardest-hit balls"
     }
+  },
+  "winProb": {
+    "title": "Win probability",
+    "favorite": "Favorite · {{team}}",
+    "even": "Even",
+    "home": "Home team",
+    "record": "Record",
+    "diff": "Run diff.",
+    "era": "ERA",
+    "avg": "AVG",
+    "aria": "Win probability: {{away}} {{a}}%, {{home}} {{h}}%",
+    "note": "El Play's estimate from record, runs scored and allowed, and home-field advantage.",
+    "noteStarters": "El Play's estimate from record, runs scored and allowed, home-field advantage and the starters' ERA.",
+    "early": "With few games played it stays close to 50-50.",
+    "previous": "Using last season's numbers."
   }
 }
