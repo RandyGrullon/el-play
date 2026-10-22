@@ -63,6 +63,36 @@ describe('transformGame con un juego real de LIDOM (826279, EST 6 - ESC 5)', () 
     });
 });
 
+describe('retos del ABS (árbitro robot)', () => {
+    // El juego real con retos puestos a mano tal como los manda MLB en LIDOM 2026-27
+    const feed = fixture('feed-826279');
+    const plays = feed.liveData.plays.allPlays;
+    const withAbs = () => {
+        const copy = JSON.parse(JSON.stringify(feed));
+        const all = copy.liveData.plays.allPlays;
+        // Un lanzamiento retado a mitad de turno (revisándose) y un turno que terminó con el lanzamiento retado
+        const pitchIndex = all[3].playEvents.findIndex((event) => event.isPitch);
+        all[3].playEvents[pitchIndex].reviewDetails = { isOverturned: false, inProgress: true, reviewType: 'MJ', challengeTeamId: 671 };
+        all[5].reviewDetails = { isOverturned: true, inProgress: false, reviewType: 'MJ', challengeTeamId: 669, player: { id: 42, fullName: 'Receptor' } };
+        // Las revisiones de repetición (no ABS) no cuentan
+        all[6].reviewDetails = { isOverturned: false, inProgress: false, reviewType: 'MF', challengeTeamId: 669 };
+        copy.gameData.absChallenges = { hasChallenges: true, away: { usedSuccessful: 1, usedFailed: 0, remaining: 2 }, home: { usedSuccessful: 0, usedFailed: 2, remaining: 0 }, challengingTeam: { id: 671 } };
+        return copy;
+    };
+
+    it('el reto va en su lanzamiento; si cerró el turno, en el último; y los contadores de cada equipo', () => {
+        const game = transformGame(withAbs());
+        const third = game.atBats.find((atBat) => atBat.i === plays[3].about.atBatIndex);
+        expect(third.pitches[0].abs).toEqual({ inProgress: true, overturned: false, teamId: 671, by: null });
+        const fifth = game.atBats.find((atBat) => atBat.i === plays[5].about.atBatIndex);
+        expect(fifth.pitches[fifth.pitches.length - 1].abs).toEqual({ inProgress: false, overturned: true, teamId: 669, by: { id: 42, name: 'Receptor' } });
+        expect(game.atBats.find((atBat) => atBat.i === plays[6].about.atBatIndex).pitches.some((pitch) => pitch.abs)).toBe(false);
+        expect(game.abs).toEqual({ away: { won: 1, lost: 0, remaining: 2 }, home: { won: 0, lost: 2, remaining: 0 }, challenging: 671 });
+        // Sin retos en el juego: nada
+        expect(transformGame(feed).abs).toBeNull();
+    });
+});
+
 describe('pausa entre entradas: a quién le toca batear', () => {
     // El mismo juego real puesto «en vivo» justo tras el tercer out de la alta (como lo manda MLB en la pausa)
     const feed = fixture('feed-826279');

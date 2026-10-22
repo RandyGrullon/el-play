@@ -3,7 +3,7 @@ import { gameInterval, scheduleInterval } from './polling';
 import { atBatForZone, arsenal, battedBalls, battersFaced, inningBreak, pitchesByPitcher, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName } from './baseball';
 import { dayKey, dayRange, seasonLabel } from './format';
 import { nameKey, photoSources } from './photos';
-import { newPlayEvents, outVariant, titleClinch } from './playEvents';
+import { forMode, newPlayEvents, outVariant, titleClinch } from './playEvents';
 import { canAdd, creditsLeft, effectiveEntry, entryCost, perTeamLimit, fantasyInterval, gameStarted, getStore, isLocked, lockTime, nextLockAt, pickPoints, replaceStore, setPick, setStoreOwner, takeLegacyStore, teamPoints, unsettledDays, type DayEntry, type EntryHistory, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
 import { SORTS, normalize, sortPlayers, type PlayerRow } from './stats';
 import { camera, flightMs, flightOf, gamedayToFeet, groundAt, heightAt, parkFor, wallAt, wallCrossing } from './flight';
@@ -876,5 +876,41 @@ describe('probabilidad de victoria antes del juego', () => {
         expect(better.home - base.home).toBeGreaterThan(0.03);
         expect(better.home - base.home).toBeLessThan(0.07);
         expect(winProbability(form(10, 10), form(10, 10), { homeEra: '1.50' }).starters).toBe(false);
+    });
+});
+
+describe('reto del ABS: revisando y resultado entre dos lecturas', () => {
+    const team = (id: number, abbrev: string) => ({ id, abbrev, name: abbrev, logo: '', color: '#0069e0', record: null, teamName: abbrev, runs: 0, hits: 0, errors: 0, lob: 0, isWinner: false });
+    const turn = (pitches: Pitch[], extra: Partial<AtBat> = {}) => ({ ...atBat(44, pitches, false), top: false, batter: { id: 1, name: 'Bateador', side: 'R' }, pitcher: { id: 2, name: 'Lanzador', hand: 'R' }, ...extra }) as AtBat;
+    const game = (atBats: AtBat[], abs: GameDetail['abs'] = null) =>
+        ({ gamePk: 1, state: 'live', atBats, inning: { n: 6, ordinal: '6th', isTop: false, state: 'Bottom' }, away: team(668, 'TOR'), home: team(672, 'LIC'), abs }) as unknown as GameDetail;
+    const ball = pitch({ r: 'ball', code: 'B', call: 'Ball' });
+    const checking = { ...pitch({ r: 'ball', code: 'B', call: 'Ball' }), abs: { inProgress: true, overturned: false, teamId: 672, by: null } };
+    const overturned = { ...pitch(), code: 'C', abs: { inProgress: false, overturned: true, teamId: 672, by: { id: 1, name: 'Bateador' } } };
+    const counts = { away: { won: 1, lost: 0, remaining: 2 }, home: { won: 2, lost: 2, remaining: 1 }, challenging: null };
+
+    it('aparece «revisando» con la decisión del umpire y después el resultado (una vez cada uno)', () => {
+        const before = game([turn([pitch(), ball])]);
+        const during = game([turn([pitch(), checking])], { ...counts, challenging: 672 });
+        const after = game([turn([pitch(), overturned], { complete: true, event: 'strikeout' })], counts);
+        const [first] = newPlayEvents(before, during);
+        expect(first).toMatchObject({ kind: 'abs', key: 'abs-44-1-checking', team: { abbrev: 'LIC' }, abs: { phase: 'checking', call: 'ball', original: 'ball' } });
+        const events = newPlayEvents(during, after);
+        // El reto va antes que la jugada del turno (el ponche que salió del reto)
+        expect(events.map((event) => event.kind)).toEqual(['abs', 'k']);
+        expect(events[0]).toMatchObject({ key: 'abs-44-1-result', abs: { phase: 'result', overturned: true, call: 'strike', original: 'ball', by: 'batter', remaining: 1 } });
+        expect(newPlayEvents(after, after)).toEqual([]);
+        expect(newPlayEvents(during, during)).toEqual([]);
+    });
+
+    it('si ya llegó resuelto (la revisión dura menos que una lectura) sale directo el resultado', () => {
+        const confirmed = { ...pitch({ r: 'ball', code: 'B', call: 'Ball' }), abs: { inProgress: false, overturned: false, teamId: 668, by: { id: 2, name: 'Lanzador' } } };
+        const [event] = newPlayEvents(game([turn([pitch()])]), game([turn([pitch(), confirmed])], counts));
+        expect(event).toMatchObject({ kind: 'abs', team: { abbrev: 'TOR' }, abs: { phase: 'result', overturned: false, call: 'ball', original: 'ball', by: 'pitcher', remaining: 2 } });
+    });
+
+    it('en «inteligentes» sale aunque el juego no sea de tu equipo', () => {
+        const events = newPlayEvents(game([turn([ball])]), game([turn([checking])]));
+        expect(forMode(events, 'smart', null, [668, 672]).map((event) => event.kind)).toEqual(['abs']);
     });
 });

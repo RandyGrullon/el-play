@@ -49,6 +49,16 @@ const pitchLocation = (coordinates) => {
     return { x: null, z: null, est: false };
 };
 
+/**
+ * Reto del ABS (el árbitro robot): MLB lo marca con reviewType «MJ» (reto del equipo, «pitch result»). Mientras se
+ * revisa viene inProgress y la decisión del umpire; al resolverse, la final (isOverturned: se cambió). `by`: quién
+ * retó (bateador, lanzador o receptor; en LIDOM a veces no viene, solo el equipo).
+ */
+const absOf = (review) =>
+    review?.reviewType === 'MJ'
+        ? { inProgress: !!review.inProgress, overturned: !!review.isOverturned, teamId: review.challengeTeamId ?? null, by: review.player?.id ? { id: review.player.id, name: review.player.fullName || '' } : null }
+        : null;
+
 const toPitch = (event) => {
     const details = event.details || {};
     const pitchData = event.pitchData || {};
@@ -73,6 +83,8 @@ const toPitch = (event) => {
     };
     // Solo cuando la ubicación es la del anotador (aproximada): la app lo aclara bajo la zona
     if (location.est) pitch.est = true;
+    const abs = absOf(event.reviewDetails);
+    if (abs) pitch.abs = abs;
     if (event.hitData) {
         const spot = event.hitData.coordinates || {};
         pitch.hit = {
@@ -95,6 +107,10 @@ const toAtBat = (play, index, nameOf = () => '') => {
     const matchup = play.matchup || {};
     const result = play.result || {};
     const events = play.playEvents || [];
+    const pitches = events.filter((event) => event.isPitch).map(toPitch);
+    // Si el lanzamiento retado cerró el turno (ponche o boleto), MLB pasa el reto del lanzamiento al turno
+    const playAbs = absOf(play.reviewDetails);
+    if (playAbs && pitches.length && !pitches[pitches.length - 1].abs) pitches[pitches.length - 1].abs = playAbs;
     return {
         i: about.atBatIndex ?? index,
         inning: about.inning ?? null,
@@ -110,7 +126,7 @@ const toAtBat = (play, index, nameOf = () => '') => {
         away: result.awayScore ?? null,
         home: result.homeScore ?? null,
         outs: play.count?.outs ?? null,
-        pitches: events.filter((event) => event.isPitch).map(toPitch),
+        pitches,
         actions: events
             // Sin avisos internos de MLB ("Status Change - Warmup", game_advisory)
             .filter((event) => !event.isPitch && event.type === 'action' && event.details?.description && event.details.eventType !== 'game_advisory' && !/^Status Change/.test(event.details.description))
@@ -232,6 +248,12 @@ const transformGame = (feed) => {
     const dueUp = inningBreak
         ? [offense.batter, offense.onDeck, offense.inHole].filter((person) => person?.id).map((person) => ({ id: person.id, name: person.fullName || '' }))
         : [];
+
+    const absChallengesOf = (challenges) => {
+        if (!challenges?.hasChallenges) return null;
+        const side = (team) => ({ won: team?.usedSuccessful ?? 0, lost: team?.usedFailed ?? 0, remaining: team?.remaining ?? null });
+        return { away: side(challenges.away), home: side(challenges.home), challenging: challenges.challengingTeam?.id ?? null };
+    };
 
     const boxTeam = (side) => {
         const source = boxscore.teams?.[side] || {};
@@ -375,6 +397,7 @@ const transformGame = (feed) => {
         runners: { first: runner('first'), second: runner('second'), third: runner('third') },
         matchup,
         dueUp: dueUp.length ? { teamId: offense.team?.id ?? null, batters: dueUp } : null,
+        abs: absChallengesOf(gameData.absChallenges),
         probables: { away: probable('away'), home: probable('home') },
         linescore: (linescore.innings || []).map((inning) => ({
             n: inning.num,

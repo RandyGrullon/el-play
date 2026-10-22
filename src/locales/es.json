@@ -360,7 +360,10 @@
     "breakRuns_other": "{{team}} anotó {{count}} carreras en la entrada",
     "breakDueUp": "Le toca batear",
     "breakAria": "Cambio de entrada: esperando al primer bateador de {{team}}",
-    "breakLeadsOff": "abre por {{team}}"
+    "breakLeadsOff": "abre por {{team}}",
+    "absChecking": "ABS · revisando",
+    "absOverturned": "ABS · cambiado",
+    "absConfirmed": "ABS · confirmado"
   },
   "plays": {
     "title": "Jugada a jugada",
@@ -685,7 +688,24 @@
     "drivesIn_one": "Remolca {{count}} carrera",
     "drivesIn_other": "Remolca {{count}} carreras",
     "drivesInChip": "Remolca",
-    "runsLabel": "{{team}} {{runs}}"
+    "runsLabel": "{{team}} {{runs}}",
+    "absKicker": "Reto ABS · {{team}}",
+    "absBy_batter": "Lo reta el bateador {{name}}",
+    "absBy_pitcher": "Lo reta el lanzador {{name}}",
+    "absBy_catcher": "Lo reta el receptor {{name}}",
+    "absByTeam": "Lo reta {{team}}",
+    "absChecking": "REVISANDO",
+    "absCalled": "El umpire cantó {{call}}",
+    "absBall": "Bola",
+    "absStrike": "Strike",
+    "absOverturned": "¡Cambiado!",
+    "absConfirmed": "Confirmado",
+    "absChange": "{{from}} → {{to}}",
+    "absStays": "Se queda {{call}}",
+    "absWon_one": "{{team}} gana el reto · le queda {{count}}",
+    "absWon_other": "{{team}} gana el reto · le quedan {{count}}",
+    "absLost_one": "{{team}} pierde el reto · le queda {{count}}",
+    "absLost_other": "{{team}} pierde el reto · le quedan {{count}}"
   },
   "fantasy": {
     "title": "Fantasy",

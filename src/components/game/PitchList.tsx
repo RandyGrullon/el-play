@@ -32,7 +32,14 @@ export const PitchList: React.FC<PitchListProps> = ({ pitches, selected = null, 
                                 {pitch.n ?? index + 1}
                             </span>
                             <span className="min-w-0">
-                                <span className="block truncate text-sm font-semibold">{pitchCallName(pitch, i18n.language)}</span>
+                                <span className="flex items-center gap-1.5">
+                                    <span className="truncate text-sm font-semibold">{pitchCallName(pitch, i18n.language)}</span>
+                                    {pitch.abs && (
+                                        <span className={`shrink-0 rounded-full px-1.5 text-[10px] font-extrabold ${pitch.abs.inProgress ? 'bg-accent/15 text-accent-ink' : pitch.abs.overturned ? 'bg-ball/15 text-ball' : 'bg-raised text-muted'}`}>
+                                            {t(pitch.abs.inProgress ? 'zone.absChecking' : pitch.abs.overturned ? 'zone.absOverturned' : 'zone.absConfirmed')}
+                                        </span>
+                                    )}
+                                </span>
                                 {/* Sin rastreo no hay tipo ni velocidad: no se pintan guiones */}
                                 {(pitch.type || pitch.typeDesc || pitch.hit?.ev) && (
                                     <span className="block truncate text-xs text-muted">

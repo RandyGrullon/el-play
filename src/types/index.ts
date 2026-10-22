@@ -91,6 +91,16 @@ export interface Pitch {
     est?: boolean;
     /** x/y: dónde cayó, en el cuadro de Gameday (250×250, home ≈ 125,198); traj/hard: trayectoria y fuerza */
     hit?: { ev: number | null; la: number | null; dist: number | null; x?: number | null; y?: number | null; traj?: string | null; hard?: string | null };
+    /** Reto del ABS (árbitro robot): revisándose o resuelto (overturned = se cambió la decisión del umpire) */
+    abs?: AbsReview;
+}
+
+export interface AbsReview {
+    inProgress: boolean;
+    overturned: boolean;
+    teamId: number | null;
+    /** Quién retó (bateador, lanzador o receptor), si MLB lo dice */
+    by: PersonRef | null;
 }
 
 export interface AtBat {
@@ -207,6 +217,8 @@ export interface GameDetail {
     } | null;
     /** Pausa entre entradas: los tres que le toca batear al equipo que viene (`teamId`), si MLB los da */
     dueUp?: { teamId: number | null; batters: PersonRef[] } | null;
+    /** Retos del ABS de cada equipo (ganados, perdidos, los que le quedan) y quién está retando ahora */
+    abs?: { away: AbsCount; home: AbsCount; challenging: number | null } | null;
     probables: { away: Decision | null; home: Decision | null };
     linescore: { n: number; away: number | null; home: number | null }[];
     atBats: AtBat[];
@@ -215,6 +227,12 @@ export interface GameDetail {
     decisions: { winner: Decision | null; loser: Decision | null; save: Decision | null };
     topPerformers: TopPerformer[];
     updatedAt: string | null;
+}
+
+export interface AbsCount {
+    won: number;
+    lost: number;
+    remaining: number | null;
 }
 
 export interface StandingRow {

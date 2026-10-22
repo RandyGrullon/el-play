@@ -1,9 +1,23 @@
 // Jugadas que disparan una animación en la pantalla del juego en vivo: se comparan dos lecturas seguidas del
 // juego y solo cuenta lo nuevo (al abrir el juego no se repite nada de lo que ya pasó).
-import type { AtBat, GameDetail, GameTeam, LeagueId, SeriesStatus } from '../types';
+import type { AtBat, GameDetail, GameTeam, LeagueId, Pitch, SeriesStatus } from '../types';
 import { basesOf, type Bases } from './runners';
 
-export type PlayKind = 'inning' | 'k' | 'single' | 'double' | 'triple' | 'hr' | 'win' | 'champion' | 'pinchHitter' | 'pinchRunner' | 'out';
+export type PlayKind = 'inning' | 'k' | 'single' | 'double' | 'triple' | 'hr' | 'win' | 'champion' | 'pinchHitter' | 'pinchRunner' | 'out' | 'abs';
+
+/** Reto del ABS: «revisando» (si alcanzó a verse) y el resultado */
+export interface AbsPlay {
+    phase: 'checking' | 'result';
+    overturned: boolean;
+    /** Decisión que queda (en «revisando», la del umpire) y la que había cantado el umpire */
+    call: 'ball' | 'strike';
+    original: 'ball' | 'strike';
+    by: 'batter' | 'pitcher' | 'catcher' | null;
+    player: string | null;
+    /** Retos que le quedan al equipo que retó (null si no se sabe) */
+    remaining: number | null;
+    pitch: Pitch;
+}
 
 /** Cómo fue el out: cada uno tiene su propia trayectoria en la animación */
 export type OutVariant = 'ground' | 'fly' | 'line' | 'pop' | 'force' | 'dp' | 'tp' | 'sac';
@@ -35,6 +49,8 @@ export interface PlayEvent {
     bases?: Bases | null;
     /** Hits y jonrones: carreras del equipo al bate antes y después de la jugada */
     runs?: { before: number; after: number } | null;
+    /** Reto del ABS */
+    abs?: AbsPlay;
 }
 
 /** Tipo de out según el evento de MLB y, en los «field_out», la trayectoria del batazo (o la etiqueta de MLB) */
@@ -82,11 +98,48 @@ const KIND: Record<string, PlayKind> = {
 
 export const playKind = (atBat: Pick<AtBat, 'event'>): PlayKind | null => (atBat.event ? KIND[atBat.event] ?? null : null);
 
+/**
+ * Retos del ABS nuevos entre dos lecturas: «revisando» cuando aparece en revisión y el resultado cuando se resuelve
+ * (también si ya llegó resuelto: la revisión dura ~15 s y el juego se lee cada ~20). Van antes que la jugada del turno.
+ */
+const absEvents = (prev: GameDetail, next: GameDetail): PlayEvent[] => {
+    const before = new Map(prev.atBats.map((atBat) => [atBat.i, atBat.pitches]));
+    const events: PlayEvent[] = [];
+    for (const atBat of next.atBats) {
+        atBat.pitches.forEach((pitch, index) => {
+            const abs = pitch.abs;
+            if (!abs) return;
+            const seen = before.get(atBat.i)?.[index]?.abs;
+            const phase = abs.inProgress ? 'checking' : 'result';
+            if (phase === 'checking' ? seen?.inProgress : seen && !seen.inProgress) return;
+            // El equipo que retó (MLB a veces cambia el id en la revisión: vale el último)
+            const team = abs.teamId === next.home.id ? next.home : abs.teamId === next.away.id ? next.away : atBat.top ? next.away : next.home;
+            const rival = team.id === next.home.id ? next.away : next.home;
+            const call = pitch.r === 'ball' ? 'ball' : 'strike';
+            const original = phase === 'result' && abs.overturned ? (call === 'ball' ? 'strike' : 'ball') : call;
+            const by = abs.by ? (abs.by.id === atBat.batter.id ? 'batter' : abs.by.id === atBat.pitcher.id ? 'pitcher' : 'catcher') : null;
+            const count = next.abs?.[team.id === next.home.id ? 'home' : 'away'];
+            events.push({
+                key: `abs-${atBat.i}-${index}-${phase}`,
+                kind: 'abs',
+                team,
+                rival,
+                away: next.away,
+                home: next.home,
+                atBat,
+                inning: null,
+                abs: { phase, overturned: phase === 'result' && abs.overturned, call, original, by, player: abs.by?.name ?? null, remaining: count?.remaining ?? null, pitch }
+            });
+        });
+    }
+    return events;
+};
+
 export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDetail): PlayEvent[] => {
     // Solo si ya se estaba viendo este juego en vivo (un jonrón que deja en el terreno sí sale aunque el juego ya diga «final»)
     if (!prev || prev.gamePk !== next.gamePk || prev.state !== 'live') return [];
     const done = new Set(prev.atBats.filter((atBat) => atBat.complete).map((atBat) => atBat.i));
-    const events: PlayEvent[] = [];
+    const events: PlayEvent[] = absEvents(prev, next);
     // Los corredores de la lectura anterior son los de antes de la primera jugada nueva (de las siguientes no se sabe)
     let basesKnown = true;
     const scoreOf = (atBat: AtBat | undefined, top: boolean) => (atBat ? (top ? atBat.away : atBat.home) : 0);
@@ -190,7 +243,7 @@ export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDet
 };
 
 /** Las que siempre salen aunque el juego no sea de tu equipo */
-const BIG: PlayKind[] = ['hr', 'k', 'inning', 'win', 'champion'];
+const BIG: PlayKind[] = ['hr', 'k', 'inning', 'win', 'champion', 'abs'];
 
 /** Filtra las animaciones según lo elegido en «Más» (en «smart», tu equipo las ve todas) */
 export const forMode = (events: PlayEvent[], mode: 'all' | 'smart' | 'off', favoriteTeamId: number | null, teamIds: number[]) => {

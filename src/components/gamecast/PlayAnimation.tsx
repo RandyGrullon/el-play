@@ -11,7 +11,12 @@ import { legsOf, runnerPaths, type RunnerPath } from '../../lib/runners';
 // terminar el juego y el campeonato cuando ese juego da el título; con el logo y los colores del equipo protagonista. Se cierran solas o al tocarlas y no tapan
 // la barra de abajo. Con «menos movimiento» en el sistema solo aparecen y desaparecen.
 
-const HOLD: Record<PlayEvent['kind'], number> = { inning: 2800, k: 2300, single: 2120, double: 2340, triple: 2560, hr: 3300, win: 3400, champion: 6000, pinchHitter: 2800, pinchRunner: 2800, out: 2300 };
+const HOLD: Record<PlayEvent['kind'], number> = { inning: 2800, k: 2300, single: 2120, double: 2340, triple: 2560, hr: 3300, win: 3400, champion: 6000, pinchHitter: 2800, pinchRunner: 2800, out: 2300, abs: 3000 };
+
+// Reto del ABS: la zona en pies (vista del receptor) dentro de un cuadro de 200×250, centrada (0,9 pies en y = 226)
+const ABS_FT = 60;
+const absX = (ft: number) => Math.min(188, Math.max(12, 100 + ft * ABS_FT));
+const absY = (ft: number) => Math.min(232, Math.max(12, 226 - (ft - 0.9) * ABS_FT));
 
 // Trayectoria de la bola en cada tipo de out (cuadro de 100×100, home abajo): puntos [x, y, tamaño] y dónde la atrapan
 type Point = [number, number, number];
@@ -203,6 +208,20 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
             anim(q('.pa-scoreline'), [{ transform: 'translateY(16px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 380, delay: 1100 });
             anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.9 }], { duration: 300, delay: 1350 });
             if (!reduce) timers.push(window.setTimeout(() => confetti(canvas.current, [team.color, second, '#ffffff'], () => closed, 70), 700));
+        } else if (kind === 'abs' && event.abs) {
+            anim(q('.pa-abs'), [{ opacity: 0 }, { opacity: 1 }], { duration: 220 });
+            anim(q('.pa-abs-head'), [{ transform: 'translateX(-30px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 380, delay: 120 });
+            anim(q('.pa-abs-zone'), [{ transform: 'scale(1.25)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 420, delay: 160 });
+            anim(q('.pa-abs-ball'), [{ transform: 'scale(0)' }, { transform: 'scale(1.5)', offset: 0.6 }, { transform: 'none' }], { duration: 420, delay: 420, easing: 'cubic-bezier(.3,1.6,.5,1)' });
+            if (event.abs.phase === 'checking') {
+                all('.pa-abs-title span').forEach((span, index) => anim(span, [{ transform: 'translateY(50%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 280, delay: 520 + index * 45 }));
+            } else {
+                // La zona destella en el color de la decisión y la palabra cae letra por letra
+                anim(q('.pa-abs-box'), [{ strokeWidth: 2 }, { strokeWidth: 6, offset: 0.4 }, { strokeWidth: 2.5 }], { duration: 620, delay: 600 });
+                anim(q('.pa-abs-verdict'), [{ transform: 'scale(2.2)', opacity: 0 }, { transform: 'scale(.94)', opacity: 1, offset: 0.7 }, { transform: 'none', opacity: 1 }], { duration: 420, delay: 640, easing: 'cubic-bezier(.5,0,.75,0)' });
+                all('.pa-abs-call span').forEach((span, index) => anim(span, [{ transform: 'translateY(-110%) scale(1.3)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 340, delay: 900 + index * 55, easing: 'cubic-bezier(.3,1.6,.5,1)' }));
+            }
+            anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.9 }], { duration: 300, delay: event.abs.phase === 'checking' ? 900 : 1300 });
         } else if (kind === 'champion') {
             anim(q('.pa-champ'), [{ opacity: 0 }, { opacity: 1 }], { duration: 400 });
             if (!reduce) anim(q('.pa-glow'), [{ transform: 'scale(.6)', opacity: 0 }, { transform: 'scale(1.1)', opacity: 0.9, offset: 0.5 }, { transform: 'scale(1)', opacity: 0.7 }], { duration: 1600, delay: 200 });
@@ -252,7 +271,9 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                   ? landAt + 2900
                   : hitPaths.length
                     ? Math.max(HOLD[kind], RUN_START + runLegs * RUN_LEG + 1300)
-                    : HOLD[kind];
+                    : kind === 'abs' && event.abs?.phase === 'checking'
+                      ? 2600
+                      : HOLD[kind];
         // Con menos movimiento el jonrón sale ya caído: un poco más de tiempo para leer la distancia
         timers.push(window.setTimeout(close, reduce ? Math.min(hold, flight !== null ? 3200 : 1600) : hold));
 
@@ -448,6 +469,73 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                     {event.seriesRecord ? t('anim.seriesLead', { team: team.name, wins: event.seriesRecord.wins, losses: event.seriesRecord.losses }) : team.name}
                 </div>
                 <canvas ref={canvas} className="pointer-events-none absolute inset-0 h-full w-full" />
+            </div>
+        );
+    } else if (kind === 'abs' && event.abs) {
+        const { phase, overturned, call, original, by, player, remaining, pitch } = event.abs;
+        const callName = (value: 'ball' | 'strike') => t(value === 'ball' ? 'anim.absBall' : 'anim.absStrike');
+        const who = by && player ? t(`anim.absBy_${by}`, { name: player }) : t('anim.absByTeam', { team: team.name });
+        // Dónde pasó el lanzamiento (si MLB no lo ubicó, al centro de la zona)
+        const top = pitch.top ?? 3.4;
+        const bot = pitch.bot ?? 1.6;
+        const ball = { x: absX(pitch.x ?? 0), y: absY(pitch.z ?? (top + bot) / 2) };
+        const zone = { x: absX(-17 / 24), y: absY(top), w: (17 / 12) * ABS_FT, h: (top - bot) * ABS_FT };
+        const decided = phase === 'result' ? call : null;
+        const stroke = decided === 'strike' ? '#ff5a5f' : decided === 'ball' ? '#34c778' : '#ffffff';
+        body = (
+            <div className={`pa-abs pa-abs-${phase}`} style={{ ...style, ['--scan' as string]: `${zone.h}px` }}>
+                <div className="pa-abs-grid" />
+                <div className="pa-abs-head">
+                    <Logo src={team.logo} className="pa-logo" />
+                    <span className="grid text-left">
+                        <span className="pa-kicker">{t('anim.absKicker', { team: team.abbrev })}</span>
+                        <span className="text-xs font-semibold opacity-80">{who}</span>
+                    </span>
+                </div>
+                <svg className="pa-abs-zone" viewBox="0 0 200 250" aria-hidden="true">
+                    {/* Esquinas de visor alrededor de la zona */}
+                    {[
+                        [zone.x - 10, zone.y - 10, 1, 1],
+                        [zone.x + zone.w + 10, zone.y - 10, -1, 1],
+                        [zone.x - 10, zone.y + zone.h + 10, 1, -1],
+                        [zone.x + zone.w + 10, zone.y + zone.h + 10, -1, -1]
+                    ].map(([x, y, sx, sy], index) => (
+                        <path key={index} d={`M${x} ${y + 14 * sy}V${y}H${x + 14 * sx}`} fill="none" stroke="var(--pa-c)" strokeWidth={3} strokeLinecap="round" />
+                    ))}
+                    <rect className="pa-abs-box" x={zone.x} y={zone.y} width={zone.w} height={zone.h} rx={3} fill="rgb(255 255 255 / 0.04)" stroke={stroke} strokeWidth={2.5} />
+                    {[1, 2].map((k) => (
+                        <g key={k} stroke="rgb(255 255 255 / 0.22)" strokeWidth={1}>
+                            <line x1={zone.x + (zone.w * k) / 3} y1={zone.y} x2={zone.x + (zone.w * k) / 3} y2={zone.y + zone.h} />
+                            <line x1={zone.x} y1={zone.y + (zone.h * k) / 3} x2={zone.x + zone.w} y2={zone.y + (zone.h * k) / 3} />
+                        </g>
+                    ))}
+                    {phase === 'checking' && <line className="pa-abs-scan" x1={zone.x - 18} y1={zone.y} x2={zone.x + zone.w + 18} y2={zone.y} stroke="var(--pa-c)" strokeWidth={3} strokeLinecap="round" />}
+                    <path d="M83 238h34v6l-17 6-17-6z" fill="rgb(255 255 255 / 0.5)" />
+                    {phase === 'checking' && <circle className="pa-abs-ring" cx={ball.x} cy={ball.y} r={8} fill="none" stroke="#fff" strokeWidth={2} />}
+                    <circle className="pa-abs-ball" cx={ball.x} cy={ball.y} r={8} fill="#fff" stroke={phase === 'result' ? stroke : 'var(--pa-c)'} strokeWidth={3} style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+                </svg>
+                {phase === 'checking' ? (
+                    <>
+                        <div className="pa-abs-title">
+                            <span className="flex">{letters(t('anim.absChecking'))}</span>
+                            <span className="pa-abs-dots" aria-hidden="true">
+                                <i />
+                                <i style={{ animationDelay: '0.18s' }} />
+                                <i style={{ animationDelay: '0.36s' }} />
+                            </span>
+                        </div>
+                        <div className="pa-sub relative px-6">{t('anim.absCalled', { call: callName(original) })}</div>
+                    </>
+                ) : (
+                    <>
+                        <span className={`pa-abs-verdict ${overturned ? 'won' : ''}`}>{overturned ? t('anim.absOverturned') : t('anim.absConfirmed')}</span>
+                        <div className={`pa-abs-call ${call} flex`}>{letters(callName(call).toUpperCase())}</div>
+                        <div className="pa-sub relative px-6">
+                            {overturned ? t('anim.absChange', { from: callName(original), to: callName(call) }) : t('anim.absStays', { call: callName(call) })}
+                            {remaining !== null ? ` · ${t(overturned ? 'anim.absWon' : 'anim.absLost', { count: remaining, team: team.abbrev })}` : ''}
+                        </div>
+                    </>
+                )}
             </div>
         );
     } else if (kind === 'champion') {
