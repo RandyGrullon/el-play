@@ -1,6 +1,6 @@
 // Sube a Supabase los retratos que genera la PC (docs/GENERADOR-DE-IMAGEN.md). Se corre en la PC, no en Vercel:
 //   node scripts/subir-avatares.js --dry      revisa la carpeta sin subir nada
-//   node scripts/subir-avatares.js            sube los nuevos o los que cambiaron (se puede repetir)
+//   node scripts/subir-avatares.js            sube los nuevos o los que cambiaron y borra los rechazados (se puede repetir)
 //   --dir=<carpeta>                           otra carpeta en vez de avatares/salida
 // Lee la URL y la llave publishable de Supabase y AVATARS_SECRET del entorno o de .env.local (nunca la service_role).
 const fs = require('fs');
@@ -47,6 +47,7 @@ const check = () => {
     const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
     if (!Array.isArray(manifest)) throw new Error('manifest.json tiene que ser una lista');
     const ready = [];
+    const rejected = [];
     const problems = [];
     const counts = { ok: 0, 'sin-foto': 0, rechazada: 0 };
     const seen = new Set();
@@ -66,6 +67,7 @@ const check = () => {
             continue;
         }
         counts[entry.status]++;
+        if (entry.status === 'rechazada') rejected.push(entry);
         if (entry.status !== 'ok') continue;
         if (!TEAMS.has(entry.teamId)) problems.push(`${label}: teamId ${entry.teamId} no es de la LIDOM`);
         else if (!Number.isInteger(entry.season) || entry.season < 2000 || entry.season > 2100) problems.push(`${label}: season no es válida`);
@@ -81,7 +83,7 @@ const check = () => {
             else ready.push({ ...entry, buffer, mime: image.mime, sha256: crypto.createHash('sha256').update(buffer).digest('hex') });
         }
     }
-    return { ready, problems, counts };
+    return { ready, rejected, problems, counts };
 };
 
 const supabase = async (route, options = {}) => {
@@ -120,7 +122,7 @@ const save = async (entry, secret) => {
 };
 
 const main = async () => {
-    const { ready, problems, counts } = check();
+    const { ready, rejected, problems, counts } = check();
     console.log(`Carpeta: ${DIR}`);
     console.log(`Manifiesto: ${counts.ok} ok, ${counts['sin-foto']} sin foto, ${counts.rechazada} rechazados; ${ready.length} listos para subir`);
     for (const problem of problems) console.log(`  ✗ ${problem}`);
@@ -141,7 +143,9 @@ const main = async () => {
         throw error;
     }
     const pending = ready.filter((entry) => remote[entry.personId] !== entry.sha256);
-    console.log(`Ya arriba sin cambios: ${ready.length - pending.length}; por subir: ${pending.length}`);
+    // Los que se rechazaron después de subirlos se borran (la app vuelve a las iniciales)
+    const stale = rejected.filter((entry) => remote[entry.personId]);
+    console.log(`Ya arriba sin cambios: ${ready.length - pending.length}; por subir: ${pending.length}; por borrar: ${stale.length}`);
 
     let done = 0;
     const failed = [];
@@ -162,7 +166,16 @@ const main = async () => {
         }
     };
     await Promise.all(Array.from({ length: 4 }, worker));
-    console.log(`Subidos: ${done}; fallaron: ${failed.length}`);
+    let removed = 0;
+    for (const entry of stale) {
+        try {
+            await supabase('rpc/avatar_delete', { method: 'POST', body: JSON.stringify({ run_secret: secret, p_person_id: entry.personId }) });
+            removed++;
+        } catch (error) {
+            failed.push(`${entry.personId} ${entry.name} (borrar): ${error.message}`);
+        }
+    }
+    console.log(`Subidos: ${done}; borrados: ${removed}; fallaron: ${failed.length}`);
     for (const line of failed) console.log(`  ✗ ${line}`);
     process.exitCode = failed.length ? 1 : 0;
 };

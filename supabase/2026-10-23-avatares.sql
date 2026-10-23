@@ -1,6 +1,6 @@
 -- El Play · retratos de los peloteros (los genera la PC con docs/GENERADOR-DE-IMAGEN.md)
--- Se corre una vez en el SQL Editor de Supabase, DESPUÉS de cambiar el secreto de abajo por uno tuyo (el mismo que
--- pongas en .env.local como AVATARS_SECRET). Leerlos es público; guardarlos y borrarlos pide el secreto.
+-- Se corre una vez en el SQL Editor de Supabase, DESPUÉS de cambiar ahí (no en este archivo) el secreto de abajo por uno
+-- tuyo, el mismo que pongas en .env.local como AVATARS_SECRET. Leerlos es público; guardarlos y borrarlos pide el secreto.
 
 create table if not exists public.player_avatars (
     person_id integer primary key check (person_id > 0),
