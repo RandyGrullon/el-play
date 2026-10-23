@@ -26,6 +26,8 @@ import { StrikeZonePanel } from '../components/game/StrikeZonePanel';
 import { InningBreakMini } from '../components/game/InningBreak';
 import { WinProbabilityCard } from '../components/game/WinProbability';
 import { LineScore } from '../components/game/LineScore';
+import { GameFlow } from '../components/game/GameFlow';
+import { GameDetails, NoHitterBanner, PitcherCard, StaleNotice } from '../components/game/LiveExtras';
 import { uniformColors } from '../components/game/BatterFigure';
 import { Matchup } from '../components/game/Matchup';
 import { PlayByPlay } from '../components/game/PlayByPlay';
@@ -86,6 +88,7 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
     const pause = inningBreak(game);
     const leadoff = pause?.dueUp[0] ?? null;
     const pro = useIsPro();
+    const runners = (['first', 'second', 'third'] as const).flatMap((base) => (game.runners[base] ? [{ base, person: game.runners[base]! }] : []));
 
     return (
         <>
@@ -119,12 +122,37 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
                 </button>
             </div>
 
+            {!pause && runners.length > 0 && (
+                <p className="flex flex-wrap gap-1.5 px-5 pt-2.5 text-xs" aria-label={t('runners.title')}>
+                    {runners.map(({ base, person }) => (
+                        <span key={base} className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 font-semibold shadow-card">
+                            <span className="font-extrabold text-muted">{t(`runners.${base}`)}</span> {surname(person.name)}
+                        </span>
+                    ))}
+                </p>
+            )}
+
+            <div className="space-y-3 px-4 pt-4 empty:hidden">
+                <StaleNotice game={game} />
+                <NoHitterBanner game={game} />
+            </div>
+
             <div className="px-4 pt-4">
                 <LineScore game={game} />
             </div>
 
             <div className="px-4 pt-5">
                 <Timeline game={game} onMore={() => open('plays')} />
+            </div>
+
+            {!pause && (
+                <div className="px-4 pt-4">
+                    <PitcherCard game={game} />
+                </div>
+            )}
+
+            <div className="px-4 pt-4">
+                <GameFlow game={game} />
             </div>
 
             <div className="px-4 pt-4">
@@ -136,6 +164,10 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
                     <LiveProPanel game={game} />
                 </div>
             )}
+
+            <div className="px-4 pt-4">
+                <GameDetails game={game} />
+            </div>
 
             <div className="flex gap-2 px-4 pt-5">
                 <ActionButton icon={<Table2 className="h-4 w-4" />} label={t('game.tabs.box')} onClick={() => open('box')} />
@@ -151,10 +183,13 @@ const FinalView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSh
     const pro = useIsPro();
     return (
         <div className="space-y-4 px-4 pt-4">
+            <NoHitterBanner game={game} />
             <StoryRecap game={game} onSharePerformer={onSharePerformer} />
             <LineScore game={game} />
+            <GameFlow game={game} />
             <SprayChart game={game} />
             {pro && <LiveProPanel game={game} />}
+            <GameDetails game={game} />
             <div className="flex gap-2">
                 <ActionButton icon={<ListOrdered className="h-4 w-4" />} label={t('game.tabs.plays')} onClick={() => open('plays')} />
                 <ActionButton icon={<Table2 className="h-4 w-4" />} label={t('game.tabs.box')} onClick={() => open('box')} />

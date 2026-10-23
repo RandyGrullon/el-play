@@ -17,6 +17,16 @@ const formOf = (team: TeamRow | undefined, fallback: GameDetail['home']): TeamFo
     return { w: fallback.record?.wins ?? 0, l: fallback.record?.losses ?? 0, scored: null, allowed: null };
 };
 
+/** Probabilidad del local antes del juego (la de la previa); null mientras cargan los números de los equipos */
+export const usePregameWin = (game: GameDetail) => {
+    const stats = useTeamStats(game.league, undefined);
+    if (!stats.data) return null;
+    const rows = stats.data.teams;
+    const homeRow = rows.find((row) => row.id === game.home.id);
+    const awayRow = rows.find((row) => row.id === game.away.id);
+    return winProbability(formOf(homeRow, game.home), formOf(awayRow, game.away), { homeEra: game.probables.home?.era, awayEra: game.probables.away?.era }, stats.data.isPreviousSeason ? 40 : 20).home;
+};
+
 export const WinProbabilityCard: React.FC<{ game: GameDetail }> = ({ game }) => {
     const { t } = useTranslation();
     const stats = useTeamStats(game.league, undefined);

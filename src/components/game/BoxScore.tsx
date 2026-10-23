@@ -113,6 +113,42 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                     </div>
                 )}
             </section>
+
+            {(box.bench?.length ?? 0) + (box.bullpen?.length ?? 0) > 0 && (
+                <section className="card overflow-hidden" aria-label={t('box.benchTitle')}>
+                    <h2 className="eyebrow border-b border-line/10 px-4 py-3">{t('box.benchTitle')} · {team.name}</h2>
+                    <div className="grid gap-4 p-4 sm:grid-cols-2">
+                        {!!box.bench?.length && (
+                            <details>
+                                <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-wide text-muted">{t('box.bench')} · {box.bench.length}</summary>
+                                <ul className="mt-1.5 divide-y divide-line/10 text-sm">
+                                    {box.bench.map((player) => (
+                                        <li key={player.id} className="flex items-center gap-2 py-1.5">
+                                            <span className="min-w-0 flex-1 truncate font-medium">{player.name}</span>
+                                            <span className="text-xs text-faint">{player.pos}</span>
+                                            <span className="num w-12 text-right text-muted">{player.avg ?? '—'}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </details>
+                        )}
+                        {!!box.bullpen?.length && (
+                            <details>
+                                <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-wide text-muted">{t('box.bullpen')} · {box.bullpen.length}</summary>
+                                <ul className="mt-1.5 divide-y divide-line/10 text-sm">
+                                    {box.bullpen.map((arm) => (
+                                        <li key={arm.id} className="flex items-center gap-2 py-1.5">
+                                            <span className="min-w-0 flex-1 truncate font-medium">{arm.name}</span>
+                                            {arm.throws && <span className="text-xs text-faint">{t(`box.hand${arm.throws}`, { defaultValue: arm.throws })}</span>}
+                                            <span className="num w-16 text-right text-muted">{arm.era ? t('box.era', { era: arm.era }) : '—'}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </details>
+                        )}
+                    </div>
+                </section>
+            )}
         </div>
     );
 };

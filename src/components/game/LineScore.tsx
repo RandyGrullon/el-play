@@ -134,6 +134,28 @@ export const LineScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                     </tbody>
                 </table>
             </div>
+            {game.abs && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line/10 px-4 py-2 text-xs">
+                    <span className="font-extrabold uppercase tracking-wide text-muted">{t('lineScore.abs')}</span>
+                    {sides.map((side) => {
+                        const count = game.abs![side];
+                        return (
+                            <span key={side} className="inline-flex items-center gap-1.5 font-semibold" aria-label={t('lineScore.absAria', { team: game[side].abbrev, left: count.remaining ?? '—', won: count.won, lost: count.lost })}>
+                                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: game[side].color }} aria-hidden="true" />
+                                {game[side].abbrev}
+                                {/* Lo que importa es cuántos le quedan; ganados y perdidos solo si no llega el total */}
+                                {count.remaining !== null ? (
+                                    <b className="rounded-md bg-raised px-1.5 tabular-nums">{t('lineScore.absLeft', { count: count.remaining })}</b>
+                                ) : (
+                                    <span className="tabular-nums text-muted">
+                                        ✓{count.won} ✗{count.lost}
+                                    </span>
+                                )}
+                            </span>
+                        );
+                    })}
+                </div>
+            )}
         </section>
     );
 };

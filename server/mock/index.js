@@ -66,7 +66,9 @@ const roster = (teamId) => {
             saves: index === 3 ? Math.floor(between(random, 2, 12)) : 0
         });
     });
-    const value = { hitters, pitchers };
+    // Banca: tres de reserva (se sacan después de los lanzadores para no cambiar a los de siempre)
+    const bench = ['C', 'IF', 'OF'].map((pos, index) => person(80 + index, { pos, bats: random() < 0.35 ? 'L' : 'R', avg: round(between(random, 0.19, 0.29), 3).toFixed(3).replace(/^0/, ''), hr: Math.floor(between(random, 0, 4)) }));
+    const value = { hitters, pitchers, bench };
     rosterCache.set(teamId, value);
     return value;
 };
@@ -500,6 +502,14 @@ const buildBoxscore = (game, state) => {
                 seasonStats: { batting: { avg: hitter.avg.toFixed(3).replace(/^0/, '') }, pitching: {} }
             };
         });
+        team.bench.forEach((hitter) => {
+            players[`ID${hitter.id}`] = {
+                person: { id: hitter.id, fullName: hitter.fullName },
+                position: { abbreviation: hitter.pos },
+                stats: { batting: {}, pitching: {} },
+                seasonStats: { batting: { avg: hitter.avg, homeRuns: hitter.hr }, pitching: {} }
+            };
+        });
         team.pitchers.forEach((pitcher) => {
             const p = pitching[pitcher.id];
             players[`ID${pitcher.id}`] = {
@@ -522,7 +532,9 @@ const buildBoxscore = (game, state) => {
             teamStats: { batting: { ...totals, avg: totals.atBats ? (totals.hits / totals.atBats).toFixed(3).replace(/^0/, '') : '.000', leftOnBase: Math.floor(totals.hits * 0.8) } },
             players,
             batters: appeared.map((h) => h.id),
-            pitchers: team.pitchers.filter((p) => pitching[p.id]).map((p) => p.id)
+            pitchers: team.pitchers.filter((p) => pitching[p.id]).map((p) => p.id),
+            bench: team.bench.map((h) => h.id),
+            bullpen: team.pitchers.filter((p) => !pitching[p.id]).map((p) => p.id)
         };
     }
     return { teams: result };
@@ -534,7 +546,7 @@ const buildFeed = (game) => {
     const linescore = buildLinescore(game, state);
     const people = {};
     for (const side of ['away', 'home']) {
-        for (const player of [...sim.teams[side].hitters, ...sim.teams[side].pitchers]) {
+        for (const player of [...sim.teams[side].hitters, ...sim.teams[side].pitchers, ...sim.teams[side].bench]) {
             people[`ID${player.id}`] = {
                 id: player.id,
                 fullName: player.fullName,
@@ -545,14 +557,36 @@ const buildFeed = (game) => {
             };
         }
     }
+    // Hora de cada pitcheo: el en vivo revela uno cada PITCH_MS desde que arrancó el simulador
+    const initial = game.mode === 'live' ? Math.floor(sim.totalPitches * 0.4) : 0;
+    const timeOfSeq = (seq) => new Date(game.mode === 'live' ? BOOT + (seq - initial) * PITCH_MS : game.start + seq * 20000).toISOString();
+    const bit = (base) => (base ? personRef(base) : undefined);
+    const actionsFor = (play, index) => {
+        const list = [];
+        const first = play.events[0];
+        const previous = sim.plays.slice(0, sim.plays.indexOf(play)).reverse().find((other) => other.fielding === play.fielding);
+        if (previous && previous.pitcher.id !== play.pitcher.id) {
+            list.push({ type: 'action', isPitch: false, startTime: timeOfSeq(first.seq), details: { eventType: 'pitching_substitution', event: 'Pitching Substitution', description: `Pitching Change: ${play.pitcher.fullName} replaces ${previous.pitcher.fullName}.` } });
+        }
+        if (index % 13 === 7 && play.before.bases.some(Boolean)) {
+            list.push({ type: 'action', isPitch: false, startTime: timeOfSeq(first.seq), details: { eventType: 'mound_visit', event: 'Mound Visit', description: 'Mound Visit.' } });
+        }
+        return list;
+    };
     const allPlays = plays.map(({ play, events, complete }, index) => ({
         result: complete
             ? { type: 'atBat', event: play.label, eventType: play.eventType, description: play.description, rbi: play.rbi, awayScore: play.after.away, homeScore: play.after.home, isOut: play.isOut }
             : { type: 'atBat', awayScore: play.before.away, homeScore: play.before.home },
         about: { atBatIndex: index, halfInning: play.isTop ? 'top' : 'bottom', isTopInning: play.isTop, inning: play.inning, isComplete: complete, isScoringPlay: complete && play.scorers.length > 0 },
         count: { balls: events[events.length - 1]?.count.balls ?? 0, strikes: events[events.length - 1]?.count.strikes ?? 0, outs: complete ? play.after.outs : play.before.outs },
-        matchup: { batter: personRef(play.batter), batSide: { code: play.side }, pitcher: personRef(play.pitcher), pitchHand: { code: play.pitcher.throws } },
-        playEvents: events.map(({ seq, ...event }) => event)
+        matchup: {
+            batter: personRef(play.batter),
+            batSide: { code: play.side },
+            pitcher: personRef(play.pitcher),
+            pitchHand: { code: play.pitcher.throws },
+            ...(complete ? { postOnFirst: bit(play.after.bases[0]), postOnSecond: bit(play.after.bases[1]), postOnThird: bit(play.after.bases[2]) } : {})
+        },
+        playEvents: [...actionsFor(play, index), ...events.map(({ seq, ...event }) => ({ ...event, startTime: timeOfSeq(seq), endTime: timeOfSeq(seq) }))]
     }));
     const record = (id) => {
         const random = rng(id * 13);
@@ -572,13 +606,25 @@ const buildFeed = (game) => {
             teams: { away: team(game.awayId), home: team(game.homeId) },
             players: people,
             venue: { name: TEAMS[game.homeId].venue },
-            weather: { condition: 'Partly Cloudy', temp: '84' },
+            weather: { condition: 'Partly Cloudy', temp: '84', wind: '8 mph, Out To CF' },
+            gameInfo:
+                game.mode === 'preview'
+                    ? {}
+                    : { attendance: 8000 + (game.gamePk % 7) * 650, firstPitch: new Date(game.start).toISOString(), ...(finished ? { gameDurationMinutes: 150 + (game.gamePk % 5) * 9 } : {}) },
             probablePitchers: { away: personRef(sim.teams.away.pitchers[0]), home: personRef(sim.teams.home.pitchers[0]) }
         },
         liveData: {
             plays: { allPlays, currentPlay: allPlays[allPlays.length - 1] },
             linescore,
-            boxscore: buildBoxscore(game, state),
+            boxscore: {
+                ...buildBoxscore(game, state),
+                officials: [
+                    ['Home Plate', 'Ramón De Jesús'],
+                    ['First Base', 'Carlos Torres'],
+                    ['Second Base', 'Junior Valentín'],
+                    ['Third Base', 'Alfonso Márquez']
+                ].map(([officialType, fullName], index) => ({ official: { id: 70000 + index, fullName }, officialType }))
+            },
             decisions: decisionsFor(state)
         }
     };

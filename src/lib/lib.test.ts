@@ -959,3 +959,49 @@ describe('arreglos de la auditoría (web)', () => {
         setFipConstant(null);
     });
 });
+
+describe('probabilidad de victoria en vivo', () => {
+    it('una entrada promedio da ~0,5 carreras y las bases llenas sin outs bastante más', async () => {
+        const { expectedRuns } = await import('./liveWinProbability');
+        expect(expectedRuns(0, 0)).toBeGreaterThan(0.45);
+        expect(expectedRuns(0, 0)).toBeLessThan(0.58);
+        expect(expectedRuns(0, 7)).toBeGreaterThan(1.9);
+        expect(expectedRuns(2, 0)).toBeLessThan(0.15);
+        expect(expectedRuns(1, 4)).toBeGreaterThan(expectedRuns(1, 2));
+    });
+
+    it('parejo al empezar, el local un poco arriba; ganando en la 9.ª casi seguro', async () => {
+        const { homeWinFrom } = await import('./liveWinProbability');
+        const start = homeWinFrom({ inning: 1, top: true, outs: 0, bases: 0, diff: 0, scheduled: 9 });
+        expect(start).toBeGreaterThan(0.49);
+        expect(start).toBeLessThan(0.56);
+        expect(homeWinFrom({ inning: 9, top: true, outs: 2, bases: 0, diff: 3, scheduled: 9 })).toBeGreaterThan(0.97);
+        expect(homeWinFrom({ inning: 9, top: false, outs: 2, bases: 0, diff: -1, scheduled: 9 })).toBeLessThan(0.1);
+        expect(homeWinFrom({ inning: 9, top: false, outs: 0, bases: 7, diff: 0, scheduled: 9 })).toBeGreaterThan(0.85);
+        // Más ventaja, más probabilidad; un 7 entradas cierra antes
+        expect(homeWinFrom({ inning: 5, top: true, outs: 0, bases: 0, diff: 2, scheduled: 9 })).toBeGreaterThan(homeWinFrom({ inning: 5, top: true, outs: 0, bases: 0, diff: 1, scheduled: 9 }));
+        expect(homeWinFrom({ inning: 7, top: false, outs: 2, bases: 0, diff: -2, scheduled: 7 })).toBeLessThan(homeWinFrom({ inning: 7, top: false, outs: 2, bases: 0, diff: -2, scheduled: 9 }));
+    });
+
+    it('la fuerza de los equipos pesa al principio y se apaga al final', async () => {
+        const { homeWin, homeWinFrom } = await import('./liveWinProbability');
+        const early = { inning: 1, top: true, outs: 0, bases: 0, diff: 0, scheduled: 9 };
+        expect(homeWin(early, 0.65)).toBeCloseTo(0.65, 2);
+        const late = { inning: 9, top: false, outs: 1, bases: 0, diff: 0, scheduled: 9 };
+        expect(Math.abs(homeWin(late, 0.65) - homeWinFrom(late))).toBeLessThan(0.03);
+    });
+
+    it('la serie del juego: empieza en la previa y termina en 100 % o 0 % al final', async () => {
+        const { winSeries, biggestSwings } = await import('./liveWinProbability');
+        const turn = (i: number, inning: number, top: boolean, outs: number, away: number, home: number, post = 0): AtBat => ({
+            ...atBat(i, [pitch()]), inning, top, outs, away, home, post, complete: true
+        });
+        const plays = [turn(0, 1, true, 1, 0, 0), turn(1, 1, true, 2, 0, 0), turn(2, 1, true, 3, 0, 0), turn(3, 1, false, 0, 0, 2), turn(4, 1, false, 3, 0, 2)];
+        const base = { state: 'final', scheduledInnings: 9, atBats: plays, home: { runs: 2 }, away: { runs: 0 } } as unknown as GameDetail;
+        const points = winSeries(base, 0.55);
+        expect(points[0].home).toBeCloseTo(0.55, 2);
+        expect(points[points.length - 1].home).toBe(1);
+        expect(points[4].delta).toBeGreaterThan(0.1);
+        expect(biggestSwings(points)[0].atBat?.i).toBe(4);
+    });
+});

@@ -231,8 +231,8 @@
     "network": "No se pudo conectar con el servidor.",
     "rate_limit_exceeded": "Demasiadas peticiones. Espera un momento.",
     "internal_error": "Algo salió mal. Intenta de nuevo.",
-    "invalid_mlb_data": "MLB no respondió bien. Intenta en un momento.",
-    "upstream_timeout": "MLB tardó demasiado en responder.",
+    "invalid_mlb_data": "Los datos del juego no llegaron bien. Intenta en un momento.",
+    "upstream_timeout": "Los datos tardaron demasiado en llegar.",
     "game_not_found": "No encontramos ese juego.",
     "invalid_game": "El enlace del juego no es válido.",
     "schedule": "No se pudo cargar el calendario.",
@@ -309,7 +309,7 @@
     "atBatNow": "Al bate",
     "outsCount_one": "{{count}} out",
     "outsCount_other": "{{count}} outs",
-    "notFoundHint": "Puede que el enlace esté mal o que MLB lo haya quitado.",
+    "notFoundHint": "Puede que el enlace esté mal o que el juego ya no exista.",
     "backToGames": "Ver los juegos de hoy",
     "half": {
       "Top": "Alta",
@@ -346,13 +346,13 @@
     "whiffs": "Abanicos",
     "open": "Abrir la zona de strike completa",
     "full": "Zona",
-    "untracked": "MLB todavía no trae la ubicación de estos pitcheos: aquí va el resultado y el conteo de cada uno.",
+    "untracked": "Todavía no llega la ubicación de estos pitcheos: aquí va el resultado y el conteo de cada uno.",
     "untrackedPitcher": "Sin rastreo en este juego: no hay tipos de pitcheo ni velocidad.",
     "sumPitches": "Pitcheos",
     "sumStrikes": "Strikes",
     "sumBalls": "Bolas",
     "sumFouls": "Fouls",
-    "estimated": "Ubicación marcada por el anotador (aproximada): MLB todavía no trae el rastreo de estos pitcheos.",
+    "estimated": "Ubicación marcada por el anotador (aproximada): el rastreo de estos pitcheos todavía no llega.",
     "estimatedSome_one": "{{count}} pitcheo con ubicación aproximada del anotador (su rastreo llega en segundos).",
     "estimatedSome_other": "{{count}} pitcheos con ubicación aproximada del anotador (su rastreo llega en segundos).",
     "pitchesTo_one": "{{count}} pitcheo a {{batter}}",
@@ -394,7 +394,13 @@
     "totals": "Totales",
     "lob_one": "{{count}} corredor dejado en base",
     "lob_other": "{{count}} corredores dejados en base",
-    "noData": "Sin datos todavía."
+    "noData": "Sin datos todavía.",
+    "benchTitle": "Banca y bullpen",
+    "bench": "Banca",
+    "bullpen": "Bullpen",
+    "handR": "D",
+    "handL": "Z",
+    "era": "EFE {{era}}"
   },
   "stats": {
     "ab": "VB",
@@ -415,7 +421,11 @@
     "team": "Equipo",
     "runs": "C",
     "hits": "H",
-    "errors": "E"
+    "errors": "E",
+    "abs": "Retos ABS",
+    "absLeft_one": "queda {{count}}",
+    "absLeft_other": "quedan {{count}}",
+    "absAria": "{{team}}: le quedan {{left}}, ganados {{won}}, perdidos {{lost}}"
   },
   "summary": {
     "decisions": "Decisiones",
@@ -565,7 +575,21 @@
   "timeline": {
     "atBat": "Al bate:",
     "more_one": "Ver {{count}} jugada más",
-    "more_other": "Ver {{count}} jugadas más"
+    "more_other": "Ver {{count}} jugadas más",
+    "actions": {
+      "steal": "Robo",
+      "caught": "Atrapado robando",
+      "pickoff": "Pickoff",
+      "wildPitch": "Wild pitch",
+      "passedBall": "Passed ball",
+      "balk": "Balk",
+      "pitchingChange": "Cambio de lanzador",
+      "moundVisit": "Visita al montículo",
+      "sub": "Emergente",
+      "injury": "Lesión",
+      "ejection": "Expulsión",
+      "runner": "Corredor en 2.ª"
+    }
   },
   "recap": {
     "story": "historia",
@@ -1323,5 +1347,64 @@
     "noteStarters": "Estimación de El Play con el récord, las carreras anotadas y permitidas, la ventaja de jugar en casa y la efectividad de los abridores.",
     "early": "Con pocos juegos jugados queda cerca del 50-50.",
     "previous": "Con los números de la temporada pasada."
+  },
+  "flow": {
+    "title": "Así va el juego",
+    "win": "Probabilidad",
+    "runs": "Carreras",
+    "now": "{{team}}: {{pct}} % de probabilidad de ganar",
+    "toWin": "probabilidad de {{team}}",
+    "won": "Ganó",
+    "swings": "Las jugadas que más pesaron",
+    "note": "Estimación de El Play con la situación de cada jugada (entrada, outs, bases y marcador) y la fuerza de los equipos."
+  },
+  "pitcherNow": {
+    "title": "En el montículo",
+    "starter": "Abridor",
+    "reliever": "Relevista",
+    "fatigue": "Cansancio",
+    "level": {
+      "fresh": "fresco",
+      "normal": "normal",
+      "tired": "cansado",
+      "limit": "al límite"
+    },
+    "pitches_one": "{{count}} pitcheo",
+    "pitches_other": "{{count}} pitcheos",
+    "velocity": "Recta: {{first}} mph al empezar, {{last}} ahora"
+  },
+  "details": {
+    "title": "Detalles del juego",
+    "venue": "Estadio",
+    "weather": "Clima",
+    "wind": "Viento",
+    "firstPitch": "Primer lanzamiento",
+    "duration": "Duración",
+    "elapsed": "Lleva",
+    "status": "Estado",
+    "delay": "Demora",
+    "minutes_one": "{{count}} minuto",
+    "minutes_other": "{{count}} minutos",
+    "attendance": "Público",
+    "umpires": "Umpires"
+  },
+  "stale": {
+    "title_one": "Este juego no se ha actualizado desde hace {{count}} minuto.",
+    "title_other": "Este juego no se ha actualizado desde hace {{count}} minutos.",
+    "body": "Puede ser una pausa en el juego (lesión, lluvia, revisión) o que el anotador va atrasado: en cuanto llegue algo nuevo se pone al día solo."
+  },
+  "noHitter": {
+    "live": "¡{{team}} lanza sin hit!",
+    "perfect": "¡{{team}} va por el juego perfecto!",
+    "done": "¡{{team}} lanzó un juego sin hit!",
+    "perfectDone": "¡{{team}} lanzó un juego perfecto!",
+    "detail_one": "{{team}} no ha conectado hit en {{count}} entrada.",
+    "detail_other": "{{team}} no ha conectado hit en {{count}} entradas."
+  },
+  "runners": {
+    "title": "Corredores en base",
+    "first": "1.ª",
+    "second": "2.ª",
+    "third": "3.ª"
   }
 }

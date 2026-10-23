@@ -231,8 +231,8 @@
     "network": "Couldn't reach the server.",
     "rate_limit_exceeded": "Too many requests. Wait a moment.",
     "internal_error": "Something went wrong. Try again.",
-    "invalid_mlb_data": "MLB didn't respond properly. Try again shortly.",
-    "upstream_timeout": "MLB took too long to respond.",
+    "invalid_mlb_data": "The game data didn't arrive properly. Try again shortly.",
+    "upstream_timeout": "The data took too long to arrive.",
     "game_not_found": "We couldn't find that game.",
     "invalid_game": "The game link isn't valid.",
     "schedule": "Couldn't load the schedule.",
@@ -309,7 +309,7 @@
     "atBatNow": "At bat",
     "outsCount_one": "{{count}} out",
     "outsCount_other": "{{count}} outs",
-    "notFoundHint": "The link may be wrong or MLB may have removed the game.",
+    "notFoundHint": "The link may be wrong or the game may no longer exist.",
     "backToGames": "See today's games",
     "half": {
       "Top": "Top",
@@ -346,13 +346,13 @@
     "whiffs": "Whiffs",
     "open": "Open the full strike zone",
     "full": "Zone",
-    "untracked": "MLB hasn't sent the location of these pitches yet: here is the result and count of each one.",
+    "untracked": "The location of these pitches hasn't arrived yet: here is the result and count of each one.",
     "untrackedPitcher": "No tracking in this game: pitch types and velocity aren't available.",
     "sumPitches": "Pitches",
     "sumStrikes": "Strikes",
     "sumBalls": "Balls",
     "sumFouls": "Fouls",
-    "estimated": "Location marked by the official scorer (approximate): MLB hasn't sent tracking for these pitches yet.",
+    "estimated": "Location marked by the official scorer (approximate): tracking for these pitches hasn't arrived yet.",
     "estimatedSome_one": "{{count}} pitch with the scorer's approximate location (tracking arrives in seconds).",
     "estimatedSome_other": "{{count}} pitches with the scorer's approximate location (tracking arrives in seconds).",
     "pitchesTo_one": "{{count}} pitch to {{batter}}",
@@ -394,7 +394,13 @@
     "totals": "Totals",
     "lob_one": "{{count}} runner left on base",
     "lob_other": "{{count}} runners left on base",
-    "noData": "No data yet."
+    "noData": "No data yet.",
+    "benchTitle": "Bench and bullpen",
+    "bench": "Bench",
+    "bullpen": "Bullpen",
+    "handR": "R",
+    "handL": "L",
+    "era": "ERA {{era}}"
   },
   "stats": {
     "ab": "AB",
@@ -415,7 +421,11 @@
     "team": "Team",
     "runs": "R",
     "hits": "H",
-    "errors": "E"
+    "errors": "E",
+    "abs": "ABS challenges",
+    "absLeft_one": "{{count}} left",
+    "absLeft_other": "{{count}} left",
+    "absAria": "{{team}}: {{left}} left, {{won}} won, {{lost}} lost"
   },
   "summary": {
     "decisions": "Decisions",
@@ -565,7 +575,21 @@
   "timeline": {
     "atBat": "At bat:",
     "more_one": "See {{count}} more play",
-    "more_other": "See {{count}} more plays"
+    "more_other": "See {{count}} more plays",
+    "actions": {
+      "steal": "Steal",
+      "caught": "Caught stealing",
+      "pickoff": "Pickoff",
+      "wildPitch": "Wild pitch",
+      "passedBall": "Passed ball",
+      "balk": "Balk",
+      "pitchingChange": "Pitching change",
+      "moundVisit": "Mound visit",
+      "sub": "Substitution",
+      "injury": "Injury",
+      "ejection": "Ejection",
+      "runner": "Runner on 2B"
+    }
   },
   "recap": {
     "story": "story",
@@ -1323,5 +1347,64 @@
     "noteStarters": "El Play's estimate from record, runs scored and allowed, home-field advantage and the starters' ERA.",
     "early": "With few games played it stays close to 50-50.",
     "previous": "Using last season's numbers."
+  },
+  "flow": {
+    "title": "Game flow",
+    "win": "Win odds",
+    "runs": "Runs",
+    "now": "{{team}}: {{pct}}% to win",
+    "toWin": "{{team}} to win",
+    "won": "Won",
+    "swings": "Biggest swings",
+    "note": "El Play's estimate from each play's situation (inning, outs, bases and score) and team strength."
+  },
+  "pitcherNow": {
+    "title": "On the mound",
+    "starter": "Starter",
+    "reliever": "Reliever",
+    "fatigue": "Fatigue",
+    "level": {
+      "fresh": "fresh",
+      "normal": "normal",
+      "tired": "tired",
+      "limit": "at the limit"
+    },
+    "pitches_one": "{{count}} pitch",
+    "pitches_other": "{{count}} pitches",
+    "velocity": "Fastball: {{first}} mph early, {{last}} now"
+  },
+  "details": {
+    "title": "Game details",
+    "venue": "Ballpark",
+    "weather": "Weather",
+    "wind": "Wind",
+    "firstPitch": "First pitch",
+    "duration": "Duration",
+    "elapsed": "Elapsed",
+    "status": "Status",
+    "delay": "Delay",
+    "minutes_one": "{{count}} minute",
+    "minutes_other": "{{count}} minutes",
+    "attendance": "Attendance",
+    "umpires": "Umpires"
+  },
+  "stale": {
+    "title_one": "This game hasn't updated in {{count}} minute.",
+    "title_other": "This game hasn't updated in {{count}} minutes.",
+    "body": "It may be a pause in the game (injury, rain, review) or the official scorer running behind: it will catch up on its own as soon as something new arrives."
+  },
+  "noHitter": {
+    "live": "{{team}} is throwing a no-hitter!",
+    "perfect": "{{team}} is working on a perfect game!",
+    "done": "{{team}} threw a no-hitter!",
+    "perfectDone": "{{team}} threw a perfect game!",
+    "detail_one": "{{team}} has no hits through {{count}} inning.",
+    "detail_other": "{{team}} has no hits through {{count}} innings."
+  },
+  "runners": {
+    "title": "Runners on base",
+    "first": "1B",
+    "second": "2B",
+    "third": "3B"
   }
 }

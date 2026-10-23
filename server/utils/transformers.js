@@ -126,12 +126,16 @@ const toAtBat = (play, index, nameOf = () => '') => {
         away: result.awayScore ?? null,
         home: result.homeScore ?? null,
         outs: play.count?.outs ?? null,
+        // Bases ocupadas al terminar la jugada (1 = primera, 2 = segunda, 4 = tercera)
+        post: (matchup.postOnFirst?.id ? 1 : 0) + (matchup.postOnSecond?.id ? 2 : 0) + (matchup.postOnThird?.id ? 4 : 0),
         pitches,
         actions: events
-            // Sin avisos internos de MLB ("Status Change - Warmup", game_advisory)
-            .filter((event) => !event.isPitch && event.type === 'action' && event.details?.description && event.details.eventType !== 'game_advisory' && !/^Status Change/.test(event.details.description))
+            // Sin avisos internos de MLB ("Status Change - Warmup", game_advisory); la visita al montículo a veces no viene como «action»
+            .filter((event) => !event.isPitch && (event.type === 'action' || event.details?.eventType === 'mound_visit') && event.details?.description && event.details.eventType !== 'game_advisory' && !/^Status Change/.test(event.details.description))
             .map((event) => {
-                const action = { event: event.details.eventType || null, desc: event.details.description };
+                // `at`: cuántos pitcheos del turno iban cuando pasó (para ponerla en su sitio en la cronología)
+                const at = events.slice(0, events.indexOf(event)).filter((other) => other.isPitch).length;
+                const action = { event: event.details.eventType || null, desc: event.details.description, at };
                 // Bateador o corredor emergente: quién entra, a quién sustituye y en qué posición (PH / PR)
                 if (event.details.eventType === 'offensive_substitution' && event.player?.id) {
                     action.sub = {
@@ -304,10 +308,38 @@ const transformGame = (feed) => {
                 };
             });
 
+        // Banca (los que no han jugado) y bullpen (los relevistas que quedan), con su temporada
+        const bench = (source.bench || [])
+            .map(get)
+            .filter(Boolean)
+            .map((p) => ({
+                id: p.person.id,
+                name: shortName(p.person.id, p.person.fullName),
+                pos: p.position?.abbreviation || '',
+                bats: people[`ID${p.person.id}`]?.batSide?.code || null,
+                avg: p.seasonStats?.batting?.avg ?? null,
+                hr: p.seasonStats?.batting?.homeRuns ?? null
+            }));
+        const pitched = new Set(source.pitchers || []);
+        const bullpen = (source.bullpen || [])
+            .filter((id) => !pitched.has(id))
+            .map(get)
+            .filter(Boolean)
+            .map((p) => ({
+                id: p.person.id,
+                name: shortName(p.person.id, p.person.fullName),
+                throws: people[`ID${p.person.id}`]?.pitchHand?.code || null,
+                era: p.seasonStats?.pitching?.era ?? null,
+                ip: p.seasonStats?.pitching?.inningsPitched ?? null,
+                sv: p.seasonStats?.pitching?.saves ?? null
+            }));
+
         const batting = source.teamStats?.batting || {};
         return {
             batters,
             pitchers,
+            bench,
+            bullpen,
             totals: {
                 ab: batting.atBats ?? null,
                 r: batting.runs ?? null,
@@ -352,6 +384,29 @@ const transformGame = (feed) => {
     const away = team('away');
     const home = team('home');
     const box = { away: boxTeam('away'), home: boxTeam('home') };
+
+    // Cuándo pasó lo último (pitcheo o acción): si en vivo lleva mucho rato igual, la app avisa que los datos no se mueven
+    const timeOf = (play) => {
+        let latest = play?.about?.endTime || play?.about?.startTime || null;
+        for (const event of play?.playEvents || []) {
+            const time = event.endTime || event.startTime;
+            if (time && (!latest || time > latest)) latest = time;
+        }
+        return latest;
+    };
+    const lastPlayAt = allPlays.slice(-2).map(timeOf).filter(Boolean).sort().pop() || null;
+
+    // Detalles: público, duración, demora, umpires y viento
+    const gameInfo = gameData.gameInfo || {};
+    const umpires = (boxscore.officials || []).map((item) => ({ type: item.officialType || '', name: item.official?.fullName || '' })).filter((item) => item.name);
+    const info = {
+        attendance: gameInfo.attendance ?? null,
+        durationMin: gameInfo.gameDurationMinutes ?? null,
+        delayMin: gameInfo.delayDurationMinutes ?? null,
+        firstPitch: gameInfo.firstPitch || null,
+        wind: gameData.weather?.wind || null,
+        umpires
+    };
 
     // Mejores actuaciones: el mejor bateador de cada equipo y el pitcher ganador
     const topPerformers = [];
@@ -413,6 +468,8 @@ const transformGame = (feed) => {
             save: decision(decisionsSource.save, 'save')
         },
         topPerformers,
+        info,
+        lastPlayAt,
         updatedAt: feed.metaData?.timeStamp || null
     };
 };

@@ -118,8 +118,11 @@ export interface AtBat {
     away: number | null;
     home: number | null;
     outs: number | null;
+    /** Bases ocupadas al terminar la jugada (1 = primera, 2 = segunda, 4 = tercera) */
+    post?: number;
     pitches: Pitch[];
-    actions: { event: string | null; desc: string; sub?: { pos: string | null; in: PersonRef; out: PersonRef | null } }[];
+    /** Acciones del turno (robos, cambios, visitas al montículo); `at`: cuántos pitcheos iban cuando pasó */
+    actions: { event: string | null; desc: string; at?: number; sub?: { pos: string | null; in: PersonRef; out: PersonRef | null } }[];
 }
 
 export interface GameTeam extends TeamBase {
@@ -162,9 +165,30 @@ export interface PitcherLine {
     era: string | null;
 }
 
+export interface BenchPlayer {
+    id: number;
+    name: string;
+    pos: string;
+    bats: string | null;
+    avg: string | null;
+    hr: number | null;
+}
+
+export interface BullpenArm {
+    id: number;
+    name: string;
+    throws: string | null;
+    era: string | null;
+    ip: string | null;
+    sv: number | null;
+}
+
 export interface BoxTeam {
     batters: BatterLine[];
     pitchers: PitcherLine[];
+    /** Los que no han jugado y los relevistas que quedan (si vienen en el feed) */
+    bench?: BenchPlayer[];
+    bullpen?: BullpenArm[];
     totals: { ab: number | null; r: number | null; h: number | null; rbi: number | null; bb: number | null; k: number | null; hr: number | null; lob: number | null; avg: string | null };
 }
 
@@ -226,7 +250,20 @@ export interface GameDetail {
     box: { away: BoxTeam; home: BoxTeam };
     decisions: { winner: Decision | null; loser: Decision | null; save: Decision | null };
     topPerformers: TopPerformer[];
+    /** Público, duración, demora (min), primer lanzamiento, viento y umpires */
+    info?: GameInfo;
+    /** Hora del último pitcheo o acción (ISO) */
+    lastPlayAt?: string | null;
     updatedAt: string | null;
+}
+
+export interface GameInfo {
+    attendance: number | null;
+    durationMin: number | null;
+    delayMin: number | null;
+    firstPitch: string | null;
+    wind: string | null;
+    umpires: { type: string; name: string }[];
 }
 
 export interface AbsCount {

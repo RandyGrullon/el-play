@@ -63,6 +63,50 @@ describe('transformGame con un juego real de LIDOM (826279, EST 6 - ESC 5)', () 
     });
 });
 
+describe('juego en vivo: detalles, bases tras cada jugada, acciones, banca y bullpen (826279)', () => {
+    const game = transformGame(fixture('feed-826279'));
+
+    it('umpires, viento, duración, primer lanzamiento y hora de la última jugada', () => {
+        expect(game.info).toMatchObject({ durationMin: 184, firstPitch: '2025-11-30T20:04:00.000Z', wind: '3 mph, In From CF' });
+        expect(game.info.umpires).toEqual([
+            { type: 'Home Plate', name: 'Domingo Paulino' },
+            { type: 'First Base', name: 'Marco Florimon' },
+            { type: 'Second Base', name: 'Felix Tejada' },
+            { type: 'Third Base', name: 'Luis De Los Santos' }
+        ]);
+        expect(game.lastPlayAt).toBe('2025-11-30T23:08:32.844Z');
+    });
+
+    it('bases ocupadas al terminar cada jugada (1, 2 y 4) y en qué pitcheo pasó cada acción', () => {
+        expect(game.atBats.every((atBat) => Number.isInteger(atBat.post) && atBat.post >= 0 && atBat.post <= 7)).toBe(true);
+        expect(game.atBats.filter((atBat) => atBat.post === 7)).toHaveLength(4);
+        const steals = game.atBats.flatMap((atBat) => atBat.actions).filter((action) => action.event === 'stolen_base_2b');
+        expect(steals).toHaveLength(4);
+        expect(steals.every((action) => action.at > 0)).toBe(true);
+        expect(game.atBats.flatMap((atBat) => atBat.actions).filter((action) => action.event === 'pitching_substitution').every((action) => action.at === 0)).toBe(true);
+    });
+
+    it('banca y bullpen con su temporada, sin los que ya lanzaron', () => {
+        expect(game.box.home.bench).toHaveLength(15);
+        expect(game.box.home.bench[0]).toMatchObject({ id: 660620, pos: '2B', bats: 'S', avg: '.125' });
+        const pitched = new Set(game.box.home.pitchers.map((pitcher) => pitcher.id));
+        expect(game.box.home.bullpen.length).toBeGreaterThan(20);
+        expect(game.box.home.bullpen.some((arm) => pitched.has(arm.id))).toBe(false);
+        expect(game.box.home.bullpen[0]).toMatchObject({ id: 472551, throws: 'L', era: '4.70' });
+    });
+
+    it('el simulador manda lo mismo (dev:mock)', () => {
+        const mock = require('../mock');
+        const [played] = mock.gamesForDay('2026-10-15');
+        const detail = transformGame(mock.buildFeed(played));
+        expect(detail.info.umpires).toHaveLength(4);
+        expect(detail.lastPlayAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+        expect(detail.box.away.bench).toHaveLength(3);
+        expect(detail.atBats.some((atBat) => atBat.post > 0)).toBe(true);
+        expect(detail.atBats.flatMap((atBat) => atBat.actions).some((action) => action.event === 'pitching_substitution')).toBe(true);
+    });
+});
+
 describe('retos del ABS (árbitro robot)', () => {
     // El juego real con retos puestos a mano tal como los manda MLB en LIDOM 2026-27
     const feed = fixture('feed-826279');

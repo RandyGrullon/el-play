@@ -40,7 +40,7 @@ const ES: Section[] = [
     },
     {
         title: 'Datos del béisbol',
-        body: ['Los marcadores y estadísticas vienen de MLB Stats API y las fotos de MLB y de los equipos. El Play no está afiliado a MLB ni a LIDOM.']
+        body: ['Los marcadores, las estadísticas y las fotos vienen de servicios públicos de datos del béisbol y de los equipos. El Play es un proyecto independiente: no está afiliado a LIDOM ni a ninguna liga o equipo.']
     }
 ];
 
@@ -73,7 +73,7 @@ const EN: Section[] = [
     },
     {
         title: 'Baseball data',
-        body: ['Scores and stats come from MLB Stats API, and photos from MLB and the teams. El Play is not affiliated with MLB or LIDOM.']
+        body: ['Scores, stats and photos come from public baseball data services and the teams. El Play is an independent project: it is not affiliated with LIDOM or any league or team.']
     }
 ];
 

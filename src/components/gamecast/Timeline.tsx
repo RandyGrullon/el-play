@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AtBat, GameDetail, Pitch } from '../../types';
 import { describePlay, eventName, eventTone, inningName, pitchCallName, pitchTypeName, type EventTone } from '../../lib/baseball';
+import { timelineActions, type ActionKind } from '../../lib/liveGame';
 
 const TONES: Record<EventTone, string> = {
     hr: 'bg-gold/15 text-gold',
@@ -47,6 +48,33 @@ const PlayBubble: React.FC<{ atBat: AtBat; game: GameDetail }> = ({ atBat, game 
     );
 };
 
+const ACTION_TONE: Partial<Record<ActionKind, string>> = {
+    steal: 'text-ball',
+    caught: 'text-strike',
+    pickoff: 'text-strike',
+    wildPitch: 'text-gold',
+    passedBall: 'text-gold',
+    balk: 'text-gold',
+    pitchingChange: 'text-accent-ink',
+    injury: 'text-live',
+    ejection: 'text-live'
+};
+
+/** Una acción del juego (robo, cambio de lanzador, visita al montículo…) como aviso pequeño en medio de la charla */
+const ActionLine: React.FC<{ kind: ActionKind; desc: string }> = ({ kind, desc }) => {
+    const { t, i18n } = useTranslation();
+    const label = t(`timeline.actions.${kind}`);
+    const text = describePlay(desc, i18n.language);
+    // «Visita al montículo. · Visita al montículo»: si la descripción no dice más que la etiqueta, va sola
+    const same = text.replace(/[.\s]+$/, '').toLowerCase() === label.toLowerCase();
+    return (
+        <p className="max-w-[92%] self-center rounded-full bg-raised px-3 py-1.5 text-center text-xs text-muted">
+            <b className={`font-extrabold uppercase tracking-wide ${ACTION_TONE[kind] ?? 'text-ink'}`}>{label}</b>
+            {same ? null : ` · ${text}`}
+        </p>
+    );
+};
+
 // Cronología tipo chat: el turno de ahora con sus lanzamientos (el último resaltado) y debajo las jugadas
 // anteriores, de la más reciente a la más vieja, con separadores por entrada.
 export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () => void }> = ({ game, limit = 12, onMore }) => {
@@ -66,10 +94,19 @@ export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () 
                         </p>
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
-                        {current.pitches.length === 0 ? (
+                        {current.pitches.length === 0 && !timelineActions(current).length ? (
                             <span className="rounded-[18px] bg-raised px-3.5 py-2 text-[13px] font-semibold text-muted">{t('zone.waiting')}</span>
                         ) : (
-                            current.pitches.map((pitch, index) => <PitchBubble key={index} pitch={pitch} last={index === current.pitches.length - 1} />)
+                            // Los pitcheos con las acciones donde pasaron (un robo entre el 2.º y el 3.º, por ejemplo)
+                            [...current.pitches.map((pitch, index) => ({ at: index, pitch, action: null })), ...timelineActions(current).map((action) => ({ at: (action.at ?? current.pitches.length) - 0.5, pitch: null, action }))]
+                                .sort((a, b) => a.at - b.at)
+                                .map((item, index) =>
+                                    item.pitch ? (
+                                        <PitchBubble key={`p${index}`} pitch={item.pitch} last={item.at === current.pitches.length - 1} />
+                                    ) : (
+                                        <ActionLine key={`a${index}`} kind={item.action!.kind!} desc={item.action!.desc} />
+                                    )
+                                )
                         )}
                     </div>
                 </>
@@ -82,6 +119,12 @@ export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () 
                     <React.Fragment key={atBat.i}>
                         {separator && <p className="mt-2 self-center text-xs font-bold text-muted">{half}</p>}
                         <PlayBubble atBat={atBat} game={game} />
+                        {/* De la más nueva a la más vieja: lo que pasó durante el turno va debajo de su resultado */}
+                        {timelineActions(atBat)
+                            .reverse()
+                            .map((action, index) => (
+                                <ActionLine key={index} kind={action.kind!} desc={action.desc} />
+                            ))}
                     </React.Fragment>
                 );
             })}
