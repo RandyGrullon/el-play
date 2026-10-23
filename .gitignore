@@ -27,3 +27,6 @@ yarn-error.log*
 .vercel
 .env*.local
 .claude/
+
+# Retratos que genera la PC (docs/GENERADOR-DE-IMAGEN.md): fotos de origen y salida, no se suben
+/avatares/
