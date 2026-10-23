@@ -49,6 +49,16 @@ export const useStandings = (league: LeagueId) =>
         retry
     });
 
+/** Previa: enfrentamientos de la temporada y los que vienen calientes (cambia poco: 10 minutos) */
+export const usePreview = (league: LeagueId, away: number, home: number, enabled = true) =>
+    useQuery({
+        queryKey: ['preview', league, away, home],
+        queryFn: ({ signal }) => api.preview(league, away, home, signal),
+        enabled: enabled && !!away && !!home,
+        staleTime: 10 * MINUTE,
+        retry
+    });
+
 export const useLeaders = (league: LeagueId) =>
     useQuery({
         queryKey: keys.leaders(league),

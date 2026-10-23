@@ -107,6 +107,77 @@ describe('juego en vivo: detalles, bases tras cada jugada, acciones, banca y bul
     });
 });
 
+describe('previa: enfrentamientos de la temporada, los que vienen calientes y alineaciones', () => {
+    const final = (gamePk, date, away, awayRuns, home, homeRuns, state = 'Final') => ({
+        gamePk, gameDate: date, status: { abstractGameState: state === 'Final' ? 'Final' : 'Preview', detailedState: state },
+        teams: { away: { team: { id: away }, score: awayRuns }, home: { team: { id: home }, score: homeRuns } }
+    });
+    const stub = (schedule, splits) => {
+        http.mlbGet = async (url, params) => {
+            if (url.endsWith('/league/131')) return { leagues: [{ season: '2026', numGames: 50 }] };
+            if (url.endsWith('/schedule')) return { dates: [{ games: schedule }] };
+            if (url.endsWith('/stats') && params.stats === 'byDateRange') return { stats: [{ splits }] };
+            throw new Error(`sin stub: ${url}`);
+        };
+    };
+    const app = require('../app');
+    const call = async (path) => {
+        const server = app.listen(0);
+        await new Promise((resolve) => server.once('listening', resolve));
+        try {
+            const res = await fetch(`http://127.0.0.1:${server.address().port}${path}`);
+            return { status: res.status, body: await res.json() };
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    };
+    const hitter = (id, team, pa, ops, hr = 0) => ({ player: { id, fullName: `Bateador ${id}` }, team: { id: team }, stat: { gamesPlayed: 6, plateAppearances: pa, atBats: pa - 2, hits: 6, homeRuns: hr, rbi: 4, ops, avg: '.300' } });
+
+    it('cuenta los juegos terminados entre los dos (sin pospuestos ni otros rivales) y ordena del más reciente', async () => {
+        stub(
+            [
+                final(1, '2026-10-20T23:00:00Z', 669, 5, 671, 3),
+                final(2, '2026-10-22T23:00:00Z', 671, 2, 669, 7),
+                final(3, '2026-10-24T23:00:00Z', 669, 0, 671, 0, 'Postponed'),
+                final(4, '2026-10-21T23:00:00Z', 669, 1, 667, 4)
+            ],
+            [hitter(10, 669, 25, '1.100', 2), hitter(11, 669, 20, '.950'), hitter(12, 669, 5, '2.000'), hitter(13, 669, 22, '.700'), hitter(14, 669, 24, '.800'), hitter(20, 671, 18, '.900'), hitter(30, 667, 30, '1.500')]
+        );
+        const res = await call('/api/v2/preview?league=lidom&away=669&home=671');
+        expect(res.status).toBe(200);
+        expect(res.body.headToHead.games.map((game) => game.gamePk)).toEqual([2, 1]);
+        expect(res.body.headToHead.wins).toEqual({ 669: 2, 671: 0 });
+        expect(res.body.headToHead.runs).toEqual({ 669: 12, 671: 5 });
+        // Por OPS, con 8 apariciones o más, tres por equipo y solo de estos dos equipos
+        expect(res.body.hot.teams['669'].map((player) => player.id)).toEqual([10, 11, 14]);
+        expect(res.body.hot.teams['671'].map((player) => player.id)).toEqual([20]);
+        expect(res.body.hot.teams['667']).toBeUndefined();
+    });
+
+    it('si una parte falla, la otra igual llega; equipos inválidos dan 400', async () => {
+        http.mlbGet = async (url) => {
+            if (url.endsWith('/league/131')) return { leagues: [{ season: '2026' }] };
+            if (url.endsWith('/schedule')) return { dates: [{ games: [final(1, '2026-10-20T23:00:00Z', 669, 5, 671, 3)] }] };
+            throw new Error('MLB caído');
+        };
+        const res = await call('/api/v2/preview?league=lidom&away=669&home=671');
+        expect(res.status).toBe(200);
+        expect(res.body.headToHead.games).toHaveLength(1);
+        expect(res.body.hot).toBeNull();
+        expect((await call('/api/v2/preview?away=669&home=669')).status).toBe(400);
+        expect((await call('/api/v2/preview?away=abc&home=1')).status).toBe(400);
+    });
+
+    it('alineaciones anunciadas antes del juego (del simulador)', () => {
+        const mock = require('../mock');
+        const preview = mock.gamesForDay(new Date(Date.now() - 4 * 3600000).toISOString().slice(0, 10)).find((game) => game.mode === 'preview');
+        const detail = transformGame(mock.buildFeed(preview));
+        expect(detail.state).toBe('preview');
+        expect(detail.lineups.away).toHaveLength(9);
+        expect(detail.lineups.home[0]).toMatchObject({ pos: expect.any(String), avg: expect.stringMatching(/^\.\d{3}$/) });
+    });
+});
+
 describe('retos del ABS (árbitro robot)', () => {
     // El juego real con retos puestos a mano tal como los manda MLB en LIDOM 2026-27
     const feed = fixture('feed-826279');

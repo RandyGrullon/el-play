@@ -534,6 +534,8 @@ const buildBoxscore = (game, state) => {
             batters: appeared.map((h) => h.id),
             pitchers: team.pitchers.filter((p) => pitching[p.id]).map((p) => p.id),
             bench: team.bench.map((h) => h.id),
+            // La alineación se anuncia antes del juego
+            battingOrder: team.hitters.map((h) => h.id),
             bullpen: team.pitchers.filter((p) => !pitching[p.id]).map((p) => p.id)
         };
     }
@@ -788,6 +790,16 @@ const seasonSplits = (group, season) => {
     return splits;
 };
 
+/** /stats?stats=byDateRange: unos seis juegos de cada bateador, distintos cada día */
+const rangeSplits = (group, endDate) => {
+    if (group !== 'hitting') return [];
+    const day = Math.floor(Date.parse(`${endDate}T00:00:00Z`) / DAY) || 0;
+    return TEAM_IDS.flatMap((teamId) => {
+        const random = rng(teamId * 977 + day);
+        return roster(teamId).hitters.map((player) => ({ stat: hittingLine(random, player, 6), team: { id: teamId, name: TEAMS[teamId].name }, player: { id: player.id, fullName: player.fullName } }));
+    });
+};
+
 /** /teams/stats: la suma de los peloteros de cada equipo (los promedios se recalculan) */
 const teamSplits = (group, season) => {
     const sums = new Map();
@@ -885,6 +897,8 @@ const get = async (url, params = {}) => {
     if (path === '/schedule') return schedule(params);
     if (path === '/standings') return standings(params);
     if (path === '/stats') {
+        // Últimos días (los que vienen calientes): seis juegos de cada uno
+        if (params.stats === 'byDateRange') return Number(params.leagueId) === 131 ? { stats: [{ splits: rangeSplits(params.group, params.endDate) }] } : { stats: [] };
         if (params.playerPool === 'ALL' && !params.sortStat) return Number(params.leagueId) === 131 ? { stats: [{ splits: seasonSplits(params.group, params.season) }] } : { stats: [] };
         return stats(params);
     }

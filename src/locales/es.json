@@ -1406,5 +1406,33 @@
     "first": "1.ª",
     "second": "2.ª",
     "third": "3.ª"
+  },
+  "previewMore": {
+    "form": "Cómo llegan",
+    "stat": "Dato",
+    "record": "Récord",
+    "streak": "Racha",
+    "lastTen": "Últimos 10",
+    "awayRecord": "De visita",
+    "homeRecord": "En casa",
+    "diff": "Dif. de carreras",
+    "h2h": "Entre ellos · {{season}}",
+    "h2hNone": "Primer enfrentamiento de la temporada.",
+    "h2hRuns": "Carreras: {{away}} {{awayRuns}} · {{home}} {{homeRuns}}",
+    "hot": "Vienen calientes · últimos 7 días",
+    "hotNote": "Los tres con mejor OPS de cada equipo en los últimos 7 días (con 8 apariciones o más).",
+    "hits": "{{h}}-{{ab}}",
+    "hr_one": "{{count}} HR",
+    "hr_other": "{{count}} HR",
+    "rbi_one": "{{count}} CI",
+    "rbi_other": "{{count}} CI",
+    "lineups": "Alineaciones",
+    "lineupsLater": "Las alineaciones se anuncian poco antes del juego.",
+    "lineupPending": "{{team}} todavía no anuncia su alineación.",
+    "bats": {
+      "R": "D",
+      "L": "Z",
+      "S": "A"
+    }
   }
 }

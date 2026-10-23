@@ -28,6 +28,7 @@ import { WinProbabilityCard } from '../components/game/WinProbability';
 import { LineScore } from '../components/game/LineScore';
 import { GameFlow } from '../components/game/GameFlow';
 import { GameDetails, NoHitterBanner, PitcherCard, StaleNotice } from '../components/game/LiveExtras';
+import { HeadToHeadCard, HotPlayersCard, LineupsCard, TeamFormCard } from '../components/game/PreviewCards';
 import { uniformColors } from '../components/game/BatterFigure';
 import { Matchup } from '../components/game/Matchup';
 import { PlayByPlay } from '../components/game/PlayByPlay';
@@ -243,6 +244,15 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                 {/* MLB no recibe los abridores de LIDOM (0 de 185 juegos en 2025-26): se dice en vez de dejar el hueco */}
                 {!game.probables.away && !game.probables.home && <p className="mt-3 text-sm text-muted">{t('preview.probablesLater')}</p>}
             </section>
+
+            {!notPlayed && (
+                <>
+                    <TeamFormCard game={game} />
+                    <HeadToHeadCard game={game} />
+                    <HotPlayersCard game={game} />
+                    <LineupsCard game={game} />
+                </>
+            )}
 
             <section className="card space-y-2.5 p-4" aria-label={t('preview.details')}>
                 {game.date && (

@@ -252,6 +252,8 @@ export interface GameDetail {
     topPerformers: TopPerformer[];
     /** Público, duración, demora (min), primer lanzamiento, viento y umpires */
     info?: GameInfo;
+    /** Alineaciones anunciadas (antes del juego, cuando el equipo las publica) */
+    lineups?: { away: LineupSpot[]; home: LineupSpot[] } | null;
     /** Hora del último pitcheo o acción (ISO) */
     lastPlayAt?: string | null;
     updatedAt: string | null;
@@ -319,4 +321,41 @@ export interface Leader {
 export interface Leaders extends SeasonInfo {
     league: LeagueId;
     categories: { id: string; group: 'hitting' | 'pitching'; leaders: Leader[]; error?: boolean }[];
+}
+
+export interface LineupSpot {
+    id: number;
+    name: string;
+    pos: string;
+    bats: string | null;
+    avg: string | null;
+    ops: string | null;
+    hr: number | null;
+}
+
+export interface HotHitter {
+    id: number;
+    name: string;
+    teamId: number;
+    g: number;
+    pa: number;
+    ab: number;
+    h: number;
+    hr: number;
+    rbi: number;
+    bb: number;
+    avg: string;
+    ops: string;
+}
+
+/** /api/v2/preview: enfrentamientos de la temporada y los que vienen calientes (cada parte null si falló) */
+export interface PreviewData {
+    league: LeagueId;
+    season: number;
+    headToHead: {
+        games: { gamePk: number; date: string | null; away: { id: number; runs: number }; home: { id: number; runs: number }; winnerId: number | null }[];
+        wins: Record<string, number>;
+        runs: Record<string, number>;
+    } | null;
+    hot: { startDate: string; endDate: string; teams: Record<string, HotHitter[]> } | null;
 }

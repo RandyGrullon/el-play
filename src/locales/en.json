@@ -1406,5 +1406,33 @@
     "first": "1B",
     "second": "2B",
     "third": "3B"
+  },
+  "previewMore": {
+    "form": "Current form",
+    "stat": "Stat",
+    "record": "Record",
+    "streak": "Streak",
+    "lastTen": "Last 10",
+    "awayRecord": "Away",
+    "homeRecord": "Home",
+    "diff": "Run diff.",
+    "h2h": "Head to head · {{season}}",
+    "h2hNone": "First meeting of the season.",
+    "h2hRuns": "Runs: {{away}} {{awayRuns}} · {{home}} {{homeRuns}}",
+    "hot": "Hot bats · last 7 days",
+    "hotNote": "Top three OPS on each team over the last 7 days (8+ plate appearances).",
+    "hits": "{{h}}-{{ab}}",
+    "hr_one": "{{count}} HR",
+    "hr_other": "{{count}} HR",
+    "rbi_one": "{{count}} RBI",
+    "rbi_other": "{{count}} RBI",
+    "lineups": "Lineups",
+    "lineupsLater": "Lineups are announced shortly before the game.",
+    "lineupPending": "{{team}} hasn't announced its lineup yet.",
+    "bats": {
+      "R": "R",
+      "L": "L",
+      "S": "S"
+    }
   }
 }

@@ -396,6 +396,22 @@ const transformGame = (feed) => {
     };
     const lastPlayAt = allPlays.slice(-2).map(timeOf).filter(Boolean).sort().pop() || null;
 
+    // Alineaciones anunciadas (antes del juego llegan cuando el equipo las publica, ~1 hora antes)
+    const lineupOf = (side) =>
+        (boxscore.teams?.[side]?.battingOrder || [])
+            .map((id) => boxPlayer(id))
+            .filter(Boolean)
+            .map((p) => ({
+                id: p.person.id,
+                name: p.person.fullName || shortName(p.person.id),
+                pos: p.position?.abbreviation || '',
+                bats: people[`ID${p.person.id}`]?.batSide?.code || null,
+                avg: p.seasonStats?.batting?.avg ?? null,
+                ops: p.seasonStats?.batting?.ops ?? null,
+                hr: p.seasonStats?.batting?.homeRuns ?? null
+            }));
+    const lineups = { away: lineupOf('away'), home: lineupOf('home') };
+
     // Detalles: público, duración, demora, umpires y viento
     const gameInfo = gameData.gameInfo || {};
     const umpires = (boxscore.officials || []).map((item) => ({ type: item.officialType || '', name: item.official?.fullName || '' })).filter((item) => item.name);
@@ -469,6 +485,7 @@ const transformGame = (feed) => {
         },
         topPerformers,
         info,
+        lineups: lineups.away.length || lineups.home.length ? lineups : null,
         lastPlayAt,
         updatedAt: feed.metaData?.timeStamp || null
     };
