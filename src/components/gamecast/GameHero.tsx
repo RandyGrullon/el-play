@@ -11,7 +11,7 @@ import { teamDisplayName } from '../../lib/teams';
 import { usePreferences } from '../../state/preferences';
 import { useIsPro } from '../../lib/pro';
 import { useColors } from '../../theme/theme';
-import { fonts, inkOn, radius } from '../../theme/tokens';
+import { fonts, inkOn, radius, shadow } from '../../theme/tokens';
 import { ProBadge, Txt } from '../ui';
 import { Odometer, PlusOne } from '../pro/kit';
 import { PulseDot } from '../feed/PulseDot';
@@ -86,6 +86,30 @@ const ProScore: React.FC<{ score: number; color: string; dim: boolean; end: bool
     );
 };
 
+/** La entrada en grande entre los dos marcadores (como en la transmisión): flecha arriba en la alta, abajo en la baja */
+const InningBadge: React.FC<{ inning: { n: number | null; isTop: boolean; state?: string | null } }> = ({ inning }) => {
+    const { t, i18n } = useTranslation();
+    const colors = useColors();
+    const state = inning.state === 'Middle' || inning.state === 'End' ? inning.state : inning.isTop ? 'Top' : 'Bottom';
+    const between = state === 'Middle' || state === 'End';
+    return (
+        <View
+            pointerEvents="none"
+            accessible
+            accessibilityLabel={`${t('game.inning')}: ${inningName(inning, i18n.language)}`}
+            style={[{ position: 'absolute', bottom: 20, left: '50%', width: 70, marginLeft: -35, alignItems: 'center', gap: 2, borderRadius: 20, backgroundColor: colors.surface, paddingTop: 8, paddingBottom: 6 }, shadow('float')]}
+        >
+            {between ? <View style={{ height: 8 }} /> : <Txt size={10} color={colors.live} style={{ lineHeight: 10, transform: [{ rotate: state === 'Top' ? '0deg' : '180deg' }] }}>▲</Txt>}
+            <Txt size={32} weight="extrabold" tabular style={{ lineHeight: 34 }}>
+                {inning.n}
+            </Txt>
+            <Txt size={10} weight="extrabold" tone="muted" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>
+                {t(`game.half.${state}`)}
+            </Txt>
+        </View>
+    );
+};
+
 // Cabecera del juego: dos mitades con el color de cada equipo y el marcador gigante
 export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({ model, onShare }) => {
     const { t, i18n } = useTranslation();
@@ -102,7 +126,8 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
     if (notPlayed) status = stateName(model.detailedState, i18n.language);
     else if (model.state === 'final') status = finalLabel(model.inningsPlayed, model.scheduledInnings, i18n.language);
     else if (model.state === 'live') {
-        status = model.inning?.n ? `${inningName(model.inning, i18n.language, true)} · ${t('game.outsCount', { count: model.outs })}` : stateName(model.detailedState, i18n.language);
+        // La entrada va en grande al centro: aquí «En vivo» y los outs
+        status = model.inning?.n ? `${t('game.tabs.live')} · ${t('game.outsCount', { count: model.outs })}` : stateName(model.detailedState, i18n.language);
     } else status = model.date ? `${formatShortDate(model.date, i18n.language)} · ${formatTime(model.date, i18n.language)}` : '';
     if (model.state === 'preview' && startsIn > 0 && !notPlayed) status += ` · ${formatCountdown(startsIn, i18n.language)}`;
 
@@ -160,6 +185,7 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
                     <Share2 size={20} color="#14151a" />
                 </Pressable>
             )}
+            {model.state === 'live' && !notPlayed && model.inning?.n ? <InningBadge inning={model.inning} /> : null}
             {/* Estado en el centro, entre los dos botones */}
             <View pointerEvents="none" style={{ position: 'absolute', left: 64, right: 64, top: insets.top + 18, alignItems: 'center' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: model.state === 'live' ? colors.live : 'rgba(255,255,255,0.9)', maxWidth: '100%' }}>

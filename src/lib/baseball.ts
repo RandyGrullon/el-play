@@ -286,6 +286,37 @@ export const stateName = (detailedState: string, lang: string) => {
     return detailedState;
 };
 
+// El clima llega en inglés tal como lo escribe el anotador
+const WEATHER: [RegExp, string, string][] = [
+    [/partly cloudy/i, 'Parcialmente nublado', 'Partly cloudy'],
+    [/overcast/i, 'Encapotado', 'Overcast'],
+    [/cloudy/i, 'Nublado', 'Cloudy'],
+    [/sunny/i, 'Soleado', 'Sunny'],
+    [/clear/i, 'Despejado', 'Clear'],
+    [/drizzle/i, 'Llovizna', 'Drizzle'],
+    [/showers?/i, 'Aguaceros', 'Showers'],
+    [/rain/i, 'Lluvia', 'Rain'],
+    [/snow/i, 'Nieve', 'Snow'],
+    [/roof closed/i, 'Techo cerrado', 'Roof closed'],
+    [/dome/i, 'Techado', 'Dome'],
+    [/windy/i, 'Ventoso', 'Windy']
+];
+
+export const weatherName = (condition: string, lang: string) => {
+    for (const [pattern, es, en] of WEATHER) {
+        if (pattern.test(condition)) return isEs(lang) ? es : en;
+    }
+    return condition;
+};
+
+/** Temperatura en la escala de cada idioma (°C en español, °F en inglés); un 29 en el Caribe son °C, no °F */
+export const weatherTemp = (temp: string | null | undefined, lang: string) => {
+    const value = Number(temp);
+    if (!temp || !Number.isFinite(value)) return '';
+    const celsius = value <= 45 ? value : ((value - 32) * 5) / 9;
+    return isEs(lang) ? `${Math.round(celsius)} °C` : `${Math.round(value <= 45 ? (celsius * 9) / 5 + 32 : value)} °F`;
+};
+
 export const isNotPlayed = (detailedState: string) => /postponed|cancel/i.test(detailedState);
 
 /** "Alta 7" / "Top 7"; entre entradas "Mitad 7" / "Mid 7" */

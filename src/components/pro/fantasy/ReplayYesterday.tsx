@@ -1,7 +1,7 @@
 // «Repetición de ayer»: mientras no hay juegos en vivo, tus peloteros de ayer jugada a jugada con las jugadas reales
 // del juego (los puntos de cada paso salen con la misma regla del box y terminan igual). Así se verá en vivo. Necesita
 // /api/v2/game/:pk/pro: si la ruta no existe (producción todavía), el bloque no sale.
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { AccessibilityInfo, Pressable, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { History, RotateCcw, SkipForward } from 'lucide-react-native';
@@ -42,7 +42,7 @@ export const ReplayYesterday: React.FC<ReplayYesterdayProps> = ({ day, entry }) 
     const atBats = detail.data?.atBats;
     const plays = pro.data?.plays;
     const decisions = detail.data?.decisions;
-    const steps = useMemo(() => (atBats && plays ? replaySteps(atBats, plays, decisions, day.scoring, ids ? ids.split(',').map(Number) : []) : []), [atBats, plays, decisions, day.scoring, ids]);
+    const steps = atBats && plays ? replaySteps(atBats, plays, decisions, day.scoring, ids ? ids.split(',').map(Number) : []) : [];
     // Jugada que se ve (-1: antes del primer lanzamiento); vuelve a empezar al cambiar de juego
     const [cursor, setCursor] = useState<{ gamePk: number | null; index: number }>({ gamePk: null, index: -1 });
     const index = game && cursor.gamePk === game.gamePk ? cursor.index : -1;

@@ -92,7 +92,7 @@ export const MyTeam: React.FC<MyTeamProps> = ({ rows, cardRows, calendar, schedu
     const motion = useMotion();
     const { favoriteTeamId, toggleFavoriteTeam, subscribedGames } = usePreferences();
     const toggleAlert = useAlertToggle();
-    const strip = useRef<ScrollView>(null);
+    const strip = useRef<React.ComponentRef<typeof ScrollView>>(null);
     const { setNode, onLayout, seen } = useInView();
     const ordered = [...(rows ?? [])].sort((a, b) => a.rank - b.rank);
     const card = favoriteTeamId !== null && rows ? teamCardOf(cardRows ?? rows, calendar, schedule, favoriteTeamId) : null;

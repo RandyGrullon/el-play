@@ -10,6 +10,8 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { SUPABASE_ANON, SUPABASE_URL } from './config';
 import { getItem, onHydrated, removeItem, setItem } from './storage';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 
 const URL_BASE = SUPABASE_URL;
 const ANON = SUPABASE_ANON;
@@ -119,23 +121,60 @@ export const authRedirectUrl = () => Linking.createURL('auth');
 
 /**
  * Regla 4.8 de Apple: si la app ofrece entrar con Google también tiene que ofrecer «Iniciar sesión con Apple».
- * Hasta que exista, en iOS no se ofrece Google (ni entrar ni vincular); en Android y en la web, sí.
+ * En iOS, Google sale solo si Apple también está activo en Supabase (apple de authProviders); en Android y en la web, siempre.
  */
-export const googleAllowed = () => Platform.OS !== 'ios';
+export const googleAllowed = (providers?: { apple?: boolean }) => Platform.OS !== 'ios' || !!providers?.apple;
 
-let settingsPromise: Promise<{ google: boolean }> | null = null;
+// ---------------------------------------------------------------- Iniciar sesión con Apple (iPhone)
+
+/** El botón de Apple: en un iPhone con el inicio de sesión de Apple y con Apple activo en Supabase */
+export const appleAvailable = async () => {
+    if (Platform.OS !== 'ios' || !accountEnabled()) return false;
+    const [native, providers] = await Promise.all([AppleAuthentication.isAvailableAsync().catch(() => false), authProviders()]);
+    return native && providers.apple;
+};
+
+/**
+ * Apple da un token firmado (con el nonce que se le pasa cifrado) y Supabase lo cambia por la sesión. El nombre solo
+ * llega la primera vez: si no tiene uno, se guarda como su nombre en la tabla.
+ */
+export const signInWithApple = async (): Promise<'signed-in' | 'cancel' | 'error'> => {
+    if (!accountEnabled()) return 'error';
+    const rawNonce = Crypto.randomUUID();
+    const nonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
+    let credential: AppleAuthentication.AppleAuthenticationCredential;
+    try {
+        credential = await AppleAuthentication.signInAsync({ requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL], nonce });
+    } catch (error) {
+        return (error as { code?: string }).code === 'ERR_REQUEST_CANCELED' ? 'cancel' : 'error';
+    }
+    if (!credential.identityToken) return 'error';
+    try {
+        const data = await authFetch('token?grant_type=id_token', { provider: 'apple', id_token: credential.identityToken, nonce: rawNonce });
+        writeSession(toSession(data));
+        await loadProfile().catch(() => undefined);
+        const given = [credential.fullName?.givenName, credential.fullName?.familyName].filter(Boolean).join(' ').trim();
+        if (given && !readSession()?.name) await saveName(given.slice(0, 30)).catch(() => undefined);
+        await syncFantasy().catch(() => undefined);
+        return 'signed-in';
+    } catch {
+        return 'error';
+    }
+};
+
+let settingsPromise: Promise<{ google: boolean; apple: boolean }> | null = null;
 
 /** Qué proveedores tiene activos el proyecto de Supabase (se pregunta una vez por sesión) */
 export const authProviders = () =>
     (settingsPromise ||= (async () => {
-        if (!accountEnabled()) return { google: false };
+        if (!accountEnabled()) return { google: false, apple: false };
         try {
             const response = await fetch(`${URL_BASE}/auth/v1/settings`, { headers: { apikey: ANON! } });
             const data = await response.json();
-            return { google: !!data?.external?.google };
+            return { google: !!data?.external?.google, apple: !!data?.external?.apple };
         } catch {
             settingsPromise = null;
-            return { google: false };
+            return { google: false, apple: false };
         }
     })());
 

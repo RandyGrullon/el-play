@@ -17,6 +17,8 @@ import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Screen } from '../layout';
 import { Card, ErrorState, OfflineState, Pill, Row, Skeleton, TeamLogo, Txt, useErrorText } from '../ui';
 import { ChipRow, HeaderButton, Notice, SectionHeader, poolTitle, shareText, waitingForNetwork } from './common';
+import { RaceChart } from './RaceChart';
+import { raceStatus, type RaceStatus } from '../../lib/standings';
 
 type Phase = 'regular' | 'roundRobin' | 'final';
 
@@ -44,8 +46,23 @@ const FavoriteButton: React.FC<{ row: StandingRow; color?: string }> = ({ row, c
     );
 };
 
+/** «Clasificado» o «Eliminado» (cuando ya no hay vuelta atrás) */
+const StatusBadge: React.FC<{ status: RaceStatus | undefined; ink?: string }> = ({ status, ink }) => {
+    const { t } = useTranslation();
+    const colors = useColors();
+    if (!status) return null;
+    const color = ink ?? (status === 'clinched' ? colors.ball : colors.muted);
+    return (
+        <View style={{ borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: ink ? 'rgba(0,0,0,0.15)' : alpha(color, 0.15) }}>
+            <Txt size={10} weight="extrabold" color={color} style={{ textTransform: 'uppercase' }}>
+                {t(`standings.status.${status}`)}
+            </Txt>
+        </View>
+    );
+};
+
 // Tarjetas de equipo: el primero grande con su color, el resto en filas
-const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabel?: string }> = ({ rows, cutoff, cutoffLabel }) => {
+const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabel?: string; statuses?: Map<number, RaceStatus> }> = ({ rows, cutoff, cutoffLabel, statuses }) => {
     const { t, i18n } = useTranslation();
     const colors = useColors();
     // Teléfonos angostos (320 px): menos aire para que quepa el nombre del equipo
@@ -76,7 +93,13 @@ const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabe
                     <Txt size={14} weight="semibold" color={ink} tabular style={{ opacity: 0.8 }}>
                         {leader.wins}-{leader.losses} · {leader.pct}
                     </Txt>
+                    {leader.lastTen && (
+                        <Txt size={12} weight="semibold" color={ink} style={{ opacity: 0.75 }}>
+                            {t('standings.lastTenShort', { record: `${leader.lastTen.wins}-${leader.lastTen.losses}` })}
+                        </Txt>
+                    )}
                 </View>
+                <StatusBadge status={statuses?.get(leader.team.id)} ink={ink} />
                 {streak ? (
                     <View style={{ backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 4 }}>
                         <Txt size={12} weight="bold" color={ink}>
@@ -106,9 +129,18 @@ const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabe
                                 </Txt>
                             </View>
                             <TeamLogo team={row.team} size={26} />
-                            <Txt size={compact ? 14 : 15} weight="bold" tone={below ? 'muted' : 'ink'} numberOfLines={2} style={{ flex: 1, minWidth: 0, lineHeight: 18 }}>
-                                {teamDisplayName(row.team, i18n.language)}
-                            </Txt>
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                                <Txt size={compact ? 14 : 15} weight="bold" tone={below ? 'muted' : 'ink'} numberOfLines={2} style={{ lineHeight: 18 }}>
+                                    {teamDisplayName(row.team, i18n.language)}
+                                </Txt>
+                                {/* Racha y últimos 10, cortos para que quepan bajo el nombre */}
+                                {(streakLabel(row.streak, t) || row.lastTen) && (
+                                    <Txt size={11} weight="semibold" tone="muted" numberOfLines={1}>
+                                        {[streakLabel(row.streak, t) || null, row.lastTen ? t('standings.lastTenShort', { record: `${row.lastTen.wins}-${row.lastTen.losses}` }) : null].filter(Boolean).join(' · ')}
+                                    </Txt>
+                                )}
+                            </View>
+                            <StatusBadge status={statuses?.get(row.team.id)} />
                             <Txt weight="bold" tabular>
                                 {row.wins}-{row.losses}
                             </Txt>
@@ -150,7 +182,9 @@ export const StandingsSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) 
     const phaseLabel = activePhase ? t(`standings.${activePhase}`) : '';
     const share = (tableRows: StandingRow[], subtitle: string) => shareText(tableText(tableRows, `${t('standings.title')} ${leagueName} · ${subtitle}`, i18n.language));
 
-    const table = (tableRows: StandingRow[], cutoff: number | undefined, cutoffLabel: string) => <StandingCards rows={tableRows} cutoff={cutoff} cutoffLabel={cutoffLabel} />;
+    // Clasificados y eliminados en la temporada regular de LIDOM (4 de 6 pasan al Round Robin)
+    const statuses = data?.type === 'lidom' && activePhase === 'regular' ? raceStatus(data.regular, 4, data.regularSeasonGames) : undefined;
+    const table = (tableRows: StandingRow[], cutoff: number | undefined, cutoffLabel: string) => <StandingCards rows={tableRows} cutoff={cutoff} cutoffLabel={cutoffLabel} statuses={statuses} />;
 
     return (
         <Screen onRefresh={() => standings.refetch()}>
@@ -193,6 +227,7 @@ export const StandingsSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) 
                         activePhase === 'regular' ? 4 : activePhase === 'roundRobin' ? data.roundRobinInfo?.advance ?? 2 : undefined,
                         activePhase === 'regular' ? t('standings.cutRoundRobin') : t('standings.cutFinal')
                     )}
+                    {activePhase === 'regular' && <RaceChart league={activeLeague} />}
                 </>
             ) : data?.type === 'wbc' ? (
                 <View style={{ gap: 24 }}>

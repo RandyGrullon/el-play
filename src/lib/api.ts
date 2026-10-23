@@ -1,5 +1,5 @@
 import NetInfo from '@react-native-community/netinfo';
-import type { GameDetail, LeagueId, Leaders, Schedule, Standings } from '../types';
+import type { GameDetail, LeagueId, Leaders, PreviewData, RaceData, Schedule, Standings } from '../types';
 import { API_BASE } from './config';
 
 const TIMEOUT_MS = 10000;
@@ -49,9 +49,14 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
     }
 }
 
+/** Cualquier ruta de la API (`/api/v2/...`) con el mismo manejo de errores y tiempo límite */
+export const getApiJson = <T>(path: string, signal?: AbortSignal) => getJson<T>(`${API_BASE}${path}`, signal);
+
 export const api = {
     schedule: (league: LeagueId, signal?: AbortSignal) => getJson<Schedule>(`${API_BASE}/api/v2/schedule?league=${league}`, signal),
     game: (gamePk: string | number, signal?: AbortSignal) => getJson<GameDetail>(`${API_BASE}/api/v2/game/${gamePk}`, signal),
     standings: (league: LeagueId, signal?: AbortSignal) => getJson<Standings>(`${API_BASE}/api/v2/standings?league=${league}`, signal),
-    leaders: (league: LeagueId, signal?: AbortSignal) => getJson<Leaders>(`${API_BASE}/api/v2/leaders?league=${league}`, signal)
+    leaders: (league: LeagueId, signal?: AbortSignal) => getJson<Leaders>(`${API_BASE}/api/v2/leaders?league=${league}`, signal),
+    preview: (league: LeagueId, away: number, home: number, signal?: AbortSignal) => getJson<PreviewData>(`${API_BASE}/api/v2/preview?league=${league}&away=${away}&home=${home}`, signal),
+    race: (league: LeagueId, signal?: AbortSignal) => getJson<RaceData>(`${API_BASE}/api/v2/race?league=${league}`, signal)
 };

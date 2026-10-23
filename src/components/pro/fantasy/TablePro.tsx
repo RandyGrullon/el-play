@@ -278,12 +278,10 @@ export const TablePro: React.FC<TableProProps> = ({ league, day, userId, leagues
     const data = season.data;
     const rows = useMemo(() => {
         const list = [...(data?.ranking ?? [])].sort((a, b) => b.points - a.points);
-        // En una liga privada los puestos se cuentan dentro de ella
-        let rank = 0;
-        return list.map((row, index) => {
-            if (index === 0 || row.points !== list[index - 1].points) rank = index + 1;
-            return { ...row, rank: members ? rank : (row.rank ?? rank) };
-        });
+        // En una liga privada los puestos se cuentan dentro de ella (los empates comparten puesto)
+        const ranks: number[] = [];
+        for (let index = 0; index < list.length; index++) ranks.push(index === 0 || list[index].points !== list[index - 1].points ? index + 1 : ranks[index - 1]);
+        return list.map((row, index) => ({ ...row, rank: members ? ranks[index] : (row.rank ?? ranks[index]) }));
     }, [data, members]);
     const mine = rows.find((row) => row.userId === userId);
     const total = members ? rows.length : (data?.total ?? rows.length);

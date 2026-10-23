@@ -8,7 +8,7 @@ import { ArrowLeft, Bell, BellRing, CircleCheck, CloudSun, ListOrdered, MapPin, 
 import type { GameDetail, TopPerformer } from '../../types';
 import { findScheduledGame, useGame } from '../../lib/queries';
 import { ApiError } from '../../lib/api';
-import { atBatForZone, inningBreak, isNotPlayed } from '../../lib/baseball';
+import { atBatForZone, inningBreak, isNotPlayed, weatherName, weatherTemp } from '../../lib/baseball';
 import { formatCountdown, formatShortDate, formatTime, lastName } from '../../lib/format';
 import { STALE_READ_MS, forMode, playsSince, queuePlays, type PlayEvent } from '../../lib/playEvents';
 import { useIsPro } from '../../lib/pro';
@@ -34,6 +34,8 @@ import { Matchup } from '../../components/game/Matchup';
 import { InningBreakMini } from '../../components/game/InningBreak';
 import { PlayByPlay } from '../../components/game/PlayByPlay';
 import { BoxScore } from '../../components/game/BoxScore';
+import { GameDetails, GameFlow, LineScore, NoHitterBanner, PitcherCard, RunnerChips, StaleNotice } from '../../components/game/LiveGamePieces';
+import { HeadToHeadCard, HotPlayersCard, LineupsCard, TeamFormCard, WinProbabilityCard } from '../../components/game/PreviewPieces';
 import { ProGame } from '../../components/pro/juego/ProGame';
 import { HeroPulse, ProScoreBar } from '../../components/pro/juego/vivo/ScoreBar';
 import { ProGameScroll, ProScrollProvider, useProScrollState } from '../../components/pro/juego/vivo/scroll';
@@ -206,13 +208,23 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: SheetName) => void; o
                 </Pressable>
             </View>
 
+            <RunnerChips game={game} />
+
             <FollowButton game={game} />
 
+            <View style={{ gap: 12, paddingHorizontal: 16, paddingTop: 12 }}>
+                <StaleNotice game={game} />
+                <NoHitterBanner game={game} />
+                <LineScore game={game} />
+            </View>
             <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
                 <Timeline game={game} onMore={() => open('plays')} />
             </View>
-            <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+            <View style={{ gap: 16, paddingHorizontal: 16, paddingTop: 16 }}>
+                {!pause && <PitcherCard game={game} />}
+                <GameFlow game={game} />
                 <SprayChart game={game} />
+                <GameDetails game={game} />
             </View>
             <Row gap={8} style={{ paddingHorizontal: 16, paddingTop: 20 }}>
                 <ActionButton icon={(color) => <Table2 size={16} color={color} />} label={t('game.tabs.box')} onPress={() => open('box')} />
@@ -227,8 +239,12 @@ const FinalView: React.FC<{ game: GameDetail; open: (sheet: SheetName) => void; 
     const { t } = useTranslation();
     return (
         <View style={{ gap: 16, paddingHorizontal: 16, paddingTop: 16 }}>
+            <NoHitterBanner game={game} />
             <StoryRecap game={game} onSharePerformer={onSharePerformer} />
+            <LineScore game={game} />
+            <GameFlow game={game} />
             <SprayChart game={game} />
+            <GameDetails game={game} />
             <Row gap={8}>
                 <ActionButton icon={(color) => <ListOrdered size={16} color={color} />} label={t('game.tabs.plays')} onPress={() => open('plays')} />
                 <ActionButton icon={(color) => <Table2 size={16} color={color} />} label={t('game.tabs.box')} onPress={() => open('box')} />
@@ -251,6 +267,7 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
 
     return (
         <View style={{ gap: 12, paddingHorizontal: 16, paddingTop: 16 }}>
+            {!notPlayed && <WinProbabilityCard game={game} />}
             <Card>
                 <Txt eyebrow style={{ marginBottom: 12 }} accessibilityRole="header">
                     {t('preview.probables')}
@@ -289,7 +306,7 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                         );
                     })}
                 </View>
-                {/* MLB no recibe los abridores de LIDOM: se dice en vez de dejar el hueco (no en pospuestos ni cancelados) */}
+                {/* Los abridores de LIDOM casi nunca se anuncian: se dice en vez de dejar el hueco (no en pospuestos ni cancelados) */}
                 {!notPlayed && !game.probables.away && !game.probables.home && (
                     <Txt size={14} tone="muted" style={{ marginTop: 12 }}>
                         {t('preview.probablesLater')}
@@ -321,12 +338,21 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                     <Row gap={8}>
                         <CloudSun size={16} color={colors.muted} />
                         <Txt size={14} tone="muted">
-                            {game.weather.condition}
-                            {game.weather.temp ? ` · ${game.weather.temp}°F` : ''}
+                            {weatherName(game.weather.condition, i18n.language)}
+                            {weatherTemp(game.weather.temp, i18n.language) ? ` · ${weatherTemp(game.weather.temp, i18n.language)}` : ''}
                         </Txt>
                     </Row>
                 )}
             </Card>
+
+            {!notPlayed && (
+                <>
+                    <TeamFormCard game={game} />
+                    <HeadToHeadCard game={game} />
+                    <HotPlayersCard game={game} />
+                    <LineupsCard game={game} />
+                </>
+            )}
 
             {/* Pospuesto o cancelado: ni aviso ni Compartir (saldría «0 - 0») */}
             {!notPlayed && (

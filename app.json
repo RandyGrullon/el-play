@@ -15,7 +15,8 @@
       "icon": "./assets/images/icon.png",
       "config": {
         "usesNonExemptEncryption": false
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.grullonb.elplay",
@@ -43,6 +44,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-apple-authentication",
       [
         "expo-splash-screen",
         {
@@ -64,7 +66,10 @@
       [
         "expo-localization",
         {
-          "supportedLocales": ["es", "en"]
+          "supportedLocales": [
+            "es",
+            "en"
+          ]
         }
       ],
       "expo-sharing",

@@ -1,7 +1,7 @@
 // Pantalla con scroll del PRO de Estadísticas y de la ficha: igual que Screen (layout.tsx), pero sabe cuánto se bajó.
 // Con eso las tablas largas solo montan las filas que se ven (y unas de más) y su cabecera se queda pegada arriba
 // mientras la tabla está en pantalla. Dentro de otra cosa (sin ProScroll) las tablas se pintan enteras.
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { RefreshControl, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedReaction, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withDelay, withTiming, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -120,8 +120,9 @@ export const useRowWindow = (count: number, rowHeight: number): RowWindow => {
     const [top, setTop] = useState<number | null>(null);
     const offset = useSharedValue(-1);
     const version = scroll?.version ?? 0;
-    const measure = useCallback(() => {
-        const content = scroll?.content.current;
+    const contentRef = scroll?.content;
+    const measure = () => {
+        const content = contentRef?.current;
         if (!node || !content) return;
         node.measureLayout(
             content,
@@ -131,7 +132,7 @@ export const useRowWindow = (count: number, rowHeight: number): RowWindow => {
             },
             () => undefined
         );
-    }, [node, scroll?.content, offset]);
+    };
     // Se vuelve a medir cuando cambia el alto del contenido (algo de arriba creció o se encogió)
     useEffect(() => {
         measure();

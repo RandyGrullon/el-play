@@ -79,3 +79,21 @@ export const findScheduledGame = (client: QueryClient, gamePk: string | undefine
     }
     return undefined;
 };
+
+/** Previa: enfrentamientos de la temporada y los que vienen calientes (cambia poco: 10 minutos) */
+export const usePreview = (league: LeagueId, away: number, home: number, enabled = true) =>
+    useQuery({
+        queryKey: ['preview', league, away, home],
+        queryFn: ({ signal }) => api.preview(league, away, home, signal),
+        enabled: enabled && !!away && !!home,
+        staleTime: 10 * 60 * 1000
+    });
+
+/** La carrera de la temporada (cambia una vez por día de juegos) */
+export const useRace = (league: LeagueId, enabled = true) =>
+    useQuery({
+        queryKey: ['race', league],
+        queryFn: ({ signal }) => api.race(league, signal),
+        enabled,
+        staleTime: 30 * 60 * 1000
+    });

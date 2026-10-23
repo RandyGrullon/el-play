@@ -44,14 +44,15 @@ export const Arsenal: React.FC<{ pro: PlayerPro }> = ({ pro }) => {
     const c = size / 2;
     const r = 60;
     const sum = pitches.reduce((value, pitch) => value + pitch.pct, 0) || 100;
+    // Cada tajada empieza donde terminó la anterior
+    const segments: { pitch: (typeof pitches)[number]; from: number; to: number; sweep: number; share: number; begin: number }[] = [];
     let start = 0;
-    const segments = pitches.map((pitch) => {
+    for (const pitch of pitches) {
         const sweep = (pitch.pct / sum) * 360;
         const to = start + Math.max(0.5, sweep - 1.2);
-        const segment = { pitch, from: start, to, sweep: to - start, share: sweep / 360, begin: start / 360 };
+        segments.push({ pitch, from: start, to, sweep: to - start, share: sweep / 360, begin: start / 360 });
         start += sweep;
-        return segment;
-    });
+    }
     const top = pitches[0];
     const summary = pitches.map((pitch) => `${name(pitch.code, pitch.name)} ${pitch.pct.toFixed(1)} %${pitch.mph ? `, ${pitch.mph.toFixed(1)} mph` : ''}`).join('; ');
     return (

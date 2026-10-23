@@ -29,6 +29,8 @@ export interface Runners {
 
 export interface ScheduleTeam extends TeamBase {
     score: number | null;
+    /** Hits en el juego (null antes de empezar) */
+    hits?: number | null;
     isWinner: boolean;
     probable: PersonRef | null;
 }
@@ -108,8 +110,11 @@ export interface AtBat {
     away: number | null;
     home: number | null;
     outs: number | null;
+    /** Bases ocupadas al terminar la jugada (1 = primera, 2 = segunda, 4 = tercera) */
+    post?: number;
     pitches: Pitch[];
-    actions: { event: string | null; desc: string; sub?: { pos: string | null; in: PersonRef; out: PersonRef | null } }[];
+    /** Acciones del turno (robos, cambios, visitas al montículo); `at`: cuántos pitcheos iban cuando pasó */
+    actions: { event: string | null; desc: string; at?: number; sub?: { pos: string | null; in: PersonRef; out: PersonRef | null } }[];
 }
 
 export interface GameTeam extends TeamBase {
@@ -152,9 +157,29 @@ export interface PitcherLine {
     era: string | null;
 }
 
+export interface BenchPlayer {
+    id: number;
+    name: string;
+    pos: string;
+    bats: string | null;
+    avg: string | null;
+    hr: number | null;
+}
+
+export interface BullpenArm {
+    id: number;
+    name: string;
+    throws: string | null;
+    era: string | null;
+    ip: string | null;
+    sv: number | null;
+}
+
 export interface BoxTeam {
     batters: BatterLine[];
     pitchers: PitcherLine[];
+    bench?: BenchPlayer[];
+    bullpen?: BullpenArm[];
     totals: { ab: number | null; r: number | null; h: number | null; rbi: number | null; bb: number | null; k: number | null; hr: number | null; lob: number | null; avg: string | null };
 }
 
@@ -214,7 +239,76 @@ export interface GameDetail {
     box: { away: BoxTeam; home: BoxTeam };
     decisions: { winner: Decision | null; loser: Decision | null; save: Decision | null };
     topPerformers: TopPerformer[];
+    /** Retos del ABS de cada equipo (ganados, perdidos, los que le quedan) y quién está retando ahora */
+    abs?: { away: AbsCount; home: AbsCount; challenging: number | null } | null;
+    /** Público, duración, demora (min), primer lanzamiento, viento y umpires */
+    info?: GameInfo;
+    /** Alineaciones anunciadas (antes del juego, cuando el equipo las publica) */
+    lineups?: { away: LineupSpot[]; home: LineupSpot[] } | null;
+    /** Hora del último pitcheo o acción (ISO) */
+    lastPlayAt?: string | null;
     updatedAt: string | null;
+}
+
+export interface AbsCount {
+    won: number;
+    lost: number;
+    remaining: number | null;
+}
+
+export interface GameInfo {
+    attendance: number | null;
+    durationMin: number | null;
+    delayMin: number | null;
+    firstPitch: string | null;
+    wind: string | null;
+    umpires: { type: string; name: string }[];
+}
+
+export interface LineupSpot {
+    id: number;
+    name: string;
+    pos: string;
+    bats: string | null;
+    avg: string | null;
+    ops: string | null;
+    hr: number | null;
+}
+
+export interface HotHitter {
+    id: number;
+    name: string;
+    teamId: number;
+    g: number;
+    pa: number;
+    ab: number;
+    h: number;
+    hr: number;
+    rbi: number;
+    bb: number;
+    avg: string;
+    ops: string;
+}
+
+/** /api/v2/preview: enfrentamientos de la temporada y los que vienen calientes (cada parte null si falló) */
+export interface PreviewData {
+    league: LeagueId;
+    season: number;
+    headToHead: {
+        games: { gamePk: number; date: string | null; away: { id: number; runs: number }; home: { id: number; runs: number }; winnerId: number | null }[];
+        wins: Record<string, number>;
+        runs: Record<string, number>;
+    } | null;
+    hot: { startDate: string; endDate: string; teams: Record<string, HotHitter[]> } | null;
+}
+
+/** /api/v2/race: victorias menos derrotas de cada equipo al final de cada día de juegos */
+export interface RaceData {
+    league: LeagueId;
+    season: number;
+    isPreviousSeason: boolean;
+    days: string[];
+    teams: { id: number; abbrev: string; name: string; color: string; logo: string; points: number[] }[];
 }
 
 export interface StandingRow {
@@ -233,6 +327,8 @@ export interface StandingRow {
     away?: { wins: number; losses: number } | null;
     oneRun?: { wins: number; losses: number } | null;
     extraInning?: { wins: number; losses: number } | null;
+    /** La liga ya lo marca como clasificado */
+    clinched?: boolean;
 }
 
 interface SeasonInfo {
@@ -242,7 +338,7 @@ interface SeasonInfo {
 
 export type Standings = SeasonInfo &
     (
-        | { type: 'lidom'; regular: StandingRow[]; roundRobin: StandingRow[]; final: StandingRow[]; activePhase: 'regular' | 'roundRobin' | 'final'; roundRobinInfo: { games: number; advance: number } | null }
+        | { type: 'lidom'; regular: StandingRow[]; roundRobin: StandingRow[]; final: StandingRow[]; activePhase: 'regular' | 'roundRobin' | 'final'; roundRobinInfo: { games: number; advance: number } | null; regularSeasonGames?: number | null }
         | { type: 'wbc'; pools: Record<string, StandingRow[]> }
         | { type: 'sdc'; teams: StandingRow[] }
     );

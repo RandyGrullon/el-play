@@ -5,8 +5,9 @@ import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { LogOut, Mail, Sparkles, UserRound } from 'lucide-react-native';
-import { AccountError, accountEnabled, authProviders, deleteAccount, googleAllowed, saveName, sendCode, signInWithGoogle, signOut, useSession, verifyCode, type Session } from '../../lib/account';
-import { useColors } from '../../theme/theme';
+import { AccountError, accountEnabled, appleAvailable, authProviders, deleteAccount, googleAllowed, saveName, sendCode, signInWithApple, signInWithGoogle, signOut, useSession, verifyCode, type Session } from '../../lib/account';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { useColors, useTheme } from '../../theme/theme';
 import { alpha, fonts, radius, shadow } from '../../theme/tokens';
 import { Button, Card, Row, Txt } from '../ui';
 import { Field, FieldButton } from './Field';
@@ -175,10 +176,13 @@ const SignIn: React.FC<{ fantasy: boolean }> = ({ fantasy }) => {
     const [error, setError] = useState<string | null>(null);
     const [google, setGoogle] = useState(false);
     const [googleBusy, setGoogleBusy] = useState(false);
+    const [apple, setApple] = useState(false);
+    const { isDark } = useTheme();
     useEffect(() => {
         let alive = true;
         // En iOS no se ofrece Google hasta tener «Iniciar sesión con Apple» (regla 4.8)
-        authProviders().then((providers) => alive && setGoogle(providers.google && googleAllowed()));
+        authProviders().then((providers) => alive && setGoogle(providers.google && googleAllowed(providers)));
+        appleAvailable().then((available) => alive && setApple(available));
         return () => {
             alive = false;
         };
@@ -203,6 +207,11 @@ const SignIn: React.FC<{ fantasy: boolean }> = ({ fantasy }) => {
             setBusy(false);
         }
     };
+    const withApple = async () => {
+        setError(null);
+        const result = await signInWithApple().catch(() => 'error' as const);
+        if (result === 'error') setError(t('account.errors.unknown'));
+    };
     const withGoogle = async () => {
         setError(null);
         setGoogleBusy(true);
@@ -224,6 +233,24 @@ const SignIn: React.FC<{ fantasy: boolean }> = ({ fantasy }) => {
                     </Txt>
                 </View>
             </Row>
+            {step === 'email' && apple && (
+                <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                    buttonStyle={isDark ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                    cornerRadius={16}
+                    style={{ height: 48, width: '100%' }}
+                    onPress={withApple}
+                />
+            )}
+            {step === 'email' && apple && !google && (
+                <Row gap={12}>
+                    <View style={{ flex: 1, height: 1, backgroundColor: colors.line }} />
+                    <Txt size={12} weight="semibold" tone="muted">
+                        {t('account.orEmail')}
+                    </Txt>
+                    <View style={{ flex: 1, height: 1, backgroundColor: colors.line }} />
+                </Row>
+            )}
             {step === 'email' && google && (
                 <>
                     <Pressable

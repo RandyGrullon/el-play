@@ -37,7 +37,7 @@ export const LoginMethods: React.FC<{ userId: string; email: string }> = ({ user
     const list = identities.data;
     const googleIdentity = list?.find((identity) => identity.provider === 'google');
     // En iOS no se ofrece Google (regla 4.8 de Apple); si ya estaba vinculada, igual se ve y se puede quitar
-    const google = !!providers.data?.google && googleAllowed();
+    const google = !!providers.data?.google && googleAllowed(providers.data);
     const showGoogle = !!googleIdentity || (google && !linkOff);
     const canLink = google && !linkOff && !googleIdentity;
     const loadError = identities.isError && !list;

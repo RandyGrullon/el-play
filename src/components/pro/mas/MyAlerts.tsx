@@ -59,7 +59,7 @@ export const MyAlerts: React.FC<{ games: ScheduleGame[] | undefined; loading: bo
     const [tested, setTested] = useState(false);
     const { on, off } = alertGamesOf(games ?? [], subscribedGames);
     const sample = on[0] ?? off[0] ?? null;
-    const favoriteName = [...(games ?? [])].flatMap((game) => [game.away, game.home]).find((team) => team.id === favoriteTeamId)?.teamName ?? null;
+    const favoriteName = [...(games ?? [])].flatMap((game) => [game.away, game.home]).find((team) => team.id === favoriteTeamId)?.name ?? null;
 
     const tone =
         permission === 'granted'

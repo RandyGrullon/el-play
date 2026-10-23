@@ -76,12 +76,14 @@ export const GameLogPro: React.FC<{ player: PlayerDetail; pro?: PlayerPro; onOpe
     const [byPts, setByPts] = useState(false);
     const [all, setAll] = useState(false);
     const [born] = useState(() => Date.now());
+    const proLog = pro?.log;
+    const playerLog = player.log;
     const rows: LogRow[] = useMemo(
         () =>
-            pro?.log?.length
-                ? pro.log.map((game) => ({ ...game }))
-                : player.log.map((game) => ({ gamePk: game.gamePk, date: game.date, phase: null, isHome: game.isHome, isWin: game.isWin, opponent: game.opponent, hitting: game.hitting, pitching: game.pitching, pts: game.pts })),
-        [pro?.log, player.log]
+            proLog?.length
+                ? proLog.map((game) => ({ ...game }))
+                : playerLog.map((game) => ({ gamePk: game.gamePk, date: game.date, phase: null, isHome: game.isHome, isWin: game.isWin, opponent: game.opponent, hitting: game.hitting, pitching: game.pitching, pts: game.pts })),
+        [proLog, playerLog]
     );
     const tags = useMemo(() => doubleHeaderTags(rows), [rows]);
     const sorted = useMemo(() => (byPts ? [...rows].sort((a, b) => b.pts - a.pts || b.date.localeCompare(a.date)) : rows), [rows, byPts]);

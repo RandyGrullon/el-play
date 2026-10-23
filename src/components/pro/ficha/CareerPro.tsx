@@ -35,19 +35,21 @@ export const CareerPro: React.FC<{ player: PlayerDetail; pro?: PlayerPro }> = ({
     const { width, onLayout } = useElementWidth(358);
     const { setNode, onLayout: look, seen } = useInView();
     const pitcher = player.role === 'P';
-    const phases = useMemo(() => [...new Set((pro?.career ?? []).map((row) => row.phase).filter((phase): phase is ProPhaseId => !!phase))], [pro?.career]);
+    const proCareer = pro?.career;
+    const phases = useMemo(() => [...new Set((proCareer ?? []).map((row) => row.phase).filter((phase): phase is ProPhaseId => !!phase))], [proCareer]);
     const [phase, setPhase] = useState<ProPhaseId | null>(null);
     const active = phase && phases.includes(phase) ? phase : (phases[0] ?? null);
 
+    const playerCareer = player.career;
     const rows: CareerLine[] = useMemo(() => {
-        if (pro?.career?.length) {
-            return pro.career
+        if (proCareer?.length) {
+            return proCareer
                 .filter((row) => row.phase === active)
                 .map((row) => ({ season: row.season, team: row.team, hitting: (row.hitting as HittingLine | undefined) ?? null, pitching: (row.pitching as PitchingLine | undefined) ?? null, pts: row.pts }))
                 .sort((a, b) => b.season - a.season);
         }
-        return player.career.map((row) => ({ season: row.season, team: row.team, hitting: row.hitting ?? null, pitching: row.pitching ?? null, pts: row.pts })).sort((a, b) => b.season - a.season);
-    }, [pro?.career, player.career, active]);
+        return playerCareer.map((row) => ({ season: row.season, team: row.team, hitting: row.hitting ?? null, pitching: row.pitching ?? null, pts: row.pts })).sort((a, b) => b.season - a.season);
+    }, [proCareer, playerCareer, active]);
     if (!rows.length) return null;
 
     const valueOf = (row: { hitting: HittingLine | null; pitching: PitchingLine | null }) => (pitcher ? numOf(row.pitching?.era) : numOf(row.hitting?.ops));
