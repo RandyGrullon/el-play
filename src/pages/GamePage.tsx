@@ -25,6 +25,7 @@ import { forMode, newPlayEvents, type PlayEvent } from '../lib/playEvents';
 import { StrikeZonePanel } from '../components/game/StrikeZonePanel';
 import { InningBreakMini } from '../components/game/InningBreak';
 import { WinProbabilityCard } from '../components/game/WinProbability';
+import { LineScore } from '../components/game/LineScore';
 import { uniformColors } from '../components/game/BatterFigure';
 import { Matchup } from '../components/game/Matchup';
 import { PlayByPlay } from '../components/game/PlayByPlay';
@@ -118,6 +119,10 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
                 </button>
             </div>
 
+            <div className="px-4 pt-4">
+                <LineScore game={game} />
+            </div>
+
             <div className="px-4 pt-5">
                 <Timeline game={game} onMore={() => open('plays')} />
             </div>
@@ -147,6 +152,7 @@ const FinalView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSh
     return (
         <div className="space-y-4 px-4 pt-4">
             <StoryRecap game={game} onSharePerformer={onSharePerformer} />
+            <LineScore game={game} />
             <SprayChart game={game} />
             {pro && <LiveProPanel game={game} />}
             <div className="flex gap-2">
