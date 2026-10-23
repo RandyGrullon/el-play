@@ -35,6 +35,11 @@ export interface SeasonRow {
     days: number;
     /** Puesto en la tabla general (solo cuando se piden cuentas con `users`) */
     rank?: number;
+    /** Puntos de los últimos 7 días (el campeón de la semana de una liga) */
+    week?: number;
+    /** Días de juego seguidos que jugó, hasta hoy */
+    streak?: number;
+    best?: { date: string; points: number } | null;
 }
 
 export interface SeasonRanking {

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BarChart3, Clock, Crown, Info, Lock, Plus, Search, Share2, Sparkles, Trophy, Users, Wand2, X } from 'lucide-react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -56,6 +56,8 @@ import {
 } from '../lib/fantasy';
 import { accountEnabled, createLeague, dayEntries, joinLeague, myLeagues, pushEntry, syncFantasy, useSession, type PrivateLeague, type Rival } from '../lib/account';
 import { isFanId, useFanProfile, useFantasyOwners } from '../lib/fans';
+import { pointsBreakdown } from '../lib/fantasyExtras';
+import { LeagueSummary } from '../components/fantasy/LeagueSummary';
 
 type Tab = 'team' | 'picks' | 'table' | 'fans';
 const DAY_MS = 86400000;
@@ -126,7 +128,11 @@ export const FantasyPage: React.FC = () => {
     useEffect(() => {
         if (!date && day?.date) setToday(day.date);
     }, [date, day?.date]);
+    // Al cambiar de liga se vuelve a hoy (al montar no: si el día ya estaba en caché, borraría el «hoy» recién puesto)
+    const shownLeague = useRef(activeLeague);
     useEffect(() => {
+        if (shownLeague.current === activeLeague) return;
+        shownLeague.current = activeLeague;
         setDate(undefined);
         setToday(null);
     }, [activeLeague]);
@@ -678,7 +684,10 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
     const captain = entry.captain === player.id;
     const line = lineText(player, t);
     const [info, setInfo] = useState(false);
+    const [breakdown, setBreakdown] = useState(false);
+    const items = pointsBreakdown(player, day.scoring);
     return (
+        <div>
         <div className="relative flex h-[84px] items-center gap-3 rounded-[22px] bg-surface px-3 shadow-card">
             <button type="button" onClick={() => setInfo(true)} className="flex min-w-0 flex-1 items-center gap-3 text-left" aria-label={t('statsPage.viewPlayer', { name: player.name })}>
                 <PlayerPhoto personId={player.id} name={player.name} size={56} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
@@ -705,7 +714,13 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
                 </div>
             </button>
             <div className="flex flex-col items-end gap-1">
-                <span className="font-display text-2xl font-extrabold leading-none tabular-nums">{credits(playerScore(entry, player), i18n.language)}</span>
+                {items.length ? (
+                    <button type="button" onClick={() => setBreakdown((value) => !value)} aria-expanded={breakdown} aria-label={t('fantasyMore.breakdownOf', { name: player.name })} className="font-display text-2xl font-extrabold leading-none tabular-nums underline decoration-dotted decoration-2 underline-offset-4">
+                        {credits(playerScore(entry, player), i18n.language)}
+                    </button>
+                ) : (
+                    <span className="font-display text-2xl font-extrabold leading-none tabular-nums">{credits(playerScore(entry, player), i18n.language)}</span>
+                )}
                 {locked ? (
                     <span className="flex items-center gap-1 text-[11px] font-semibold text-faint">
                         {owned && <span title={t('fantasy.smart.owned', { pct: credits(owned.pct, i18n.language) })}>{credits(owned.pct, i18n.language)} %</span>}
@@ -723,6 +738,25 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
                 )}
             </div>
             {info && <PlayerSheet id={player.id} name={player.name} team={teamOf(day, player)} onClose={() => setInfo(false)} />}
+        </div>
+        {breakdown && items.length > 0 && (
+            <ul className="mx-3 -mt-2 rounded-b-[18px] bg-raised px-4 pb-2.5 pt-4 text-sm" aria-label={t('fantasyMore.breakdownOf', { name: player.name })}>
+                {items.map((item) => (
+                    <li key={item.key} className="flex justify-between gap-3 py-0.5">
+                        <span className="text-muted">
+                            {item.count} × {t(`fantasy.scoring.${player.role === 'P' ? 'pitcher' : 'batter'}.${item.key}`)} ({item.each > 0 ? `+${item.each}` : item.each})
+                        </span>
+                        <b className={`tabular-nums ${item.total < 0 ? 'text-live' : ''}`}>{item.total > 0 ? `+${item.total}` : item.total}</b>
+                    </li>
+                ))}
+                {entry.captain === player.id && (
+                    <li className="flex justify-between gap-3 border-t border-line/10 pt-1 font-semibold">
+                        <span>{t('fantasyMore.captainBonus', { x: RULES.captain })}</span>
+                        <b className="tabular-nums">{credits(playerScore(entry, player), i18n.language)}</b>
+                    </li>
+                )}
+            </ul>
+        )}
         </div>
     );
 };
@@ -1097,7 +1131,19 @@ const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: OpenFan 
                     {rivals && !ranking.length && <li className="px-4 py-6 text-center text-sm text-muted">{t('fantasy.emptyTable')}</li>}
                 </ol>
             )}
-            {scope !== 'all' && <p className="select-text text-xs text-muted">{t('fantasy.leagueCode', { code: leagues.find((l) => l.id === scope)?.code })}</p>}
+            {scope !== 'all' && leagues.find((l) => l.id === scope) && (
+                <LeagueSummary
+                    league={leagues.find((l) => l.id === scope)!}
+                    fantasyLeague={day.league}
+                    dayName={dayName}
+                    ownId={session.user.id}
+                    day={ranking.map((row) => ({ userId: row.userId, name: row.name, points: row.points }))}
+                    onLeft={() => {
+                        setScope('all');
+                        load();
+                    }}
+                />
+            )}
 
             <div className="card grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
                 <form

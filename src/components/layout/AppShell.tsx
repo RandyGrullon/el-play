@@ -12,6 +12,13 @@ import { OfflineBanner } from './OfflineBanner';
 import { UpdateToast } from './UpdateToast';
 import { Toast } from './Toast';
 import { InstallSheet } from '../install/InstallSheet';
+import { useFantasyAlerts } from '../../hooks/useFantasyAlerts';
+
+/** Avisa lo que suma tu equipo del Fantasy mientras la app está abierta (en cualquier página) */
+const FantasyWatcher: React.FC = () => {
+    useFantasyAlerts();
+    return null;
+};
 
 // Barra inferior flotante (diseño D): Inicio · Tabla · [En vivo] · Líderes · Más
 const BottomNav: React.FC<{ onLive: () => void; liveCount: number }> = ({ onLive, liveCount }) => {
@@ -110,6 +117,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
             <BottomNav onLive={() => setLiveOpen(true)} liveCount={liveCount} />
             <LiveSheet open={liveOpen} onClose={() => setLiveOpen(false)} />
             <InstallSheet />
+            <FantasyWatcher />
         </div>
     );
 };

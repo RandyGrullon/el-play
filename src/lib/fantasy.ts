@@ -124,10 +124,11 @@ const useLockClock = (day: FantasyDay | undefined) => {
     }, [next, tick]);
 };
 
-export const useFantasyDay = (league: LeagueId, date?: string) => {
+export const useFantasyDay = (league: LeagueId, date?: string, enabled = true) => {
     const query = useQuery({
         queryKey: ['fantasy', league, date ?? 'hoy'],
         queryFn: ({ signal }) => fetchFantasyDay(league, date, signal),
+        enabled,
         staleTime: 15000,
         refetchInterval: (query) => fantasyInterval(query.state.data),
         refetchOnWindowFocus: true

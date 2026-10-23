@@ -557,4 +557,11 @@ export const myLeagues = async (): Promise<PrivateLeague[]> => {
 /** Crea una liga con un código para compartir (lo genera la base de datos) */
 export const createLeague = (name: string) => rest<{ code: string }[]>('rpc/create_league', { method: 'POST', body: JSON.stringify({ league_name: name.trim().slice(0, 40) }) });
 
+/** Salir de una liga (la política «salir de una liga» deja borrar solo la fila propia) */
+export const leaveLeague = (leagueId: string) => {
+    const current = readSession();
+    if (!current) return Promise.reject(new AccountError('unknown'));
+    return rest(`league_members?league_id=eq.${encodeURIComponent(leagueId)}&user_id=eq.${current.user.id}`, { method: 'DELETE' });
+};
+
 export const joinLeague = (code: string) => rest('rpc/join_league', { method: 'POST', body: JSON.stringify({ league_code: code.trim().toUpperCase() }) });

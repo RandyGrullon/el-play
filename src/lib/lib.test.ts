@@ -1063,3 +1063,28 @@ describe('ficha: OPS+, ERA+, percentiles y zonas', () => {
         expect(recentBatted([at(0, 2.5, { event: 'home_run', hit: { x: 100, y: 40, ev: 105, dist: 410 } })])[0].kind).toBe('hr');
     });
 });
+
+describe('fantasy: desglose de puntos y logros', () => {
+    it('el desglose suma lo mismo que los puntos del pelotero', async () => {
+        const { pointsBreakdown } = await import('./fantasyExtras');
+        const scoring = { batter: { single: 1, double: 2, triple: 3, homeRun: 4, run: 1, rbi: 1, walk: 1, hitByPitch: 1, stolenBase: 2, strikeOut: -0.5 }, pitcher: { out: 1, strikeOut: 1, win: 5, save: 5, earnedRun: -2, hit: -0.5, walk: -0.5 } };
+        const batter = { id: 1, role: 'B', played: true, points: 0, line: { ab: 4, h: 2, d: 0, t: 0, hr: 1, r: 1, rbi: 3, bb: 1, hbp: 0, sb: 0, k: 1 } } as unknown as FantasyPlayer;
+        const items = pointsBreakdown(batter, scoring);
+        expect(items.map((item) => item.key)).toEqual(['single', 'homeRun', 'run', 'rbi', 'walk', 'strikeOut']);
+        expect(items.reduce((sum, item) => sum + item.total, 0)).toBeCloseTo(1 + 4 + 1 + 3 + 1 - 0.5);
+        expect(pointsBreakdown({ ...batter, played: false } as FantasyPlayer, scoring)).toEqual([]);
+    });
+
+    it('logros con lo que lleva cada uno', async () => {
+        const { achievements } = await import('./fantasyExtras');
+        const day = (date: string, total: number, extra = {}) => ({ date, final: true, live: false, team: total, picks: 0, total, lineup: [1], captain: 1, picksMade: 0, ...extra });
+        const profile = { userId: 'x', league: 'lidom', name: null, season: { points: 210, days: 4 }, days: [day('2026-10-20', 105), day('2026-10-19', 40), day('2026-10-18', 30, { picks: 30, picksMade: 3 }), day('2026-10-15', 35)] } as unknown as import('./fans').FanProfileData;
+        const list = Object.fromEntries(achievements(profile).map((item) => [item.key, item]));
+        expect(list.firstTeam.done).toBe(true);
+        expect(list.hundred.done).toBe(true);
+        expect(list.streak3).toMatchObject({ done: true });
+        expect(list.streak7).toMatchObject({ done: false, progress: { value: 3, goal: 7 } });
+        expect(list.perfectPicks.done).toBe(true);
+        expect(list.tenDays.progress).toEqual({ value: 4, goal: 10 });
+    });
+});

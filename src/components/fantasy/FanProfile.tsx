@@ -11,7 +11,8 @@ import { formatTime, localeFor, seasonLabel, todayKey } from '../../lib/format';
 import { inningName } from '../../lib/baseball';
 import { useSession } from '../../lib/account';
 import { RULES, effectiveEntry, entryKey, gameStarted, isLocked, lineText, pickPoints, pickResult, playerScore, teamPoints, useFantasyDay, useFantasyStore, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
-import { SEASON_TOP, useFanEntry, useFanProfile, useSeasonRanking, withRanks, type FanDay } from '../../lib/fans';
+import { SEASON_TOP, useFanEntry, useFanProfile, useSeasonRanking, withRanks, type FanDay, type FanProfileData } from '../../lib/fans';
+import { achievements } from '../../lib/fantasyExtras';
 
 export const FAN_GRADIENT = 'linear-gradient(135deg, #1e4fd8 0%, #6d28d9 55%, #e11d48 100%)';
 
@@ -138,6 +139,8 @@ export const FanProfile: React.FC<FanProfileProps> = ({ userId, league, onClose,
                     <ErrorState error={query.error} onRetry={() => query.refetch()} />
                 ) : profile ? (
                     <>
+                        <Achievements profile={profile} />
+
                         <section className="space-y-2" aria-label={t('games.today')}>
                             <h4 className="eyebrow">{own ? t('fantasy.fans.yourTeamToday') : t('fantasy.fans.teamToday')}</h4>
                             <DayDetail userId={userId} league={league} own={own} fanDay={todayFan} isToday />
@@ -159,6 +162,34 @@ export const FanProfile: React.FC<FanProfileProps> = ({ userId, league, onClose,
                 ) : null}
             </div>
         </BottomSheet>
+    );
+};
+
+const ACHIEVEMENT_ICONS: Record<string, string> = { firstTeam: '⚾', tenDays: '📅', fifty: '🔥', hundred: '💯', streak3: '⚡', streak7: '🏃', perfectPicks: '🎯', fiveHundred: '🏆' };
+
+/** Logros: los que ya tiene en color y los que faltan apagados, con lo que lleva */
+const Achievements: React.FC<{ profile: FanProfileData }> = ({ profile }) => {
+    const { t } = useTranslation();
+    const list = achievements(profile);
+    const done = list.filter((item) => item.done).length;
+    return (
+        <section className="space-y-2" aria-label={t('fantasyMore.achievements')}>
+            <h4 className="eyebrow">
+                {t('fantasyMore.achievements')} · {done}/{list.length}
+            </h4>
+            <ul className="grid grid-cols-4 gap-2">
+                {list.map((item) => (
+                    <li key={item.key} className={`flex flex-col items-center gap-1 rounded-2xl p-2 text-center ${item.done ? 'bg-gold/15' : 'bg-raised opacity-60'}`} title={t(`fantasyMore.badges.${item.key}.hint`)}>
+                        <span className={`text-2xl ${item.done ? '' : 'grayscale'}`} aria-hidden="true">
+                            {ACHIEVEMENT_ICONS[item.key]}
+                        </span>
+                        <span className="text-[10px] font-extrabold leading-tight">{t(`fantasyMore.badges.${item.key}.name`)}</span>
+                        <span className="sr-only">{t(`fantasyMore.badges.${item.key}.hint`)}</span>
+                        {!item.done && item.progress && <span className="text-[10px] font-semibold tabular-nums text-muted">{item.progress.value}/{item.progress.goal}</span>}
+                    </li>
+                ))}
+            </ul>
+        </section>
     );
 };
 

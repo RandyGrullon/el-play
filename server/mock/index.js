@@ -654,6 +654,8 @@ const scheduleGame = (game) => {
         gameType: 'R',
         doubleHeader: 'N',
         gameNumber: 1,
+        // El día del juego en RD (el Fantasy arma cada día con esto)
+        officialDate: game.dayString,
         gameDate: new Date(game.start).toISOString(),
         status: feed.gameData.status,
         teams: { away: side('away'), home: side('home') },

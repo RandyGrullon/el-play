@@ -241,24 +241,42 @@ const computeSeason = async (league, today) => {
     if (error && !days.size) throw error;
     const partial = computed.partial || cut;
 
+    // Para las ligas privadas: lo de los últimos 7 días (el campeón de la semana), el mejor día y la racha de días seguidos
+    const weekStart = shiftDay(today, -6);
     const users = new Map();
     for (const { userId, date, entry } of entries) {
-        if (!users.has(userId)) users.set(userId, { userId, name: null, points: 0, days: 0 });
+        if (!users.has(userId)) users.set(userId, { userId, name: null, points: 0, days: 0, week: 0, best: null, played: new Set() });
         const day = days.get(date);
         if (!day || !dayStarted(day)) continue;
         const user = users.get(userId);
-        user.points += dayResult(day, entry).total;
+        const total = dayResult(day, entry).total;
+        user.points += total;
         user.days += 1;
+        if (date >= weekStart) user.week += total;
+        if (!user.best || total > user.best.points) user.best = { date, points: round1(total) };
+        user.played.add(date);
+    }
+    // Racha: días de juego seguidos que jugó, del más reciente para atrás (si hoy todavía no juega, cuenta desde ayer)
+    const gameDays = dates.filter((date) => days.get(date) && dayStarted(days.get(date)));
+    for (const user of users.values()) {
+        let streak = 0;
+        for (const [index, date] of gameDays.entries()) {
+            if (user.played.has(date)) streak += 1;
+            else if (index === 0 && date === today) continue;
+            else break;
+        }
+        user.streak = streak;
+        delete user.played;
     }
     // Todos ordenados, con su puesto (los empates comparten puesto, como withRanks en la app)
     const all = [...users.values()]
-        .map((user) => ({ ...user, points: round1(user.points) }))
+        .map((user) => ({ ...user, points: round1(user.points), week: round1(user.week) }))
         .sort((a, b) => b.points - a.points || a.days - b.days || a.userId.localeCompare(b.userId));
     all.forEach((user, index) => (user.rank = index > 0 && user.points === all[index - 1].points ? all[index - 1].rank : index + 1));
     const top = all.slice(0, RANKING_SIZE);
     const fetched = await namesOf(top.map((user) => user.userId));
     const names = new Map(top.map((user) => [user.userId, fetched.get(user.userId) ?? null]));
-    const ranking = top.map((user) => ({ userId: user.userId, name: names.get(user.userId), points: user.points, days: user.days }));
+    const ranking = top.map((user) => ({ userId: user.userId, name: names.get(user.userId), points: user.points, days: user.days, week: user.week, streak: user.streak, best: user.best }));
 
     const live = [...days.values()].some((day) => day.games.some((game) => game.state === 'live'));
     return {
@@ -282,7 +300,7 @@ const seasonRanking = async (league, { today = todayIn(RD), users = null } = {})
     const picked = result.all.filter((user) => wanted.has(user.userId));
     const missing = picked.filter((user) => !result.names.has(user.userId)).map((user) => user.userId);
     const names = missing.length ? await namesOf(missing) : new Map();
-    const ranking = picked.map((user) => ({ userId: user.userId, name: (result.names.has(user.userId) ? result.names.get(user.userId) : names.get(user.userId)) ?? null, points: user.points, days: user.days, rank: user.rank }));
+    const ranking = picked.map((user) => ({ userId: user.userId, name: (result.names.has(user.userId) ? result.names.get(user.userId) : names.get(user.userId)) ?? null, points: user.points, days: user.days, rank: user.rank, week: user.week, streak: user.streak, best: user.best }));
     return { ...result.data, ranking };
 };
 

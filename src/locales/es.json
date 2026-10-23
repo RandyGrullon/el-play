@@ -1543,5 +1543,68 @@
       "LON": "Préstamo",
       "other": "Movimiento"
     }
+  },
+  "fantasyMore": {
+    "breakdownOf": "De dónde salen los puntos de {{name}}",
+    "captainBonus": "Capitán ×{{x}}",
+    "achievements": "Logros",
+    "badges": {
+      "firstTeam": {
+        "name": "Primer equipo",
+        "hint": "Jugar un día"
+      },
+      "tenDays": {
+        "name": "10 días",
+        "hint": "Jugar 10 días en la temporada"
+      },
+      "fifty": {
+        "name": "50 en un día",
+        "hint": "Hacer 50 puntos en un día"
+      },
+      "hundred": {
+        "name": "100 en un día",
+        "hint": "Hacer 100 puntos en un día"
+      },
+      "streak3": {
+        "name": "Racha de 3",
+        "hint": "Jugar 3 días seguidos"
+      },
+      "streak7": {
+        "name": "Racha de 7",
+        "hint": "Jugar 7 días seguidos"
+      },
+      "perfectPicks": {
+        "name": "Pronóstico perfecto",
+        "hint": "Acertar todos los pronósticos de un día (3 o más)"
+      },
+      "fiveHundred": {
+        "name": "500 puntos",
+        "hint": "Llegar a 500 puntos en la temporada"
+      }
+    }
+  },
+  "leagueSummary": {
+    "members_one": "{{count}} miembro",
+    "members_other": "{{count}} miembros",
+    "copyCode": "Copiar el código {{code}}",
+    "codeCopied": "Código copiado: pásaselo a tus panas",
+    "copied": "Resumen copiado",
+    "week": "Campeón de la semana",
+    "streak": "Racha más larga",
+    "pts": "{{pts}} pts en 7 días",
+    "days_one": "{{count}} día seguido",
+    "days_other": "{{count}} días seguidos",
+    "share": "Compartir el día",
+    "shareTitle": "🏆 {{league}} · {{day}}",
+    "shareChampion": "Campeón de la semana: {{name}} ({{pts}} pts)",
+    "shareJoin": "Únete con el código {{code}} en El Play Fantasy",
+    "leave": "Salir de la liga",
+    "confirmLeave": "Sí, salir",
+    "left": "Saliste de {{league}}"
+  },
+  "fantasyAlerts": {
+    "title": "Tu equipo del Fantasy",
+    "gain": "{{name}} +{{pts}}",
+    "total": "tu equipo va con {{pts}}"
   }
 }

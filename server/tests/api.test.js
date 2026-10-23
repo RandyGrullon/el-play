@@ -967,13 +967,15 @@ describe('fantasy: perfil del fanático y tabla de la temporada', () => {
         setup();
         const data = await fans.seasonRanking('lidom', { today: TODAY });
         expect(data).toMatchObject({ league: 'lidom', season: 2026, partial: false });
-        expect(data.ranking.slice(0, 2)).toEqual([
+        expect(data.ranking.slice(0, 2)).toMatchObject([
             { userId: A, name: 'Ana', points: 39.1, days: 2 },
             { userId: B, name: null, points: 6 + 10 + 10, days: 1 }
         ]);
+        // Para las ligas privadas: la semana, el mejor día y la racha (hoy sin juegos empezados no la corta)
+        expect(data.ranking[0]).toMatchObject({ week: 39.1, streak: 2, best: { date: '2026-10-15', points: 22.8 } });
         // F tiene 1200 filas del mismo día (como dos páginas que se pisan): cuenta una vez
         expect(data.ranking.map((row) => row.userId)).toEqual([A, B, D, F]);
-        expect(data.ranking[2]).toEqual({ userId: D, name: 'Darío', points: 0, days: 0 });
+        expect(data.ranking[2]).toMatchObject({ userId: D, name: 'Darío', points: 0, days: 0, week: 0, streak: 0, best: null });
         const entries = requests.filter((request) => request.path.endsWith('/fantasy_entries'));
         expect(entries.map((request) => request.headers.Range)).toEqual(['0-999', '1000-1999']);
         expect(entries[0].search).toContain('day=gte.2026-09-01');
@@ -1019,7 +1021,7 @@ describe('fantasy: perfil del fanático y tabla de la temporada', () => {
         expect(top.ranking).toHaveLength(200);
         expect(top.ranking.some((row) => row.userId === D)).toBe(false);
         const picked = await fans.seasonRanking('lidom', { today: TODAY, users: [B, D] });
-        expect(picked.ranking).toEqual([
+        expect(picked.ranking).toMatchObject([
             { userId: B, name: null, points: 26, days: 1, rank: 2 },
             { userId: D, name: 'Darío', points: 0, days: 0, rank: 208 }
         ]);

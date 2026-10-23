@@ -1543,5 +1543,68 @@
       "LON": "Loan",
       "other": "Move"
     }
+  },
+  "fantasyMore": {
+    "breakdownOf": "Where {{name}}'s points come from",
+    "captainBonus": "Captain ×{{x}}",
+    "achievements": "Achievements",
+    "badges": {
+      "firstTeam": {
+        "name": "First team",
+        "hint": "Play one day"
+      },
+      "tenDays": {
+        "name": "10 days",
+        "hint": "Play 10 days this season"
+      },
+      "fifty": {
+        "name": "50 in a day",
+        "hint": "Score 50 points in a day"
+      },
+      "hundred": {
+        "name": "100 in a day",
+        "hint": "Score 100 points in a day"
+      },
+      "streak3": {
+        "name": "3-day streak",
+        "hint": "Play 3 days in a row"
+      },
+      "streak7": {
+        "name": "7-day streak",
+        "hint": "Play 7 days in a row"
+      },
+      "perfectPicks": {
+        "name": "Perfect picks",
+        "hint": "Get every pick right in a day (3 or more)"
+      },
+      "fiveHundred": {
+        "name": "500 points",
+        "hint": "Reach 500 points this season"
+      }
+    }
+  },
+  "leagueSummary": {
+    "members_one": "{{count}} member",
+    "members_other": "{{count}} members",
+    "copyCode": "Copy code {{code}}",
+    "codeCopied": "Code copied: send it to your friends",
+    "copied": "Summary copied",
+    "week": "Champion of the week",
+    "streak": "Longest streak",
+    "pts": "{{pts}} pts in 7 days",
+    "days_one": "{{count}} day in a row",
+    "days_other": "{{count}} days in a row",
+    "share": "Share the day",
+    "shareTitle": "🏆 {{league}} · {{day}}",
+    "shareChampion": "Champion of the week: {{name}} ({{pts}} pts)",
+    "shareJoin": "Join with code {{code}} on El Play Fantasy",
+    "leave": "Leave the league",
+    "confirmLeave": "Yes, leave",
+    "left": "You left {{league}}"
+  },
+  "fantasyAlerts": {
+    "title": "Your Fantasy team",
+    "gain": "{{name}} +{{pts}}",
+    "total": "your team has {{pts}}"
   }
 }

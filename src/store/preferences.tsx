@@ -18,7 +18,21 @@ interface Preferences {
     playAnimations: boolean;
     animationMode: AnimationMode;
     setAnimationMode: (mode: AnimationMode) => void;
+    /** Qué avisos quiere (todos encendidos al principio) */
+    alertKinds: AlertKinds;
+    setAlertKind: (kind: keyof AlertKinds, on: boolean) => void;
 }
+
+/** soon: 10 min antes; start: playball; final: resultado; noHitter: juego sin hit en marcha; fantasy: tu equipo del Fantasy */
+export interface AlertKinds {
+    soon: boolean;
+    start: boolean;
+    final: boolean;
+    noHitter: boolean;
+    fantasy: boolean;
+}
+const ALERT_KINDS_KEY = 'el-play-alert-kinds';
+const DEFAULT_KINDS: AlertKinds = { soon: true, start: true, final: true, noHitter: true, fantasy: true };
 
 const PreferencesContext = createContext<Preferences | undefined>(undefined);
 
@@ -50,6 +64,9 @@ export const PreferencesProvider: React.FC<{ children: ReactNode }> = ({ childre
     // Antes era un interruptor (sí/no): quien las había apagado las sigue teniendo apagadas
     const [animationMode, setAnimationMode] = useState<AnimationMode>(() => readStorage<AnimationMode | null>(ANIMATION_MODE_KEY, null) ?? (readStorage<boolean>(ANIMATIONS_KEY, true) ? 'smart' : 'off'));
     const playAnimations = animationMode !== 'off';
+    const [alertKinds, setAlertKinds] = useState<AlertKinds>(() => ({ ...DEFAULT_KINDS, ...readStorage<Partial<AlertKinds>>(ALERT_KINDS_KEY, {}) }));
+    useEffect(() => writeStorage(ALERT_KINDS_KEY, alertKinds), [alertKinds]);
+    const setAlertKind = useCallback((kind: keyof AlertKinds, on: boolean) => setAlertKinds((current) => ({ ...current, [kind]: on })), []);
 
     useEffect(() => {
         applyTheme(theme);
@@ -86,8 +103,8 @@ export const PreferencesProvider: React.FC<{ children: ReactNode }> = ({ childre
     );
 
     const value = useMemo(
-        () => ({ theme, setTheme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription, playAnimations, animationMode, setAnimationMode }),
-        [theme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription, playAnimations, animationMode]
+        () => ({ theme, setTheme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription, playAnimations, animationMode, setAnimationMode, alertKinds, setAlertKind }),
+        [theme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription, playAnimations, animationMode, alertKinds, setAlertKind]
     );
 
     return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;
