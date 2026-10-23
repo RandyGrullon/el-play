@@ -1127,7 +1127,8 @@
       "season": "Temp.",
       "team": "Eq.",
       "pts": "Pts",
-      "player": "Pelotero"
+      "player": "Pelotero",
+      "pa": "AP"
     },
     "open": "Estadísticas",
     "info": "Ver ficha",
@@ -1247,7 +1248,9 @@
       "hr9": "HR/9",
       "kBb": "K/BB",
       "fip": "FIP",
-      "ppi": "Pit/IP"
+      "ppi": "Pit/IP",
+      "opsPlus": "OPS+",
+      "eraPlus": "EFE+"
     },
     "columns": {
       "pts": "Puntos de fantasy",
@@ -1282,7 +1285,9 @@
       "k9": "Ponches cada 9 entradas",
       "bb9": "Boletos cada 9 entradas",
       "kBb": "Ponches por boleto",
-      "fip": "Efectividad que depende solo del lanzador (ponches, boletos y jonrones)"
+      "fip": "Efectividad que depende solo del lanzador (ponches, boletos y jonrones)",
+      "opsPlus": "OPS+ (100 = la liga; más es mejor)",
+      "eraPlus": "EFE+ (100 = la liga; más es mejor)"
     },
     "standings": {
       "team": "Equipo",
@@ -1450,5 +1455,93 @@
     "aria": "Juegos sobre .500 hoy: {{teams}}",
     "pick": "Resaltar un equipo",
     "previous": "Todavía no hay juegos de la temporada nueva: esta es la pasada."
+  },
+  "playerMore": {
+    "percentiles": "Percentiles en la liga",
+    "notQualified": "Todavía no califica: los percentiles comparan sus números con los de los que sí.",
+    "rankAria": "{{metric}}: percentil {{rank}}",
+    "percentilesNote": "Contra {{count}} peloteros que califican esta temporada. 50 es el promedio; rojo es mejor.",
+    "metrics": {
+      "avg": "AVG",
+      "obp": "OBP",
+      "slg": "SLG",
+      "ops": "OPS",
+      "iso": "ISO",
+      "kPct": "K%",
+      "bbPct": "BB%",
+      "era": "EFE",
+      "whip": "WHIP",
+      "fip": "FIP",
+      "h9": "H/9",
+      "g": "J",
+      "hr": "HR",
+      "rbi": "CI",
+      "sb": "BR",
+      "ip": "IP",
+      "k": "K"
+    },
+    "situations": "Por situación",
+    "situation": "Situación",
+    "sit": {
+      "vl": "Contra zurdos",
+      "vr": "Contra derechos",
+      "vlP": "A zurdos",
+      "vrP": "A derechos",
+      "risp": "Corredores en posición",
+      "h": "En casa",
+      "a": "De visita"
+    },
+    "postseason": "Postemporada (Round Robin y Serie Final)",
+    "recent_one": "Su último juego, pitcheo a pitcheo",
+    "recent_other": "Sus últimos {{count}} juegos, pitcheo a pitcheo",
+    "spray": "Batazos",
+    "zones": "Zonas",
+    "arsenal": "Repertorio",
+    "seen": "Lo que le tiran",
+    "sprayNote": "{{hits}} hits, {{hr}} jonrones y {{outs}} outs en juego",
+    "sprayNoteP": "Le batearon {{hits}} hits, {{hr}} jonrones y {{outs}} outs en juego",
+    "noBatted": "Sin bolas en juego en estos juegos.",
+    "noLocations": "Sin ubicación de los pitcheos en estos juegos.",
+    "noTypes": "Sin tipo de pitcheo en estos juegos.",
+    "zonesAria": "Promedio por zona de strike",
+    "zonesAriaP": "Dónde tira en la zona",
+    "zonesNote": "Promedio en cada parte de la zona (vista del receptor). Rojo: caliente; azul: frío.",
+    "zonesNoteP": "{{count}} pitcheos: el % de cada parte de la zona (vista del receptor) y {{out}} % afuera",
+    "abs_one": "{{count}} turno",
+    "abs_other": "{{count}} turnos",
+    "chase": "le tira a {{pct}} % de los de afuera",
+    "whiffPct": "Abanica",
+    "compare": "Comparar",
+    "compareWith": "Comparar con otro pelotero",
+    "compareSearch": "Busca un pelotero",
+    "compareNone": "Nadie con ese nombre.",
+    "compareClear": "Quitar",
+    "total": "Total",
+    "seasons_one": "{{count}} temporada",
+    "seasons_other": "{{count}} temporadas"
+  },
+  "moves": {
+    "title": "Movimientos de los equipos · 30 días",
+    "between": "De {{from}} a {{to}}",
+    "more_one": "Ver {{count}} más",
+    "more_other": "Ver {{count}} más",
+    "type": {
+      "SFA": "Firma",
+      "SGN": "Firma",
+      "REL": "Baja",
+      "TR": "Cambio",
+      "ASG": "Asignado",
+      "OPT": "Enviado",
+      "CU": "Llamado",
+      "SC": "Cambio de estatus",
+      "DES": "Designado",
+      "OUT": "Enviado",
+      "CLW": "Reclamado",
+      "RET": "Retiro",
+      "SU": "Suspensión",
+      "NUM": "Número",
+      "LON": "Préstamo",
+      "other": "Movimiento"
+    }
   }
 }

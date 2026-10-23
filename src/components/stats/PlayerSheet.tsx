@@ -11,7 +11,9 @@ import { ErrorState, Skeleton } from '../ui/States';
 import { inkOn } from '../gamecast/GameHero';
 import { localeFor, seasonLabel } from '../../lib/format';
 import { gameLine, usePlayer, type CareerRow, type GameLogRow, type PlayerDetail } from '../../lib/stats';
-import { battingAdvanced, fmtDec, fmtPct, fmtRate, pitchingAdvanced } from '../../lib/advanced';
+import { battingAdvanced, eraPlus, fmtDec, fmtPct, fmtRate, leagueLineOf, opsPlus, pitchingAdvanced } from '../../lib/advanced';
+import { useTeamStats } from '../../lib/teamStats';
+import { Compare, Percentiles, Postseason, RecentPitches, Situations } from './PlayerExtras';
 import { useIsPro } from '../../lib/pro';
 import { ProBadge } from '../pro/ProBadge';
 
@@ -86,6 +88,11 @@ export const PlayerSheet: React.FC<PlayerSheetProps> = ({ id, name, team, season
                             <>
                                 <SeasonGrid player={player} />
                                 <AdvancedGrid player={player} />
+                                <Percentiles player={player} league={activeLeague} />
+                                <Situations player={player} />
+                                <Postseason player={player} />
+                                <RecentPitches player={player} league={activeLeague} />
+                                <Compare player={player} league={activeLeague} />
                             </>
                         ) : (
                             player.season > player.currentSeason - 2 && (
@@ -222,32 +229,37 @@ const SeasonGrid: React.FC<{ player: PlayerDetail }> = ({ player }) => {
 const AdvancedGrid: React.FC<{ player: PlayerDetail }> = ({ player }) => {
     const { t } = useTranslation();
     const pro = useIsPro();
+    const { activeLeague } = useLeague();
+    // OPS+ y ERA+ contra la liga de esa temporada
+    const teamStats = useTeamStats(activeLeague, player.season, pro);
     if (!pro) return null;
+    const line = teamStats.data ? leagueLineOf(teamStats.data.teams) : null;
+    const plus = (value: number | null) => (value === null ? '—' : String(value));
     const l = (key: string) => t(`pro.short.${key}`);
     let tiles: [string, string][] = [];
     if (player.role === 'P' && player.pitching) {
         const a = pitchingAdvanced(player.pitching);
         tiles = [
+            [l('eraPlus'), plus(eraPlus(player.pitching, line))],
             [l('fip'), fmtDec(a.fip)],
             [l('k9'), fmtDec(a.k9)],
             [l('bb9'), fmtDec(a.bb9)],
             [l('kBb'), fmtDec(a.kBb)],
             [l('h9'), fmtDec(a.h9)],
             [l('hr9'), fmtDec(a.hr9)],
-            [l('kPct'), fmtPct(a.kPct)],
-            [l('ppi'), fmtDec(a.pitchesPerInning, 1)]
+            [l('kPct'), fmtPct(a.kPct)]
         ];
     } else if (player.hitting) {
         const a = battingAdvanced(player.hitting);
         tiles = [
+            [l('opsPlus'), plus(opsPlus(player.hitting, line))],
             [l('iso'), fmtRate(a.iso)],
             [l('babip'), fmtRate(a.babip)],
             [l('kPct'), fmtPct(a.kPct)],
             [l('bbPct'), fmtPct(a.bbPct)],
             [l('bbK'), fmtDec(a.bbK)],
             [l('abHr'), fmtDec(a.abHr, 1)],
-            [l('xbh'), String(a.xbh)],
-            [l('slg'), player.hitting.slg]
+            [l('xbh'), String(a.xbh)]
         ];
     }
     if (!tiles.length) return null;
@@ -306,6 +318,25 @@ const GameLog: React.FC<{ player: PlayerDetail; onOpen: () => void }> = ({ playe
     );
 };
 
+const rate3 = (value: number) => (Number.isFinite(value) ? value.toFixed(3).replace(/^0/, '') : '—');
+
+/** Lo de todas sus temporadas en la liga (con más de una fila) */
+const careerTotal = (player: PlayerDetail) => {
+    if (player.career.length < 2) return null;
+    if (player.role === 'P') {
+        const sum = (key: 'g' | 'w' | 'l' | 'outs' | 'er' | 'k') => player.career.reduce((total, row) => total + (row.pitching?.[key] ?? 0), 0);
+        const outs = sum('outs');
+        return [sum('g'), `${sum('w')}-${sum('l')}`, outs ? ((sum('er') * 27) / outs).toFixed(2) : '—', `${Math.floor(outs / 3)}.${outs % 3}`, sum('k')];
+    }
+    const sum = (key: 'g' | 'ab' | 'h' | 'd' | 't' | 'hr' | 'rbi' | 'bb' | 'hbp') => player.career.reduce((total, row) => total + (row.hitting?.[key] ?? 0), 0);
+    const sf = player.career.reduce((total, row) => total + (row.hitting?.sf ?? 0), 0);
+    const ab = sum('ab');
+    const h = sum('h');
+    const tb = h + sum('d') + 2 * sum('t') + 3 * sum('hr');
+    const obp = (h + sum('bb') + sum('hbp')) / (ab + sum('bb') + sum('hbp') + sf);
+    return [sum('g'), rate3(h / ab), sum('hr'), sum('rbi'), rate3(obp + tb / ab)];
+};
+
 const Career: React.FC<{ player: PlayerDetail }> = ({ player }) => {
     const { t } = useTranslation();
     const { activeLeague } = useLeague();
@@ -332,6 +363,18 @@ const Career: React.FC<{ player: PlayerDetail }> = ({ player }) => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-line/10">
+                        {careerTotal(player) && (
+                            <tr className="border-b-2 border-line/15 font-extrabold">
+                                <td className="px-2.5 py-2">{t('playerMore.total')}</td>
+                                <td className="px-2.5 py-2 text-muted">{t('playerMore.seasons', { count: new Set(player.career.map((row) => row.season)).size })}</td>
+                                <td className="px-2.5 py-2 text-right text-accent-ink">{Math.round(player.career.reduce((sum, row) => sum + row.pts, 0) * 10) / 10}</td>
+                                {careerTotal(player)!.map((value, index) => (
+                                    <td key={index} className="px-2.5 py-2 text-right">
+                                        {value}
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
                         {player.career.map((row) => (
                             <tr key={`${row.season}-${row.team?.id}`} className={row.season === player.season ? 'bg-accent/5 font-bold' : ''}>
                                 <td className="px-2.5 py-2 font-semibold">{seasonLabel(row.season, activeLeague)}</td>

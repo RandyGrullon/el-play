@@ -18,7 +18,8 @@ import { ProBadge } from '../components/pro/ProBadge';
 import { useIsPro } from '../lib/pro';
 import { TeamStatsView } from '../components/stats/TeamStats';
 import { leagueAverage, teamSort, useTeamStats } from '../lib/teamStats';
-import { fipConstantOf, setFipConstant } from '../lib/advanced';
+import { fipConstantOf, leagueLineOf, setFipConstant, setLeagueLine } from '../lib/advanced';
+import { TransactionsCard } from '../components/stats/Transactions';
 
 const PAGE = 40;
 
@@ -43,7 +44,11 @@ export const StatsPage: React.FC = () => {
     // Las colectivas: para la vista de equipos y para el promedio de la liga en los promedios de los peloteros
     const teamQuery = useTeamStats(activeLeague, season);
     // La constante de FIP de esta liga y temporada (sale de sus números colectivos; mientras cargan, la de MLB)
-    const fip = useMemo(() => setFipConstant(fipConstantOf(teamQuery.data?.teams ?? [])), [teamQuery.data]);
+    const fip = useMemo(() => {
+        // También la liga para OPS+ y ERA+
+        setLeagueLine(leagueLineOf(teamQuery.data?.teams ?? []));
+        return setFipConstant(fipConstantOf(teamQuery.data?.teams ?? []));
+    }, [teamQuery.data]);
     const pro = useIsPro();
     const data = query.data;
 
@@ -210,7 +215,12 @@ export const StatsPage: React.FC = () => {
                             <ErrorState error={teamQuery.error as Error} onRetry={() => teamQuery.refetch()} />
                         </div>
                     ) : teamQuery.data?.teams.length ? (
-                        <TeamStatsView teams={teamQuery.data.teams} players={data} onOpenPlayer={open} onShowPlayers={showTeamPlayers} />
+                        <>
+                            <TeamStatsView teams={teamQuery.data.teams} players={data} onOpenPlayer={open} onShowPlayers={showTeamPlayers} />
+                            <div className="px-4 pt-4">
+                                <TransactionsCard league={activeLeague} onOpenPlayer={(id) => setParams((current) => ({ ...Object.fromEntries(current), jugador: String(id) }), { replace: false, state: { playerSheet: true } })} />
+                            </div>
+                        </>
                     ) : (
                         <p className="mx-4 rounded-card bg-surface px-4 py-8 text-center text-sm text-muted shadow-card">{t('statsPage.teamEmpty')}</p>
                     )

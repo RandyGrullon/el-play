@@ -25,6 +25,54 @@ export const fipConstantOf = (teams: { pitching: PitchingLine | null }[]) => {
     return Math.round(((er * 9) / ip - (13 * hr + 3 * walks - 2 * k) / ip) * 100) / 100;
 };
 
+export interface LeagueLine {
+    obp: number;
+    slg: number;
+    era: number;
+}
+
+/** OBP, SLG y efectividad de toda la liga (la suma de los equipos) */
+export const leagueLineOf = (teams: { hitting: HittingLine | null; pitching: PitchingLine | null }[]): LeagueLine | null => {
+    let pa = 0, onBase = 0, ab = 0, tb = 0, outs = 0, er = 0;
+    for (const team of teams) {
+        const h = team.hitting;
+        if (h) {
+            const singles = h.h - h.d - h.t - h.hr;
+            pa += h.ab + h.bb + h.hbp + (h.sf ?? 0);
+            onBase += h.h + h.bb + h.hbp;
+            ab += h.ab;
+            tb += h.tb ?? singles + 2 * h.d + 3 * h.t + 4 * h.hr;
+        }
+        if (team.pitching) {
+            outs += team.pitching.outs;
+            er += team.pitching.er;
+        }
+    }
+    if (!pa || !ab || outs < 27) return null;
+    return { obp: onBase / pa, slg: tb / ab, era: (er * 27) / outs };
+};
+
+let leagueLine: LeagueLine | null = null;
+/** La liga a la vista (para OPS+ y ERA+ de la tabla PRO) */
+export const setLeagueLine = (line: LeagueLine | null) => {
+    leagueLine = line;
+};
+
+/** OPS+: 100 es la liga; 120, 20 % mejor (con su OBP y SLG contra los de la liga) */
+export const opsPlus = (h: HittingLine | null | undefined, line: LeagueLine | null = leagueLine) => {
+    const obp = parseFloat(h?.obp ?? '');
+    const slg = parseFloat(h?.slg ?? '');
+    if (!line || !h?.pa || !Number.isFinite(obp) || !Number.isFinite(slg)) return null;
+    return Math.round(100 * (obp / line.obp + slg / line.slg - 1));
+};
+
+/** ERA+: 100 es la liga; más es mejor (la EFE de la liga entre la suya) */
+export const eraPlus = (p: PitchingLine | null | undefined, line: LeagueLine | null = leagueLine) => {
+    if (!line || !p?.outs) return null;
+    const era = (p.er * 27) / p.outs;
+    return era > 0 ? Math.round((100 * line.era) / era) : null;
+};
+
 /** Usa la constante de la liga a la vista (o la de MLB si no hay). Devuelve la que quedó */
 export const setFipConstant = (value: number | null) => {
     fipConstant = value !== null && Number.isFinite(value) ? value : FIP_CONSTANT;
@@ -35,7 +83,8 @@ const ratio = (num: number, den: number) => (den > 0 ? num / den : null);
 
 export const battingAdvanced = (h: HittingLine) => {
     const singles = h.h - h.d - h.t - h.hr;
-    const tb = h.tb ?? singles + 2 * h.d + 3 * h.t + 4 * h.hr;
+    // Bases totales: las de MLB si vienen (algunas líneas traen 0 aunque haya hits)
+    const tb = h.tb || singles + 2 * h.d + 3 * h.t + 4 * h.hr;
     return {
         iso: ratio(tb - h.h, h.ab),
         babip: ratio(h.h - h.hr, h.ab - h.k - h.hr + (h.sf ?? 0)),

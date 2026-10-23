@@ -226,6 +226,69 @@ describe('inicio y posiciones: doble cartelera y la carrera de la temporada', ()
     });
 });
 
+describe('ficha del pelotero: por situación, postemporada, pitcheos de sus juegos y movimientos', () => {
+    const app = require('../app');
+    const mock = require('../mock');
+    const call = async (path) => {
+        const server = app.listen(0);
+        await new Promise((resolve) => server.once('listening', resolve));
+        try {
+            const res = await fetch(`http://127.0.0.1:${server.address().port}${path}`);
+            return { status: res.status, body: await res.json() };
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    };
+
+    it('contra zurdos y derechos, con corredores en posición, casa y visita, y la postemporada', async () => {
+        http.mlbGet = (url, params) => mock.get(url, params);
+        const res = await call('/api/v2/player/669001?league=lidom');
+        expect(res.status).toBe(200);
+        expect(res.body.splits.map((split) => split.code)).toEqual(['vl', 'vr', 'risp', 'h', 'a']);
+        expect(res.body.splits[0].hitting).toMatchObject({ pa: expect.any(Number), avg: expect.stringMatching(/^\.\d{3}$|^1\.000$/) });
+        expect(res.body.postseason.hitting.g).toBeGreaterThan(0);
+    });
+
+    it('si MLB no da las divisiones, la ficha sale igual', async () => {
+        http.mlbGet = (url, params) => (url.endsWith('/stats') && url.includes('/people/') ? Promise.reject(new Error('400')) : mock.get(url, params));
+        const res = await call('/api/v2/player/669001?league=lidom');
+        expect(res.status).toBe(200);
+        expect(res.body.splits).toEqual([]);
+        expect(res.body.postseason).toBeNull();
+    });
+
+    it('los pitcheos de sus últimos juegos: los suyos, con cómo terminó cada turno', async () => {
+        http.mlbGet = (url, params) => mock.get(url, params);
+        const res = await call('/api/v2/player/669001/pitches?league=lidom');
+        expect(res.status).toBe(200);
+        expect(res.body.role).toBe('B');
+        expect(res.body.games).toBeGreaterThan(0);
+        expect(res.body.pitches.length).toBeGreaterThan(10);
+        const last = res.body.pitches.filter((pitch) => 'event' in pitch);
+        expect(last.length).toBeGreaterThan(0);
+        expect(last.some((pitch) => pitch.hit && typeof pitch.hit.x === 'number')).toBe(true);
+        expect((await call('/api/v2/player/abc/pitches')).status).toBe(400);
+    });
+
+    it('movimientos: solo de equipos de la liga, del más reciente al más viejo', async () => {
+        http.mlbGet = async (url) => {
+            if (url.endsWith('/transactions'))
+                return {
+                    transactions: [
+                        { id: 1, typeCode: 'SFA', effectiveDate: '2026-10-10', person: { id: 5, fullName: 'Uno' }, toTeam: { id: 669 }, description: 'x' },
+                        { id: 2, typeCode: 'TR', effectiveDate: '2026-10-12', person: { id: 6, fullName: 'Dos' }, toTeam: { id: 671 }, fromTeam: { id: 669 }, description: 'y' },
+                        { id: 3, typeCode: 'SFA', effectiveDate: '2026-10-13', person: { id: 7, fullName: 'Tres' }, toTeam: { id: 147 }, description: 'z' }
+                    ]
+                };
+            throw new Error(`sin stub: ${url}`);
+        };
+        const res = await call('/api/v2/transactions?league=lidom');
+        expect(res.status).toBe(200);
+        expect(res.body.transactions.map((item) => item.id)).toEqual([2, 1]);
+        expect(res.body.transactions[0]).toMatchObject({ team: { id: 671 }, other: { id: 669 }, type: 'TR' });
+    });
+});
+
 describe('retos del ABS (árbitro robot)', () => {
     // El juego real con retos puestos a mano tal como los manda MLB en LIDOM 2026-27
     const feed = fixture('feed-826279');

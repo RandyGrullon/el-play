@@ -1022,3 +1022,44 @@ describe('posiciones: clasificados y eliminados', () => {
         expect(raceStatus([{ ...rows[3], clinched: true }, ...rows.slice(0, 3), ...rows.slice(4)], 4, 50).get(4)).toBe('clinched');
     });
 });
+
+describe('ficha: OPS+, ERA+, percentiles y zonas', () => {
+    it('OPS+ y ERA+ contra la liga (100 es la liga)', async () => {
+        const { eraPlus, leagueLineOf, opsPlus } = await import('./advanced');
+        const hitting = { g: 40, pa: 1500, ab: 1300, r: 0, h: 325, d: 60, t: 5, hr: 30, rbi: 0, bb: 150, k: 300, sb: 0, cs: 0, hbp: 20, sf: 10, avg: '.250', obp: '.330', slg: '.380', ops: '.710' };
+        const pitching = { g: 40, gs: 40, ip: '350.0', outs: 1050, w: 20, l: 20, sv: 0, hld: 0, k: 300, bb: 150, h: 325, er: 140, hr: 30, era: '3.60', whip: '1.36' };
+        const line = leagueLineOf([{ hitting, pitching }, { hitting, pitching }])!;
+        expect(line.era).toBeCloseTo(3.6, 5);
+        expect(line.obp).toBeCloseTo((325 + 150 + 20) / (1300 + 150 + 20 + 10), 5);
+        const league = { ...hitting, obp: line.obp.toFixed(3), slg: line.slg.toFixed(3) };
+        expect(opsPlus(league, line)).toBe(100);
+        expect(opsPlus({ ...hitting, obp: '.400', slg: '.500' }, line)!).toBeGreaterThan(140);
+        expect(eraPlus({ ...pitching, er: 70 }, line)).toBe(200);
+        expect(opsPlus(hitting, null)).toBeNull();
+    });
+
+    it('percentil: qué parte de la liga está peor (empates a la mitad); más bajo es mejor en EFE', async () => {
+        const { percentileOf } = await import('./playerPitches');
+        expect(percentileOf(0.3, [0.2, 0.25, 0.3, 0.35], true)).toBe(63);
+        expect(percentileOf(2.0, [2.0, 3.0, 4.0, 5.0], false)).toBe(88);
+        expect(percentileOf(1, [], true)).toBeNull();
+    });
+
+    it('zonas: cuadro de 3×3 de la vista del receptor, turnos y hits del último pitcheo', async () => {
+        const { zoneGrid, recentBatted } = await import('./playerPitches');
+        const at = (x: number, z: number, extra: Record<string, unknown> = {}) => ({ x, z, top: 3.5, bot: 1.5, r: 'strike', code: 'C', type: 'FF', typeDesc: null, mph: 94, side: 'R', ...extra }) as import('./stats').RecentPitch;
+        const grid = zoneGrid([
+            at(-0.7, 3.3), // arriba a la izquierda
+            at(0, 2.5, { code: 'X', r: 'inplay', event: 'single', hit: { x: 120, y: 100, ev: 95, dist: 200 } }), // centro
+            at(0, 2.5, { code: 'S' }),
+            at(0.7, 1.6, { code: 'X', r: 'inplay', event: 'field_out', hit: { x: 130, y: 150, ev: 80, dist: 90 } }), // abajo a la derecha
+            at(1.5, 2.5, { code: 'S' }), // afuera
+            at(0, 2.5, { event: 'walk', code: 'B', r: 'ball' })
+        ]);
+        expect(grid.cells[0].pitches).toBe(1);
+        expect(grid.cells[4]).toMatchObject({ pitches: 3, swings: 2, whiffs: 1, atBats: 1, hits: 1 });
+        expect(grid.cells[8]).toMatchObject({ atBats: 1, hits: 0 });
+        expect(grid.outside).toMatchObject({ pitches: 1, swings: 1, whiffs: 1 });
+        expect(recentBatted([at(0, 2.5, { event: 'home_run', hit: { x: 100, y: 40, ev: 105, dist: 410 } })])[0].kind).toBe('hr');
+    });
+});

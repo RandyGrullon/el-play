@@ -248,6 +248,26 @@ const fetchPlayer = async (leagueKey, personId, requested) => {
     }
     career.sort((a, b) => b.season - a.season);
 
+    // Por situación (contra zurdos y derechos, con corredores en posición, en casa y de visita) y la postemporada de
+    // LIDOM (Round Robin y Serie Final). Si MLB no las da, la ficha sale igual sin ellas
+    const group = role === 'P' ? 'pitching' : 'hitting';
+    const lineOf = (stat) => (group === 'pitching' ? pitchingOf(stat) : hittingOf(stat));
+    const [splitsData, postData] = await Promise.all([
+        http
+            .mlbGet(`${MLB_API_BASE}/people/${personId}/stats`, { stats: 'statSplits', group, season, sitCodes: 'vl,vr,risp,h,a', sportId: league.sportId, gameType: league.statsGameType || 'R' })
+            .catch(() => null),
+        league.id === 'lidom'
+            ? http.mlbGet(`${MLB_API_BASE}/people/${personId}/stats`, { stats: 'season', group, season, sportId: league.sportId, gameType: 'F,D,L,W' }).catch(() => null)
+            : null
+    ]);
+    const SIT_CODES = ['vl', 'vr', 'risp', 'h', 'a'];
+    const splits = (splitsData?.stats?.[0]?.splits || [])
+        .filter((split) => SIT_CODES.includes(split.split?.code) && split.stat)
+        .map((split) => ({ code: split.split.code, [group]: lineOf(split.stat) }))
+        .sort((a, b) => SIT_CODES.indexOf(a.code) - SIT_CODES.indexOf(b.code));
+    const postStat = postData?.stats?.[0]?.splits?.[0]?.stat;
+    const postseason = postStat && (postStat.gamesPlayed || postStat.gamesPitched) ? { [group]: lineOf(postStat) } : null;
+
     const line = role === 'P' ? pitching : hitting;
     const pts = pointsOf(role, hitting, pitching);
     return {
@@ -274,8 +294,77 @@ const fetchPlayer = async (leagueKey, personId, requested) => {
         pts,
         ppg: line?.g ? round1(pts / line.g) : 0,
         log,
-        career
+        career,
+        splits,
+        postseason
     };
 };
 
-module.exports = { fetchPlayers, fetchPlayer, hittingOf, pitchingOf, pointsOf };
+// ---------------------------------------------------------------- pitcheos de sus últimos juegos
+
+const PITCH_GAMES = 8;
+
+/**
+ * Los pitcheos que vio (o tiró) en sus últimos juegos, con dónde cruzaron y cómo terminó el turno: con eso la ficha
+ * dibuja sus batazos, sus zonas y su repertorio. Sale de los mismos juegos de la app (ya en caché).
+ */
+const fetchPlayerPitches = async (leagueKey, personId, requested, fetchGame) => {
+    // La misma ficha (y la misma llave de caché) que /v2/player/:id
+    const player = await cached(`player_${leagueKey}_${personId}_${requested || 'actual'}`, 300, () => fetchPlayer(leagueKey, personId, requested), { staleSec: 3600 });
+    const gamePks = player.log.slice(0, PITCH_GAMES).map((game) => game.gamePk);
+    const games = (await Promise.all(gamePks.map((gamePk) => fetchGame(gamePk).catch(() => null)))).filter(Boolean);
+    const pitcher = player.role === 'P';
+    const pitches = [];
+    for (const game of games) {
+        for (const atBat of game.atBats) {
+            if (!atBat.complete || (pitcher ? atBat.pitcher.id : atBat.batter.id) !== personId) continue;
+            atBat.pitches.forEach((pitch, index) => {
+                const last = index === atBat.pitches.length - 1;
+                pitches.push({
+                    x: pitch.x,
+                    z: pitch.z,
+                    top: pitch.top,
+                    bot: pitch.bot,
+                    r: pitch.r,
+                    code: pitch.code,
+                    type: pitch.type,
+                    typeDesc: pitch.typeDesc,
+                    mph: pitch.mph,
+                    // Del último pitcheo del turno: cómo terminó y, si la puso en juego, dónde cayó
+                    ...(last ? { event: atBat.event, hit: pitch.hit && typeof pitch.hit.x === 'number' ? { x: pitch.hit.x, y: pitch.hit.y, ev: pitch.hit.ev, dist: pitch.hit.dist } : null } : {}),
+                    side: pitcher ? atBat.batter.side : atBat.pitcher.hand
+                });
+            });
+        }
+    }
+    return { id: personId, role: player.role, season: player.season, games: games.length, pitches };
+};
+
+// ---------------------------------------------------------------- movimientos de los equipos
+
+/** Firmas, cambios, bajas y altas de los equipos de la liga en los últimos 30 días */
+const fetchTransactions = async (leagueKey, now = Date.now()) => {
+    const league = leagueOf(leagueKey);
+    const day = (time) => new Intl.DateTimeFormat('en-CA', { timeZone: league.timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(time));
+    const data = await http.mlbGet(`${MLB_API_BASE}/transactions`, { sportId: league.sportId, startDate: day(now - 30 * 86400000), endDate: day(now) });
+    const items = (data?.transactions || [])
+        .map((item) => {
+            const team = [item.toTeam, item.fromTeam].find((candidate) => candidate?.id && findTeam(candidate.id, league.id));
+            if (!team || !item.person?.id) return null;
+            return {
+                id: item.id,
+                date: item.effectiveDate || item.date || null,
+                type: item.typeCode || null,
+                person: { id: item.person.id, name: item.person.fullName || '' },
+                team: teamInfo(team, league.id),
+                // Si cambia de equipo dentro de la liga, el otro
+                other: [item.toTeam, item.fromTeam].map((candidate) => (candidate?.id && candidate.id !== team.id && findTeam(candidate.id, league.id) ? teamInfo(candidate, league.id) : null)).find(Boolean) || null,
+                description: item.description || ''
+            };
+        })
+        .filter(Boolean)
+        .sort((a, b) => String(b.date).localeCompare(String(a.date)) || b.id - a.id);
+    return { league: league.id, transactions: items.slice(0, 60) };
+};
+
+module.exports = { fetchPlayers, fetchPlayer, fetchPlayerPitches, fetchTransactions, hittingOf, pitchingOf, pointsOf };

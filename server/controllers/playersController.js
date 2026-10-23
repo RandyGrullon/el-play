@@ -1,5 +1,6 @@
 const { cached } = require('../utils/cache');
-const { fetchPlayers, fetchPlayer } = require('../services/players');
+const { fetchPlayers, fetchPlayer, fetchPlayerPitches, fetchTransactions } = require('../services/players');
+const { fetchGame } = require('../services/mlbService');
 const { fetchTeamStats } = require('../services/teamStats');
 const { LEAGUES, isLeague } = require('../config/constants');
 
@@ -37,6 +38,33 @@ const getPlayer = async (req, res, next) => {
     }
 };
 
+// Pitcheos de sus últimos juegos (batazos, zonas y repertorio): cambian con cada juego terminado
+const getPlayerPitches = async (req, res, next) => {
+    try {
+        if (!/^\d{1,9}$/.test(req.params.id)) return res.status(400).json({ error: 'invalid_player' });
+        if (req.query.season && !seasonFrom(req)) return res.status(400).json({ error: 'invalid_season' });
+        const league = leagueFrom(req);
+        const season = seasonFrom(req);
+        const data = await cached(`player_pitches_${league}_${req.params.id}_${season || 'actual'}`, 1800, () => fetchPlayerPitches(league, Number(req.params.id), season, fetchGame), { staleSec: 3600 });
+        setCache(res, 1800);
+        res.json(data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Movimientos de los equipos (30 días)
+const getTransactions = async (req, res, next) => {
+    try {
+        const league = leagueFrom(req);
+        const data = await cached(`transactions_${league}`, 1800, () => fetchTransactions(league), { staleSec: 3600 });
+        setCache(res, 1800);
+        res.json(data);
+    } catch (error) {
+        next(error);
+    }
+};
+
 // Estadísticas colectivas de bateo y pitcheo de cada equipo
 const getTeamStats = async (req, res, next) => {
     try {
@@ -51,4 +79,4 @@ const getTeamStats = async (req, res, next) => {
     }
 };
 
-module.exports = { getPlayers, getPlayer, getTeamStats };
+module.exports = { getPlayers, getPlayer, getPlayerPitches, getTeamStats, getTransactions };

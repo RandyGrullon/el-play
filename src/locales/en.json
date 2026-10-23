@@ -1127,7 +1127,8 @@
       "season": "Season",
       "team": "Team",
       "pts": "Pts",
-      "player": "Player"
+      "player": "Player",
+      "pa": "PA"
     },
     "open": "Stats",
     "info": "Profile",
@@ -1247,7 +1248,9 @@
       "hr9": "HR/9",
       "kBb": "K/BB",
       "fip": "FIP",
-      "ppi": "P/IP"
+      "ppi": "P/IP",
+      "opsPlus": "OPS+",
+      "eraPlus": "ERA+"
     },
     "columns": {
       "pts": "Fantasy points",
@@ -1282,7 +1285,9 @@
       "k9": "Strikeouts per 9 innings",
       "bb9": "Walks per 9 innings",
       "kBb": "Strikeouts per walk",
-      "fip": "ERA based only on what the pitcher controls (K, BB, HR)"
+      "fip": "ERA based only on what the pitcher controls (K, BB, HR)",
+      "opsPlus": "OPS+ (100 = league average; higher is better)",
+      "eraPlus": "ERA+ (100 = league average; higher is better)"
     },
     "standings": {
       "team": "Team",
@@ -1450,5 +1455,93 @@
     "aria": "Games over .500 today: {{teams}}",
     "pick": "Highlight a team",
     "previous": "No games yet this season: this is last season's race."
+  },
+  "playerMore": {
+    "percentiles": "League percentiles",
+    "notQualified": "Not qualified yet: percentiles compare his numbers with qualified players'.",
+    "rankAria": "{{metric}}: {{rank}} percentile",
+    "percentilesNote": "Against {{count}} qualified players this season. 50 is average; red is better.",
+    "metrics": {
+      "avg": "AVG",
+      "obp": "OBP",
+      "slg": "SLG",
+      "ops": "OPS",
+      "iso": "ISO",
+      "kPct": "K%",
+      "bbPct": "BB%",
+      "era": "ERA",
+      "whip": "WHIP",
+      "fip": "FIP",
+      "h9": "H/9",
+      "g": "G",
+      "hr": "HR",
+      "rbi": "RBI",
+      "sb": "SB",
+      "ip": "IP",
+      "k": "K"
+    },
+    "situations": "Splits",
+    "situation": "Split",
+    "sit": {
+      "vl": "vs. lefties",
+      "vr": "vs. righties",
+      "vlP": "vs. LHB",
+      "vrP": "vs. RHB",
+      "risp": "Runners in scoring pos.",
+      "h": "Home",
+      "a": "Away"
+    },
+    "postseason": "Postseason (Round Robin and Final)",
+    "recent_one": "His last game, pitch by pitch",
+    "recent_other": "His last {{count}} games, pitch by pitch",
+    "spray": "Spray",
+    "zones": "Zones",
+    "arsenal": "Arsenal",
+    "seen": "Pitches seen",
+    "sprayNote": "{{hits}} hits, {{hr}} home runs and {{outs}} outs in play",
+    "sprayNoteP": "Allowed {{hits}} hits, {{hr}} home runs and {{outs}} outs in play",
+    "noBatted": "No balls in play in these games.",
+    "noLocations": "No pitch locations in these games.",
+    "noTypes": "No pitch types in these games.",
+    "zonesAria": "Average by strike zone",
+    "zonesAriaP": "Where he throws in the zone",
+    "zonesNote": "Average in each part of the zone (catcher's view). Red: hot; blue: cold.",
+    "zonesNoteP": "{{count}} pitches: share in each part of the zone (catcher's view), {{out}}% outside",
+    "abs_one": "{{count}} AB",
+    "abs_other": "{{count}} AB",
+    "chase": "chases {{pct}}% outside",
+    "whiffPct": "Whiff",
+    "compare": "Compare",
+    "compareWith": "Compare with another player",
+    "compareSearch": "Search a player",
+    "compareNone": "No one by that name.",
+    "compareClear": "Clear",
+    "total": "Total",
+    "seasons_one": "{{count}} season",
+    "seasons_other": "{{count}} seasons"
+  },
+  "moves": {
+    "title": "Team moves · last 30 days",
+    "between": "From {{from}} to {{to}}",
+    "more_one": "See {{count}} more",
+    "more_other": "See {{count}} more",
+    "type": {
+      "SFA": "Signed",
+      "SGN": "Signed",
+      "REL": "Released",
+      "TR": "Trade",
+      "ASG": "Assigned",
+      "OPT": "Optioned",
+      "CU": "Recalled",
+      "SC": "Status change",
+      "DES": "Designated",
+      "OUT": "Outrighted",
+      "CLW": "Claimed",
+      "RET": "Retired",
+      "SU": "Suspension",
+      "NUM": "Number change",
+      "LON": "Loan",
+      "other": "Move"
+    }
   }
 }

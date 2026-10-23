@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { battingAdvanced, fmtDec, fmtPct, fmtRate, pitchingAdvanced } from '../../lib/advanced';
+import { battingAdvanced, eraPlus, fmtDec, fmtPct, fmtRate, opsPlus, pitchingAdvanced } from '../../lib/advanced';
 import { sortPlayers, type PlayerRow, type SortOption, type StatsTeam } from '../../lib/stats';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
 
@@ -43,6 +43,7 @@ const BATTING: Column[] = [
     { key: 'obp', value: (r) => num(r.hitting?.obp), show: (r) => r.hitting?.obp ?? '—', rate: true },
     { key: 'slg', value: (r) => num(r.hitting?.slg), show: (r) => r.hitting?.slg ?? '—', rate: true },
     { key: 'ops', value: (r) => num(r.hitting?.ops), show: (r) => r.hitting?.ops ?? '—', rate: true },
+    { key: 'opsPlus', value: (r) => opsPlus(r.hitting), show: (r) => String(opsPlus(r.hitting) ?? '—'), rate: true },
     { key: 'iso', value: (r) => (r.hitting ? battingAdvanced(r.hitting).iso : null), show: (r) => (r.hitting ? fmtRate(battingAdvanced(r.hitting).iso) : '—'), rate: true },
     { key: 'babip', value: (r) => (r.hitting ? battingAdvanced(r.hitting).babip : null), show: (r) => (r.hitting ? fmtRate(battingAdvanced(r.hitting).babip) : '—'), rate: true },
     { key: 'kPct', value: (r) => (r.hitting ? battingAdvanced(r.hitting).kPct : null), show: (r) => (r.hitting ? fmtPct(battingAdvanced(r.hitting).kPct) : '—'), rate: true, asc: true },
@@ -64,6 +65,7 @@ const PITCHING: Column[] = [
     { key: 'hr', value: (r) => n(r.pitching?.hr), show: (r) => int(r.pitching?.hr), asc: true },
     { key: 'era', value: (r) => num(r.pitching?.era), show: (r) => r.pitching?.era ?? '—', rate: true, asc: true },
     { key: 'whip', value: (r) => num(r.pitching?.whip), show: (r) => r.pitching?.whip ?? '—', rate: true, asc: true },
+    { key: 'eraPlus', value: (r) => eraPlus(r.pitching), show: (r) => String(eraPlus(r.pitching) ?? '—'), rate: true },
     { key: 'k9', value: (r) => (r.pitching ? pitchingAdvanced(r.pitching).k9 : null), show: (r) => (r.pitching ? fmtDec(pitchingAdvanced(r.pitching).k9) : '—'), rate: true },
     { key: 'bb9', value: (r) => (r.pitching ? pitchingAdvanced(r.pitching).bb9 : null), show: (r) => (r.pitching ? fmtDec(pitchingAdvanced(r.pitching).bb9) : '—'), rate: true, asc: true },
     { key: 'kBb', value: (r) => (r.pitching ? pitchingAdvanced(r.pitching).kBb : null), show: (r) => (r.pitching ? fmtDec(pitchingAdvanced(r.pitching).kBb) : '—'), rate: true },

@@ -855,9 +855,10 @@ const person = (personId, params = {}) => {
     const games = Math.min(10, total.stat.gamesPlayed);
     const log = Array.from({ length: games }, (_, index) => {
         const date = new Date(Date.now() - (index + 1) * DAY).toISOString().slice(0, 10);
-        const opponent = opponents[index % opponents.length];
+        const played = gamesForDay(date).find((game) => game.awayId === teamId || game.homeId === teamId);
+        const opponent = played ? (played.awayId === teamId ? played.homeId : played.awayId) : opponents[index % opponents.length];
         const stat = group === 'pitching' ? pitchingLine(random, player, 1, player.pos === 'P' && random() < 0.5) : hittingLine(random, player, 1);
-        return { season: String(season), date, isHome: index % 2 === 0, isWin: random() < 0.5, opponent: { id: opponent, name: TEAMS[opponent].name }, team: { id: teamId, name: TEAMS[teamId].name }, game: { gamePk: 900000 + index * 10 + (teamId % 10) }, stat };
+        return { season: String(season), date, isHome: index % 2 === 0, isWin: random() < 0.5, opponent: { id: opponent, name: TEAMS[opponent].name }, team: { id: teamId, name: TEAMS[teamId].name }, game: { gamePk: played ? played.gamePk : 900000 + index * 10 + (teamId % 10) }, stat };
     });
     const years = [season, season - 1, season - 2, season - 3].map((year) => ({ ...seasonSplits(group, year).find((split) => split.player.id === player.id), season: String(year) }));
     const position = player.pos === 'P' ? { code: '1', abbreviation: 'P' } : { code: '9', abbreviation: player.pos };
@@ -874,6 +875,47 @@ const person = (personId, params = {}) => {
                 ]
             }
         ]
+    };
+};
+
+/** /people/{id}/stats: por situación (statSplits) y la postemporada */
+const personStats = (personId, params = {}) => {
+    const found = findPerson(personId);
+    if (!found) throw Object.assign(new Error('not found'), { response: { status: 404 } });
+    const { player } = found;
+    const group = params.group === 'pitching' ? 'pitching' : 'hitting';
+    const random = rng(player.id * 7 + String(params.sitCodes || params.gameType || '').length);
+    const lineFor = (games) => (group === 'pitching' ? pitchingLine(random, player, games, false) : hittingLine(random, player, games));
+    if (params.stats === 'statSplits') {
+        const names = { vl: 'vs Left', vr: 'vs Right', risp: 'Scoring Position', h: 'Home', a: 'Away' };
+        return { stats: [{ splits: String(params.sitCodes || '').split(',').filter((code) => names[code]).map((code) => ({ split: { code, description: names[code] }, stat: lineFor(code === 'risp' ? 4 : 7) })) }] };
+    }
+    return { stats: [{ splits: [{ stat: lineFor(4) }] }] };
+};
+
+/** /transactions: unas cuantas firmas y cambios recientes */
+const transactions = (params = {}) => {
+    const end = Date.parse(`${params.endDate}T12:00:00Z`) || Date.now();
+    const kinds = [['SFA', 'signed free agent'], ['REL', 'released'], ['TR', 'traded'], ['ASG', 'assigned']];
+    return {
+        transactions: TEAM_IDS.flatMap((teamId, index) => {
+            const team = roster(teamId);
+            return [0, 1].map((k) => {
+                const [typeCode, verb] = kinds[(index + k) % kinds.length];
+                const person = team.hitters[(index * 2 + k) % 9];
+                const other = TEAM_IDS[(index + 1) % TEAM_IDS.length];
+                return {
+                    id: teamId * 10 + k,
+                    typeCode,
+                    date: new Date(end - (index * 2 + k) * DAY).toISOString().slice(0, 10),
+                    effectiveDate: new Date(end - (index * 2 + k) * DAY).toISOString().slice(0, 10),
+                    person: { id: person.id, fullName: person.fullName },
+                    toTeam: { id: teamId, name: TEAMS[teamId].name },
+                    ...(typeCode === 'TR' ? { fromTeam: { id: other, name: TEAMS[other].name } } : {}),
+                    description: `${TEAMS[teamId].name} ${verb} ${person.fullName}.`
+                };
+            });
+        })
     };
 };
 
@@ -911,6 +953,8 @@ const get = async (url, params = {}) => {
         return { roster: [...team.hitters, ...team.pitchers].map((player) => ({ person: { id: player.id, fullName: player.fullName }, jerseyNumber: String((player.id % 90) + 1), position: { abbreviation: player.pos } })) };
     }
     if ((match = path.match(/^\/people\/(\d+)$/))) return person(match[1], params);
+    if ((match = path.match(/^\/people\/(\d+)\/stats$/))) return personStats(match[1], params);
+    if (path === '/transactions') return transactions(params);
     if ((match = path.match(/^\/league\/(\d+)$/))) {
         return { leagues: [{ id: Number(match[1]), season: String(new Date().getUTCFullYear()), numGames: 50 }] };
     }
