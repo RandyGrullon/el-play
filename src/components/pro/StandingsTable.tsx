@@ -36,7 +36,7 @@ export const StandingsTable: React.FC<{ rows: StandingRow[]; cutoff?: number }> 
                         const expected = pythagorean(row.runsScored, row.runsAllowed, row.wins + row.losses);
                         const luck = expected ? row.wins - expected.wins : null;
                         return (
-                            <tr key={row.team.id} className={cutoff !== undefined && index === cutoff ? 'border-t-2 border-accent/40' : ''}>
+                            <tr key={row.team.id} className={cutoff !== undefined && index === cutoff ? '!border-t-2 !border-accent/40' : ''}>
                                 <th scope="row" className="sticky left-0 z-10 bg-surface px-3 py-2 text-left font-normal">
                                     <span className="flex items-center gap-2">
                                         <span className="w-4 text-center text-xs font-extrabold text-muted">{row.rank}</span>

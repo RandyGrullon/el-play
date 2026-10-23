@@ -1,9 +1,9 @@
 const { cached } = require('../utils/cache');
 const { fetchPlayers, fetchPlayer } = require('../services/players');
 const { fetchTeamStats } = require('../services/teamStats');
-const { LEAGUES } = require('../config/constants');
+const { LEAGUES, isLeague } = require('../config/constants');
 
-const leagueFrom = (req) => (LEAGUES[req.query.league] ? req.query.league : 'lidom');
+const leagueFrom = (req) => (isLeague(req.query.league) ? req.query.league : 'lidom');
 const seasonFrom = (req) => (typeof req.query.season === 'string' && /^\d{4}$/.test(req.query.season) ? Number(req.query.season) : undefined);
 
 // Temporada vigente: cambia con cada juego (5 min); una pasada ya no cambia

@@ -9,7 +9,7 @@ export const Toast: React.FC = () => {
     const toast = useToast();
     if (!toast) return null;
     return (
-        <div key={toast.id} role="status" className="fixed inset-x-4 bottom-[calc(96px+env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-md animate-fade-up items-center gap-3 rounded-2xl bg-ink p-3 pl-4 text-bg shadow-xl">
+        <div key={toast.id} role="status" className="flex w-full animate-fade-up items-center gap-3 rounded-2xl bg-ink p-3 pl-4 text-bg shadow-xl">
             <p className="flex-1 text-sm font-medium">{toast.text}</p>
             {toast.action && (
                 <button

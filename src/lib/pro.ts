@@ -13,7 +13,12 @@ const subscribe = (listener: () => void) => {
     return () => listeners.delete(listener);
 };
 
+// Lo elegido en esta sesión manda (si el teléfono no deja guardar, el PRO igual se activa mientras la app esté abierta)
+const memory = new Map<string, UiMode>();
+
 const read = (userId: string): UiMode => {
+    const chosen = memory.get(userId);
+    if (chosen) return chosen;
     try {
         return localStorage.getItem(`${KEY}:${userId}`) === 'pro' ? 'pro' : 'lite';
     } catch {
@@ -22,6 +27,7 @@ const read = (userId: string): UiMode => {
 };
 
 export const setUiMode = (userId: string, mode: UiMode) => {
+    memory.set(userId, mode);
     try {
         localStorage.setItem(`${KEY}:${userId}`, mode);
     } catch {

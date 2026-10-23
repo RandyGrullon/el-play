@@ -104,7 +104,7 @@ const seasonSplits = (league, season, group) =>
         `season_splits_${league.id}_${season}_${group}`,
         300,
         async () => {
-            const data = await http.mlbGet(`${MLB_API_BASE}/stats`, { stats: 'season', group, gameType: 'R', leagueId: league.leagueId, season, playerPool: 'ALL', limit: 2000 });
+            const data = await http.mlbGet(`${MLB_API_BASE}/stats`, { stats: 'season', group, gameType: league.statsGameType || 'R', leagueId: league.leagueId, season, playerPool: 'ALL', limit: 2000 });
             return data?.stats?.[0]?.splits || [];
         },
         { staleSec: 3600 }

@@ -102,8 +102,11 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
         <div className="min-h-screen pb-[calc(96px+env(safe-area-inset-bottom))]">
             <OfflineBanner />
             <main className="mx-auto max-w-3xl">{children}</main>
-            <UpdateToast />
-            <Toast />
+            {/* Avisos uno sobre otro (no se tapan) y encima de las hojas abiertas */}
+            <div className="pointer-events-none fixed inset-x-4 bottom-[calc(96px+env(safe-area-inset-bottom))] z-[60] mx-auto flex max-w-md flex-col gap-2 [&>*]:pointer-events-auto">
+                <UpdateToast />
+                <Toast />
+            </div>
             <BottomNav onLive={() => setLiveOpen(true)} liveCount={liveCount} />
             <LiveSheet open={liveOpen} onClose={() => setLiveOpen(false)} />
             <InstallSheet />

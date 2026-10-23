@@ -316,27 +316,51 @@ const pickExtra = (stat = {}, group) =>
         ? { ip: stat.inningsPitched ?? null, k: stat.strikeOuts ?? null, w: stat.wins ?? null, l: stat.losses ?? null, g: stat.gamesPlayed ?? null }
         : { ab: stat.atBats ?? null, h: stat.hits ?? null, hr: stat.homeRuns ?? null, rbi: stat.rbi ?? null, g: stat.gamesPlayed ?? null };
 
+/**
+ * Mínimo para entrar en los promedios, la misma regla de Estadísticas (src/lib/stats.ts): 2 apariciones por juego del
+ * equipo (y al menos 5) para bateo y 0,8 entradas por juego (y al menos 3) para pitcheo. El «QUALIFIED» de MLB deja
+ * entrar a un 1.000 con 3 apariciones al principio de la temporada de LIDOM.
+ */
+const qualifiesFor = (group, stat = {}, teamGames) =>
+    group === 'pitching'
+        ? Number(stat.outs ?? 0) >= Math.max(9, Math.floor(teamGames * 0.8 * 3))
+        : Number(stat.plateAppearances ?? 0) >= Math.max(5, Math.floor(teamGames * 2));
+
+const leaderValue = (value) => {
+    const parsed = parseFloat(String(value ?? ''));
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
 const loadLeaders = async (league, season) => {
+    const gameType = league.statsGameType || 'R';
+    // Juegos del equipo que más ha jugado (para la regla de calificado)
+    const teamGames = await http
+        .mlbGet(`${MLB_API_BASE}/teams/stats`, { stats: 'season', group: 'hitting', season, sportIds: league.sportId, leagueIds: league.leagueId, gameType })
+        .then((data) => Math.max(0, ...(data?.stats?.[0]?.splits || []).map((split) => split.stat?.gamesPlayed ?? 0)))
+        .catch(() => 0);
     const categories = await Promise.all(
         LEADER_CATEGORIES.map(async (category) => {
             try {
                 const response = await http.mlbGet(`${MLB_API_BASE}/stats`, {
                     stats: 'season',
                     group: category.group,
-                    gameType: 'R',
+                    gameType,
                     leagueId: league.leagueId,
                     season,
-                    limit: 5,
+                    // Los promedios se piden de más para quedarse con los que califican; los totales, para quitar los ceros
+                    limit: category.qualified ? 300 : 15,
                     sortStat: category.sortStat,
                     order: category.order || 'desc',
-                    playerPool: category.qualified ? 'QUALIFIED' : 'ALL'
+                    playerPool: 'ALL'
                 });
-                const splits = response?.stats?.[0]?.splits || [];
+                const splits = (response?.stats?.[0]?.splits || [])
+                    .filter((split) => (category.qualified ? qualifiesFor(category.group, split.stat, teamGames) : (leaderValue(split.stat?.[category.stat]) ?? 0) > 0))
+                    .slice(0, 5);
                 return {
                     id: category.id,
                     group: category.group,
                     leaders: splits.map((split, index) => ({
-                        rank: split.rank || index + 1,
+                        rank: index + 1,
                         id: split.player?.id,
                         name: split.player?.fullName || '',
                         teamId: split.team?.id ?? null,

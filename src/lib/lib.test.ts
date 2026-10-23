@@ -1,13 +1,13 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { gameInterval, scheduleInterval } from './polling';
-import { atBatForZone, arsenal, battedBalls, battersFaced, inningBreak, pitchesByPitcher, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName } from './baseball';
-import { dayKey, dayRange, seasonLabel } from './format';
+import { atBatForZone, arsenal, battedBalls, battersFaced, inningBreak, isWhiff, pitchesByPitcher, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName, weatherName, weatherTemp } from './baseball';
+import { dayKey, dayRange, seasonLabel, surname } from './format';
 import { nameKey, photoSources } from './photos';
 import { forMode, newPlayEvents, outVariant, titleClinch } from './playEvents';
 import { canAdd, creditsLeft, effectiveEntry, entryCost, perTeamLimit, fantasyInterval, gameStarted, getStore, isLocked, lockTime, nextLockAt, pickPoints, replaceStore, setPick, setStoreOwner, takeLegacyStore, teamPoints, unsettledDays, type DayEntry, type EntryHistory, type FantasyDay, type FantasyGame, type FantasyPlayer } from './fantasy';
 import { SORTS, normalize, sortPlayers, type PlayerRow } from './stats';
 import { camera, flightMs, flightOf, gamedayToFeet, groundAt, heightAt, parkFor, wallAt, wallCrossing } from './flight';
-import { battingAdvanced, fmtPct, fmtRate, pitchingAdvanced, pythagorean } from './advanced';
+import { FIP_CONSTANT, battingAdvanced, fipConstantOf, fmtPct, fmtRate, pitchingAdvanced, pythagorean, setFipConstant } from './advanced';
 import { leagueAverage, leagueRank, rankTeams, recordOf, teamSort, type TeamRow } from './teamStats';
 import { percents, winProbability } from './winProbability';
 import { showAlert } from '../hooks/useGameAlerts';
@@ -912,5 +912,50 @@ describe('reto del ABS: revisando y resultado entre dos lecturas', () => {
     it('en «inteligentes» sale aunque el juego no sea de tu equipo', () => {
         const events = newPlayEvents(game([turn([ball])]), game([turn([checking])]));
         expect(forMode(events, 'smart', null, [668, 672]).map((event) => event.kind)).toEqual(['abs']);
+    });
+});
+
+describe('arreglos de la auditoría (web)', () => {
+    it('el apellido no es «Jr.» ni «II»', () => {
+        expect(surname('Mel Rojas Jr.')).toBe('Rojas Jr.');
+        expect(surname('Victor Scott II')).toBe('Scott II');
+        expect(surname('Juan Soto')).toBe('Soto');
+        expect(surname('Ichiro')).toBe('Ichiro');
+        expect(surname('  Junior   Lake ')).toBe('Lake');
+    });
+
+    it('el clima en español y en °C aunque el anotador escriba °F o °C', () => {
+        expect(weatherName('Partly Cloudy', 'es')).toBe('Parcialmente nublado');
+        expect(weatherName('Clear', 'es')).toBe('Despejado');
+        expect(weatherName('Clear', 'en')).toBe('Clear');
+        expect(weatherName('Algo raro', 'es')).toBe('Algo raro');
+        expect(weatherTemp('84', 'es')).toBe('29 °C');
+        expect(weatherTemp('29', 'es')).toBe('29 °C');
+        expect(weatherTemp('29', 'en')).toBe('84 °F');
+        expect(weatherTemp('84', 'en')).toBe('84 °F');
+        expect(weatherTemp(null, 'es')).toBe('');
+        expect(weatherTemp('n/a', 'es')).toBe('');
+    });
+
+    it('abanicados con la misma regla y el repertorio sin la fila de los pitcheos sin tipo', () => {
+        expect(['S', 'W', 'M', 'Q', 'F', 'C', null].map(isWhiff)).toEqual([true, true, true, true, false, false, false]);
+        const rows = arsenal([pitch({ code: 'S' }), pitch({ code: 'Q' }), pitch({ type: 'SL', code: 'B', r: 'ball' }), pitch({ type: null, typeDesc: null, code: 'F' })], 'es');
+        expect(rows.map((row) => row.type)).toEqual(['FF', 'SL']);
+        expect(rows[0].whiffs).toBe(2);
+        expect(rows[0].share + rows[1].share).toBeCloseTo(1);
+    });
+
+    it('la constante de FIP sale de los números de la liga', () => {
+        const line = { g: 40, gs: 40, ip: '350.0', outs: 1050, w: 20, l: 20, sv: 10, hld: 0, k: 300, bb: 140, h: 330, er: 150, hr: 25, hbp: 15, era: '3.86', whip: '1.34' };
+        const teams = [{ pitching: line }, { pitching: line }, { pitching: null }];
+        // ERA 3,857 − (13·50 + 3·310 − 2·600) / 700 = 3,857 − 0,543
+        expect(fipConstantOf(teams)).toBeCloseTo(3.31, 2);
+        expect(fipConstantOf([{ pitching: { ...line, outs: 300 } }])).toBeNull();
+        const fip = (constant: number | null) => {
+            setFipConstant(constant);
+            return pitchingAdvanced(line).fip as number;
+        };
+        expect(fip(3.5) - fip(null)).toBeCloseTo(3.5 - FIP_CONSTANT);
+        setFipConstant(null);
     });
 });

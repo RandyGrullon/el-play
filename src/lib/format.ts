@@ -53,4 +53,12 @@ export const formatCountdown = (ms: number, lang: string) => {
 };
 
 /** Temporada de invierno: 2025 → "2025-26" */
+const SUFFIX = /^(jr\.?|sr\.?|ii|iii|iv|v)$/i;
+/** Apellido para los espacios cortos: «Mel Rojas Jr.» es «Rojas Jr.» y «Victor Scott II» es «Scott II», no «Jr.» ni «II» */
+export const surname = (name: string) => {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length > 2 && SUFFIX.test(parts[parts.length - 1])) return parts.slice(-2).join(' ');
+    return parts[parts.length - 1] ?? '';
+};
+
 export const seasonLabel = (season: number, league: string) => (league === 'lidom' ? `${season}-${String(season + 1).slice(2)}` : String(season));

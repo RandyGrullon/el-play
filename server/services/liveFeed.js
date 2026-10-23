@@ -49,8 +49,15 @@ const store = (gamePk, doc, previous) => {
     return entry;
 };
 
+// Un juego terminado casi no cambia: se reutiliza 10 minutos (MLB a veces corrige el box score después)
+const FINAL_REUSE_MS = 10 * 60 * 1000;
+
 const refresh = async (gamePk) => {
     const previous = games.get(gamePk);
+    if (previous && isFinal(previous.doc) && Date.now() - (previous.fullAt || 0) < FINAL_REUSE_MS) {
+        previous.lastAccess = Date.now();
+        return { entry: previous, mode: 'unchanged' };
+    }
 
     const resyncDue = previous && Date.now() - (previous.fullAt || 0) > FULL_RESYNC_MS;
     if (previous && previous.timecode && diffEnabled() && !isFinal(previous.doc) && !resyncDue) {

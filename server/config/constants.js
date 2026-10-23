@@ -36,6 +36,8 @@ const LEAGUES = {
         fullName: 'World Baseball Classic',
         sportId: 51,
         leagueId: 160,
+        // El Clásico no tiene temporada regular: ronda de grupos y eliminatorias (F, D, L, W)
+        statsGameType: 'F,D,L,W',
         season: 2026,
         timeZone: 'America/New_York',
         scheduleDays: [7, 14],
@@ -173,7 +175,11 @@ const WBC_TEAMS = {
     4977: { abbrev: 'SLV', name: 'El Salvador', color: '#0F47AF', flag: '🇸🇻' },
 };
 
+/** Una liga de la app (no vale «toString», «hasOwnProperty»… que también están en el objeto) */
+const isLeague = (key) => typeof key === 'string' && Object.prototype.hasOwnProperty.call(LEAGUES, key);
+
 module.exports = {
+    isLeague,
     MLB_API_BASE,
     MLB_API_BASE_V1_1,
     TTL,

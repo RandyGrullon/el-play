@@ -24,6 +24,14 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
     const [index, setIndex] = useState(0);
     const slide = slides[Math.min(index, slides.length - 1)];
     const go = (step: number) => setIndex((current) => Math.max(0, Math.min(slides.length - 1, current + step)));
+    // Un toque en el tercio izquierdo vuelve y en el derecho avanza (como las historias); los botones de adentro no
+    const tapSide = (event: React.MouseEvent<HTMLDivElement>) => {
+        if ((event.target as HTMLElement).closest('button, a')) return;
+        const box = event.currentTarget.getBoundingClientRect();
+        const x = (event.clientX - box.left) / box.width;
+        if (x < 1 / 3) go(-1);
+        else if (x > 2 / 3) go(1);
+    };
 
     const loser = winner === game.home ? game.away : game.home;
     const decision = (tag: string, person: Decision | null, extra: string, team: typeof winner) =>
@@ -55,7 +63,7 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
                 ))}
             </div>
 
-            <div className="relative min-h-[460px] px-5 pb-20 pt-5">
+            <div className="relative min-h-[460px] px-5 pb-20 pt-5" onClick={tapSide}>
                 {slide === 'key' && key && (
                     <div className="animate-fade-up">
                         <span className="pill px-3 py-1.5 text-[13px]" style={{ background: soft }}>{t('share.keyPlay')}</span>

@@ -242,7 +242,8 @@
     "invalid_league": "That league doesn't exist.",
     "invalid_user": "That profile link isn't valid.",
     "accounts_disabled": "Accounts aren't available right now.",
-    "accounts_unavailable": "We couldn't load the fans. Try again in a moment."
+    "accounts_unavailable": "We couldn't load the fans. Try again in a moment.",
+    "player_not_found": "We couldn't find that player."
   },
   "games": {
     "title": "Games",
@@ -489,7 +490,16 @@
     "savesShort": "SV",
     "whip": "WHIP",
     "whipShort": "BB+H / IP",
-    "rank": "No. {{rank}}"
+    "rank": "No. {{rank}}",
+    "one": {
+      "homeRuns": "Home run",
+      "runsBattedIn": "Run batted in",
+      "hits": "Hit",
+      "stolenBases": "Stolen base",
+      "strikeouts": "Strikeout",
+      "wins": "Win",
+      "saves": "Save"
+    }
   },
   "notifications": {
     "gameStarting": "Game starting soon!",
@@ -1279,7 +1289,7 @@
     },
     "live": {
       "title": "PRO panel",
-      "noTracking": "This ballpark doesn't track velocity or spin: MLB only sends each pitch's type and result.",
+      "noTracking": "Pitch speed and type haven't arrived yet: in LIDOM tracking sometimes arrives late or after the game.",
       "lastPitch": "Last pitch",
       "type": "Type",
       "zone": "Zone",
@@ -1293,7 +1303,10 @@
       "maxMph": "Max",
       "strikePct": "Strike %",
       "whiffs": "Whiffs",
-      "hardest": "Hardest-hit balls"
+      "hardest": "Hardest-hit balls",
+      "allPitchers_one": "See the pitcher",
+      "allPitchers_other": "See all {{count}} pitchers",
+      "fewerPitchers": "See fewer"
     }
   },
   "winProb": {

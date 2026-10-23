@@ -1,7 +1,13 @@
-const { LEAGUES } = require('../config/constants');
+const { LEAGUES, isLeague } = require('../config/constants');
 const fans = require('../services/fantasyFans');
 
-const leagueFrom = (req) => (LEAGUES[req.query.league] ? req.query.league : 'lidom');
+const leagueFrom = (req) => (isLeague(req.query.league) ? req.query.league : 'lidom');
+/** AAAA-MM-DD que existe (2026-13-45 no) */
+const realDay = (value) => {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const time = Date.parse(`${value}T12:00:00Z`);
+    return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value;
+};
 
 const cacheFor = (res, seconds) => res.set('Cache-Control', `public, max-age=0, s-maxage=${seconds}, stale-while-revalidate=${seconds * 2}`);
 
@@ -9,7 +15,7 @@ const cacheFor = (res, seconds) => res.set('Cache-Control', `public, max-age=0, 
 // Sin `date` es hoy en la hora de la liga, con la misma llave de caché que usan el perfil y la tabla de la temporada.
 const getFantasyDay = async (req, res, next) => {
     try {
-        const date = typeof req.query.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date) ? req.query.date : undefined;
+        const date = typeof req.query.date === 'string' && realDay(req.query.date) ? req.query.date : undefined;
         if (req.query.date && !date) return res.status(400).json({ error: 'invalid_date' });
         const league = leagueFrom(req);
         const day = date || fans.todayIn(LEAGUES[league].timeZone);
@@ -65,7 +71,7 @@ const getFantasySeason = async (req, res, next) => {
 // % de elección del día (solo de los juegos que ya empezaron)
 const getFantasyOwners = async (req, res, next) => {
     try {
-        const date = typeof req.query.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date) ? req.query.date : undefined;
+        const date = typeof req.query.date === 'string' && realDay(req.query.date) ? req.query.date : undefined;
         if (req.query.date && !date) return res.set('Cache-Control', 'no-store').status(400).json({ error: 'invalid_date' });
         if (!fans.accountsEnabled()) return res.set('Cache-Control', 'no-store').status(503).json({ error: 'accounts_disabled' });
         const league = leagueFrom(req);

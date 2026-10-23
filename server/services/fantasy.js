@@ -108,6 +108,19 @@ const playersFromFeed = (doc, gamePk, withStats) => {
     return players;
 };
 
+/** Un pelotero con dos juegos el mismo día: una sola fila con lo de los dos */
+const mergeGames = (a, b, gamePk) => {
+    const line = {};
+    for (const key of new Set([...Object.keys(a.line), ...Object.keys(b.line)])) {
+        const x = a.line[key];
+        const y = b.line[key];
+        line[key] = typeof x === 'number' || typeof y === 'number' ? (Number(x) || 0) + (Number(y) || 0) : x ?? y;
+    }
+    // Las entradas lanzadas salen de los outs (6.2 + 1.1 son 8.0, no 7.3)
+    if (typeof line.outs === 'number') line.ip = `${Math.floor(line.outs / 3)}.${line.outs % 3}`;
+    return { ...a, gamePk, played: a.played || b.played, starter: a.starter || b.starter, line, points: round1(a.points + b.points), doubleheader: true };
+};
+
 const isoDay = (date, timeZone) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 const shiftDay = (day, days) => new Date(Date.parse(`${day}T12:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
 
@@ -186,9 +199,16 @@ const fantasyDay = async (leagueKey, date) => {
     const todays = all.filter((game) => game.officialDate === day && !['Postponed', 'Cancelled'].includes(game.status?.detailedState));
 
     const players = new Map();
+    const startOf = new Map(todays.map((game) => [game.gamePk, game.gameDate || '']));
     const add = (list, prefer) => {
         for (const player of list) {
             const current = players.get(player.id);
+            // Doble cartelera: jugó los dos juegos del día. Cuentan los dos (los puntos y la línea se suman) y se cierra
+            // con el primero
+            if (current?.line && player.line && current.gamePk !== player.gamePk) {
+                players.set(player.id, mergeGames(current, player, (startOf.get(current.gamePk) || '') <= (startOf.get(player.gamePk) || '') ? current.gamePk : player.gamePk));
+                continue;
+            }
             if (!current || (prefer && !current.line)) players.set(player.id, player);
         }
     };
@@ -289,4 +309,5 @@ const fantasyDay = async (leagueKey, date) => {
     };
 };
 
-module.exports = { fantasyDay, batterPoints, pitcherPoints, playersFromFeed, recentPitching, SCORING };
+module.exports = {
+    mergeGames, fantasyDay, batterPoints, pitcherPoints, playersFromFeed, recentPitching, SCORING };

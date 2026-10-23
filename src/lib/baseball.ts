@@ -286,6 +286,40 @@ export const stateName = (detailedState: string, lang: string) => {
     return detailedState;
 };
 
+// El clima llega en inglés tal como lo escribe el anotador
+const WEATHER: [RegExp, string, string][] = [
+    [/partly cloudy/i, 'Parcialmente nublado', 'Partly cloudy'],
+    [/overcast/i, 'Encapotado', 'Overcast'],
+    [/cloudy/i, 'Nublado', 'Cloudy'],
+    [/sunny/i, 'Soleado', 'Sunny'],
+    [/clear/i, 'Despejado', 'Clear'],
+    [/drizzle/i, 'Llovizna', 'Drizzle'],
+    [/showers?/i, 'Aguaceros', 'Showers'],
+    [/rain/i, 'Lluvia', 'Rain'],
+    [/snow/i, 'Nieve', 'Snow'],
+    [/roof closed/i, 'Techo cerrado', 'Roof closed'],
+    [/dome/i, 'Techado', 'Dome'],
+    [/windy/i, 'Ventoso', 'Windy']
+];
+
+export const weatherName = (condition: string, lang: string) => {
+    for (const [pattern, es, en] of WEATHER) {
+        if (pattern.test(condition)) return isEs(lang) ? es : en;
+    }
+    return condition;
+};
+
+/**
+ * Temperatura en la escala de cada idioma (°C en español, °F en inglés). MLB la manda como texto en °F, pero en el
+ * Caribe hay anotadores que escriben °C: un 29 en un estadio del Caribe son 29 °C, no 29 °F.
+ */
+export const weatherTemp = (temp: string | null | undefined, lang: string) => {
+    const value = Number(temp);
+    if (!temp || !Number.isFinite(value)) return '';
+    const celsius = value <= 45 ? value : ((value - 32) * 5) / 9;
+    return isEs(lang) ? `${Math.round(celsius)} °C` : `${Math.round(value <= 45 ? (celsius * 9) / 5 + 32 : value)} °F`;
+};
+
 export const isNotPlayed = (detailedState: string) => /postponed|cancel/i.test(detailedState);
 
 /** "Alta 7" / "Top 7"; entre entradas "Mitad 7" / "Mid 7" */
@@ -382,10 +416,15 @@ export interface ArsenalRow {
     whiffs: number;
 }
 
-export const arsenal = (pitches: Pitch[], lang: string): ArsenalRow[] => {
+/** Abanicado: tirándole y sin tocarla (S), con la bola bloqueada (W), toque fallado (M) o en un pitchout (Q) */
+export const isWhiff = (code: string | null | undefined) => code === 'S' || code === 'W' || code === 'M' || code === 'Q';
+
+/** Repertorio por tipo de pitcheo. Los que llegan sin tipo (sin rastreo) no cuentan para los porcentajes */
+export const arsenal = (all: Pitch[], lang: string): ArsenalRow[] => {
+    const pitches = all.filter((pitch) => pitch.type);
     const groups = new Map<string, Pitch[]>();
     for (const pitch of pitches) {
-        const key = pitch.type || '??';
+        const key = pitch.type as string;
         groups.set(key, [...(groups.get(key) || []), pitch]);
     }
     return [...groups.entries()]
@@ -399,7 +438,7 @@ export const arsenal = (pitches: Pitch[], lang: string): ArsenalRow[] => {
                 avgMph: speeds.length ? speeds.reduce((a, b) => a + b, 0) / speeds.length : null,
                 maxMph: speeds.length ? Math.max(...speeds) : null,
                 strikes: list.filter((p) => p.r === 'strike' || p.r === 'inplay').length,
-                whiffs: list.filter((p) => p.code === 'S' || p.code === 'W').length
+                whiffs: list.filter((p) => isWhiff(p.code)).length
             };
         })
         .sort((a, b) => b.count - a.count);

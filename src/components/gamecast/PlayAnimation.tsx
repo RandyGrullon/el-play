@@ -6,6 +6,7 @@ import { inkOn } from './GameHero';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
 import { HomeRunFlight, homeRunFlightMs } from './HomeRunFlight';
 import { legsOf, runnerPaths, type RunnerPath } from '../../lib/runners';
+import { surname } from '../../lib/format';
 
 // Animaciones de jugada en el juego en vivo: fin de entrada, ponche, hit, doble, triple y jonrón, más la victoria al
 // terminar el juego y el campeonato cuando ese juego da el título; con el logo y los colores del equipo protagonista. Se cierran solas o al tocarlas y no tapan
@@ -49,7 +50,7 @@ const RUN_LEG = 380;
 const routeOf = (path: Pick<RunnerPath, 'from' | 'to'>) => Array.from({ length: path.to - path.from + 1 }, (_, k) => BASES[(path.from + k) % 4]);
 
 const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-const lastName = (name: string) => name.split(' ').slice(-1)[0];
+const lastName = surname;
 
 const Logo: React.FC<{ src: string; className: string }> = ({ src, className }) => (
     <img src={src} alt="" className={className} onError={(event) => (event.currentTarget.style.visibility = 'hidden')} />
@@ -639,14 +640,18 @@ const confetti = (canvas: HTMLCanvasElement | null, colors: string[], stopped: (
     }
     if (system.running) return;
     system.running = true;
+    // Las velocidades son por cuadro de 60 Hz: en una pantalla de 120 Hz (o un teléfono lento) se escalan con el tiempo
+    let last = now;
     const frame = (time: number) => {
+        const step = Math.min(3, Math.max(0, time - last) / (1000 / 60));
+        last = time;
         ctx.clearRect(0, 0, rect.width, rect.height);
         system.bits = system.bits.filter((bit) => bit.until > time && bit.y < rect.height + 40);
         for (const bit of system.bits) {
-            bit.vy += bit.g;
-            bit.x += bit.vx;
-            bit.y += bit.vy;
-            bit.r += bit.vr;
+            bit.vy += bit.g * step;
+            bit.x += bit.vx * step;
+            bit.y += bit.vy * step;
+            bit.r += bit.vr * step;
             ctx.save();
             ctx.translate(bit.x, bit.y);
             ctx.rotate(bit.r);

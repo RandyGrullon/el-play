@@ -242,7 +242,8 @@
     "invalid_league": "Esa liga no existe.",
     "invalid_user": "Ese enlace de perfil no es válido.",
     "accounts_disabled": "Las cuentas no están disponibles ahora mismo.",
-    "accounts_unavailable": "No pudimos cargar los fanáticos. Intenta en un momento."
+    "accounts_unavailable": "No pudimos cargar los fanáticos. Intenta en un momento.",
+    "player_not_found": "No encontramos a ese pelotero."
   },
   "games": {
     "title": "Juegos",
@@ -489,7 +490,16 @@
     "savesShort": "SV",
     "whip": "WHIP",
     "whipShort": "BB+H / IP",
-    "rank": "N.º {{rank}}"
+    "rank": "N.º {{rank}}",
+    "one": {
+      "homeRuns": "Jonrón",
+      "runsBattedIn": "Carrera impulsada",
+      "hits": "Hit",
+      "stolenBases": "Base robada",
+      "strikeouts": "Ponche",
+      "wins": "Victoria",
+      "saves": "Salvado"
+    }
   },
   "notifications": {
     "gameStarting": "¡El juego va a empezar!",
@@ -1279,7 +1289,7 @@
     },
     "live": {
       "title": "Panel PRO",
-      "noTracking": "Este estadio no mide velocidad ni efecto: MLB solo manda el tipo y el resultado de cada pitcheo.",
+      "noTracking": "Todavía no llegan la velocidad ni el tipo de pitcheo: en LIDOM el rastreo a veces llega tarde o al final del juego.",
       "lastPitch": "Último pitcheo",
       "type": "Tipo",
       "zone": "Zona",
@@ -1293,7 +1303,10 @@
       "maxMph": "Máx.",
       "strikePct": "Strike %",
       "whiffs": "Abanic.",
-      "hardest": "Batazos más duros"
+      "hardest": "Batazos más duros",
+      "allPitchers_one": "Ver el lanzador",
+      "allPitchers_other": "Ver los {{count}} lanzadores",
+      "fewerPitchers": "Ver menos"
     }
   },
   "winProb": {

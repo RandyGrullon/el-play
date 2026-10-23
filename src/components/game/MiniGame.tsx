@@ -23,7 +23,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     const [score, setScore] = useState(0);
     const [highScore, setHighScore] = useState(0);
     const [ballY, setBallY] = useState(45);
-    const [velocity, setVelocity] = useState(0);
     const [rotation, setRotation] = useState(0);
     const [bats, setBats] = useState<Bat[]>([]);
     
@@ -36,18 +35,28 @@ const MiniGame: React.FC<MiniGameProps> = ({
     const gameLoopRef = useRef<number | null>(null);
     const lastTimeRef = useRef<number>(0);
     const lastBatRef = useRef<number>(0);
+    const velocityRef = useRef(0);
+    const ballYRef = useRef(45);
 
     // Load high score
     useEffect(() => {
-        const saved = localStorage.getItem(`flappyball-highscore-${leagueName}`);
-        if (saved) setHighScore(parseInt(saved, 10));
+        try {
+            const saved = localStorage.getItem(`flappyball-highscore-${leagueName}`);
+            if (saved) setHighScore(parseInt(saved, 10));
+        } catch {
+            /* sin almacenamiento: el récord dura la sesión */
+        }
     }, [leagueName]);
 
     // Save high score
     useEffect(() => {
         if (score > highScore) {
             setHighScore(score);
-            localStorage.setItem(`flappyball-highscore-${leagueName}`, score.toString());
+            try {
+                localStorage.setItem(`flappyball-highscore-${leagueName}`, score.toString());
+            } catch {
+                /* sin almacenamiento */
+            }
         }
     }, [score, highScore, leagueName]);
 
@@ -55,7 +64,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
         setGameState('playing');
         setScore(0);
         setBallY(canvasHeight / 2 - ballSize / 2);
-        setVelocity(0);
+        ballYRef.current = canvasHeight / 2 - ballSize / 2;
+        velocityRef.current = 0;
         setRotation(0);
         setBats([]);
         lastBatRef.current = 0;
@@ -66,7 +76,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         if (gameState === 'idle') {
             startGame();
         } else if (gameState === 'playing') {
-            setVelocity(-6);
+            velocityRef.current = -6;
         } else if (gameState === 'gameover') {
             startGame();
         }
@@ -80,18 +90,18 @@ const MiniGame: React.FC<MiniGameProps> = ({
             const deltaTime = Math.min((timestamp - lastTimeRef.current) / 16, 2);
             lastTimeRef.current = timestamp;
 
-            // Gravity and movement
-            setVelocity(v => v + 0.35 * deltaTime);
-            setBallY(y => {
-                const newY = y + velocity * deltaTime;
-                // Check floor/ceiling
-                if (newY <= 0 || newY >= canvasHeight - ballSize - 20) {
-                    setGameState('gameover');
-                    return y;
-                }
-                return newY;
-            });
+            // Gravedad y movimiento con refs: el bucle no se rehace en cada cuadro
+            const velocity = velocityRef.current + 0.35 * deltaTime;
+            velocityRef.current = velocity;
+            const newY = ballYRef.current + velocity * deltaTime;
+            if (newY <= 0 || newY >= canvasHeight - ballSize - 20) {
+                setGameState('gameover');
+                return;
+            }
+            ballYRef.current = newY;
+            setBallY(newY);
             setRotation(r => r + velocity * 3);
+            const ballY = newY;
 
             // Spawn bats
             if (timestamp - lastBatRef.current > 2000) {
@@ -144,9 +154,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 return updated;
             });
 
-            if (gameState === 'playing') {
-                gameLoopRef.current = requestAnimationFrame(gameLoop);
-            }
+            gameLoopRef.current = requestAnimationFrame(gameLoop);
         };
 
         lastTimeRef.current = performance.now();
@@ -157,7 +165,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 cancelAnimationFrame(gameLoopRef.current);
             }
         };
-    }, [gameState, velocity, ballY, canvasHeight]);
+    }, [gameState, canvasHeight]);
 
     // Keyboard controls
     useEffect(() => {

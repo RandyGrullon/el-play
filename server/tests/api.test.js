@@ -119,6 +119,54 @@ describe('pausa entre entradas: a quién le toca batear', () => {
     });
 });
 
+describe('arreglos de la auditoría (servidor)', () => {
+    const app = require('../app');
+    const { mergeGames } = require('../services/fantasy');
+    const listen = async (run) => {
+        const server = app.listen(0);
+        await new Promise((resolve) => server.once('listening', resolve));
+        try {
+            await run(`http://127.0.0.1:${server.address().port}/api`);
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    };
+
+    it('una liga que no es de la app (toString, valueOf…) es 400 y una fecha imposible también', async () => {
+        await listen(async (base) => {
+            for (const league of ['toString', 'valueOf', 'hasOwnProperty', '__proto__']) expect((await fetch(`${base}/v2/leaders?league=${league}`)).status).toBe(400);
+            expect((await fetch(`${base}/v2/fantasy?league=lidom&date=2026-13-45`)).status).toBe(400);
+            expect((await fetch(`${base}/v2/fantasy/owners?league=lidom&date=2026-02-30`)).status).toBe(400);
+        });
+    });
+
+    it('doble cartelera: los dos juegos del pelotero suman (las entradas por outs) y se cierra con el primero', () => {
+        const a = { id: 1, gamePk: 10, role: 'P', played: true, starter: true, points: 12.5, line: { ip: '6.2', outs: 20, k: 7, er: 1, h: 4, bb: 1, w: 1, sv: 0 } };
+        const b = { id: 1, gamePk: 11, role: 'P', played: true, starter: false, points: 3, line: { ip: '1.1', outs: 4, k: 2, er: 0, h: 1, bb: 0, w: 0, sv: 1 } };
+        expect(mergeGames(a, b, 10)).toMatchObject({ gamePk: 10, points: 15.5, doubleheader: true, line: { ip: '8.0', outs: 24, k: 9, er: 1, h: 5, bb: 1, w: 1, sv: 1 } });
+    });
+
+    it('un juego terminado no se vuelve a bajar en cada llamada', async () => {
+        const realGet = http.mlbGet;
+        resetLiveFeeds();
+        let calls = 0;
+        http.mlbGet = async () => {
+            calls += 1;
+            const doc = fixture('feed-826279');
+            return doc;
+        };
+        try {
+            await getLiveFeed(826279);
+            const again = await getLiveFeed(826279);
+            expect(calls).toBe(1);
+            expect(again.mode).toBe('unchanged');
+        } finally {
+            http.mlbGet = realGet;
+            resetLiveFeeds();
+        }
+    });
+});
+
 describe('classifyPitch', () => {
     it('usa los códigos cuando faltan las banderas', () => {
         expect(classifyPitch({ code: 'F' })).toBe('strike');
@@ -265,20 +313,29 @@ describe('posiciones y líderes con datos reales de LIDOM 2025', () => {
         expect(standings).toMatchObject({ season: 2025, isPreviousSeason: true });
     });
 
-    it('los promedios se piden solo con jugadores calificados', async () => {
+    it('los promedios con la misma regla de calificado que Estadísticas, y sin líderes en 0', async () => {
         const pools = {};
+        const split = (id, name, stat) => ({ player: { id, fullName: name }, team: { id: 667, name: 'Águilas' }, stat });
         http.mlbGet = routes({
             stats: (params) => {
                 pools[params.sortStat] = params.playerPool;
-                return params.sortStat === 'battingAverage' ? fixture('stats-avg-qualified') : { stats: [{ splits: [] }] };
+                if (params.sortStat === 'battingAverage') {
+                    const real = fixture('stats-avg-qualified');
+                    // Un 1.000 en 3 apariciones va primero en MLB y no califica (2 por juego del equipo, al menos 5)
+                    real.stats[0].splits.unshift(split(1, 'Emil Morales', { avg: '1.000', plateAppearances: 3, atBats: 3, hits: 3 }));
+                    return real;
+                }
+                if (params.sortStat === 'saves') return { stats: [{ splits: [split(2, 'Cerrador', { saves: 3 }), split(3, 'Sin salvados', { saves: 0 })] }] };
+                return { stats: [{ splits: [] }] };
             }
         });
         const leaders = await fetchLeaders('lidom');
-        expect(pools.battingAverage).toBe('QUALIFIED');
-        expect(pools.earnedRunAverage).toBe('QUALIFIED');
-        expect(pools.homeRuns).toBe('ALL');
+        // (la de los equipos, para los juegos jugados, no lleva sortStat)
+        expect(Object.entries(pools).filter(([sortStat]) => sortStat !== 'undefined').every(([, pool]) => pool === 'ALL')).toBe(true);
         const avg = leaders.categories.find((category) => category.id === 'battingAverage');
-        expect(avg.leaders[0]).toMatchObject({ name: 'Ismael Munguia', value: '.368', extra: { ab: 136, h: 50 } });
+        expect(avg.leaders[0]).toMatchObject({ rank: 1, name: 'Ismael Munguia', value: '.368', extra: { ab: 136, h: 50 } });
+        expect(avg.leaders.some((leader) => leader.name === 'Emil Morales')).toBe(false);
+        expect(leaders.categories.find((category) => category.id === 'saves').leaders.map((leader) => leader.name)).toEqual(['Cerrador']);
     });
 });
 

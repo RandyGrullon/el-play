@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AtBat, GameDetail } from '../../types';
-import { arsenal, atBatForZone, battersFaced, eventName, inningBreak, pitchTypeColor, pitchesByPitcher } from '../../lib/baseball';
+import { arsenal, atBatForZone, battersFaced, eventName, inningBreak, isWhiff, pitchTypeColor, pitchesByPitcher } from '../../lib/baseball';
+import { surname } from '../../lib/format';
 import { Segmented } from '../ui/Segmented';
 import { StrikeZone } from './StrikeZone';
 import { uniformColors } from './BatterFigure';
@@ -48,7 +49,7 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
             { label: t('zone.sumPitches'), value: String(pitcherPitches.length) },
             { label: t('zone.sumStrikes'), value: pitcherPitches.length ? `${strikes} · ${Math.round((strikes / pitcherPitches.length) * 100)}%` : '0' },
             { label: t('zone.sumBalls'), value: String(count((_, r) => r === 'ball' || r === 'hbp')) },
-            { label: t('zone.whiffs'), value: String(count((code) => code === 'S' || code === 'W' || code === 'M' || code === 'Q')) },
+            { label: t('zone.whiffs'), value: String(count((code) => isWhiff(code))) },
             { label: t('zone.sumFouls'), value: String(count((code) => code === 'F' || code === 'T' || code === 'L' || code === 'O' || code === 'R')) },
             { label: t('zone.inPlay'), value: String(count((_, r) => r === 'inplay')) }
         ];
@@ -116,7 +117,7 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
                         <div className="-mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 pb-1 scrollbar-none" role="group" aria-label={t('zone.byBatter')}>
                             {[...batters.filter((b) => b.id === atBat.batter.id), ...batters.filter((b) => b.id !== atBat.batter.id).reverse()].map((batter) => (
                                 <BatterChip key={batter.id} active={batterId === batter.id} onClick={() => setBatterPick(batter.id === atBat.batter.id ? null : batter.id)}>
-                                    {batter.name.split(' ').slice(-1)[0]}
+                                    {surname(batter.name)}
                                     {batter.id === atBat.batter.id && !atBat.complete && <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-live align-middle" />}
                                 </BatterChip>
                             ))}

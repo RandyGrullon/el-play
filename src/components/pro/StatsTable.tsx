@@ -77,9 +77,11 @@ export const StatsTable: React.FC<{
     teams: Record<string, StatsTeam>;
     teamGames: number;
     limit: number;
+    /** Constante de FIP en uso: si cambia, se vuelve a ordenar */
+    fip?: number;
     onOpen: (row: PlayerRow) => void;
     onMore: () => void;
-}> = ({ rows, role, teams, teamGames, limit, onOpen, onMore }) => {
+}> = ({ rows, role, teams, teamGames, fip, limit, onOpen, onMore }) => {
     const { t } = useTranslation();
     const columns = role === 'P' ? PITCHING : BATTING;
     const [sort, setSort] = useState<{ key: string; asc: boolean }>({ key: 'pts', asc: false });
@@ -88,7 +90,7 @@ export const StatsTable: React.FC<{
     const sorted = useMemo(() => {
         const option: SortOption = { key: 'pts', value: column.value, show: column.show, rate: column.rate, asc: sort.asc };
         return sortPlayers(rows, option, teamGames);
-    }, [rows, column, sort.asc, teamGames]);
+    }, [rows, column, sort.asc, teamGames, fip]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const toggle = (item: Column) => setSort((current) => (current.key === item.key ? { key: item.key, asc: !current.asc } : { key: item.key, asc: !!item.asc }));
 

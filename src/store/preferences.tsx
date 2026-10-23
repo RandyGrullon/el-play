@@ -37,7 +37,7 @@ const applyTheme = (theme: ThemePreference) => {
     if (theme === 'system') root.removeAttribute('data-theme');
     else root.setAttribute('data-theme', theme);
     const dark = theme === 'dark' || (theme === 'system' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0b0c10' : '#f6f6f9');
+    document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => meta.setAttribute('content', dark ? '#0b0c10' : '#f6f6f9'));
 };
 
 export const PreferencesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {

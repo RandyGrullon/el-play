@@ -57,7 +57,7 @@ export const UpdateToast: React.FC = () => {
 
     if (state !== 'idle') {
         return (
-            <div role="status" className="fixed inset-x-4 bottom-[calc(96px+env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-md animate-fade-up items-center gap-3 rounded-2xl bg-ink p-3 pl-4 text-bg shadow-xl">
+            <div role="status" className="flex w-full animate-fade-up items-center gap-3 rounded-2xl bg-ink p-3 pl-4 text-bg shadow-xl">
                 <p className="flex-1 text-sm font-medium">{state === 'updating' ? t('update.updating') : t('update.available')}</p>
                 {state === 'updating' ? (
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
@@ -85,7 +85,7 @@ export const UpdateToast: React.FC = () => {
 
     if (!iconNotice) return null;
     return (
-        <div role="dialog" aria-labelledby="icon-notice-title" className="fixed inset-x-4 bottom-[calc(96px+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md animate-fade-up rounded-card bg-surface p-4 shadow-float">
+        <div role="dialog" aria-labelledby="icon-notice-title" className="w-full animate-fade-up rounded-card bg-surface p-4 shadow-float">
             <div className="flex items-start gap-3">
                 <LogoMark size={48} className="shrink-0" />
                 <div className="min-w-0 flex-1">

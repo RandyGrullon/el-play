@@ -38,7 +38,7 @@ const LegacyGameRedirect: React.FC = () => {
     return <Navigate to={`/juego/${gamePk}`} replace />;
 };
 
-// Enlace para compartir (bio de Instagram, WhatsApp): el-play.vercel.app/instalar abre la guía sobre la portada
+// Enlace para compartir (bio de Instagram, WhatsApp): elplay.grullonb.com/instalar abre la guía sobre la portada
 const InstallLink: React.FC = () => {
     useEffect(() => {
         if (getInstallMode() !== 'installed') openInstallSheet();

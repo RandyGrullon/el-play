@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Info, Search, X } from 'lucide-react';
 import { useLeague } from '../store/LeagueContext';
-import { seasonLabel } from '../lib/format';
+import { seasonLabel, surname } from '../lib/format';
 import { SORTS, normalize, seasonSummary, sortPlayers, usePlayers, type PlayerRow, type SortKey, type StatsTeam } from '../lib/stats';
 import { inkOn } from '../components/gamecast/GameHero';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
@@ -18,6 +18,7 @@ import { ProBadge } from '../components/pro/ProBadge';
 import { useIsPro } from '../lib/pro';
 import { TeamStatsView } from '../components/stats/TeamStats';
 import { leagueAverage, teamSort, useTeamStats } from '../lib/teamStats';
+import { fipConstantOf, setFipConstant } from '../lib/advanced';
 
 const PAGE = 40;
 
@@ -41,6 +42,8 @@ export const StatsPage: React.FC = () => {
     const query = usePlayers(activeLeague, season);
     // Las colectivas: para la vista de equipos y para el promedio de la liga en los promedios de los peloteros
     const teamQuery = useTeamStats(activeLeague, season);
+    // La constante de FIP de esta liga y temporada (sale de sus números colectivos; mientras cargan, la de MLB)
+    const fip = useMemo(() => setFipConstant(fipConstantOf(teamQuery.data?.teams ?? [])), [teamQuery.data]);
     const pro = useIsPro();
     const data = query.data;
 
@@ -223,7 +226,7 @@ export const StatsPage: React.FC = () => {
                     </div>
                 ) : data && pro ? (
                     filtered.length ? (
-                        <StatsTable rows={filtered} role={role} teams={data.teams} teamGames={teamGames} limit={limit} onOpen={open} onMore={() => setLimit((value) => value + PAGE)} />
+                        <StatsTable key={role} rows={filtered} role={role} teams={data.teams} teamGames={teamGames} fip={fip} limit={limit} onOpen={open} onMore={() => setLimit((value) => value + PAGE)} />
                     ) : (
                         <p className="mx-4 rounded-card bg-surface px-4 py-8 text-center text-sm text-muted shadow-card">{search ? t('statsPage.noResults', { q: search.trim() }) : t('statsPage.empty')}</p>
                     )
@@ -281,7 +284,7 @@ const Podium: React.FC<{ rows: PlayerRow[]; teams: Record<string, StatsTeam>; sh
                 const team = row.teamId ? teams[row.teamId] : undefined;
                 const color = team?.color || '#2563eb';
                 const ink = inkOn(color);
-                const last = row.name.split(' ').slice(-1)[0];
+                const last = surname(row.name);
                 return (
                     <li key={row.id}>
                         <button

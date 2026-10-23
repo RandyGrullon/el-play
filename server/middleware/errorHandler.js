@@ -6,7 +6,7 @@ const errorHandler = (err, req, res, next) => {
 
     if (upstreamStatus === 404) {
         statusCode = 404;
-        errorKey = 'game_not_found';
+        errorKey = /\/player\//.test(req.originalUrl || '') ? 'player_not_found' : 'game_not_found';
     } else if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
         statusCode = 504;
         errorKey = 'upstream_timeout';

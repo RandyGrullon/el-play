@@ -7,8 +7,8 @@ import type { GameDetail, ScheduleGame, TopPerformer } from '../types';
 import { findScheduledGame, useGame } from '../lib/queries';
 import { ApiError } from '../lib/api';
 import { alertsAvailable, useAlertToggle } from '../hooks/useAlertToggle';
-import { atBatForZone, inningBreak, isNotPlayed } from '../lib/baseball';
-import { formatCountdown, formatShortDate, formatTime } from '../lib/format';
+import { atBatForZone, inningBreak, isNotPlayed, weatherName, weatherTemp } from '../lib/baseball';
+import { formatCountdown, formatShortDate, formatTime, surname } from '../lib/format';
 import { teamDisplayName } from '../lib/teams';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { useLeague } from '../store/LeagueContext';
@@ -98,13 +98,13 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
                     </div>
                     {pause ? (
                         <div className="min-w-0 text-center text-xs font-semibold text-muted">
-                            <b className="block truncate text-sm text-ink">{leadoff ? leadoff.name.split(' ').slice(-1)[0] : pause.next.abbrev}</b>
+                            <b className="block truncate text-sm text-ink">{leadoff ? surname(leadoff.name) : pause.next.abbrev}</b>
                             {leadoff ? t('zone.breakLeadsOff', { team: pause.next.abbrev }) : t('zone.breakStatus')}
                         </div>
                     ) : game.matchup && (
                         <div className="min-w-0 text-center text-xs font-semibold text-muted">
-                            <b className="block truncate text-sm text-ink">{game.matchup.batter.name.split(' ').slice(-1)[0]}</b>
-                            {t('zone.facing')} {game.matchup.pitcher.name.split(' ').slice(-1)[0]}
+                            <b className="block truncate text-sm text-ink">{surname(game.matchup.batter.name)}</b>
+                            {t('zone.facing')} {surname(game.matchup.pitcher.name)}
                         </div>
                     )}
                 </div>
@@ -219,8 +219,8 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                 {game.venue && <p className="flex items-center gap-2 text-sm text-muted"><MapPin className="h-4 w-4" /> {game.venue}</p>}
                 {game.weather && (
                     <p className="flex items-center gap-2 text-sm text-muted">
-                        <CloudSun className="h-4 w-4" /> {game.weather.condition}
-                        {game.weather.temp ? ` · ${game.weather.temp}°F` : ''}
+                        <CloudSun className="h-4 w-4" /> {weatherName(game.weather.condition, i18n.language)}
+                        {weatherTemp(game.weather.temp, i18n.language) ? ` · ${weatherTemp(game.weather.temp, i18n.language)}` : ''}
                     </p>
                 )}
             </section>
@@ -239,6 +239,9 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
     );
 };
 
+
+/** Una lectura que llega más de 45 s después de la anterior trae jugadas viejas (red lenta, pantalla bloqueada) */
+const STALE_READ_MS = 45 * 1000;
 export const GamePage: React.FC = () => {
     const { t, i18n } = useTranslation();
     const { gamePk } = useParams<{ gamePk: string }>();
@@ -255,15 +258,34 @@ export const GamePage: React.FC = () => {
     const previous = useRef<GameDetail | null>(null);
     const shown = useRef(new Set<string>());
     const [plays, setPlays] = useState<PlayEvent[]>([]);
+    // Cuándo llegó la lectura anterior y si la app estuvo en segundo plano desde entonces
+    const readAt = useRef(0);
+    const wasHidden = useRef(false);
+    useEffect(() => {
+        const onVisibility = () => {
+            if (document.visibilityState === 'hidden') wasHidden.current = true;
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+        return () => document.removeEventListener('visibilitychange', onVisibility);
+    }, []);
 
     // Jugadas nuevas entre una lectura del juego y la siguiente → animación (en cola si llegan juntas)
     useEffect(() => {
         if (!game) return;
-        const fresh = forMode(newPlayEvents(previous.current, game), animationMode, favoriteTeamId, [game.away.id, game.home.id]).filter((play) => !shown.current.has(play.key));
+        const now = Date.now();
+        // Al volver de segundo plano (o tras un rato sin lecturas) lo que pasó mientras tanto ya es viejo: no se anima
+        const stale = wasHidden.current || (readAt.current > 0 && now - readAt.current > STALE_READ_MS);
+        readAt.current = now;
+        wasHidden.current = false;
+        const fresh = stale ? [] : forMode(newPlayEvents(previous.current, game), animationMode, favoriteTeamId, [game.away.id, game.home.id]).filter((play) => !shown.current.has(play.key));
         previous.current = game;
         if (!fresh.length) return;
         fresh.forEach((play) => shown.current.add(play.key));
-        setPlays((queue) => [...queue, ...fresh].slice(-4));
+        // Hasta 4 en cola sin sacar la que se está mostrando (la primera)
+        setPlays((queue) => {
+            const next = [...queue, ...fresh];
+            return next.length > 4 ? [next[0], ...next.slice(-3)] : next;
+        });
     }, [game, animationMode, favoriteTeamId]);
 
     useEffect(() => {

@@ -1,10 +1,10 @@
 const { cached } = require('../utils/cache');
 const { fetchStandings, fetchLeaders } = require('../services/mlbService');
-const { TTL, LEAGUES } = require('../config/constants');
+const { TTL, LEAGUES, isLeague } = require('../config/constants');
 const { setCdnCache } = require('../middleware/cacheHeaders');
 const { toLegacyLeaders } = require('../utils/legacy');
 
-const leagueFrom = (req) => (LEAGUES[req.query.league] ? req.query.league : 'lidom');
+const leagueFrom = (req) => (isLeague(req.query.league) ? req.query.league : 'lidom');
 
 const standingsHandler = async (req, res, next) => {
     try {

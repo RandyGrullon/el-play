@@ -94,7 +94,7 @@ export const playerFromLeader = (leader: Leader, categoryId: string, seasonLabel
         color: leader.color || '#2563eb',
         color2: leader.color2,
         value: String(leader.value ?? '—'),
-        label: t(`leaders.${categoryId}`),
+        label: String(leader.value) === '1' ? t(`leaders.one.${categoryId}`, { defaultValue: t(`leaders.${categoryId}`) }) : t(`leaders.${categoryId}`),
         context: t('share.rankIn', { rank: leader.rank, league: leagueName, season: seasonLabel }),
         detail,
         league: leagueName

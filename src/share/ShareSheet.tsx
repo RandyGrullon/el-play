@@ -74,7 +74,7 @@ const ShareSheet: React.FC<{ request: ShareRequest; onClose: () => void }> = ({ 
         setBusy(true);
         setError(false);
         loadRender()
-            .then(({ renderPost }) => renderPost(request.data, { format, style, photo, labels: { site: 'el-play.vercel.app' } }))
+            .then(({ renderPost }) => renderPost(request.data, { format, style, photo, labels: { site: 'elplay.grullonb.com' } }))
             .then((canvas) => {
                 if (cancelled) return;
                 canvasRef.current = canvas;

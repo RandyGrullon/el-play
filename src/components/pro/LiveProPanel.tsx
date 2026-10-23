@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Gauge } from 'lucide-react';
 import type { GameDetail } from '../../types';
@@ -15,6 +15,9 @@ const Tile: React.FC<{ label: string; value: React.ReactNode }> = ({ label, valu
     </div>
 );
 
+
+/** Lanzadores a la vista en el repertorio; el resto con «Ver todos» (en LIDOM tiran 10 o 12 por juego) */
+const PITCHERS_SHOWN = 4;
 export const LiveProPanel: React.FC<{ game: GameDetail }> = ({ game }) => {
     const { t, i18n } = useTranslation();
     const lang = i18n.language;
@@ -25,13 +28,14 @@ export const LiveProPanel: React.FC<{ game: GameDetail }> = ({ game }) => {
     const tracked = game.atBats.some((item) => item.pitches.some((pitch) => typeof pitch.mph === 'number'));
 
     // Repertorio de los lanzadores que han tirado (el actual primero)
+    const [allPitchers, setAllPitchers] = useState(false);
     const pitchers = useMemo(() => {
         const ids: { id: number; name: string; top: boolean }[] = [];
         for (const item of game.atBats) {
             if (item.pitcher.id && !ids.some((p) => p.id === item.pitcher.id)) ids.push({ id: item.pitcher.id, name: item.pitcher.name, top: item.top });
         }
         const current = game.matchup?.pitcher.id;
-        return ids.sort((a, b) => Number(b.id === current) - Number(a.id === current)).slice(0, 4);
+        return ids.sort((a, b) => Number(b.id === current) - Number(a.id === current));
     }, [game.atBats, game.matchup?.pitcher.id]);
 
     const hardest = useMemo(
@@ -68,26 +72,26 @@ export const LiveProPanel: React.FC<{ game: GameDetail }> = ({ game }) => {
                 <div>
                     <p className="eyebrow mb-2">{t('pro.live.thisAtBat', { batter: atBat?.batter.name ?? '' })}</p>
                     <div className="overflow-x-auto rounded-2xl bg-raised">
-                        <table className="w-full whitespace-nowrap text-[13px] tabular-nums">
+                        <table className="w-full text-[13px] tabular-nums">
                             <thead>
                                 <tr className="text-[11px] font-bold uppercase text-muted">
-                                    <th className="px-2.5 py-2 text-left">#</th>
-                                    <th className="px-2.5 py-2 text-left">{t('pro.live.type')}</th>
-                                    <th className="px-2.5 py-2 text-right">mph</th>
-                                    <th className="px-2.5 py-2 text-right">rpm</th>
-                                    <th className="px-2.5 py-2 text-left">{t('pro.live.result')}</th>
-                                    <th className="px-2.5 py-2 text-right">{t('pro.live.count')}</th>
+                                    <th className="px-2 py-2 text-left">#</th>
+                                    <th className="px-2 py-2 text-left">{t('pro.live.type')}</th>
+                                    <th className="px-2 py-2 text-right">mph</th>
+                                    <th className="px-2 py-2 text-right">rpm</th>
+                                    <th className="px-2 py-2 text-left">{t('pro.live.result')}</th>
+                                    <th className="px-2 py-2 text-right">{t('pro.live.count')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-line/10">
                                 {pitches.map((pitch, index) => (
                                     <tr key={index}>
-                                        <td className="px-2.5 py-1.5 text-muted">{index + 1}</td>
-                                        <td className="px-2.5 py-1.5 font-semibold">{pitchTypeName(pitch, lang) || '—'}</td>
-                                        <td className="px-2.5 py-1.5 text-right font-bold">{pitch.mph ?? '—'}</td>
-                                        <td className="px-2.5 py-1.5 text-right">{pitch.spin ?? '—'}</td>
-                                        <td className="px-2.5 py-1.5">{pitchCallName(pitch, lang)}</td>
-                                        <td className="px-2.5 py-1.5 text-right text-muted">{pitch.b != null && pitch.s != null ? `${pitch.b}-${pitch.s}` : ''}</td>
+                                        <td className="px-2 py-1.5 text-muted">{index + 1}</td>
+                                        <td className="px-2 py-1.5 font-semibold">{pitchTypeName(pitch, lang) || '—'}</td>
+                                        <td className="px-2 py-1.5 text-right font-bold">{pitch.mph ?? '—'}</td>
+                                        <td className="px-2 py-1.5 text-right">{pitch.spin ?? '—'}</td>
+                                        <td className="px-2 py-1.5">{pitchCallName(pitch, lang)}</td>
+                                        <td className="px-2 py-1.5 text-right text-muted">{pitch.b != null && pitch.s != null ? `${pitch.b}-${pitch.s}` : ''}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -99,7 +103,7 @@ export const LiveProPanel: React.FC<{ game: GameDetail }> = ({ game }) => {
             {pitchers.length > 0 && (
                 <div className="space-y-3">
                     <p className="eyebrow">{t('pro.live.arsenal')}</p>
-                    {pitchers.map((pitcher) => {
+                    {(allPitchers ? pitchers : pitchers.slice(0, PITCHERS_SHOWN)).map((pitcher) => {
                         const list = pitchesByPitcher(game.atBats, pitcher.id);
                         const rows = arsenal(list, lang);
                         const team = pitcher.top ? game.home : game.away;
@@ -113,7 +117,7 @@ export const LiveProPanel: React.FC<{ game: GameDetail }> = ({ game }) => {
                                     <span className="text-xs font-semibold text-muted">{t('pro.live.pitches', { count: list.length })}</span>
                                 </p>
                                 <div className="overflow-x-auto">
-                                    <table className="w-full whitespace-nowrap text-[13px] tabular-nums">
+                                    <table className="w-full text-[13px] tabular-nums">
                                         <thead>
                                             <tr className="text-[11px] font-bold uppercase text-muted">
                                                 <th className="px-3 py-1.5 text-left">{t('pro.live.type')}</th>
@@ -141,6 +145,11 @@ export const LiveProPanel: React.FC<{ game: GameDetail }> = ({ game }) => {
                             </div>
                         );
                     })}
+                    {pitchers.length > PITCHERS_SHOWN && (
+                        <button type="button" onClick={() => setAllPitchers((value) => !value)} className="h-10 w-full rounded-full bg-raised text-sm font-bold">
+                            {allPitchers ? t('pro.live.fewerPitchers') : t('pro.live.allPitchers', { count: pitchers.length })}
+                        </button>
+                    )}
                 </div>
             )}
 
