@@ -10,7 +10,7 @@ import { useRace } from '../../lib/queries';
 import { formatShortDate } from '../../lib/format';
 import { usePreferences } from '../../state/preferences';
 import { useColors } from '../../theme/theme';
-import { radius } from '../../theme/tokens';
+import { fonts, radius } from '../../theme/tokens';
 import { Card, Row, Txt } from '../ui';
 
 const W = 320;
@@ -53,13 +53,13 @@ export const RaceChart: React.FC<{ league: LeagueId }> = ({ league }) => {
                     {ticks.map((value) => (
                         <G key={value}>
                             <Line x1={PAD.left} x2={W - PAD.right} y1={y(value)} y2={y(value)} stroke={value === 0 ? colors.faint : colors.line} strokeDasharray={value === 0 ? '3 3' : undefined} strokeWidth={1} />
-                            <SvgText x={PAD.left - 4} y={y(value) + 3} fontSize={9} fontWeight="700" fill={colors.faint} textAnchor="end">
+                            <SvgText fontFamily={fonts.bold} x={PAD.left - 4} y={y(value) + 3} fontSize={9} fontWeight="700" fill={colors.faint} textAnchor="end">
                                 {value > 0 ? `+${value}` : String(value)}
                             </SvgText>
                         </G>
                     ))}
                     {[0, data.days.length - 1].map((index) => (
-                        <SvgText key={index} x={x(index)} y={H - 4} fontSize={9} fontWeight="700" fill={colors.faint} textAnchor={index ? 'end' : 'start'}>
+                        <SvgText fontFamily={fonts.bold} key={index} x={x(index)} y={H - 4} fontSize={9} fontWeight="700" fill={colors.faint} textAnchor={index ? 'end' : 'start'}>
                             {formatShortDate(`${data.days[index]}T16:00:00Z`, i18n.language)}
                         </SvgText>
                     ))}
@@ -67,7 +67,7 @@ export const RaceChart: React.FC<{ league: LeagueId }> = ({ league }) => {
                         <Path key={team.id} d={path(team.points)} fill="none" stroke={team.color} strokeWidth={team.id === focus ? 3 : 1.8} strokeLinejoin="round" strokeLinecap="round" opacity={focus && team.id !== focus ? 0.35 : 1} />
                     ))}
                     {labels.map(({ team, y: labelY }) => (
-                        <SvgText key={team.id} x={W - PAD.right + 4} y={labelY + 3} fontSize={9} fontWeight="800" fill={team.color} opacity={focus && team.id !== focus ? 0.5 : 1}>
+                        <SvgText fontFamily={fonts.bold} key={team.id} x={W - PAD.right + 4} y={labelY + 3} fontSize={9} fontWeight="800" fill={team.color} opacity={focus && team.id !== focus ? 0.5 : 1}>
                             {team.abbrev}
                         </SvgText>
                     ))}

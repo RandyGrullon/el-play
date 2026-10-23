@@ -14,7 +14,7 @@ import { fatigueOf, hoursMinutes, noHitterOf, staleMinutes, umpireRole, velocity
 import { winProbability, type TeamForm } from '../../lib/winProbability';
 import { recordOf, useTeamStats, type TeamRow } from '../../lib/teamStats';
 import { useColors } from '../../theme/theme';
-import { alpha, inkOn, radius } from '../../theme/tokens';
+import { alpha, fonts, inkOn, radius } from '../../theme/tokens';
 import { Card, PlayerPhoto, Row, Segmented, TeamLogo, Txt } from '../ui';
 import { useNow } from '../feed/useNow';
 
@@ -188,7 +188,7 @@ const WinChart: React.FC<{ game: GameDetail; points: WinPoint[]; swings: WinPoin
             <Line x1={PAD.left} x2={W - PAD.right} y1={y(0.5)} y2={y(0.5)} stroke={colors.faint} strokeDasharray="3 3" strokeWidth={1} />
             <Path d={line} fill="none" stroke={colors.ink} strokeWidth={1.8} strokeLinejoin="round" strokeLinecap="round" />
             {ticks.map(({ point, index }) => (
-                <SvgText key={index} x={x(index)} y={H - 4} fontSize={9} fontWeight="700" fill={colors.faint} textAnchor={index === 0 ? 'start' : 'middle'}>
+                <SvgText fontFamily={fonts.bold} key={index} x={x(index)} y={H - 4} fontSize={9} fontWeight="700" fill={colors.faint} textAnchor={index === 0 ? 'start' : 'middle'}>
                     {point.inning}
                 </SvgText>
             ))}
@@ -219,13 +219,13 @@ const RunsChart: React.FC<{ game: GameDetail }> = ({ game }) => {
             {[0, Math.round(top / 2), top].map((level) => (
                 <G key={level}>
                     <Line x1={PAD.left + 10} x2={W - PAD.right - 10} y1={y(level)} y2={y(level)} stroke={colors.line} strokeWidth={1} />
-                    <SvgText x={PAD.left} y={y(level) + 3} fontSize={9} fontWeight="700" fill={colors.faint}>
+                    <SvgText fontFamily={fonts.bold} x={PAD.left} y={y(level) + 3} fontSize={9} fontWeight="700" fill={colors.faint}>
                         {level}
                     </SvgText>
                 </G>
             ))}
             {innings.map((row, index) => (
-                <SvgText key={row.n} x={x(index + 1)} y={H - 4} fontSize={9} fontWeight="700" fill={colors.faint} textAnchor="middle">
+                <SvgText fontFamily={fonts.bold} key={row.n} x={x(index + 1)} y={H - 4} fontSize={9} fontWeight="700" fill={colors.faint} textAnchor="middle">
                     {row.n}
                 </SvgText>
             ))}
