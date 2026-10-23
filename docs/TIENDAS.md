@@ -22,7 +22,7 @@ Datos de la app que vas a usar varias veces:
 5. Hacer los builds de producción (AAB para Google, IPA para Apple).
 6. Google Play: crear la app, llenar la ficha y los formularios, subir el AAB a prueba interna → prueba cerrada → producción.
 7. App Store: crear la app, subir el IPA a TestFlight, probar, llenar la ficha y enviarla a revisión.
-8. Antes de enviar a Apple, resolver lo de «Continuar con Google» (sección 13).
+8. Antes de enviar: leer «Los datos del béisbol» (sección 13) y activar Apple en Supabase (sección 13, regla 4.8).
 
 ---
 
@@ -395,7 +395,7 @@ HECHA PARA EL FANÁTICO
 
 También sigue la Serie del Caribe y el Clásico Mundial cuando están en juego.
 
-El Play es una app independiente: no está afiliada a MLB, a la LIDOM ni a sus equipos.
+El Play es una app independiente: no está afiliada a la LIDOM ni a ninguna liga o equipo.
 ```
 
 **Novedades** (para versiones siguientes), ejemplo: `Mejoras de rendimiento y correcciones.`
@@ -493,12 +493,18 @@ Ese correo también sirve como contacto de soporte para Apple.
 
 ### Apple 4.8: «Continuar con Google» obliga a ofrecer otra opción privada
 
-Si una app deja crear la cuenta con un servicio de terceros (Google), Apple exige ofrecer **también** un inicio de sesión que solo pida nombre y correo, que deje **ocultar el correo** y que no rastree para publicidad. En la práctica eso es **«Iniciar sesión con Apple»**. El código por correo de El Play no cuenta como esa opción (obliga a dar el correo).
+Si una app deja crear la cuenta con un servicio de terceros (Google), Apple exige ofrecer **también** un inicio de sesión que solo pida nombre y correo, que deje **ocultar el correo** y que no rastree para publicidad. Eso es **«Iniciar sesión con Apple»**, y la app ya lo trae (`expo-apple-authentication`, `"usesAppleSignIn": true` en `app.json`).
 
-Dos caminos:
+Cómo queda en el iPhone:
 
-1. **Para la primera versión (lo más rápido):** esconder «Continuar con Google» en iPhone y dejar solo el código por correo, que es el sistema propio de El Play. Así la regla no aplica. En Android y en la web Google se queda.
-2. **Después:** agregar «Iniciar sesión con Apple» (módulo `expo-apple-authentication`, `"usesAppleSignIn": true` en `ios` de `app.json`, activar el proveedor **Apple** en Supabase y la capacidad «Sign In with Apple» del App ID en developer.apple.com). Necesita un build nuevo.
+- El botón negro (o blanco en modo oscuro) **«Continuar con Apple»** sale arriba del correo cuando el proveedor Apple está activo en Supabase.
+- **«Continuar con Google»** en iPhone sale **solo si Apple también está activo** (así nunca se rompe la regla). En Android y en la web, Google sale siempre.
+
+Lo que tienes que hacer tú (una vez):
+
+1. En [developer.apple.com](https://developer.apple.com/account/resources/identifiers/list) → **Identifiers** → `com.grullonb.elplay` → marca **Sign In with Apple**. (EAS también la activa solo al hacer el build si inicias sesión con tu Apple ID.)
+2. En Supabase → **Authentication** → **Sign In / Providers** → **Apple**: actívalo y en **Client IDs** pon `com.grullonb.elplay`. Para el inicio de sesión nativo del iPhone no hace falta la llave secreta ni el Services ID (eso es solo para entrar con Apple desde la web).
+3. Haz un build nuevo de iOS (`npx eas-cli@latest build --platform ios --profile production`): el módulo es nativo, no llega por `eas update`.
 
 ### Apple 5.1.1(v) y Google: borrar la cuenta dentro de la app
 
@@ -508,14 +514,26 @@ Ya existe (**Más → Cuenta → Borrar mi cuenta**) y borra los datos de verdad
 
 El Fantasy pide cuenta. Como cualquiera puede crear una con su correo, basta con explicarlo en las notas. Si el revisor pide una cuenta de demostración, habría que agregar una forma de entrar sin correo (por ejemplo, una cuenta de prueba con contraseña) y mandar un build nuevo.
 
-### Riesgo: los términos de los datos de MLB y el contenido de terceros
+### Los datos del béisbol: ¿se puede publicar así? (léelo antes de enviar)
 
-Los marcadores y estadísticas salen de la MLB Stats API y las fotos de MLB y de los equipos. El aviso de derechos de MLB permite solo **uso individual, no comercial y no masivo** de esos datos; una app publicada para el público va más allá de eso aunque sea gratis. Además:
+**Respuesta corta: tal como está, no es seguro.** No hay una regla que diga «prohibido», pero hoy la app depende de tres cosas que no son tuyas, y las dos tiendas piden que tengas permiso:
 
-- Apple pregunta en «Derechos sobre el contenido» si tienes permiso para usar contenido de terceros, y puede pedir pruebas (reglas 5.2.1 y 5.2.2). Google tiene reglas parecidas de propiedad intelectual y de suplantación.
-- MLB o la LIDOM podrían pedir a las tiendas que la retiren, o bloquear el acceso a la API.
+1. **Los datos** salen de la API de estadísticas de MLB (MLB es dueña del sistema de anotación de LIDOM). Su aviso de derechos dice que solo se permite el uso «individual, no comercial y no masivo» ([copyright.txt](http://gdx.mlb.com/components/copyright.txt)); cualquier otro uso necesita permiso por escrito. Una app pública, con modo PRO y quizá anuncios, va más allá de eso.
+2. **Las fotos** de los peloteros y **los logos** de los equipos son de terceros.
+3. **Las reglas de las tiendas:**
+   - Apple 5.2.1 (no usar marcas ni obras de otros sin permiso) y 5.2.2 (si la app muestra contenido de un servicio de terceros, sus términos tienen que permitirlo, y Apple puede pedir la autorización) ([guías](https://developer.apple.com/app-store/review/guidelines/)).
+   - Google: la política de propiedad intelectual cita los logos de equipos como caso típico, y la de suplantación prohíbe dar a entender que eres oficial ([propiedad intelectual](https://support.google.com/googleplay/android-developer/answer/9888072), [suplantación](https://support.google.com/googleplay/android-developer/answer/9888374)).
 
-Cómo bajar el riesgo: la app es gratis y sin anuncios; dice que no está afiliada (ya está en la descripción y en la pantalla de privacidad); no uses logos de MLB, de la LIDOM ni de los equipos en el ícono, el nombre, las capturas ni las palabras clave. Lo más seguro a largo plazo es pedir permiso a la LIDOM o usar un proveedor de datos con licencia. Esto no es asesoría legal: si la app crece, consúltalo con un abogado.
+Puede que pase la revisión (hay apps parecidas publicadas), pero queda expuesta a un rechazo por 5.2.2, a que la retiren si alguien reclama o a que MLB corte el acceso. En 2012 MLB le mandó una carta a la app Batter's Box y la retiraron de la App Store. La versión web (PWA) no pasa revisión, pero los términos de los datos le aplican igual. Un TWA en Play Store no evita las políticas: su contenido tiene que cumplirlas igual.
+
+**Soluciones, de la más rápida a la más completa:**
+
+1. **Ya mismo, sin tiendas:** seguir como PWA (se instala desde el navegador y ya funciona en iPhone y Android). Mientras uses estos datos, sin cobrar el PRO ni poner anuncios; el aviso de «no afiliado» ya está en la app.
+2. **Pedir permiso a la LIDOM** (info@lidom.com, (809) 563-5085): una licencia escrita para el nombre, los logos y los datos, y que te digan si los datos de anotación son de ellos o de MLB. Hay apps oficiales de equipos (la del Licey, por ejemplo), así que licenciar con la liga o con un equipo es posible. Con esa carta respondes la pregunta de Apple sobre «Derechos sobre el contenido».
+3. **Cotizar un proveedor con licencia:** Statscore (LSports) tiene a LIDOM en su lista; Sportradar tiene los derechos oficiales de MLB hasta 2032 (pregúntales por las ligas invernales). Ojo: el lanzamiento a lanzamiento con ubicación de la zona de strike, por ahora, solo lo vi en el feed de MLB; con otro proveedor la app tendría menos detalle.
+4. **Solo con el 2 o el 3 resuelto, ir a las tiendas:** Apple US$99 al año; Google US$25 una vez y, en cuentas personales nuevas, prueba cerrada con 12 probadores durante 14 días seguidos (sección 8.5). Lo demás ya está listo: borrar la cuenta en la app y en la web, Iniciar sesión con Apple, privacidad y los formularios de datos (secciones 12 y 13).
+
+Mientras tanto, para bajar el riesgo: no uses logos de la LIDOM ni de los equipos en el ícono, el nombre, las capturas ni las palabras clave, y no pongas «MLB» en ningún texto de la ficha. Esto no es asesoría legal: antes de cobrar o de crecer, consúltalo con un abogado.
 
 ### Contenido de usuarios (Apple 1.2)
 
