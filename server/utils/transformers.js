@@ -513,6 +513,8 @@ const transformScheduleGame = (game, leagueKey) => {
             color2: teamColor2(id, leagueKey),
             flag: teamFlag(id, leagueKey),
             score: state === 'preview' ? null : source.score ?? 0,
+            // Hits (del marcador por entradas): para avisar de un juego sin hit
+            hits: state === 'preview' ? null : linescore.teams?.[key]?.hits ?? null,
             isWinner: !!source.isWinner,
             record: record(source.leagueRecord),
             probable: pitcher?.id ? { id: pitcher.id, name: pitcher.fullName } : null

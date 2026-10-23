@@ -46,3 +46,23 @@ self.addEventListener('notificationclick', (event) => {
         })()
     );
 });
+
+/* Aviso con la app cerrada (Web Push, server/services/pushAlerts.js): título, texto, etiqueta (la misma de los avisos
+ * con la app abierta, así no salen dos iguales) y a qué juego lleva al tocarlo. */
+self.addEventListener('push', (event) => {
+    let data = {};
+    try {
+        data = event.data ? event.data.json() : {};
+    } catch (error) {
+        data = { body: event.data ? event.data.text() : '' };
+    }
+    event.waitUntil(
+        self.registration.showNotification(data.title || 'El Play', {
+            body: data.body || '',
+            icon: '/icons/icon-192-v2.png',
+            badge: '/icons/icon-192-v2.png',
+            tag: data.tag || undefined,
+            data: { url: data.url || '/' }
+        })
+    );
+});

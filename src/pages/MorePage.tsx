@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -9,6 +9,9 @@ import { Segmented } from '../components/ui/Segmented';
 import { InstallRow } from '../components/install/InstallCard';
 import { AccountCard } from '../components/account/AccountCard';
 import { ModeCard } from '../components/pro/ModeCard';
+import { setLanguage } from '../i18n';
+import { enablePush, pushConfig, pushSupported, type PushStatus } from '../lib/push';
+import type { AlertKinds } from '../store/preferences';
 
 // "Más": liga, tema, idioma e instalación (antes estaban en la barra de arriba)
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -16,7 +19,7 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 export const MorePage: React.FC = () => {
     const { t, i18n } = useTranslation();
     const { leagues, activeLeague, setActiveLeague } = useLeague();
-    const { theme, setTheme, animationMode, setAnimationMode } = usePreferences();
+    const { theme, setTheme, animationMode, setAnimationMode, largeText, setLargeText } = usePreferences();
     const lang = i18n.language.startsWith('en') ? 'en' : 'es';
 
     return (
@@ -80,13 +83,20 @@ export const MorePage: React.FC = () => {
                         size="sm"
                         label={t('more.language')}
                         value={lang}
-                        onChange={(value) => i18n.changeLanguage(value)}
+                        onChange={(value) => setLanguage(value)}
                         options={[
                             { value: 'es', label: 'Español' },
                             { value: 'en', label: 'English' }
                         ]}
                     />
                 </div>
+                <label className="card flex items-center justify-between gap-3 p-4">
+                    <span className="min-w-0">
+                        <span className="block font-semibold">{t('more.largeText')}</span>
+                        <span className="block text-sm text-muted">{t('more.largeTextHint')}</span>
+                    </span>
+                    <input type="checkbox" role="switch" checked={largeText} onChange={(event) => setLargeText(event.target.checked)} className="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-raised transition-colors before:block before:h-5 before:w-5 before:translate-x-0.5 before:rounded-full before:bg-surface before:shadow before:transition-transform checked:bg-accent checked:before:translate-x-[22px]" />
+                </label>
                 <div className="card space-y-3 p-4">
                     <span className="block min-w-0">
                         <span className="block font-semibold">{t('more.playAnimations')}</span>
@@ -106,6 +116,8 @@ export const MorePage: React.FC = () => {
                 </div>
             </section>
 
+            <AlertSettings />
+
             <section className="card flex items-center gap-3 p-4">
                 <LogoMark size={44} />
                 <div className="flex-1">
@@ -117,5 +129,56 @@ export const MorePage: React.FC = () => {
                 </Link>
             </section>
         </div>
+    );
+};
+
+const KINDS: (keyof AlertKinds)[] = ['soon', 'start', 'final', 'noHitter', 'fantasy'];
+
+/** Qué avisos quiere y si llegan también con la app cerrada */
+const AlertSettings: React.FC = () => {
+    const { t, i18n } = useTranslation();
+    const { alertKinds, setAlertKind, subscribedGames, favoriteTeamId } = usePreferences();
+    const [status, setStatus] = useState<PushStatus | 'checking'>('checking');
+    const lang = i18n.language.startsWith('en') ? 'en' : 'es';
+    const prefs = { games: subscribedGames, teams: favoriteTeamId ? [favoriteTeamId] : [], kinds: alertKinds, lang } as const;
+    useEffect(() => {
+        let alive = true;
+        (async () => {
+            if (!pushSupported()) return alive && setStatus('unsupported');
+            const server = await pushConfig();
+            if (!alive) return;
+            if (!server.enabled) return setStatus('server-off');
+            setStatus(Notification.permission === 'granted' ? 'on' : Notification.permission === 'denied' ? 'blocked' : 'off');
+        })();
+        return () => {
+            alive = false;
+        };
+    }, []);
+
+    return (
+        <section aria-labelledby="more-alerts" className="space-y-3">
+            <h2 id="more-alerts" className="eyebrow">{t('alertsMore.title')}</h2>
+            <div className="card divide-y divide-line/10">
+                {KINDS.map((kind) => (
+                    <label key={kind} className="flex items-center justify-between gap-3 px-4 py-3">
+                        <span className="min-w-0">
+                            <span className="block font-semibold">{t(`alertsMore.kinds.${kind}`)}</span>
+                            <span className="block text-xs text-muted">{t(`alertsMore.hints.${kind}`)}</span>
+                        </span>
+                        <input type="checkbox" role="switch" checked={alertKinds[kind]} onChange={(event) => setAlertKind(kind, event.target.checked)} className="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-raised transition-colors before:block before:h-5 before:w-5 before:translate-x-0.5 before:rounded-full before:bg-surface before:shadow before:transition-transform checked:bg-accent checked:before:translate-x-[22px]" />
+                    </label>
+                ))}
+            </div>
+            <div className="card space-y-2 p-4 text-sm">
+                <p className="font-semibold">{t('alertsMore.closed')}</p>
+                <p className="text-muted">{t(`alertsMore.status.${status}`)}</p>
+                {status === 'off' && (
+                    <button type="button" onClick={async () => setStatus(await enablePush(prefs))} className="mt-1 h-11 w-full rounded-full bg-ink text-sm font-bold text-bg">
+                        {t('alertsMore.enable')}
+                    </button>
+                )}
+                <p className="text-xs text-faint">{t('alertsMore.how')}</p>
+            </div>
+        </section>
     );
 };

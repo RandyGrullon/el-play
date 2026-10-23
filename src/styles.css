@@ -396,3 +396,8 @@
 .pa-outcard .pa-logo { width: 64px; height: 64px; padding: 8px; }
 .pa-out-dot { width: 10px; height: 10px; border-radius: 9999px; border: 2px solid currentColor; opacity: 0.7; }
 .pa-out-dot.on { background: currentColor; opacity: 1; }
+
+/* Texto grande (Más → Apariencia): toda la app un 12 % más grande, también lo que tiene tamaños fijos en px */
+html.text-large body {
+    zoom: 1.12;
+}

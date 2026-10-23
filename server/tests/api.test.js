@@ -289,6 +289,95 @@ describe('ficha del pelotero: por situación, postemporada, pitcheos de sus jueg
     });
 });
 
+describe('avisos con la app cerrada (Web Push sin dependencias)', () => {
+    const crypto = require('crypto');
+    const { encrypt, vapidHeader, b64url, fromB64url } = require('../services/webPush');
+    const push = require('../services/pushAlerts');
+
+    // El navegador: sus llaves y su secreto de autenticación
+    const browserKeys = crypto.createECDH('prime256v1');
+    browserKeys.generateKeys();
+    const authSecret = crypto.randomBytes(16);
+    const subscription = { endpoint: 'https://fcm.googleapis.com/fcm/send/abc123', keys: { p256dh: b64url(browserKeys.getPublicKey()), auth: b64url(authSecret) } };
+
+    /** Descifra como lo haría el navegador (RFC 8291) */
+    const decrypt = (body) => {
+        const salt = body.subarray(0, 16);
+        const idlen = body[20];
+        const serverPublic = body.subarray(21, 21 + idlen);
+        const cipherText = body.subarray(21 + idlen);
+        const shared = browserKeys.computeSecret(serverPublic);
+        const keyInfo = Buffer.concat([Buffer.from('WebPush: info\0'), browserKeys.getPublicKey(), serverPublic]);
+        const ikm = Buffer.from(crypto.hkdfSync('sha256', shared, authSecret, keyInfo, 32));
+        const cek = Buffer.from(crypto.hkdfSync('sha256', ikm, salt, Buffer.from('Content-Encoding: aes128gcm\0'), 16));
+        const nonce = Buffer.from(crypto.hkdfSync('sha256', ikm, salt, Buffer.from('Content-Encoding: nonce\0'), 12));
+        const decipher = crypto.createDecipheriv('aes-128-gcm', cek, nonce);
+        decipher.setAuthTag(cipherText.subarray(cipherText.length - 16));
+        const plain = Buffer.concat([decipher.update(cipherText.subarray(0, cipherText.length - 16)), decipher.final()]);
+        expect(plain[plain.length - 1]).toBe(2);
+        return plain.subarray(0, plain.length - 1).toString();
+    };
+
+    it('el mensaje cifrado lo descifra el navegador con sus llaves', () => {
+        const body = encrypt(JSON.stringify({ title: '¡Playball!', body: 'Empezó LIC vs EST' }), subscription.keys.p256dh, subscription.keys.auth);
+        expect(body.readUInt32BE(16)).toBe(4096);
+        expect(JSON.parse(decrypt(body))).toEqual({ title: '¡Playball!', body: 'Empezó LIC vs EST' });
+    });
+
+    it('la firma VAPID es un JWT ES256 válido para el servicio de avisos', () => {
+        const server = crypto.createECDH('prime256v1');
+        server.generateKeys();
+        const vapid = { publicKey: b64url(server.getPublicKey()), privateKey: b64url(server.getPrivateKey()), subject: 'mailto:prueba@grullonb.com' };
+        const header = vapidHeader(subscription.endpoint, vapid, Date.parse('2026-10-23T12:00:00Z'));
+        const [, token, key] = header.match(/^vapid t=([^,]+), k=(.+)$/);
+        expect(key).toBe(vapid.publicKey);
+        const [head, claims, signature] = token.split('.');
+        expect(JSON.parse(fromB64url(claims).toString())).toMatchObject({ aud: 'https://fcm.googleapis.com', sub: 'mailto:prueba@grullonb.com' });
+        const raw = server.getPublicKey();
+        const publicKey = crypto.createPublicKey({ key: { kty: 'EC', crv: 'P-256', x: b64url(raw.subarray(1, 33)), y: b64url(raw.subarray(33)) }, format: 'jwk' });
+        expect(crypto.verify('sha256', Buffer.from(`${head}.${claims}`), { key: publicKey, dsaEncoding: 'ieee-p1363' }, fromB64url(signature))).toBe(true);
+    });
+
+    it('qué avisar: 10 minutos antes, playball solo en la 1.ª, final reciente y sin hit desde la 6.ª', () => {
+        const now = Date.parse('2026-10-23T23:00:00Z');
+        const team = (id, extra = {}) => ({ id, abbrev: `T${id}`, name: `Equipo ${id}`, score: 0, hits: 3, isWinner: false, ...extra });
+        const games = [
+            { gamePk: 1, state: 'preview', date: '2026-10-23T23:08:00Z', detailedState: 'Scheduled', away: team(1), home: team(2) },
+            { gamePk: 2, state: 'preview', date: '2026-10-23T23:30:00Z', detailedState: 'Scheduled', away: team(1), home: team(2) },
+            { gamePk: 3, state: 'live', date: '2026-10-23T22:55:00Z', inningsPlayed: 1, live: { inning: 1 }, away: team(3), home: team(4) },
+            { gamePk: 4, state: 'live', date: '2026-10-23T21:00:00Z', inningsPlayed: 5, live: { inning: 5 }, away: team(5), home: team(6) },
+            { gamePk: 5, state: 'final', date: '2026-10-23T19:00:00Z', away: team(7, { score: 2 }), home: team(8, { score: 5, isWinner: true }) },
+            { gamePk: 6, state: 'live', date: '2026-10-23T20:00:00Z', inningsPlayed: 7, live: { inning: 7 }, away: team(9, { hits: 0 }), home: team(10) }
+        ];
+        const keys = push.eventsOf(games, now).map((event) => event.key);
+        expect(keys).toEqual(['el-play-notified-pre-1', 'el-play-notified-start-3', 'el-play-notified-final-5', 'el-play-notified-noHitter-6-9']);
+        const [soon, start] = push.eventsOf(games, now);
+        // La campana avisa todo; el favorito no avisa «10 minutos antes»; cada quien apaga lo que no quiere
+        expect(push.wants({ games: [1], teams: [], kinds: {} }, soon)).toBe(true);
+        expect(push.wants({ games: [], teams: [1], kinds: {} }, soon)).toBe(false);
+        expect(push.wants({ games: [], teams: [4], kinds: {} }, start)).toBe(true);
+        expect(push.wants({ games: [3], teams: [], kinds: { start: false } }, start)).toBe(false);
+    });
+
+    it('solo se guardan suscripciones de servicios de avisos y el cron necesita el secreto', async () => {
+        expect(push.cleanSubscription({ subscription, games: [5, 5, 'x', 7], teams: [669], kinds: { final: false }, lang: 'en' })).toMatchObject({ games: [5, 7], teams: [669], kinds: { soon: true, final: false }, lang: 'en' });
+        expect(push.cleanSubscription({ subscription: { ...subscription, endpoint: 'https://evil.example.com/x' } })).toBeNull();
+        const app = require('../app');
+        const server = app.listen(0);
+        await new Promise((resolve) => server.once('listening', resolve));
+        const base = `http://127.0.0.1:${server.address().port}/api/v2`;
+        try {
+            expect((await fetch(`${base}/push/run`, { method: 'POST' })).status).toBe(401);
+            const config = await (await fetch(`${base}/push/config`)).json();
+            expect(config).toEqual({ enabled: false, publicKey: null });
+            const report = await fetch(`${base}/client-error`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'x is undefined', url: '/juego/1' }) });
+            expect(report.status).toBe(204);
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    });
+});
+
 describe('retos del ABS (árbitro robot)', () => {
     // El juego real con retos puestos a mano tal como los manda MLB en LIDOM 2026-27
     const feed = fixture('feed-826279');

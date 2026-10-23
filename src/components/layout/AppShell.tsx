@@ -13,10 +13,31 @@ import { UpdateToast } from './UpdateToast';
 import { Toast } from './Toast';
 import { InstallSheet } from '../install/InstallSheet';
 import { useFantasyAlerts } from '../../hooks/useFantasyAlerts';
+import { useGameAlerts } from '../../hooks/useGameAlerts';
+import { syncPush } from '../../lib/push';
+import { usePreferences } from '../../store/preferences';
+import { ErrorBoundary } from '../common/ErrorBoundary';
 
 /** Avisa lo que suma tu equipo del Fantasy mientras la app está abierta (en cualquier página) */
 const FantasyWatcher: React.FC = () => {
     useFantasyAlerts();
+    return null;
+};
+
+/** Avisos con la app abierta (en cualquier página) y la suscripción para los de la app cerrada */
+const AlertsWatcher: React.FC = () => {
+    const { activeLeague } = useLeague();
+    const schedule = useSchedule(activeLeague);
+    useGameAlerts(schedule.data?.games);
+    const { subscribedGames, favoriteTeamId, alertKinds } = usePreferences();
+    const { i18n } = useTranslation();
+    const lang = i18n.language.startsWith('en') ? 'en' : 'es';
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            syncPush({ games: subscribedGames, teams: favoriteTeamId ? [favoriteTeamId] : [], kinds: alertKinds, lang }).catch(() => undefined);
+        }, 1500);
+        return () => window.clearTimeout(timer);
+    }, [subscribedGames, favoriteTeamId, alertKinds, lang]);
     return null;
 };
 
@@ -108,7 +129,9 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
     return (
         <div className="min-h-screen pb-[calc(96px+env(safe-area-inset-bottom))]">
             <OfflineBanner />
-            <main className="mx-auto max-w-3xl">{children}</main>
+            <main className="mx-auto max-w-3xl">
+                <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
+            </main>
             {/* Avisos uno sobre otro (no se tapan) y encima de las hojas abiertas */}
             <div className="pointer-events-none fixed inset-x-4 bottom-[calc(96px+env(safe-area-inset-bottom))] z-[60] mx-auto flex max-w-md flex-col gap-2 [&>*]:pointer-events-auto">
                 <UpdateToast />
@@ -118,6 +141,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
             <LiveSheet open={liveOpen} onClose={() => setLiveOpen(false)} />
             <InstallSheet />
             <FantasyWatcher />
+            <AlertsWatcher />
         </div>
     );
 };

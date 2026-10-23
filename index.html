@@ -43,6 +43,8 @@
     // Aplica el tema guardado antes de pintar (evita el destello claro/oscuro)
     try {
       var theme = JSON.parse(localStorage.getItem('el-play-theme') || '"system"');
+      // Texto grande (Más → Apariencia) desde el primer cuadro
+      if (JSON.parse(localStorage.getItem('el-play-large-text') || 'false') === true) document.documentElement.classList.add('text-large');
       if (theme === 'light' || theme === 'dark') {
         document.documentElement.setAttribute('data-theme', theme);
         document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) { meta.setAttribute('content', theme === 'dark' ? '#0b0c10' : '#f6f6f9'); });

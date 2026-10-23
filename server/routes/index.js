@@ -9,6 +9,7 @@ const { getPhotos, getPhoto } = require('../controllers/photoController');
 const { getFantasyDay, getFantasyFan, getFantasySeason, getFantasyOwners } = require('../controllers/fantasyController');
 const { getPlayers, getPlayer, getPlayerPitches, getTeamStats, getTransactions } = require('../controllers/playersController');
 const { getPreview } = require('../controllers/previewController');
+const { getPushConfig, subscribe, unsubscribe, run, clientError } = require('../controllers/pushController');
 
 // Una liga que no existe es un error (antes se respondía LIDOM sin avisar); sin `league` sigue siendo LIDOM
 router.use((req, res, next) => (req.query.league && !isLeague(req.query.league) ? res.status(400).json({ error: 'invalid_league' }) : next()));
@@ -28,6 +29,11 @@ router.get('/v2/players', getPlayers);
 router.get('/v2/team-stats', getTeamStats);
 router.get('/v2/preview', getPreview);
 router.get('/v2/race', getRace);
+router.get('/v2/push/config', getPushConfig);
+router.post('/v2/push/subscribe', subscribe);
+router.post('/v2/push/unsubscribe', unsubscribe);
+router.post('/v2/push/run', run);
+router.post('/v2/client-error', clientError);
 router.get('/v2/player/:id', getPlayer);
 router.get('/v2/player/:id/pitches', getPlayerPitches);
 router.get('/v2/transactions', getTransactions);

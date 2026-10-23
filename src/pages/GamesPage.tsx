@@ -6,7 +6,6 @@ import { useSchedule } from '../lib/queries';
 import { dayKey, dayRange, formatDayNumber, formatLongDate, formatWeekday, todayKey } from '../lib/format';
 import { useLeague } from '../store/LeagueContext';
 import { usePreferences } from '../store/preferences';
-import { useGameAlerts } from '../hooks/useGameAlerts';
 import { GameFeedCard, GameFeedCardSkeleton } from '../components/feed/GameFeedCard';
 import { TeamStories } from '../components/feed/TeamStories';
 import { LogoMark } from '../components/brand/Logo';
@@ -105,7 +104,6 @@ export const GamesPage: React.FC = () => {
     const [playing, setPlaying] = useState(false);
     const [leagueOpen, setLeagueOpen] = useState(false);
 
-    useGameAlerts(schedule.data?.games);
     useEffect(() => {
         setSelected(null);
         setTeam(null);

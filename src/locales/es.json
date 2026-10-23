@@ -215,7 +215,9 @@
   "offline": {
     "banner": "Sin conexión: estás viendo lo último que cargó",
     "title": "Sin conexión",
-    "notLoaded": "Esta pantalla todavía no se había cargado. Cuando vuelva el internet se carga sola."
+    "notLoaded": "Esta pantalla todavía no se había cargado. Cuando vuelva el internet se carga sola.",
+    "bannerAge_one": "Sin conexión: lo que ves es de hace {{count}} min. Se pone al día solo al volver la señal.",
+    "bannerAge_other": "Sin conexión: lo que ves es de hace {{count}} min. Se pone al día solo al volver la señal."
   },
   "update": {
     "available": "Hay una versión nueva de El Play",
@@ -243,7 +245,10 @@
     "invalid_user": "Ese enlace de perfil no es válido.",
     "accounts_disabled": "Las cuentas no están disponibles ahora mismo.",
     "accounts_unavailable": "No pudimos cargar los fanáticos. Intenta en un momento.",
-    "player_not_found": "No encontramos a ese pelotero."
+    "player_not_found": "No encontramos a ese pelotero.",
+    "screen": "Esta pantalla tuvo un problema",
+    "screenHint": "Ya nos llegó el aviso. Recarga para seguir.",
+    "reload": "Recargar"
   },
   "games": {
     "title": "Juegos",
@@ -522,7 +527,12 @@
     "gameStarting": "¡El juego va a empezar!",
     "gameStartingBody": "{{away}} vs {{home}} empieza en 10 minutos.",
     "playball": "¡Playball!",
-    "playballBody": "Empezó {{away}} vs {{home}}."
+    "playballBody": "Empezó {{away}} vs {{home}}.",
+    "final": "Final: {{away}} {{awayRuns}} - {{homeRuns}} {{home}}",
+    "finalBody": "Ganó {{team}}",
+    "noHitter": "¡{{team}} lanza sin hit!",
+    "noHitterBody_one": "{{team}} no ha conectado hit en {{count}} entrada",
+    "noHitterBody_other": "{{team}} no ha conectado hit en {{count}} entradas"
   },
   "minigame": {
     "title": "Flappy Ball",
@@ -570,7 +580,9 @@
       "smart": "En los juegos de tu equipo, todas; en los demás, solo jonrones, ponches, fin de entrada y victorias.",
       "all": "Una animación con cada jugada de cualquier juego.",
       "off": "Sin animaciones: solo el marcador."
-    }
+    },
+    "largeText": "Texto grande",
+    "largeTextHint": "Letras, botones y tablas un poco más grandes"
   },
   "stories": {
     "label": "Equipos",
@@ -1606,5 +1618,33 @@
     "title": "Tu equipo del Fantasy",
     "gain": "{{name}} +{{pts}}",
     "total": "tu equipo va con {{pts}}"
+  },
+  "alertsMore": {
+    "title": "Avisos",
+    "kinds": {
+      "soon": "10 minutos antes",
+      "start": "Playball",
+      "final": "Resultado final",
+      "noHitter": "Juego sin hit en marcha",
+      "fantasy": "Tu equipo del Fantasy"
+    },
+    "hints": {
+      "soon": "De los juegos con campana",
+      "start": "De los juegos con campana y de tu equipo favorito",
+      "final": "De los juegos con campana y de tu equipo favorito",
+      "noHitter": "Desde la 6.ª entrada",
+      "fantasy": "Cuando tus peloteros suman puntos (con la app abierta)"
+    },
+    "closed": "Con la app cerrada",
+    "status": {
+      "checking": "…",
+      "on": "Activos: te llegan aunque la app esté cerrada.",
+      "off": "Toca para activarlos: el teléfono te va a pedir permiso.",
+      "blocked": "Están bloqueados en los ajustes del teléfono para El Play.",
+      "unsupported": "Este navegador no los permite. En iPhone, instala la app en la pantalla de inicio.",
+      "server-off": "Todavía no están disponibles: por ahora llegan con la app abierta."
+    },
+    "enable": "Activar avisos",
+    "how": "Los de la campana y los de tu equipo favorito (la estrella en Posiciones)."
   }
 }

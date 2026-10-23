@@ -29,6 +29,8 @@ export interface Runners {
 
 export interface ScheduleTeam extends TeamBase {
     score: number | null;
+    /** Hits en el juego (null antes de empezar) */
+    hits?: number | null;
     isWinner: boolean;
     probable: PersonRef | null;
 }

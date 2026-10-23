@@ -215,7 +215,9 @@
   "offline": {
     "banner": "Offline: showing the last data loaded",
     "title": "You're offline",
-    "notLoaded": "This screen hadn't loaded yet. It will load by itself when you're back online."
+    "notLoaded": "This screen hadn't loaded yet. It will load by itself when you're back online.",
+    "bannerAge_one": "Offline: what you see is from {{count}} min ago. It updates on its own when you're back online.",
+    "bannerAge_other": "Offline: what you see is from {{count}} min ago. It updates on its own when you're back online."
   },
   "update": {
     "available": "A new version of El Play is available",
@@ -243,7 +245,10 @@
     "invalid_user": "That profile link isn't valid.",
     "accounts_disabled": "Accounts aren't available right now.",
     "accounts_unavailable": "We couldn't load the fans. Try again in a moment.",
-    "player_not_found": "We couldn't find that player."
+    "player_not_found": "We couldn't find that player.",
+    "screen": "This screen ran into a problem",
+    "screenHint": "We've been notified. Reload to keep going.",
+    "reload": "Reload"
   },
   "games": {
     "title": "Games",
@@ -522,7 +527,12 @@
     "gameStarting": "Game starting soon!",
     "gameStartingBody": "{{away}} vs {{home}} starts in 10 minutes.",
     "playball": "Play ball!",
-    "playballBody": "{{away}} vs {{home}} has started."
+    "playballBody": "{{away}} vs {{home}} has started.",
+    "final": "Final: {{away}} {{awayRuns}} - {{homeRuns}} {{home}}",
+    "finalBody": "{{team}} won",
+    "noHitter": "{{team}} is throwing a no-hitter!",
+    "noHitterBody_one": "{{team}} has no hits through {{count}} inning",
+    "noHitterBody_other": "{{team}} has no hits through {{count}} innings"
   },
   "minigame": {
     "title": "Flappy Ball",
@@ -570,7 +580,9 @@
       "smart": "Every play in your team's games; in the rest, only homers, strikeouts, inning changes and wins.",
       "all": "An animation for every play in any game.",
       "off": "No animations: just the score."
-    }
+    },
+    "largeText": "Large text",
+    "largeTextHint": "Slightly bigger text, buttons and tables"
   },
   "stories": {
     "label": "Teams",
@@ -1606,5 +1618,33 @@
     "title": "Your Fantasy team",
     "gain": "{{name}} +{{pts}}",
     "total": "your team has {{pts}}"
+  },
+  "alertsMore": {
+    "title": "Alerts",
+    "kinds": {
+      "soon": "10 minutes before",
+      "start": "Play ball",
+      "final": "Final score",
+      "noHitter": "No-hitter in progress",
+      "fantasy": "Your Fantasy team"
+    },
+    "hints": {
+      "soon": "For games with the bell on",
+      "start": "Bell games and your favorite team",
+      "final": "Bell games and your favorite team",
+      "noHitter": "From the 6th inning",
+      "fantasy": "When your players score points (app open)"
+    },
+    "closed": "With the app closed",
+    "status": {
+      "checking": "…",
+      "on": "On: you'll get them even with the app closed.",
+      "off": "Tap to turn them on: your phone will ask for permission.",
+      "blocked": "They are blocked in your phone settings for El Play.",
+      "unsupported": "This browser doesn't support them. On iPhone, add the app to your home screen.",
+      "server-off": "Not available yet: for now they arrive while the app is open."
+    },
+    "enable": "Turn on alerts",
+    "how": "Games with the bell and your favorite team (the star in Standings)."
   }
 }

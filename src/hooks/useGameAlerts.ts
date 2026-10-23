@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import type { ScheduleGame } from '../types';
 import { usePreferences } from '../store/preferences';
 
-const notifiedKey = (kind: string, gamePk: number) => `el-play-notified-${kind}-${gamePk}`;
+/** Hora de inicio del juego en ms */
+const startsInBase = (game: ScheduleGame) => new Date(game.date).getTime();
 
 const alreadyNotified = (key: string) => {
     try {
@@ -59,19 +60,24 @@ export const showAlert = async (title: string, options: NotificationOptions): Pr
 // Avisos locales para los juegos con campana: 10 min antes y al cantar playball
 export const useGameAlerts = (games: ScheduleGame[] | undefined) => {
     const { t } = useTranslation();
-    const { subscribedGames } = usePreferences();
+    const { subscribedGames, favoriteTeamId, alertKinds } = usePreferences();
 
     useEffect(() => {
-        if (!games?.length || !subscribedGames.length || !('Notification' in window) || Notification.permission !== 'granted') return;
+        const following = subscribedGames.length > 0 || favoriteTeamId !== null;
+        if (!games?.length || !following || !('Notification' in window) || Notification.permission !== 'granted') return;
 
         const check = () => {
             const now = Date.now();
             for (const game of games) {
-                if (!subscribedGames.includes(game.gamePk)) continue;
+                // La campana avisa todo; el equipo favorito, desde el playball (como los avisos con la app cerrada)
+                const bell = subscribedGames.includes(game.gamePk);
+                const favorite = favoriteTeamId !== null && (game.away.id === favoriteTeamId || game.home.id === favoriteTeamId);
+                if (!bell && !favorite) continue;
                 const startsIn = new Date(game.date).getTime() - now;
                 const names = { away: game.away.name, home: game.home.name };
-                const notify = (kind: string, title: string, body: string) => {
-                    const key = notifiedKey(kind, game.gamePk);
+                const notify = (kind: string, title: string, body: string) => notifyKey(`${kind}-${game.gamePk}`, title, body);
+                const notifyKey = (id: string, title: string, body: string) => {
+                    const key = `el-play-notified-${id}`;
                     if (alreadyNotified(key) || sending.has(key)) return;
                     sending.add(key);
                     showAlert(title, { body, icon: '/icons/icon-192-v2.png', tag: key, data: { url: `/juego/${game.gamePk}` } })
@@ -79,11 +85,26 @@ export const useGameAlerts = (games: ScheduleGame[] | undefined) => {
                         .then((shown) => shown && markNotified(key))
                         .finally(() => sending.delete(key));
                 };
-                if (game.state === 'preview' && startsIn > 0 && startsIn <= 10 * 60 * 1000) {
+                if (bell && alertKinds.soon && game.state === 'preview' && startsIn > 0 && startsIn <= 10 * 60 * 1000) {
                     notify('pre', t('notifications.gameStarting'), t('notifications.gameStartingBody', names));
                 }
-                if (game.state === 'live') {
+                // Playball solo en la 1.ª: si la app se abre con el juego en la 7.ª no se canta (ni se repite)
+                if (alertKinds.start && game.state === 'live' && (game.live?.inning ?? 1) <= 1) {
                     notify('start', t('notifications.playball'), t('notifications.playballBody', names));
+                }
+                if (alertKinds.final && game.state === 'final' && now - startsInBase(game) < 6 * 3600000 && (game.away.isWinner || game.home.isWinner)) {
+                    const winner = game.away.isWinner ? game.away : game.home;
+                    notify('final', t('notifications.final', { away: game.away.abbrev, awayRuns: game.away.score ?? 0, home: game.home.abbrev, homeRuns: game.home.score ?? 0 }), t('notifications.finalBody', { team: winner.name }));
+                }
+                if (alertKinds.noHitter && game.state === 'live' && (game.live?.inning ?? 0) >= 6) {
+                    for (const [batting, pitching] of [
+                        [game.away, game.home],
+                        [game.home, game.away]
+                    ] as const) {
+                        if (batting.hits !== 0) continue;
+                        const key = `${game.gamePk}-${batting.id}`;
+                        notifyKey(`noHitter-${key}`, t('notifications.noHitter', { team: pitching.abbrev }), t('notifications.noHitterBody', { team: batting.name, count: game.live?.inning ?? 6 }));
+                    }
                 }
             }
         };
@@ -91,5 +112,5 @@ export const useGameAlerts = (games: ScheduleGame[] | undefined) => {
         check();
         const interval = setInterval(check, 60 * 1000);
         return () => clearInterval(interval);
-    }, [games, subscribedGames, t]);
+    }, [games, subscribedGames, favoriteTeamId, alertKinds, t]);
 };

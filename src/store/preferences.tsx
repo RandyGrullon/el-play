@@ -21,6 +21,9 @@ interface Preferences {
     /** Qué avisos quiere (todos encendidos al principio) */
     alertKinds: AlertKinds;
     setAlertKind: (kind: keyof AlertKinds, on: boolean) => void;
+    /** Todo un poco más grande (letras, botones y tablas) */
+    largeText: boolean;
+    setLargeText: (on: boolean) => void;
 }
 
 /** soon: 10 min antes; start: playball; final: resultado; noHitter: juego sin hit en marcha; fantasy: tu equipo del Fantasy */
@@ -32,6 +35,7 @@ export interface AlertKinds {
     fantasy: boolean;
 }
 const ALERT_KINDS_KEY = 'el-play-alert-kinds';
+const LARGE_TEXT_KEY = 'el-play-large-text';
 const DEFAULT_KINDS: AlertKinds = { soon: true, start: true, final: true, noHitter: true, fantasy: true };
 
 const PreferencesContext = createContext<Preferences | undefined>(undefined);
@@ -67,6 +71,11 @@ export const PreferencesProvider: React.FC<{ children: ReactNode }> = ({ childre
     const [alertKinds, setAlertKinds] = useState<AlertKinds>(() => ({ ...DEFAULT_KINDS, ...readStorage<Partial<AlertKinds>>(ALERT_KINDS_KEY, {}) }));
     useEffect(() => writeStorage(ALERT_KINDS_KEY, alertKinds), [alertKinds]);
     const setAlertKind = useCallback((kind: keyof AlertKinds, on: boolean) => setAlertKinds((current) => ({ ...current, [kind]: on })), []);
+    const [largeText, setLargeText] = useState<boolean>(() => readStorage<boolean>(LARGE_TEXT_KEY, false));
+    useEffect(() => {
+        writeStorage(LARGE_TEXT_KEY, largeText);
+        document.documentElement.classList.toggle('text-large', largeText);
+    }, [largeText]);
 
     useEffect(() => {
         applyTheme(theme);
@@ -103,8 +112,8 @@ export const PreferencesProvider: React.FC<{ children: ReactNode }> = ({ childre
     );
 
     const value = useMemo(
-        () => ({ theme, setTheme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription, playAnimations, animationMode, setAnimationMode, alertKinds, setAlertKind }),
-        [theme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription, playAnimations, animationMode, alertKinds, setAlertKind]
+        () => ({ theme, setTheme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription, playAnimations, animationMode, setAnimationMode, alertKinds, setAlertKind, largeText, setLargeText }),
+        [theme, cycleTheme, favoriteTeamId, toggleFavoriteTeam, subscribedGames, toggleGameSubscription, playAnimations, animationMode, alertKinds, setAlertKind, largeText]
     );
 
     return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;

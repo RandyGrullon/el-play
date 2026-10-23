@@ -2,7 +2,8 @@
 import './lib/appUpdate';
 // Antes de React: Chrome lanza el aviso de instalación una sola vez y muy temprano
 import './lib/install';
-import i18n from './i18n';
+import i18n, { languageReady } from './i18n';
+import { installErrorReporting } from './lib/errorReport';
 import { consumeAuthRedirect, type AuthRedirect } from './lib/account';
 import { showToast } from './lib/toast';
 import React from 'react';
@@ -14,6 +15,7 @@ import { blockZoom } from './lib/noZoom';
 import './styles.css';
 
 blockZoom();
+installErrorReporting();
 
 // Vuelta desde el enlace del correo o desde Google: la sesión queda abierta (o se dice qué falló)
 const authMessage = (auth: AuthRedirect) => {
@@ -42,11 +44,14 @@ const queryClient = new QueryClient({
     }
 });
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
-        <QueryClientProvider client={queryClient}>
-            <App />
-            {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />}
-        </QueryClientProvider>
-    </React.StrictMode>
+// En inglés se espera su archivo de textos (ya en la caché del teléfono casi siempre) para no pintar en español
+languageReady.finally(() =>
+    ReactDOM.createRoot(document.getElementById('root')!).render(
+        <React.StrictMode>
+            <QueryClientProvider client={queryClient}>
+                <App />
+                {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />}
+            </QueryClientProvider>
+        </React.StrictMode>
+    )
 );
