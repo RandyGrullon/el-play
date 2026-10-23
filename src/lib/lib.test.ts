@@ -1005,3 +1005,20 @@ describe('probabilidad de victoria en vivo', () => {
         expect(biggestSwings(points)[0].atBat?.i).toBe(4);
     });
 });
+
+describe('posiciones: clasificados y eliminados', () => {
+    it('asegura a quien ya no pueden alcanzar y elimina a quien ya no alcanza el 4.º puesto', async () => {
+        const { raceStatus } = await import('./standings');
+        const row = (id: number, wins: number, losses: number) => ({ rank: 0, team: { id }, wins, losses } as unknown as import('../types').StandingRow);
+        // 50 juegos: al primero (40) ya no lo alcanzan 4; el 4.º (25) todavía puede caer ante el 5.º (22, le quedan 4); el último (10-36) ya no llega
+        const rows = [row(1, 40, 6), row(2, 30, 16), row(3, 28, 18), row(4, 25, 21), row(5, 22, 24), row(6, 10, 36)];
+        const status = raceStatus(rows, 4, 50);
+        expect(status.get(1)).toBe('clinched');
+        expect(status.get(6)).toBe('eliminated');
+        expect(status.get(4)).toBeNull();
+        // Sin el total de juegos no se marca nada
+        expect(raceStatus(rows, 4, null).size).toBe(0);
+        // Si la liga lo marca, cuenta
+        expect(raceStatus([{ ...rows[3], clinched: true }, ...rows.slice(0, 3), ...rows.slice(4)], 4, 50).get(4)).toBe('clinched');
+    });
+});

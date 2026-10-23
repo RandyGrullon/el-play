@@ -142,7 +142,11 @@ export const GamesPage: React.FC = () => {
         return list.sort((a, b) => ORDER[a.state] - ORDER[b.state] || favorite(a) - favorite(b) || a.date.localeCompare(b.date));
     }, [dayGames, team, favoriteTeamId]);
 
-    const nextDay = useMemo(() => days.find((key) => key > day && byDay[key]?.length), [days, day, byDay]);
+    // El próximo día con juegos (del equipo elegido, si hay uno)
+    const nextDay = useMemo(
+        () => days.find((key) => key > day && byDay[key]?.some((game) => team === null || game.away.id === team || game.home.id === team)),
+        [days, day, byDay, team]
+    );
     const leagueName = t(`leagues.${activeLeague}.name`);
 
     return (

@@ -14,6 +14,7 @@ import { useShare } from '../../share/ShareSheet';
 import { resultFromSchedule } from '../../share/subjects';
 import { TeamLogo } from '../ui/TeamLogo';
 import { Bases, OutsDots } from '../game/Bases';
+import { useNow } from '../../hooks/useNow';
 
 const inkOn = (hex: string) => {
     const value = parseInt(hex.replace('#', ''), 16);
@@ -30,6 +31,7 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
         <div className={`flex min-w-0 flex-1 flex-col justify-center px-4 py-4 ${align === 'end' ? 'items-end text-right' : ''}`} style={{ backgroundColor: team.color, color: inkOn(team.color) }}>
             <span className="max-w-full truncate text-[15px] font-bold">{teamDisplayName(team, i18n.language)}</span>
             <span className="text-[54px] font-extrabold leading-none tabular-nums">{team.score ?? 0}</span>
+            {team.record && <span className="text-xs font-semibold tabular-nums opacity-75">{team.record.wins}-{team.record.losses}</span>}
         </div>
     );
     return (
@@ -64,6 +66,7 @@ const TeamRow: React.FC<{ team: ScheduleTeam; dim: boolean; showScore: boolean }
             <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-base font-bold">
                 <span className="truncate">{teamDisplayName(team, i18n.language)}</span>
                 {favoriteTeamId === team.id && <Star className="h-3.5 w-3.5 shrink-0 fill-gold text-gold" />}
+                {team.record && <span className="shrink-0 text-xs font-semibold text-muted tabular-nums">{team.record.wins}-{team.record.losses}</span>}
             </span>
             {showScore && <span className="text-2xl font-extrabold tabular-nums">{team.score ?? 0}</span>}
         </div>
@@ -80,7 +83,10 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
     const notPlayed = isNotPlayed(game.detailedState);
     const final = game.state === 'final';
     const subscribed = subscribedGames.includes(game.gamePk);
-    const startsIn = new Date(game.date).getTime() - Date.now();
+    // La cuenta regresiva avanza sola (cada 30 s) mientras falten menos de 6 horas
+    const soon = game.state === 'preview' && new Date(game.date).getTime() - Date.now() < 6 * 3600000;
+    const now = useNow(30000, soon);
+    const startsIn = new Date(game.date).getTime() - now;
     const handlers = { onMouseEnter: () => prefetch(game.gamePk), onTouchStart: () => prefetch(game.gamePk), onFocus: () => prefetch(game.gamePk) };
 
     if (game.state === 'live' && game.live) {
@@ -114,6 +120,7 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                         {startsIn > 0 && startsIn < 6 * 3600000 && <span className="font-semibold text-muted">· {formatCountdown(startsIn, i18n.language)}</span>}
                     </span>
                 )}
+                {game.doubleheader?.game && <span className="pill shrink-0 bg-accent/10 text-accent-ink">{t('card.doubleheader', { n: game.doubleheader.game })}</span>}
                 {game.description && game.gameType !== 'R' && <span className="truncate text-xs text-muted">{game.description}</span>}
                 <span className="ml-auto flex items-center gap-1">
                     {final && (

@@ -1,6 +1,6 @@
 // Piezas del juego en vivo: el lanzador en el montículo con su cansancio, los detalles del juego, el aviso de datos
 // detenidos y el juego sin hit.
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Clock, Flame, Info } from 'lucide-react';
 import type { GameDetail } from '../../types';
@@ -9,16 +9,8 @@ import { PlayerPhoto } from '../ui/PlayerPhoto';
 import { fatigueOf, hoursMinutes, noHitterOf, staleMinutes, umpireRole, velocityTrend, windText, type Fatigue } from '../../lib/liveGame';
 import { stateName, weatherName, weatherTemp } from '../../lib/baseball';
 import { formatTime } from '../../lib/format';
+import { useNow } from '../../hooks/useNow';
 
-/** La hora de ahora, que avanza sola (para los minutos sin datos y lo que lleva el juego) */
-const useNow = (every = 30000) => {
-    const [now, setNow] = useState(() => Date.now());
-    useEffect(() => {
-        const timer = window.setInterval(() => setNow(Date.now()), every);
-        return () => window.clearInterval(timer);
-    }, [every]);
-    return now;
-};
 
 const FATIGUE_TONE: Record<Fatigue, string> = {
     fresh: 'bg-ball',

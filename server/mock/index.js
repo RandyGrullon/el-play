@@ -652,6 +652,8 @@ const scheduleGame = (game) => {
     return {
         gamePk: game.gamePk,
         gameType: 'R',
+        doubleHeader: 'N',
+        gameNumber: 1,
         gameDate: new Date(game.start).toISOString(),
         status: feed.gameData.status,
         teams: { away: side('away'), home: side('home') },

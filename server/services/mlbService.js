@@ -137,7 +137,9 @@ const standingRow = (record, leagueKey) => ({
     home: splitOf(record, 'home'),
     away: splitOf(record, 'away'),
     oneRun: splitOf(record, 'oneRun'),
-    extraInning: splitOf(record, 'extraInning')
+    extraInning: splitOf(record, 'extraInning'),
+    // MLB lo marca cuando el equipo ya aseguró su puesto
+    clinched: !!record.clinched
 });
 
 // gamesBack de /standings no es fiable (daba -9.5 al líder de LIDOM 2025): se calcula contra el primero
@@ -217,7 +219,9 @@ const loadLidomStandings = async (league, season, regularSeasonGames) => {
         roundRobin: roundRobinRows,
         final: finalRows,
         activePhase,
-        roundRobinInfo: postseason?.records?.[0]?.roundRobin?.games ? postseason.records[0].roundRobin : null
+        roundRobinInfo: postseason?.records?.[0]?.roundRobin?.games ? postseason.records[0].roundRobin : null,
+        // Para saber quién ya clasificó o quedó eliminado (con lo que le falta a cada uno)
+        regularSeasonGames: regularSeasonGames || null
     };
 };
 
@@ -392,6 +396,65 @@ const fetchLeaders = async (leagueKey = 'lidom') => {
     );
 };
 
+// ---------------------------------------------------------------- La carrera (juegos sobre .500 día a día)
+
+const dayIn = (timeZone, time) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(time));
+
+/** Cada equipo, juego a juego de la temporada regular: victorias menos derrotas al final de cada día */
+const loadRace = async (league, season, now) => {
+    const startDate = league.id === 'lidom' ? `${season}-09-01` : `${season}-01-01`;
+    const seasonEnd = league.id === 'lidom' ? `${season + 1}-02-28` : `${season}-12-31`;
+    const today = dayIn(league.timeZone, now);
+    const endDate = today < seasonEnd ? today : seasonEnd;
+    const data = await http.mlbGet(`${MLB_API_BASE}/schedule`, { sportId: league.sportId, leagueId: league.leagueId, startDate, endDate, gameTypes: 'R' });
+    const games = (data?.dates || [])
+        .flatMap((date) => (date.games || []).map((game) => ({ ...game, day: date.date || dayIn(league.timeZone, game.gameDate) })))
+        .filter((game) => (!game.gameType || game.gameType === 'R') && game.status?.abstractGameState === 'Final' && !/postponed|cancel/i.test(game.status?.detailedState || ''));
+    const days = [...new Set(games.map((game) => game.day))].sort();
+    const teams = new Map();
+    const touch = (team) => {
+        if (!teams.has(team.id)) {
+            teams.set(team.id, {
+                id: team.id,
+                abbrev: teamAbbrev(team.id, league.id, team.abbreviation, team.name),
+                name: findTeam(team.id, league.id)?.name || team.name || '',
+                color: teamColor(team.id, league.id),
+                logo: teamLogo(team.id),
+                diff: 0,
+                points: []
+            });
+        }
+        return teams.get(team.id);
+    };
+    for (const day of days) {
+        for (const game of games.filter((item) => item.day === day)) {
+            const away = game.teams?.away;
+            const home = game.teams?.home;
+            if (!away?.team?.id || !home?.team?.id || away.score === home.score) continue;
+            const awayWon = typeof away.isWinner === 'boolean' ? away.isWinner : (away.score ?? 0) > (home.score ?? 0);
+            touch(away.team).diff += awayWon ? 1 : -1;
+            touch(home.team).diff += awayWon ? -1 : 1;
+        }
+        for (const team of teams.values()) team.points.push(team.diff);
+    }
+    // Los que entraron tarde a la lista empiezan en 0 los días de antes
+    for (const team of teams.values()) team.points = [...new Array(days.length - team.points.length).fill(0), ...team.points];
+    return { season, days, teams: [...teams.values()].map(({ diff, ...team }) => team).sort((a, b) => b.points[b.points.length - 1] - a.points[a.points.length - 1]) };
+};
+
+const fetchRace = async (leagueKey = 'lidom', now = Date.now()) => {
+    const league = leagueOf(leagueKey);
+    const { season } = await getSeasonInfo(league.id);
+    let race = await loadRace(league, season, now);
+    let isPreviousSeason = false;
+    // Antes del primer juego: la de la temporada pasada
+    if (!race.days.length) {
+        race = await loadRace(league, season - 1, now);
+        isPreviousSeason = true;
+    }
+    return { league: league.id, ...race, isPreviousSeason };
+};
+
 const getFeedInfo = (gamePk) => feedInfo.get(String(gamePk)) || null;
 
 module.exports = {
@@ -402,6 +465,7 @@ module.exports = {
     fetchSchedule,
     fetchStandings,
     fetchLeaders,
+    fetchRace,
     scheduleRange,
     LEADER_CATEGORIES
 };

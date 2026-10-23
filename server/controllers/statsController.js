@@ -1,5 +1,5 @@
 const { cached } = require('../utils/cache');
-const { fetchStandings, fetchLeaders } = require('../services/mlbService');
+const { fetchStandings, fetchLeaders, fetchRace } = require('../services/mlbService');
 const { TTL, LEAGUES, isLeague } = require('../config/constants');
 const { setCdnCache } = require('../middleware/cacheHeaders');
 const { toLegacyLeaders } = require('../utils/legacy');
@@ -28,7 +28,20 @@ const leadersHandler = (format) => async (req, res, next) => {
     }
 };
 
+// La carrera de la temporada: cambia una vez por día de juegos (30 minutos)
+const raceHandler = async (req, res, next) => {
+    try {
+        const leagueKey = leagueFrom(req);
+        const data = await cached(`race_${leagueKey}`, 1800, () => fetchRace(leagueKey), { staleSec: 3600 });
+        res.set('Cache-Control', 'public, max-age=0, s-maxage=1800, stale-while-revalidate=3600');
+        res.json(data);
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
+    getRace: raceHandler,
     getStandings: standingsHandler,
     getLeadersV2: leadersHandler((data) => data),
     getLeaders: leadersHandler(toLegacyLeaders)

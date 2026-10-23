@@ -527,6 +527,8 @@ const transformScheduleGame = (game, leagueKey) => {
         date: game.gameDate,
         // Hora por definir (p. ej. el segundo de un doble juego): `date` trae una hora de relleno
         startTimeTBD: !!game.status?.startTimeTBD,
+        // Doble cartelera: qué juego del día es (1 o 2)
+        doubleheader: game.doubleHeader && game.doubleHeader !== 'N' ? { game: game.gameNumber ?? null } : null,
         state,
         detailedState: game.status?.detailedState || '',
         gameType: game.gameType || null,

@@ -1,4 +1,4 @@
-import type { GameDetail, LeagueId, Leaders, Schedule, Standings, PreviewData } from '../types';
+import type { GameDetail, LeagueId, Leaders, Schedule, Standings, PreviewData, RaceData } from '../types';
 
 const TIMEOUT_MS = 10000;
 
@@ -46,5 +46,6 @@ export const api = {
     game: (gamePk: string | number, signal?: AbortSignal) => getJson<GameDetail>(`/api/v2/game/${gamePk}`, signal),
     standings: (league: LeagueId, signal?: AbortSignal) => getJson<Standings>(`/api/v2/standings?league=${league}`, signal),
     leaders: (league: LeagueId, signal?: AbortSignal) => getJson<Leaders>(`/api/v2/leaders?league=${league}`, signal),
+    race: (league: LeagueId, signal?: AbortSignal) => getJson<RaceData>(`/api/v2/race?league=${league}`, signal),
     preview: (league: LeagueId, away: number, home: number, signal?: AbortSignal) => getJson<PreviewData>(`/api/v2/preview?league=${league}&away=${away}&home=${home}`, signal)
 };

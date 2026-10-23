@@ -268,7 +268,8 @@
     "win": "G: {{name}}",
     "loss": "P: {{name}}",
     "save": "S: {{name}}",
-    "notifying": "Te avisaremos"
+    "notifying": "Te avisaremos",
+    "doubleheader": "Doble cartelera · juego {{n}}"
   },
   "teams": {
     "favorite": "Tu equipo",
@@ -468,7 +469,13 @@
     "finalNote": "Gana la serie el primero en llegar a 4 victorias.",
     "cutRoundRobin": "Pasan al Round Robin",
     "cutFinal": "Pasan a la final",
-    "cutNext": "Clasifican"
+    "cutNext": "Clasifican",
+    "status": {
+      "clinched": "Clasificado",
+      "eliminated": "Eliminado"
+    },
+    "lastTenIs": "{{record}} en los últimos 10",
+    "lastTenShort": "{{record}} últ. 10"
   },
   "leaders": {
     "title": "Líderes",
@@ -1309,7 +1316,9 @@
         "extra": "Extra innings",
         "last10": "Últimos 10",
         "streak": "Racha"
-      }
+      },
+      "legend": "¿Qué significa cada columna?",
+      "luckNote": "Esperado: el récord que «merece» por carreras anotadas y permitidas. Si gana más de lo esperado, ha tenido suerte en los juegos cerrados."
     },
     "live": {
       "title": "Panel PRO",
@@ -1434,5 +1443,12 @@
       "L": "Z",
       "S": "A"
     }
+  },
+  "race": {
+    "title": "La carrera",
+    "subtitle": "Juegos sobre .500 de cada equipo, día a día. Toca un equipo para resaltarlo.",
+    "aria": "Juegos sobre .500 hoy: {{teams}}",
+    "pick": "Resaltar un equipo",
+    "previous": "Todavía no hay juegos de la temporada nueva: esta es la pasada."
   }
 }

@@ -268,7 +268,8 @@
     "win": "W: {{name}}",
     "loss": "L: {{name}}",
     "save": "S: {{name}}",
-    "notifying": "We'll notify you"
+    "notifying": "We'll notify you",
+    "doubleheader": "Doubleheader · game {{n}}"
   },
   "teams": {
     "favorite": "Your team",
@@ -468,7 +469,13 @@
     "finalNote": "First to 4 wins takes the series.",
     "cutRoundRobin": "Advance to the Round Robin",
     "cutFinal": "Advance to the final",
-    "cutNext": "Advance"
+    "cutNext": "Advance",
+    "status": {
+      "clinched": "Clinched",
+      "eliminated": "Eliminated"
+    },
+    "lastTenIs": "{{record}} in last 10",
+    "lastTenShort": "{{record}} L10"
   },
   "leaders": {
     "title": "Leaders",
@@ -1309,7 +1316,9 @@
         "extra": "Extra innings",
         "last10": "Last 10",
         "streak": "Streak"
-      }
+      },
+      "legend": "What does each column mean?",
+      "luckNote": "Expected: the record a team \"deserves\" from runs scored and allowed. Winning more than expected usually means luck in close games."
     },
     "live": {
       "title": "PRO panel",
@@ -1434,5 +1443,12 @@
       "L": "L",
       "S": "S"
     }
+  },
+  "race": {
+    "title": "The race",
+    "subtitle": "Each team's games over .500, day by day. Tap a team to highlight it.",
+    "aria": "Games over .500 today: {{teams}}",
+    "pick": "Highlight a team",
+    "previous": "No games yet this season: this is last season's race."
   }
 }

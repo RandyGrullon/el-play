@@ -17,6 +17,8 @@ import { StatsTabs } from '../components/layout/StatsTabs';
 import { StandingsTable } from '../components/pro/StandingsTable';
 import { ProBadge } from '../components/pro/ProBadge';
 import { useIsPro } from '../lib/pro';
+import { raceStatus, type RaceStatus } from '../lib/standings';
+import { RaceChart } from '../components/standings/RaceChart';
 
 type Phase = 'regular' | 'roundRobin' | 'final';
 
@@ -26,7 +28,21 @@ const streakLabel = (code: string, t: (key: string) => string) => {
 };
 
 // Tarjetas de equipo (diseño D4): el primero grande con su color, el resto en filas
-const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabel?: string }> = ({ rows, cutoff, cutoffLabel }) => {
+const StatusBadge: React.FC<{ status: RaceStatus | undefined; onColor?: boolean }> = ({ status, onColor }) => {
+    const { t } = useTranslation();
+    if (!status) return null;
+    return (
+        <span className={`pill shrink-0 px-2 py-0.5 text-[10px] uppercase ${onColor ? 'bg-black/15' : status === 'clinched' ? 'bg-ball/15 text-ball' : 'bg-raised text-muted'}`}>
+            {t(`standings.status.${status}`)}
+        </span>
+    );
+};
+
+/** «G2 · 6-4 últ. 10» (racha y últimos 10, corto para que quepa al lado del nombre) */
+const formLine = (row: StandingRow, t: (key: string, options?: Record<string, unknown>) => string) =>
+    [streakLabel(row.streak, t) || null, row.lastTen ? t('standings.lastTenShort', { record: `${row.lastTen.wins}-${row.lastTen.losses}` }) : null].filter(Boolean).join(' · ');
+
+const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabel?: string; statuses?: Map<number, RaceStatus> }> = ({ rows, cutoff, cutoffLabel, statuses }) => {
     const { t, i18n } = useTranslation();
     const { favoriteTeamId, toggleFavoriteTeam } = usePreferences();
     if (!rows.length) return <p className="card px-4 py-8 text-center text-sm text-muted">{t('standings.noData')}</p>;
@@ -58,7 +74,9 @@ const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabe
                     <span className="block text-sm font-semibold opacity-80 tabular-nums">
                         {leader.wins}-{leader.losses} · {leader.pct}
                     </span>
+                    {leader.lastTen && <span className="block text-xs font-semibold opacity-75">{t('standings.lastTenIs', { record: `${leader.lastTen.wins}-${leader.lastTen.losses}` })}</span>}
                 </span>
+                <StatusBadge status={statuses?.get(leader.team.id)} onColor />
                 {streakLabel(leader.streak, t) && <span className="pill bg-black/10">{streakLabel(leader.streak, t)}</span>}
                 {favoriteButton(leader, ink)}
             </div>
@@ -78,7 +96,11 @@ const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabe
                                 {row.rank}
                             </span>
                             <TeamLogo team={row.team} size={26} />
-                            <span className={`line-clamp-2 min-w-0 flex-1 text-[15px] font-bold leading-tight ${below ? 'text-muted' : ''}`}>{teamDisplayName(row.team, i18n.language)}</span>
+                            <span className="min-w-0 flex-1">
+                                <span className={`line-clamp-2 text-[15px] font-bold leading-tight ${below ? 'text-muted' : ''}`}>{teamDisplayName(row.team, i18n.language)}</span>
+                                {formLine(row, t) && <span className="block truncate text-[11px] font-semibold text-muted">{formLine(row, t)}</span>}
+                            </span>
+                            <StatusBadge status={statuses?.get(row.team.id)} />
                             <span className="font-bold tabular-nums">{row.wins}-{row.losses}</span>
                             <span className="w-9 text-right text-sm font-semibold text-muted tabular-nums">{row.gamesBack === '-' ? '—' : row.gamesBack}</span>
                             {favoriteButton(row)}
@@ -105,6 +127,8 @@ export const StandingsPage: React.FC = () => {
     const activePhase = data?.type === 'lidom' ? phase ?? data.activePhase : null;
     const rows = !data ? [] : data.type === 'lidom' ? data[activePhase!] : data.type === 'sdc' ? data.teams : [];
     const phaseLabel = activePhase ? t(`standings.${activePhase}`) : '';
+    // Clasificados y eliminados en la temporada regular de LIDOM (4 de 6 pasan al Round Robin)
+    const statuses = data?.type === 'lidom' && activePhase === 'regular' ? raceStatus(data.regular, 4, data.regularSeasonGames) : undefined;
 
     const shareTable = (tableRows: StandingRow[], subtitle: string) =>
         share({
@@ -168,11 +192,13 @@ export const StandingsPage: React.FC = () => {
                             <StandingsTable rows={rows} cutoff={activePhase === 'regular' ? 4 : activePhase === 'roundRobin' ? data.roundRobinInfo?.advance ?? 2 : undefined} />
                         ) : (
                             <StandingCards
+                                statuses={statuses}
                                 rows={rows}
                                 cutoff={activePhase === 'regular' ? 4 : activePhase === 'roundRobin' ? data.roundRobinInfo?.advance ?? 2 : undefined}
                                 cutoffLabel={activePhase === 'regular' ? t('standings.cutRoundRobin') : t('standings.cutFinal')}
                             />
                         )}
+                        {activePhase === 'regular' && <RaceChart league={activeLeague} />}
                     </>
                 ) : data?.type === 'wbc' ? (
                     <div className="space-y-6">

@@ -4,7 +4,7 @@ const { LEAGUES, isLeague } = require('../config/constants');
 
 const { getGame, getGameData } = require('../controllers/gameController');
 const { getSchedule, getScheduleV2 } = require('../controllers/scheduleController');
-const { getStandings, getLeaders, getLeadersV2 } = require('../controllers/statsController');
+const { getStandings, getLeaders, getLeadersV2, getRace } = require('../controllers/statsController');
 const { getPhotos, getPhoto } = require('../controllers/photoController');
 const { getFantasyDay, getFantasyFan, getFantasySeason, getFantasyOwners } = require('../controllers/fantasyController');
 const { getPlayers, getPlayer, getTeamStats } = require('../controllers/playersController');
@@ -27,6 +27,7 @@ router.get('/v2/fantasy', getFantasyDay);
 router.get('/v2/players', getPlayers);
 router.get('/v2/team-stats', getTeamStats);
 router.get('/v2/preview', getPreview);
+router.get('/v2/race', getRace);
 router.get('/v2/player/:id', getPlayer);
 
 // Modo PRO: cada parte del rediseño registra sus rutas en su archivo (requires explícitos para que Vercel los incluya)

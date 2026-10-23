@@ -39,6 +39,8 @@ export interface ScheduleGame {
     date: string;
     /** Hora por definir (p. ej. el segundo de un doble juego): `date` trae una hora de relleno */
     startTimeTBD?: boolean;
+    /** Doble cartelera: qué juego del día es */
+    doubleheader?: { game: number | null } | null;
     state: GameState;
     detailedState: string;
     gameType: string | null;
@@ -290,6 +292,8 @@ export interface StandingRow {
     away?: { wins: number; losses: number } | null;
     oneRun?: { wins: number; losses: number } | null;
     extraInning?: { wins: number; losses: number } | null;
+    /** La liga ya lo marca como clasificado */
+    clinched?: boolean;
 }
 
 interface SeasonInfo {
@@ -299,7 +303,7 @@ interface SeasonInfo {
 
 export type Standings = SeasonInfo &
     (
-        | { type: 'lidom'; regular: StandingRow[]; roundRobin: StandingRow[]; final: StandingRow[]; activePhase: 'regular' | 'roundRobin' | 'final'; roundRobinInfo: { games: number; advance: number } | null }
+        | { type: 'lidom'; regular: StandingRow[]; roundRobin: StandingRow[]; final: StandingRow[]; activePhase: 'regular' | 'roundRobin' | 'final'; roundRobinInfo: { games: number; advance: number } | null; regularSeasonGames?: number | null }
         | { type: 'wbc'; pools: Record<string, StandingRow[]> }
         | { type: 'sdc'; teams: StandingRow[] }
     );
@@ -358,4 +362,13 @@ export interface PreviewData {
         runs: Record<string, number>;
     } | null;
     hot: { startDate: string; endDate: string; teams: Record<string, HotHitter[]> } | null;
+}
+
+/** /api/v2/race: victorias menos derrotas de cada equipo al final de cada día de juegos */
+export interface RaceData {
+    league: LeagueId;
+    season: number;
+    isPreviousSeason: boolean;
+    days: string[];
+    teams: { id: number; abbrev: string; name: string; color: string; logo: string; points: number[] }[];
 }

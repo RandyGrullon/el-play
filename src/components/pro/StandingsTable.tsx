@@ -16,6 +16,7 @@ export const StandingsTable: React.FC<{ rows: StandingRow[]; cutoff?: number }> 
     const heads = ['w', 'l', 'pct', 'gb', 'rs', 'ra', 'diff', 'expected', 'home', 'away', 'oneRun', 'extra', 'last10', 'streak'];
 
     return (
+        <div className="space-y-2">
         <div className="card overflow-x-auto">
             <table className="w-full whitespace-nowrap text-[13px] tabular-nums">
                 <thead>
@@ -65,6 +66,19 @@ export const StandingsTable: React.FC<{ rows: StandingRow[]; cutoff?: number }> 
                     })}
                 </tbody>
             </table>
+        </div>
+        <details className="card px-4 py-3 text-sm">
+            <summary className="cursor-pointer font-bold">{t('pro.standings.legend')}</summary>
+            <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                {heads.map((key) => (
+                    <React.Fragment key={key}>
+                        <dt className="font-extrabold">{t(`pro.standings.${key}`)}</dt>
+                        <dd className="text-muted">{t(`pro.standings.long.${key}`)}</dd>
+                    </React.Fragment>
+                ))}
+            </dl>
+            <p className="mt-2 text-xs text-muted">{t('pro.standings.luckNote')}</p>
+        </details>
         </div>
     );
 };

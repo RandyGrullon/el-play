@@ -59,6 +59,16 @@ export const usePreview = (league: LeagueId, away: number, home: number, enabled
         retry
     });
 
+/** La carrera de la temporada (cambia una vez por día de juegos) */
+export const useRace = (league: LeagueId, enabled = true) =>
+    useQuery({
+        queryKey: ['race', league],
+        queryFn: ({ signal }) => api.race(league, signal),
+        enabled,
+        staleTime: 30 * MINUTE,
+        retry
+    });
+
 export const useLeaders = (league: LeagueId) =>
     useQuery({
         queryKey: keys.leaders(league),

@@ -178,6 +178,54 @@ describe('previa: enfrentamientos de la temporada, los que vienen calientes y al
     });
 });
 
+describe('inicio y posiciones: doble cartelera y la carrera de la temporada', () => {
+    const app = require('../app');
+    const call = async (path) => {
+        const server = app.listen(0);
+        await new Promise((resolve) => server.once('listening', resolve));
+        try {
+            const res = await fetch(`http://127.0.0.1:${server.address().port}${path}`);
+            return { status: res.status, body: await res.json() };
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    };
+    const game = (day, away, awayRuns, home, homeRuns, extra = {}) => ({
+        gamePk: Math.floor(Math.random() * 1e6), gameType: 'R', gameDate: `${day}T23:00:00Z`, status: { abstractGameState: 'Final', detailedState: 'Final' },
+        teams: { away: { team: { id: away }, score: awayRuns }, home: { team: { id: home }, score: homeRuns } }, ...extra
+    });
+
+    it('el segundo juego de una doble cartelera dice cuál es', () => {
+        const base = game('2026-10-20', 669, 1, 671, 2);
+        expect(transformScheduleGame({ ...base, doubleHeader: 'S', gameNumber: 2 }, 'lidom').doubleheader).toEqual({ game: 2 });
+        expect(transformScheduleGame({ ...base, doubleHeader: 'N', gameNumber: 1 }, 'lidom').doubleheader).toBeNull();
+    });
+
+    it('la carrera: victorias menos derrotas al final de cada día, sin pospuestos', async () => {
+        http.mlbGet = async (url) => {
+            if (url.endsWith('/league/131')) return { leagues: [{ season: '2026', numGames: 50 }] };
+            if (url.endsWith('/schedule'))
+                return {
+                    dates: [
+                        { date: '2026-10-16', games: [game('2026-10-16', 669, 5, 671, 3), game('2026-10-16', 667, 2, 668, 1)] },
+                        { date: '2026-10-17', games: [game('2026-10-17', 671, 4, 669, 1), game('2026-10-17', 668, 0, 667, 0, { status: { abstractGameState: 'Final', detailedState: 'Postponed' } })] },
+                        { date: '2026-10-18', games: [game('2026-10-18', 669, 6, 667, 2)] }
+                    ]
+                };
+            throw new Error(`sin stub: ${url}`);
+        };
+        const res = await call('/api/v2/race?league=lidom');
+        expect(res.status).toBe(200);
+        expect(res.body.days).toEqual(['2026-10-16', '2026-10-17', '2026-10-18']);
+        const points = Object.fromEntries(res.body.teams.map((team) => [team.id, team.points]));
+        expect(points[669]).toEqual([1, 0, 1]);
+        expect(points[671]).toEqual([-1, 0, 0]);
+        expect(points[667]).toEqual([1, 1, 0]);
+        expect(points[668]).toEqual([-1, -1, -1]);
+        expect(res.body.teams[0].id).toBe(669);
+    });
+});
+
 describe('retos del ABS (árbitro robot)', () => {
     // El juego real con retos puestos a mano tal como los manda MLB en LIDOM 2026-27
     const feed = fixture('feed-826279');
