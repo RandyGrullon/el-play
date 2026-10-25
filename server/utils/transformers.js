@@ -18,11 +18,29 @@ const int = (value) => {
     return typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : null;
 };
 
-/** 'preview' | 'live' | 'final' a partir de status.abstractGameState (no del texto detailedState). */
+/**
+ * 'preview' | 'live' | 'final' a partir de status.abstractGameState (no del texto detailedState).
+ * Un juego suspendido MLB lo deja en «Live» hasta que se reanuda, aunque nadie esté jugando, y le pone la fecha de la
+ * reanudación: se trata como programado para que no salga «en vivo» ni cierre o sume puntos en el fantasy antes de tiempo.
+ */
 const gameState = (status = {}) => {
+    if (/^Suspended/i.test(status.detailedState || '')) return 'preview';
     if (status.abstractGameState === 'Live') return 'live';
     if (status.abstractGameState === 'Final') return 'final';
     return 'preview';
+};
+
+/**
+ * Juegos del /schedule sin repetir: uno suspendido sale el día que se suspendió y otra vez el de la reanudación, con el
+ * mismo gamePk. Queda el de la fecha más reciente, en su lugar de la lista.
+ */
+const uniqueGames = (games) => {
+    const latest = new Map();
+    for (const game of games) {
+        const seen = latest.get(game.gamePk);
+        if (!seen || String(game.gameDate || '') > String(seen.gameDate || '')) latest.set(game.gamePk, game);
+    }
+    return games.filter((game) => latest.get(game.gamePk) === game);
 };
 
 /** Resultado de un pitcheo: 'ball' | 'strike' | 'inplay' | 'hbp'. Usa las banderas de MLB y cae a los códigos. */
@@ -561,4 +579,4 @@ const transformScheduleGame = (game, leagueKey) => {
     };
 };
 
-module.exports = { transformGame, transformScheduleGame, transformGameData: transformGame, gameState, classifyPitch };
+module.exports = { transformGame, transformScheduleGame, transformGameData: transformGame, gameState, uniqueGames, classifyPitch };

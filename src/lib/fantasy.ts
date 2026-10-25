@@ -4,6 +4,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { LeagueId, ScheduleGame } from '../types';
+import { isOnHold } from './baseball';
 
 export interface FantasyLine {
     [stat: string]: number | string;
@@ -83,7 +84,6 @@ export const fetchFantasyDay = async (league: LeagueId, date?: string, signal?: 
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
-const NOT_PLAYING = /postponed|cancel|suspended/i;
 
 /**
  * Cada cuánto se vuelve a pedir el día: cada 20 s con juegos en vivo y cada 30 s desde 15 min antes del próximo juego
@@ -94,7 +94,7 @@ export const fantasyInterval = (day: FantasyDay | undefined, now = Date.now()): 
     if (!day) return false;
     if (day.games.some((game) => game.state === 'live')) return 20 * SECOND;
     const starts = day.games
-        .filter((game) => game.state === 'preview' && !NOT_PLAYING.test(game.detailedState ?? ''))
+        .filter((game) => game.state === 'preview' && !isOnHold(game, now))
         .map((game) => Date.parse(game.date))
         .filter(Number.isFinite);
     if (!starts.length) return false;

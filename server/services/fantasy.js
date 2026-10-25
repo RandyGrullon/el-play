@@ -1,7 +1,7 @@
 const { MLB_API_BASE, LEAGUES } = require('../config/constants');
 const http = require('./http');
 const { getLiveFeed } = require('./liveFeed');
-const { transformScheduleGame, gameState } = require('../utils/transformers');
+const { transformScheduleGame, gameState, uniqueGames } = require('../utils/transformers');
 const { teamAbbrev, teamColor, teamLogo } = require('../utils/teams');
 const { cached } = require('../utils/cache');
 const { CREDITS, CREDITS_FROM, dayPrices, projectionOf } = require('./fantasyPrices');
@@ -195,7 +195,7 @@ const fantasyDay = async (leagueKey, date) => {
         endDate: day,
         hydrate: 'team,linescore'
     });
-    const all = (data?.dates || []).flatMap((entry) => entry.games || []);
+    const all = uniqueGames((data?.dates || []).flatMap((entry) => entry.games || []));
     const todays = all.filter((game) => game.officialDate === day && !['Postponed', 'Cancelled'].includes(game.status?.detailedState));
 
     const players = new Map();

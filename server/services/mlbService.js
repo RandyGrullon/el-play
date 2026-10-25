@@ -3,7 +3,7 @@ const http = require('./http');
 const { getLiveFeed } = require('./liveFeed');
 const { getSeasonInfo } = require('./season');
 const { cached } = require('../utils/cache');
-const { transformGame, transformScheduleGame } = require('../utils/transformers');
+const { transformGame, transformScheduleGame, uniqueGames } = require('../utils/transformers');
 const { teamLogo, teamColor, teamColor2, teamAbbrev, teamFlag, findTeam } = require('../utils/teams');
 
 const leagueOf = (leagueKey) => LEAGUES[leagueKey] || LEAGUES.lidom;
@@ -93,15 +93,27 @@ const fetchSchedule = async (leagueKey = 'lidom') => {
         data = await http.mlbGet(`${MLB_API_BASE}/schedule`, { ...params, hydrate: 'linescore' });
     }
 
-    let games = (data?.dates || []).flatMap((date) => date.games || []);
+    let games = uniqueGames((data?.dates || []).flatMap((date) => date.games || []));
     if (league.id === 'wbc') games = games.filter((game) => WBC_OFFICIAL_TYPES.has(game.gameType));
+    const cards = games.map((game) => transformScheduleGame(game, league.id));
+
+    // Un suspendido trae el récord del día en que se suspendió: va el de la tarjeta empezada más reciente de cada equipo
+    for (const card of cards.filter((c) => /^Suspended/i.test(c.detailedState))) {
+        for (const side of [card.away, card.home]) {
+            const latest = cards
+                .filter((c) => c !== card && c.state !== 'preview' && (c.away.id === side.id || c.home.id === side.id))
+                .sort((a, b) => b.date.localeCompare(a.date))[0];
+            const record = latest && (latest.away.id === side.id ? latest.away.record : latest.home.record);
+            if (record) side.record = record;
+        }
+    }
 
     return {
         league: league.id,
         timeZone: league.timeZone,
         startDate,
         endDate,
-        games: games.map((game) => transformScheduleGame(game, league.id))
+        games: cards
     };
 };
 
@@ -407,8 +419,7 @@ const loadRace = async (league, season, now) => {
     const today = dayIn(league.timeZone, now);
     const endDate = today < seasonEnd ? today : seasonEnd;
     const data = await http.mlbGet(`${MLB_API_BASE}/schedule`, { sportId: league.sportId, leagueId: league.leagueId, startDate, endDate, gameTypes: 'R' });
-    const games = (data?.dates || [])
-        .flatMap((date) => (date.games || []).map((game) => ({ ...game, day: date.date || dayIn(league.timeZone, game.gameDate) })))
+    const games = uniqueGames((data?.dates || []).flatMap((date) => (date.games || []).map((game) => ({ ...game, day: date.date || dayIn(league.timeZone, game.gameDate) }))))
         .filter((game) => (!game.gameType || game.gameType === 'R') && game.status?.abstractGameState === 'Final' && !/postponed|cancel/i.test(game.status?.detailedState || ''));
     const days = [...new Set(games.map((game) => game.day))].sort();
     const teams = new Map();

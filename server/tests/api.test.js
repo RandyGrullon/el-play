@@ -11,11 +11,11 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 const fixture = (name) => JSON.parse(gunzipSync(readFileSync(path.join(dir, 'fixtures', `${name}.json.gz`))).toString('utf8'));
 
 const http = require('../services/http');
-const { transformGame, transformScheduleGame, classifyPitch } = require('../utils/transformers');
+const { transformGame, transformScheduleGame, gameState, uniqueGames, classifyPitch } = require('../utils/transformers');
 const { applyPatch } = require('../utils/jsonPatch');
 const { getLiveFeed, resetLiveFeeds } = require('../services/liveFeed');
 const { cached, clearCache } = require('../utils/cache');
-const { fetchStandings, fetchLeaders } = require('../services/mlbService');
+const { fetchStandings, fetchLeaders, fetchSchedule } = require('../services/mlbService');
 const { toLegacyGame } = require('../utils/legacy');
 
 const realGet = http.mlbGet;
@@ -502,6 +502,57 @@ describe('transformScheduleGame', () => {
         expect(card.away.record).toEqual({ wins: expect.any(Number), losses: expect.any(Number) });
         expect(card.decisions.winner.name).toBeTruthy();
         expect(cards.every((c) => c.away.abbrev.length === 3 && c.home.abbrev.length === 3)).toBe(true);
+    });
+
+    // 851559 EST en AGU: suspendido por lluvia el 21-oct en la baja del 2.º y MLB lo dejó «Live» con la fecha del lunes 26
+    const suspended = {
+        gamePk: 851559, gameType: 'R', gameDate: '2026-10-26T23:15:00Z', officialDate: '2026-10-26',
+        status: { abstractGameState: 'Live', codedGameState: 'T', detailedState: 'Suspended' },
+        teams: { away: { team: { id: 669 }, score: 0 }, home: { team: { id: 667 }, score: 0 } },
+        linescore: { currentInning: 2, isTopInning: false, inningState: 'Bottom', innings: [{}, {}], teams: { away: { hits: 1 }, home: { hits: 0 } } }
+    };
+
+    it('un juego suspendido no sale en vivo: queda programado para su fecha nueva', () => {
+        const card = transformScheduleGame(suspended, 'lidom');
+        expect(card.state).toBe('preview');
+        expect(card.detailedState).toBe('Suspended');
+        expect(card.live).toBeNull();
+        expect(card.away.score).toBeNull();
+        expect(gameState({ abstractGameState: 'Live', detailedState: 'Suspended: Rain' })).toBe('preview');
+        expect(gameState({ abstractGameState: 'Live', detailedState: 'Delayed: Rain' })).toBe('live');
+        expect(gameState({ abstractGameState: 'Live', detailedState: 'In Progress' })).toBe('live');
+    });
+
+    it('el suspendido que sale el día que se suspendió y el de la reanudación queda una sola vez', () => {
+        const original = { ...suspended, gameDate: '2026-10-21T23:15:00Z', officialDate: '2026-10-21' };
+        const other = { ...suspended, gamePk: 851540, gameDate: '2026-10-22T23:30:00Z' };
+        expect(uniqueGames([original, other, suspended])).toEqual([other, suspended]);
+        expect(uniqueGames([suspended, other, original])).toEqual([suspended, other]);
+    });
+
+    it('el calendario lo trae una vez, programado y con el récord de hoy (no el del día que se suspendió)', async () => {
+        const original = { ...suspended, gameDate: '2026-10-21T23:15:00Z', officialDate: '2026-10-21' };
+        const later = (pk, day, away, awayRecord, home, homeRecord) => ({
+            gamePk: pk, gameType: 'R', gameDate: `${day}T21:00:00Z`, officialDate: day, status: { abstractGameState: 'Final', detailedState: 'Final' },
+            teams: { away: { team: { id: away }, score: 1, leagueRecord: awayRecord }, home: { team: { id: home }, score: 2, leagueRecord: homeRecord } }
+        });
+        const withRecords = {
+            ...suspended,
+            teams: { away: { ...suspended.teams.away, leagueRecord: { wins: 2, losses: 2 } }, home: { ...suspended.teams.home, leagueRecord: { wins: 1, losses: 3 } } }
+        };
+        http.mlbGet = async () => ({
+            dates: [
+                { date: '2026-10-21', games: [{ ...original, teams: withRecords.teams }] },
+                { date: '2026-10-25', games: [later(1, '2026-10-25', 669, { wins: 4, losses: 2 }, 670, { wins: 4, losses: 3 }), later(2, '2026-10-25', 667, { wins: 1, losses: 5 }, 672, { wins: 5, losses: 2 })] },
+                { date: '2026-10-26', games: [withRecords] }
+            ]
+        });
+        const { games } = await fetchSchedule('lidom');
+        const card = games.filter((game) => game.gamePk === 851559);
+        expect(card).toHaveLength(1);
+        expect(card[0]).toMatchObject({ state: 'preview', date: '2026-10-26T23:15:00Z', live: null });
+        expect(card[0].away.record).toEqual({ wins: 4, losses: 2 });
+        expect(card[0].home.record).toEqual({ wins: 1, losses: 5 });
     });
 });
 

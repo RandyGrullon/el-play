@@ -1,4 +1,5 @@
 import type { GameDetail, Schedule } from '../types';
+import { isOnHold } from './baseball';
 
 // Cada cuánto volver a pedir datos según el estado real del juego (status.abstractGameState).
 // Nunca devuelve "no actualizar nunca" mientras pueda haber cambios: antes un juego que empezaba en
@@ -9,13 +10,11 @@ const MINUTE = 60 * SECOND;
 
 const jitter = (ms: number) => ms + Math.floor(Math.random() * Math.min(ms * 0.15, 2 * SECOND));
 
-const NOT_PLAYING = /postponed|cancel|suspended/i;
-
 export function gameInterval(game: GameDetail | undefined, now = Date.now()): number | false {
     if (!game) return 15 * SECOND;
     if (game.state === 'final') return false;
     if (game.state === 'live') return jitter(5 * SECOND);
-    if (NOT_PLAYING.test(game.detailedState)) return 10 * MINUTE;
+    if (isOnHold(game, now)) return 10 * MINUTE;
     const startsIn = game.date ? new Date(game.date).getTime() - now : Infinity;
     if (startsIn > 2 * 60 * MINUTE) return 15 * MINUTE;
     if (startsIn > 30 * MINUTE) return 3 * MINUTE;
@@ -29,7 +28,7 @@ export function scheduleInterval(schedule: Schedule | undefined, now = Date.now(
     if (games.some((game) => game.state === 'live')) return jitter(10 * SECOND);
 
     const pending = games
-        .filter((game) => game.state === 'preview' && !NOT_PLAYING.test(game.detailedState))
+        .filter((game) => game.state === 'preview' && !isOnHold(game, now))
         .map((game) => new Date(game.date).getTime() - now);
     // Ya pasó la hora y sigue "Programado" (retraso, calentamiento): mirar seguido
     if (pending.some((startsIn) => startsIn <= 5 * MINUTE)) return jitter(15 * SECOND);

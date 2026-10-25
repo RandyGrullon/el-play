@@ -322,6 +322,21 @@ export const weatherTemp = (temp: string | null | undefined, lang: string) => {
 
 export const isNotPlayed = (detailedState: string) => /postponed|cancel/i.test(detailedState);
 
+/** Suspendido: el servidor lo manda como programado, con la fecha de la reanudación si ya la hay */
+export const isSuspended = (detailedState: string) => /^suspended/i.test(detailedState);
+
+/**
+ * En espera: pospuesto, cancelado o suspendido cuya hora pasó hace más de una hora (todavía sin fecha nueva).
+ * Un suspendido con la fecha nueva por delante se espera como cualquier juego programado.
+ */
+export const isOnHold = (game: { detailedState?: string | null; date?: string | null }, now = Date.now()) => {
+    const state = game.detailedState ?? '';
+    if (isNotPlayed(state)) return true;
+    if (!isSuspended(state)) return false;
+    const start = Date.parse(game.date ?? '');
+    return !Number.isFinite(start) || start < now - 3600000;
+};
+
 /** "Alta 7" / "Top 7"; entre entradas "Mitad 7" / "Mid 7" */
 export const inningName = (inning: { n?: number | null; isTop: boolean; state?: string | null } | null | undefined, lang: string, short = false) => {
     if (!inning?.n) return '';

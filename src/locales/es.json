@@ -274,7 +274,8 @@
     "loss": "P: {{name}}",
     "save": "S: {{name}}",
     "notifying": "Te avisaremos",
-    "doubleheader": "Doble cartelera · juego {{n}}"
+    "doubleheader": "Doble cartelera · juego {{n}}",
+    "rescheduled": "Reprogramado"
   },
   "teams": {
     "favorite": "Tu equipo",

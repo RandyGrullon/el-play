@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { gameInterval, scheduleInterval } from './polling';
-import { atBatForZone, arsenal, battedBalls, battersFaced, inningBreak, isWhiff, pitchesByPitcher, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName, weatherName, weatherTemp } from './baseball';
+import { atBatForZone, arsenal, battedBalls, battersFaced, inningBreak, isOnHold, isWhiff, pitchesByPitcher, describePlay, eventName, inningName, pitchCallName, pitchTypeName, stateName, weatherName, weatherTemp } from './baseball';
 import { dayKey, dayRange, seasonLabel, surname } from './format';
 import { nameKey, photoSources } from './photos';
 import { forMode, newPlayEvents, outVariant, titleClinch } from './playEvents';
@@ -50,6 +50,16 @@ describe('polling', () => {
         expect(scheduleInterval(schedule([{ state: 'preview', detailedState: 'Scheduled', date: new Date(NOW + 60 * MIN).toISOString() }]), NOW)).toBe(10 * MIN);
         expect(scheduleInterval(schedule([{ state: 'preview', detailedState: 'Scheduled', date: new Date(NOW + 8 * MIN).toISOString() }]), NOW)).toBe(3 * MIN);
         expect(scheduleInterval(schedule([{ state: 'final', detailedState: 'Final', date: '' }]), NOW)).toBe(30 * MIN);
+    });
+
+    it('suspendido: con fecha nueva se espera como programado; sin ella, en espera como un pospuesto', () => {
+        expect(gameInterval(game('preview', 45, 'Suspended'), NOW)).toBe(3 * MIN);
+        expect(gameInterval(game('preview', -10, 'Suspended: Rain'), NOW)).toBeLessThan(15000);
+        expect(gameInterval(game('preview', -120, 'Suspended: Rain'), NOW)).toBe(10 * MIN);
+        expect(isOnHold({ detailedState: 'Suspended', date: new Date(NOW + 60 * MIN).toISOString() }, NOW)).toBe(false);
+        expect(isOnHold({ detailedState: 'Suspended', date: new Date(NOW - 3 * 60 * MIN).toISOString() }, NOW)).toBe(true);
+        expect(isOnHold({ detailedState: 'Postponed', date: new Date(NOW + 60 * MIN).toISOString() }, NOW)).toBe(true);
+        expect(isOnHold({ detailedState: 'Scheduled', date: new Date(NOW - 3 * 60 * MIN).toISOString() }, NOW)).toBe(false);
     });
 });
 

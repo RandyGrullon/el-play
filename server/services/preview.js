@@ -3,6 +3,7 @@ const http = require('./http');
 const { getSeasonInfo } = require('./season');
 const { hittingOf } = require('./players');
 const { findTeam, teamAbbrev } = require('../utils/teams');
+const { uniqueGames } = require('../utils/transformers');
 
 // Previa de un juego: cómo les ha ido entre ellos en la temporada y quién viene caliente (últimos 7 días).
 
@@ -19,8 +20,7 @@ const fetchHeadToHead = async (league, season, away, home, now) => {
     const startDate = league.id === 'lidom' ? `${season}-09-01` : `${season}-01-01`;
     const endDate = dayIn(league.timeZone, now);
     const data = await http.mlbGet(`${MLB_API_BASE}/schedule`, { sportId: league.sportId, leagueId: league.leagueId, teamId: away, opponentId: home, startDate, endDate, hydrate: 'linescore' });
-    const games = (data?.dates || [])
-        .flatMap((date) => date.games || [])
+    const games = uniqueGames((data?.dates || []).flatMap((date) => date.games || []))
         .filter((game) => game.status?.abstractGameState === 'Final' && !/postponed|cancel/i.test(game.status?.detailedState || ''))
         .filter((game) => {
             const ids = [game.teams?.away?.team?.id, game.teams?.home?.team?.id];

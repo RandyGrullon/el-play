@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Share2, Star } from 'lucide-react';
 import type { GameState, TeamBase } from '../../types';
-import { finalLabel, inningName, isNotPlayed, stateName } from '../../lib/baseball';
+import { finalLabel, inningName, isOnHold, isSuspended, stateName } from '../../lib/baseball';
 import { formatCountdown, formatShortDate, formatTime } from '../../lib/format';
 import { teamDisplayName } from '../../lib/teams';
 import { usePreferences } from '../../store/preferences';
@@ -56,7 +56,7 @@ const InningBadge: React.FC<{ inning: { n: number | null; isTop: boolean; state?
 export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({ model, onShare }) => {
     const { t, i18n } = useTranslation();
     const { favoriteTeamId, toggleFavoriteTeam } = usePreferences();
-    const notPlayed = isNotPlayed(model.detailedState);
+    const notPlayed = isOnHold(model);
     const showScores = model.state !== 'preview' && !notPlayed;
 
     let status: string;
@@ -65,7 +65,11 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
     else if (model.state === 'live') {
         // La entrada va en grande al centro: aquí «En vivo» y los outs
         status = model.inning?.n ? `${t('game.tabs.live')} · ${t('game.outsCount', { count: model.outs })}` : stateName(model.detailedState, i18n.language);
-    } else status = model.date ? `${formatShortDate(model.date, i18n.language)} · ${formatTime(model.date, i18n.language)}` : '';
+    } else {
+        status = model.date ? `${formatShortDate(model.date, i18n.language)} · ${formatTime(model.date, i18n.language)}` : '';
+        // Suspendido con fecha nueva: se dice para que no parezca un juego más
+        if (isSuspended(model.detailedState)) status = `${t('card.rescheduled')} · ${status}`;
+    }
 
     const half = (team: HeroModel['away'], align: 'start' | 'end') => {
         const ink = inkOn(team.color);

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Bell, BellRing, Share2, Star } from 'lucide-react';
 import type { ScheduleGame, ScheduleTeam } from '../../types';
-import { finalLabel, inningName, isNotPlayed, stateName } from '../../lib/baseball';
+import { finalLabel, inningName, isOnHold, isSuspended, stateName } from '../../lib/baseball';
 import { formatCountdown, formatTime } from '../../lib/format';
 import { usePrefetchGame } from '../../lib/queries';
 import { teamDisplayName } from '../../lib/teams';
@@ -80,7 +80,7 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
     const { leagueConfig } = useLeague();
     const { subscribedGames } = usePreferences();
     const toggleAlert = useAlertToggle();
-    const notPlayed = isNotPlayed(game.detailedState);
+    const notPlayed = isOnHold(game);
     const final = game.state === 'final';
     const subscribed = subscribedGames.includes(game.gamePk);
     // La cuenta regresiva avanza sola (cada 30 s) mientras falten menos de 6 horas
@@ -120,6 +120,7 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                         {startsIn > 0 && startsIn < 6 * 3600000 && <span className="font-semibold text-muted">· {formatCountdown(startsIn, i18n.language)}</span>}
                     </span>
                 )}
+                {game.state === 'preview' && !notPlayed && isSuspended(game.detailedState) && <span className="pill shrink-0 bg-accent/10 text-accent-ink">{t('card.rescheduled')}</span>}
                 {game.doubleheader?.game && <span className="pill shrink-0 bg-accent/10 text-accent-ink">{t('card.doubleheader', { n: game.doubleheader.game })}</span>}
                 {game.description && game.gameType !== 'R' && <span className="truncate text-xs text-muted">{game.description}</span>}
                 <span className="ml-auto flex items-center gap-1">

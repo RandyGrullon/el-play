@@ -274,7 +274,8 @@
     "loss": "L: {{name}}",
     "save": "S: {{name}}",
     "notifying": "We'll notify you",
-    "doubleheader": "Doubleheader · game {{n}}"
+    "doubleheader": "Doubleheader · game {{n}}",
+    "rescheduled": "Rescheduled"
   },
   "teams": {
     "favorite": "Your team",
