@@ -538,7 +538,7 @@ def main():
             (out_dir / f'{pid}.webp').unlink(missing_ok=True)
     if args.rechazar:
         write_manifest(manifest_path, manifest)
-        log(f'Rechazados: {len(args.rechazar)}')
+        log(f'Rechazados: {len(args.rechazar) - len(unknown)}')
         if not (args.rehacer or args.insignia):
             write_page(base, manifest)
             return

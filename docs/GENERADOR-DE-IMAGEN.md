@@ -86,7 +86,7 @@ D:\IA\ComfyUI_windows_portable\python_embeded\python.exe generador-de-imagen\gen
 
 ## 5. Revisa y corrige
 
-En `avatares\revision.html`, marca lo que no sirva. La página arma el comando que hay que correr y lo copia con un botón.
+En `avatares\revision.html`, marca lo que no sirva. La página arma el comando que hay que correr, con el mismo Python con el que corriste el script, y lo copia con un botón.
 
 | Botón | Cuándo | Qué hace |
 |---|---|---|
@@ -125,7 +125,7 @@ Después avísale a Claude para que conecte la app.
 - **Misma persona.** Nada de embellecer, cambiar la edad o aclarar u oscurecer la piel. Si dudas de que sea él, **Rehacer** o **Rechazar**.
 - **Sin texto.** Nada de letras, nombres, números, patrocinadores ni logos de otras ligas en el retrato. Si la foto original trae otro uniforme, el modelo lo cambia por el del equipo LIDOM.
 - **Las fotos bajadas no salen de la PC.** Se quedan en `avatares/fuentes/`.
-- **Los logos son de los equipos.** Antes de cobrar o de ir a las tiendas, lee «Los datos del béisbol» en `docs/TIENDAS.md` de la app.
+- **Los logos son de los equipos.** Antes de cobrar o de ir a las tiendas, lee «Los datos del béisbol» en `docs/TIENDAS.md` del repositorio de la app (`el-play-app`).
 
 ## Ajustes
 
