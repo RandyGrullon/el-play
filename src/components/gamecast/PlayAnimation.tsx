@@ -5,14 +5,33 @@ import type { OutVariant, PlayEvent } from '../../lib/playEvents';
 import { inkOn } from './GameHero';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
 import { HomeRunFlight, homeRunFlightMs } from './HomeRunFlight';
-import { legsOf, runnerPaths, type RunnerPath } from '../../lib/runners';
+import { legsOf, runnerPaths, walkPaths, type RunnerPath } from '../../lib/runners';
 import { surname } from '../../lib/format';
 
-// Animaciones de jugada en el juego en vivo: fin de entrada, ponche, hit, doble, triple y jonrón, más la victoria al
-// terminar el juego y el campeonato cuando ese juego da el título; con el logo y los colores del equipo protagonista. Se cierran solas o al tocarlas y no tapan
-// la barra de abajo. Con «menos movimiento» en el sistema solo aparecen y desaparecen.
+// Animaciones de jugada en el juego en vivo: fin de entrada, ponche, hit, doble, triple, jonrón, base por bolas, robo,
+// cambio de lanzador y cambio en el marcador, más la victoria (o el dejado en el terreno) al terminar el juego y el
+// campeonato cuando ese juego da el título; con el logo y los colores del equipo protagonista. Se cierran solas o al
+// tocarlas y no tapan la barra de abajo. Con «menos movimiento» en el sistema solo aparecen y desaparecen.
 
-const HOLD: Record<PlayEvent['kind'], number> = { inning: 2800, k: 2300, single: 2120, double: 2340, triple: 2560, hr: 3300, win: 3400, champion: 6000, pinchHitter: 2800, pinchRunner: 2800, out: 2300, abs: 3000 };
+const HOLD: Record<PlayEvent['kind'], number> = {
+    inning: 2800,
+    k: 2300,
+    single: 2120,
+    double: 2340,
+    triple: 2560,
+    hr: 3300,
+    win: 3400,
+    champion: 6000,
+    pinchHitter: 2800,
+    pinchRunner: 2800,
+    out: 2300,
+    abs: 3000,
+    walk: 2120,
+    steal: 2700,
+    pitchingChange: 3000,
+    lead: 2800,
+    walkoff: 4300
+};
 
 // Reto del ABS: la zona en pies (vista del receptor) dentro de un cuadro de 200×250, centrada (0,9 pies en y = 226)
 const ABS_FT = 60;
@@ -46,6 +65,17 @@ const FLIGHT_DELAY = 450;
 const RUN_START = 620;
 const RUN_LEG = 380;
 
+// Robo: el corredor sale, el tiro llega a la base casi a la vez y después se sabe si fue quieto o out
+const STEAL_START = 450;
+const STEAL_RUN = 650;
+const STEAL_THROW = 430;
+
+/** Tamaño de la palabra grande según su renglón más largo (para que quepa al lado del diamante en un teléfono) */
+const bigSize = (word: string) => {
+    const longest = Math.max(...word.split('|').map((line) => line.length));
+    return longest <= 4 ? 74 : longest <= 6 ? 54 : longest <= 8 ? 44 : longest <= 10 ? 32 : 28;
+};
+
 /** Puntos del diamante (cuadro de 100) que recorre un corredor; anotar es volver a home */
 const routeOf = (path: Pick<RunnerPath, 'from' | 'to'>) => Array.from({ length: path.to - path.from + 1 }, (_, k) => BASES[(path.from + k) % 4]);
 
@@ -70,11 +100,20 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
     // Jonrón: cuánto vuela la bola (null si MLB no marcó dónde cayó: entonces va la curva de siempre)
     const flight = kind === 'hr' ? homeRunFlightMs(atBat) : null;
     const landAt = flight !== null ? FLIGHT_DELAY + flight : 0;
-    // Hits: quién corre y cuántas entran (del marcador; si no se sabe, las impulsadas)
+    // Hits y bases por bolas: quién corre y cuántas entran (del marcador; si no se sabe, las impulsadas)
     const rbi = atBat?.rbi ?? 0;
     const scored = event.runs ? event.runs.after - event.runs.before : rbi;
-    const hitPaths = kind === 'single' || kind === 'double' || kind === 'triple' ? runnerPaths(kind, event.bases ?? null, scored) : [];
+    const runner = kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'walk';
+    // En la base por bolas solo entra carrera con las bases llenas
+    const hitPaths =
+        kind === 'walk'
+            ? walkPaths(event.bases ?? (scored > 0 ? { first: true, second: true, third: true } : null))
+            : kind === 'single' || kind === 'double' || kind === 'triple'
+              ? runnerPaths(kind, event.bases ?? null, scored)
+              : [];
     const runLegs = Math.max(0, ...hitPaths.map(legsOf));
+    // Cambio en el marcador: de qué lado anotaron
+    const leadSide = event.team.id === event.home.id ? 'home' : 'away';
 
     useEffect(() => {
         const node = root.current;
@@ -91,11 +130,11 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
         let raf = 0;
         let closed = false;
 
-        if (kind === 'single' || kind === 'double' || kind === 'triple') {
+        if (runner) {
             const card = q('.pa-hitcard');
             anim(card, [{ transform: 'translateX(115%) skewX(-8deg)', opacity: 0 }, { transform: 'translateX(-3%) skewX(2deg)', opacity: 1, offset: 0.75 }, { transform: 'none', opacity: 1 }], { duration: 480 });
             anim(q('.pa-logo'), [{ transform: 'scale(0) rotate(-30deg)' }, { transform: 'scale(1.18) rotate(6deg)', offset: 0.7 }, { transform: 'none' }], { duration: 520, delay: 220 });
-            all('.pa-big span').forEach((span, index) => anim(span, [{ transform: 'translateY(60%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 300 + index * 60 }));
+            all('.pa-big .pa-l').forEach((span, index) => anim(span, [{ transform: 'translateY(60%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 300 + index * 60 }));
             anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.9 }], { duration: 300, delay: 650 });
             // Todos corren a la vez: el bateador a su base, los que anotan cruzan home (+1 y sube el marcador) y el resto avanza
             let runs = 0;
@@ -126,6 +165,24 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                 if (path.to === 4) timers.push(window.setTimeout(score, reduce ? 0 : RUN_START + RUN_LEG * legs));
                 else anim(q(`.pa-base-${path.to}`), [{ fillOpacity: 0.25 }, { fillOpacity: 1 }], { duration: 120, delay: RUN_START + RUN_LEG * legs });
             });
+        } else if (kind === 'steal' && event.steal) {
+            const { base, caught } = event.steal;
+            const [x0, y0] = BASES[base - 1];
+            const [x1, y1] = BASES[base % 4];
+            // El tiro sale del receptor (o del lanzador, si se roban el home)
+            const [bx, by] = base === 4 ? [50, 52] : BASES[0];
+            const arrive = STEAL_START + STEAL_RUN;
+            anim(q('.pa-hitcard'), [{ transform: 'translateX(115%) skewX(-8deg)', opacity: 0 }, { transform: 'translateX(-3%) skewX(2deg)', opacity: 1, offset: 0.75 }, { transform: 'none', opacity: 1 }], { duration: 480 });
+            anim(q('.pa-logo'), [{ transform: 'scale(0) rotate(-30deg)' }, { transform: 'scale(1.18) rotate(6deg)', offset: 0.7 }, { transform: 'none' }], { duration: 520, delay: 220 });
+            anim(q('.pa-kicker'), [{ opacity: 0 }, { opacity: 0.85 }], { duration: 260, delay: 260 });
+            // Se barre al final: sale rápido y frena llegando a la base
+            anim(q('.pa-runner'), [{ transform: 'none' }, { transform: `translate(${x1 - x0}px, ${y1 - y0}px)` }], { duration: STEAL_RUN, delay: STEAL_START, easing: 'cubic-bezier(.3,.1,.3,1)' });
+            anim(q('.pa-ball'), [{ transform: 'none', opacity: 1 }, { transform: `translate(${x1 - bx}px, ${y1 - by}px)`, opacity: 1 }], { duration: STEAL_THROW, delay: arrive - STEAL_THROW - (caught ? 80 : -60), easing: 'linear' });
+            if (caught) anim(q('.pa-mark-0'), [{ transform: 'scale(0)', opacity: 0 }, { transform: 'scale(1.3)', opacity: 1, offset: 0.6 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: arrive + 40 });
+            else if (base < 4) anim(q(`.pa-base-${base}`), [{ fillOpacity: 0.25 }, { fillOpacity: 1 }], { duration: 160, delay: arrive });
+            else anim(q('.pa-score-n'), [{ transform: 'scale(1.5)' }, { transform: 'none' }], { duration: 320, delay: arrive, easing: 'cubic-bezier(.3,1.6,.5,1)' });
+            all('.pa-big .pa-l').forEach((span, index) => anim(span, [{ transform: 'scale(2)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 260, delay: arrive + 120 + index * 45, easing: 'cubic-bezier(.3,1.5,.5,1)' }));
+            anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.9 }], { duration: 260, delay: arrive + 380 });
         } else if (kind === 'hr' && flight !== null) {
             // El batazo de verdad: primero el vuelo sobre el parque y, al caer, el logo, «¡JONRÓN!» y el confeti
             anim(q('.pa-hr'), [{ opacity: 0 }, { opacity: 1 }], { duration: 220 });
@@ -196,19 +253,55 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
             all('.pa-big span span').forEach((span, index) => anim(span, [{ transform: 'scale(2)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 260, delay: 320 + total + index * 50, easing: 'cubic-bezier(.3,1.5,.5,1)' }));
             all('.pa-out-dot.on').forEach((dot, index) => anim(dot, [{ transform: 'scale(.3)' }, { transform: 'scale(1.3)', offset: 0.6 }, { transform: 'none' }], { duration: 320, delay: 380 + total + index * 80 }));
             anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.9 }], { duration: 260, delay: 420 + total });
-        } else if (kind === 'pinchHitter' || kind === 'pinchRunner') {
+        } else if (kind === 'pinchHitter' || kind === 'pinchRunner' || kind === 'pitchingChange') {
             anim(q('.pa-subcard'), [{ transform: 'translateY(-130%)', opacity: 0 }, { transform: 'translateY(4%)', opacity: 1, offset: 0.75 }, { transform: 'none', opacity: 1 }], { duration: 460 });
             all('.pa-big span').forEach((span, index) => anim(span, [{ transform: 'translateY(60%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 280, delay: 260 + index * 50 }));
             anim(q('.pa-out'), [{ transform: 'none', opacity: 1, filter: 'grayscale(0)' }, { transform: 'translateX(-6px) scale(.9)', opacity: 0.5, filter: 'grayscale(1)' }], { duration: 500, delay: 800 });
             anim(q('.pa-arrows'), [{ transform: 'rotate(0deg)' }, { transform: 'rotate(180deg)' }], { duration: 600, delay: 700, easing: 'cubic-bezier(.6,0,.2,1)' });
             anim(q('.pa-in'), [{ transform: 'translateX(70px) scale(.6)', opacity: 0 }, { transform: 'translateX(-4px) scale(1.08)', opacity: 1, offset: 0.7 }, { transform: 'none', opacity: 1 }], { duration: 560, delay: 950 });
-        } else if (kind === 'win') {
+        } else if (kind === 'win' || kind === 'walkoff') {
+            const walkoff = kind === 'walkoff';
             anim(q('.pa-win'), [{ clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)' }, { clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)' }], { duration: 520, easing: 'cubic-bezier(.7,0,.2,1)' });
             anim(q('.pa-logo'), [{ transform: 'scale(0) rotate(-20deg)', opacity: 0 }, { transform: 'scale(1.2) rotate(4deg)', opacity: 1, offset: 0.7 }, { transform: 'none', opacity: 1 }], { duration: 600, delay: 380 });
-            all('.pa-big span').forEach((span, index) => anim(span, [{ transform: 'translateY(80%) rotate(6deg)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 340, delay: 620 + index * 50, easing: 'cubic-bezier(.3,1.5,.5,1)' }));
-            anim(q('.pa-scoreline'), [{ transform: 'translateY(16px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 380, delay: 1100 });
-            anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.9 }], { duration: 300, delay: 1350 });
-            if (!reduce) timers.push(window.setTimeout(() => confetti(canvas.current, [team.color, second, '#ffffff'], () => closed, 70), 700));
+            if (walkoff) {
+                // En el terreno: las letras caen de golpe, la pantalla tiembla y salen dos ráfagas de papelitos
+                anim(q('.pa-kicker'), [{ opacity: 0, letterSpacing: '0.5em' }, { opacity: 0.9, letterSpacing: '0.14em' }], { duration: 420, delay: 300 });
+                all('.pa-big .pa-l').forEach((span, index) =>
+                    anim(span, [{ transform: 'scale(2.6)', opacity: 0 }, { transform: 'scale(.94)', opacity: 1, offset: 0.7 }, { transform: 'none', opacity: 1 }], { duration: 360, delay: 640 + index * 35, easing: 'cubic-bezier(.5,0,.75,0)' })
+                );
+                if (!reduce) {
+                    timers.push(
+                        window.setTimeout(
+                            () => q('.pa-win')?.animate([{ transform: 'none' }, { transform: 'translate(-7px,4px)' }, { transform: 'translate(6px,-4px)' }, { transform: 'translate(-4px,2px)' }, { transform: 'none' }], { duration: 300 }),
+                            1000
+                        )
+                    );
+                    timers.push(window.setTimeout(() => confetti(canvas.current, [team.color, second, '#ffffff'], () => closed, 90), 1000));
+                    timers.push(window.setTimeout(() => confetti(canvas.current, [team.color, second, '#ffffff'], () => closed, 70), 2200));
+                }
+            } else {
+                all('.pa-big .pa-l').forEach((span, index) => anim(span, [{ transform: 'translateY(80%) rotate(6deg)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 340, delay: 620 + index * 50, easing: 'cubic-bezier(.3,1.5,.5,1)' }));
+                if (!reduce) timers.push(window.setTimeout(() => confetti(canvas.current, [team.color, second, '#ffffff'], () => closed, 70), 700));
+            }
+            anim(q('.pa-scoreline'), [{ transform: 'translateY(16px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 380, delay: walkoff ? 1300 : 1100 });
+            anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.9 }], { duration: 300, delay: walkoff ? 1600 : 1350 });
+        } else if (kind === 'lead' && event.lead) {
+            // Las dos mitades entran, el número del que anotó cambia y su mitad crece (en el empate quedan iguales)
+            anim(q('.pa-lead-away'), [{ transform: 'translateX(-100%)' }, { transform: 'none' }], { duration: 380 });
+            anim(q('.pa-lead-home'), [{ transform: 'translateX(100%)' }, { transform: 'none' }], { duration: 380 });
+            anim(q('.pa-lead-panel'), [{ transform: 'translateY(-24px) scale(.92)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 380, delay: 300 });
+            all('.pa-big .pa-l').forEach((span, index) =>
+                anim(span, [{ transform: 'translateY(-90%) scale(1.4)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 340, delay: 520 + index * 40, easing: 'cubic-bezier(.3,1.6,.5,1)' })
+            );
+            const scoredNode = q('.pa-lead-scored');
+            timers.push(
+                window.setTimeout(() => {
+                    if (scoredNode) scoredNode.textContent = String(event[leadSide].runs);
+                }, reduce ? 0 : 760)
+            );
+            anim(scoredNode, [{ transform: 'none' }, { transform: 'scale(1.6)', offset: 0.45 }, { transform: 'none' }], { duration: 560, delay: 560, easing: 'cubic-bezier(.3,1.6,.5,1)' });
+            if (event.lead.change !== 'tie') anim(q(`.pa-lead-${leadSide}`), [{ flexGrow: 1 }, { flexGrow: 1.7 }], { duration: 700, delay: 820 });
+            anim(q('.pa-sub'), [{ opacity: 0 }, { opacity: 0.9 }], { duration: 300, delay: 1100 });
         } else if (kind === 'abs' && event.abs) {
             anim(q('.pa-abs'), [{ opacity: 0 }, { opacity: 1 }], { duration: 220 });
             anim(q('.pa-abs-head'), [{ transform: 'translateX(-30px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 380, delay: 120 });
@@ -249,10 +342,14 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
             if (closed) return;
             closed = true;
             const out = 380;
-            if (kind === 'single' || kind === 'double' || kind === 'triple') {
+            if (runner || kind === 'steal') {
                 anim(q('.pa-hitcard'), [{ transform: 'none', opacity: 1 }, { transform: 'translateX(-115%) skewX(8deg)', opacity: 0 }], { duration: out });
-            } else if (kind === 'pinchHitter' || kind === 'pinchRunner') {
+            } else if (kind === 'pinchHitter' || kind === 'pinchRunner' || kind === 'pitchingChange') {
                 anim(q('.pa-subcard'), [{ transform: 'none', opacity: 1 }, { transform: 'translateY(-130%)', opacity: 0 }], { duration: out });
+            } else if (kind === 'lead') {
+                anim(q('.pa-lead-panel'), [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
+                anim(q('.pa-lead-away'), [{ transform: 'none' }, { transform: 'translateX(-100%)' }], { duration: out, delay: 120 });
+                anim(q('.pa-lead-home'), [{ transform: 'none' }, { transform: 'translateX(100%)' }], { duration: out, delay: 120 });
             } else if (kind === 'out') {
                 anim(q('.pa-outcard'), [{ transform: 'none', opacity: 1 }, { transform: 'translateX(115%) skewX(-8deg)', opacity: 0 }], { duration: out });
             } else if (kind === 'inning') {
@@ -288,13 +385,25 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
 
     const letters = (word: string) =>
         [...word].map((char, index) => (
-            <span key={index} className="inline-block">
-                {char === ' ' ? ' ' : char}
+            <span key={index} className="pa-l inline-block">
+                {char === ' ' ?' ' : char}
             </span>
         ));
 
+    /** La palabra grande en uno o dos renglones («BASE|POR BOLAS») */
+    const big = (word: string, size = bigSize(word)) => (
+        <div className="pa-big flex flex-col" style={{ fontSize: size }}>
+            {word.split('|').map((line, index) => (
+                <span key={index} className="flex">
+                    {letters(line)}
+                </span>
+            ))}
+        </div>
+    );
+
     let body: React.ReactNode;
-    if (kind === 'single' || kind === 'double' || kind === 'triple') {
+    if (runner) {
+        const word = kind === 'walk' ? t(`anim.walk_${event.walk ?? 'bb'}`) : t(`anim.${kind}`);
         body = (
             <div className="pa-hitcard" style={style}>
                 <div className="pa-stripes" />
@@ -303,7 +412,7 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                     <div className="pa-kicker">
                         {team.abbrev} · {atBat?.batter.name}
                     </div>
-                    <div className="pa-big flex text-[74px]">{letters(t(`anim.${kind}`))}</div>
+                    {kind === 'walk' ? big(word) : <div className="pa-big flex text-[74px]">{letters(word)}</div>}
                     <div className="pa-sub flex flex-wrap items-center gap-x-2">
                         <span>{rbi > 0 ? t('anim.drivesIn', { count: rbi }) : t('anim.vs', { pitcher: atBat?.pitcher.name ?? '' })}</span>
                         {event.runs && event.runs.after > event.runs.before && (
@@ -328,6 +437,46 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                     {hitPaths.map((path, index) => (
                         <circle key={index} className={`pa-run-${index}`} cx={BASES[path.from][0]} cy={BASES[path.from][1]} r={path.batter ? 7 : 6} fill="#fff" stroke={second} strokeWidth={2} />
                     ))}
+                </svg>
+            </div>
+        );
+    } else if (kind === 'steal' && event.steal) {
+        const { base, caught, runner: who } = event.steal;
+        const [x0, y0] = BASES[base - 1];
+        const [x1, y1] = BASES[base % 4];
+        const [bx, by] = base === 4 ? [50, 52] : BASES[0];
+        const home = base === 4 && !caught;
+        body = (
+            <div className="pa-hitcard" style={style}>
+                <div className="pa-stripes" />
+                <Logo src={team.logo} className="pa-logo" />
+                <div className="relative min-w-0">
+                    <div className="pa-kicker">
+                        {team.abbrev} · {t(caught ? `anim.caughtTo_${base}` : `anim.stealTo_${base}`)}
+                    </div>
+                    {big(t(caught ? 'anim.caught' : 'anim.steal'))}
+                    <div className="pa-sub flex flex-wrap items-center gap-x-2">
+                        <span className="truncate">{who?.name ?? ''}</span>
+                        {home && (
+                            <span className="pa-score">
+                                {t('anim.runScores')} <b className="pa-score-n">+1</b>
+                            </span>
+                        )}
+                    </div>
+                </div>
+                <svg viewBox="0 0 100 100" className="relative h-[92px] w-[92px] overflow-visible" aria-hidden="true">
+                    <path d="M50 88 L86 52 L50 16 L14 52 Z" fill="none" stroke="currentColor" strokeOpacity={0.45} strokeWidth={3} />
+                    {BASES.slice(1).map(([x, y], index) => (
+                        <rect key={index} className={`pa-base-${index + 1}`} x={x - 8} y={y - 8} width={16} height={16} transform={`rotate(45 ${x} ${y})`} fill="currentColor" fillOpacity={0.25} />
+                    ))}
+                    <circle className="pa-runner" cx={x0} cy={y0} r={7} fill="#fff" stroke={caught ? rival.color : second} strokeWidth={2.5} />
+                    <circle className="pa-ball" cx={bx} cy={by} r={4} fill="#fff" stroke={on} strokeWidth={1.5} />
+                    {caught && (
+                        <g className="pa-mark-0" style={{ transformOrigin: `${x1}px ${y1}px` }} opacity={0}>
+                            <circle cx={x1} cy={y1} r={13} fill="#fff" />
+                            <path d={`M${x1 - 6} ${y1 - 6} L${x1 + 6} ${y1 + 6} M${x1 + 6} ${y1 - 6} L${x1 - 6} ${y1 + 6}`} stroke={team.color} strokeWidth={4.5} strokeLinecap="round" />
+                        </g>
+                    )}
                 </svg>
             </div>
         );
@@ -422,43 +571,75 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                 </svg>
             </div>
         );
-    } else if (kind === 'pinchHitter' || kind === 'pinchRunner') {
-        const person = (who: { id: number | null; name: string } | null, label: string, cls: string) =>
+    } else if (kind === 'pinchHitter' || kind === 'pinchRunner' || kind === 'pitchingChange') {
+        const pitching = kind === 'pitchingChange';
+        const person = (who: { id: number | null; name: string } | null, label: string, cls: string, detail?: string | null) =>
             who && (
                 <div className={`${cls} flex min-w-0 flex-col items-center gap-1 text-center`}>
                     <PlayerPhoto personId={who.id} name={who.name} size={64} background="rgba(255,255,255,0.9)" team={{ id: team.id, logo: team.logo, color: team.color }} />
                     <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] opacity-80">{label}</span>
                     <span className="max-w-[120px] truncate text-sm font-bold leading-tight">{who.name}</span>
+                    {detail && <span className="text-[11px] font-semibold tabular-nums opacity-80">{detail}</span>}
                 </div>
             );
+        // Lo que hizo en el juego el lanzador que sale
+        const line = event.change?.line;
+        const detail = line ? t(line.np ? 'anim.pitcherLineNp' : 'anim.pitcherLine', { ip: line.ip, k: line.k, np: line.np }) : null;
+        const outgoing = pitching ? event.change?.out ?? null : event.sub?.out ?? null;
+        const incoming = pitching ? event.change?.in ?? null : event.sub?.in ?? null;
         body = (
             <div className="pa-subcard" style={style}>
                 <div className="pa-stripes" />
                 <div className="relative flex items-end justify-between gap-2">
                     <div className="min-w-0">
                         <div className="pa-kicker">
-                            {team.abbrev} · {t(kind === 'pinchHitter' ? 'anim.pinchHitter' : 'anim.pinchRunner')}
+                            {team.abbrev} · {t(pitching ? 'anim.pitchingChange' : kind === 'pinchHitter' ? 'anim.pinchHitter' : 'anim.pinchRunner')}
                         </div>
-                        <div className="pa-big flex text-[54px]">{letters(t('anim.sub'))}</div>
+                        <div className="pa-big flex text-[54px]">{letters(t(pitching ? 'anim.reliever' : 'anim.sub'))}</div>
                     </div>
                     <Logo src={team.logo} className="pa-logo h-12 w-12 p-1.5" />
                 </div>
                 <div className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                    {person(event.sub?.out ?? null, t('anim.out'), 'pa-out')}
+                    {person(outgoing, t('anim.out'), 'pa-out', pitching ? detail : null)}
                     <svg viewBox="0 0 24 24" className="pa-arrows h-8 w-8" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M4 9h14l-4-4M20 15H6l4 4" />
                     </svg>
-                    {person(event.sub?.in ?? null, t('anim.in'), 'pa-in')}
+                    {person(incoming, t('anim.in'), 'pa-in')}
                 </div>
             </div>
         );
-    } else if (kind === 'win') {
+    } else if (kind === 'lead' && event.lead) {
+        const { change, before } = event.lead;
+        const half = (side: 'away' | 'home') => {
+            const club = event[side];
+            return (
+                <div className={`pa-lead-half pa-lead-${side}`} style={{ background: club.color, color: inkOn(club.color) }}>
+                    <Logo src={club.logo} className="pa-logo" />
+                    <span className={`pa-lead-n ${side === leadSide ? 'pa-lead-scored' : ''}`}>{side === leadSide ? before[side] : club.runs}</span>
+                    <span className="text-sm font-extrabold tracking-[0.12em]">{club.abbrev}</span>
+                </div>
+            );
+        };
+        body = (
+            <div className="pa-lead" style={style}>
+                {half('away')}
+                {half('home')}
+                <div className="pa-lead-panel">
+                    <span className="pa-kicker">{team.name}</span>
+                    {big(t(`anim.lead_${change}`), 50)}
+                    <span className="pa-sub">{t(change === 'tie' ? 'anim.leadTie' : 'anim.leadAhead', { team: team.abbrev, runs: event[leadSide].runs, rival: rival.abbrev, rivalRuns: rival.runs })}</span>
+                </div>
+            </div>
+        );
+    } else if (kind === 'win' || kind === 'walkoff') {
+        const walkoff = kind === 'walkoff';
+        const inning = atBat?.inning ?? null;
         body = (
             <div className="pa-win" style={style}>
                 <div className="pa-stripes" />
-                <span className="pa-kicker relative">{t('anim.final')}</span>
+                <span className="pa-kicker relative">{walkoff && inning ? t('anim.walkoffKicker', { n: inning }) : t('anim.final')}</span>
                 <Logo src={team.logo} className="pa-logo" />
-                <div className="pa-big relative flex text-[76px]">{letters(t('anim.win'))}</div>
+                {walkoff ? <div className="relative">{big(t('anim.walkoff'), 64)}</div> : <div className="pa-big relative flex text-[76px]">{letters(t('anim.win'))}</div>}
                 <div className="pa-scoreline relative">
                     <Logo src={event.away.logo} className="pa-mini-logo" />
                     <span>
@@ -466,8 +647,12 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                     </span>
                     <Logo src={event.home.logo} className="pa-mini-logo" />
                 </div>
-                <div className="pa-sub relative">
-                    {event.seriesRecord ? t('anim.seriesLead', { team: team.name, wins: event.seriesRecord.wins, losses: event.seriesRecord.losses }) : team.name}
+                <div className="pa-sub relative px-6">
+                    {walkoff && atBat
+                        ? t('anim.walkoffSub', { batter: atBat.batter.name, rival: rival.name })
+                        : event.seriesRecord
+                          ? t('anim.seriesLead', { team: team.name, wins: event.seriesRecord.wins, losses: event.seriesRecord.losses })
+                          : team.name}
                 </div>
                 <canvas ref={canvas} className="pointer-events-none absolute inset-0 h-full w-full" />
             </div>

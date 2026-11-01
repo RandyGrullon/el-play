@@ -251,9 +251,12 @@ describe('animación de emergentes', () => {
     const game = (actions: AtBat['actions']) =>
         ({ gamePk: 1, state: 'live', inning: null, atBats: [{ ...atBat(0, [], false), top: false, actions }], away: team(672, 'LIC'), home: team(671, 'ESC') }) as unknown as GameDetail;
 
-    it('solo los cambios nuevos, del equipo al bate', () => {
+    it('solo los cambios nuevos, del equipo al bate (el cambio de lanzador es del que defiende)', () => {
         const events = newPlayEvents(game([sub('PH')]), game([sub('PH'), sub('PR'), { event: 'pitching_substitution', desc: '' }]));
-        expect(events.map((e) => [e.kind, e.team.abbrev, e.sub?.in.name])).toEqual([['pinchRunner', 'ESC', 'Entra']]);
+        expect(events.map((e) => [e.kind, e.team.abbrev, e.sub?.in.name])).toEqual([
+            ['pinchRunner', 'ESC', 'Entra'],
+            ['pitchingChange', 'LIC', undefined]
+        ]);
     });
 });
 

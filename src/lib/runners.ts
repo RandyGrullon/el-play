@@ -55,5 +55,21 @@ export const runnerPaths = (kind: keyof typeof BASES_BY_KIND, bases: Bases | nul
     return [...paths, batter];
 };
 
+/**
+ * Base por bolas (o golpeado): el bateador a primera y solo avanzan los forzados; con las bases llenas anota el de
+ * tercera. Sin saber quién estaba en base, solo corre el bateador.
+ */
+export const walkPaths = (bases: Bases | null): RunnerPath[] => {
+    const paths: RunnerPath[] = [];
+    if (bases?.first) {
+        if (bases.second) {
+            if (bases.third) paths.push({ from: 3, to: 4, batter: false });
+            paths.push({ from: 2, to: 3, batter: false });
+        }
+        paths.push({ from: 1, to: 2, batter: false });
+    }
+    return [...paths, { from: 0, to: 1, batter: true }];
+};
+
 /** Bases que recorre (incluida la de salida); home es 0 al salir y 4 al anotar */
 export const legsOf = (path: Pick<RunnerPath, 'from' | 'to'>) => path.to - path.from;

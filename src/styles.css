@@ -350,6 +350,15 @@
 .pa-win { position: absolute; inset: 0; padding-top: env(safe-area-inset-top, 0px); overflow: hidden; background: var(--pa-c); color: var(--pa-on); display: grid; justify-items: center; align-content: center; gap: 8px; text-align: center; }
 .pa-win .pa-logo { width: 104px; height: 104px; padding: 12px; }
 .pa-win .pa-scoreline { color: var(--pa-on); font-size: 40px; }
+/* Cambio en el marcador: una mitad por equipo con su color; la del que anotó crece y el letrero va arriba */
+.pa-lead { position: absolute; inset: 0; display: flex; overflow: hidden; }
+.pa-lead-half { flex: 1 1 0; min-width: 0; display: grid; justify-items: center; align-content: end; gap: 4px; padding-bottom: 54px; text-align: center; }
+.pa-lead-half .pa-logo { width: 62px; height: 62px; padding: 8px; }
+.pa-lead-n { display: inline-block; font-family: 'Barlow Condensed', 'Outfit', sans-serif; font-weight: 800; font-size: 104px; line-height: 0.85; font-variant-numeric: tabular-nums; }
+.pa-lead-panel {
+    position: absolute; left: 14px; right: 14px; top: calc(env(safe-area-inset-top, 0px) + 30px); display: grid; justify-items: center; gap: 6px;
+    padding: 14px 16px 16px; border-radius: 26px; background: rgb(0 0 0 / 0.58); color: #fff; text-align: center; backdrop-filter: blur(6px);
+}
 .pa-champ { position: absolute; inset: 0; padding-top: env(safe-area-inset-top, 0px); overflow: hidden; background: #0b0c10; color: #fff; display: grid; justify-items: center; align-content: center; gap: 6px; text-align: center; }
 .pa-glow { position: absolute; left: 50%; top: 40%; width: 520px; height: 520px; margin: -260px 0 0 -260px; border-radius: 50%; background: radial-gradient(circle, var(--pa-c) 0%, transparent 62%); opacity: 0.7; }
 .pa-trophy { position: relative; width: 150px; height: 150px; }
