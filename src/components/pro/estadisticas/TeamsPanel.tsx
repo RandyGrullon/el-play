@@ -11,7 +11,7 @@ import { useColors } from '../../../theme/theme';
 import { alpha, radius, shadow } from '../../../theme/tokens';
 import type { ProPhaseId, TeamHitting, TeamPitching, TeamStats } from '../../../types/pro-liga';
 import { ErrorState, OfflineState, Skeleton, TeamLogo, Txt, useErrorText } from '../../ui';
-import { waitingForNetwork } from '../../stats/common';
+import { openTeam, waitingForNetwork } from '../../stats/common';
 import { Chip, HBarChart, ModuleHeader, ProNote, ProSegmented, ScreenTitle, type HBarRow } from '../kit';
 import { LEAGUE_PHASES, tooEarly } from './logic';
 import { PhaseSelect } from './parts';
@@ -113,7 +113,8 @@ const MetricCard: React.FC<{ data: TeamStats; metric: Metric; style?: object }> 
         value: row.value,
         display: metric.write(row.value),
         color: row.team.color,
-        emphasis: index === 0
+        emphasis: index === 0,
+        onPress: () => openTeam(row.team.id)
     }));
     return (
         <View style={[{ borderRadius: radius.card, backgroundColor: colors.surface, borderWidth: 1, borderColor: alpha(colors.line, 0.06), padding: 14 }, shadow('card'), style]}>

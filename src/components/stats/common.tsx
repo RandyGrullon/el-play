@@ -1,6 +1,6 @@
 // Piezas que comparten Posiciones, Líderes, Estadísticas y la ficha del pelotero.
 import React from 'react';
-import { Pressable, ScrollView, Share, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, Pressable, ScrollView, Share, View, type StyleProp, type ViewStyle } from 'react-native';
 import { router } from 'expo-router';
 import { Info } from 'lucide-react-native';
 import { useColors } from '../../theme/theme';
@@ -95,6 +95,16 @@ export const openPlayer = (player: { id: number; name: string; teamId?: number |
         pathname: '/jugador/[id]',
         params: { id: player.id, name: player.name, ...(player.teamId ? { teamId: player.teamId } : {}), ...(season ? { season } : {}) }
     });
+
+/** Abre la página del equipo (pantalla completa, encima de la que se está viendo) */
+export const openTeam = (id: number) => router.push({ pathname: '/equipo/[id]', params: { id } });
+
+/** Compartir el enlace de una página de la web (`/equipo/672`, `/jugador/123`) con un texto corto */
+export const shareLink = (path: string, title: string, message: string) => {
+    const url = `${WEB_URL}${path}`;
+    // iOS comparte el texto y el enlace por separado; Android solo el texto (el enlace va dentro)
+    Share.share(Platform.OS === 'ios' ? { title, message, url } : { title, message: `${message}\n${url}` }).catch(() => undefined);
+};
 
 /** Compartir como texto (la imagen del post de la web todavía no está en la app) */
 export const shareText = (message: string) => {

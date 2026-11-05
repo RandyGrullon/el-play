@@ -1,6 +1,6 @@
-// Tabla de posiciones del modo PRO (igual que la de la web): columna fija con puesto, logo, sigla y estrella; un
-// segmentado Resumen · Carreras · Situaciones para no deslizar de lado; PCT con barra, DIF divergente, suerte contra el
-// esperado, insignias de clasificado/eliminado y la línea de corte visible. En el Clásico (variant «pool») salen solo
+// Tabla de posiciones del modo PRO (igual que la de la web): columna fija con puesto, logo, sigla y estrella (logo y
+// sigla abren la página del equipo); un segmentado Resumen · Carreras · Situaciones para no deslizar de lado; PCT con
+// barra, DIF divergente, suerte contra el esperado, insignias de clasificado/eliminado y la línea de corte visible. En el Clásico (variant «pool») salen solo
 // las columnas con datos. Es una variante de ProTable del kit: las filas con insignia son más altas (ProTable usa un
 // alto fijo) y la columna resaltada (PCT, DIF o la ordenada) sigue de corrido por la línea de corte.
 import React, { useEffect, useMemo, useState } from 'react';
@@ -15,6 +15,7 @@ import { usePreferences } from '../../state/preferences';
 import { useColors } from '../../theme/theme';
 import { alpha } from '../../theme/tokens';
 import { TeamLogo, Txt } from '../ui';
+import { openTeam } from '../stats/common';
 import {
     Chip,
     DivergingBar,
@@ -477,22 +478,31 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({ rows, advance, c
                         {row.rank}
                     </Txt>
                 </View>
-                <TeamLogo team={row.team} size={18} />
-                <View accessible accessibilityLabel={t('pro.posiciones.table.rowName', { rank: row.rank, name })} style={{ flex: 1, minWidth: 0, marginLeft: 2 }}>
-                    <Txt size={15} weight="black" numberOfLines={1}>
-                        {row.team.abbrev}
-                    </Txt>
-                    {showName && (
-                        <Txt size={11} weight="semibold" tone="muted" numberOfLines={1}>
-                            {row.team.flag ? name : row.team.shortName || name}
+                {/* Logo y nombre abren la página del equipo */}
+                <Pressable
+                    onPress={() => openTeam(row.team.id)}
+                    accessibilityRole="link"
+                    accessibilityLabel={t('pro.posiciones.table.rowName', { rank: row.rank, name })}
+                    accessibilityHint={t('team.open', { team: name })}
+                    style={({ pressed }) => ({ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 3, opacity: pressed ? 0.7 : 1 })}
+                >
+                    <TeamLogo team={row.team} size={18} />
+                    <View style={{ flex: 1, minWidth: 0, marginLeft: 2 }}>
+                        <Txt size={15} weight="black" numberOfLines={1}>
+                            {row.team.abbrev}
                         </Txt>
-                    )}
-                    {badge && (
-                        <View style={{ marginTop: 2 }}>
-                            <Badge badge={badge} />
-                        </View>
-                    )}
-                </View>
+                        {showName && (
+                            <Txt size={11} weight="semibold" tone="muted" numberOfLines={1}>
+                                {row.team.flag ? name : row.team.shortName || name}
+                            </Txt>
+                        )}
+                        {badge && (
+                            <View style={{ marginTop: 2 }}>
+                                <Badge badge={badge} />
+                            </View>
+                        )}
+                    </View>
+                </Pressable>
                 {!pool && (
                     <Pressable
                         onPress={() => toggleFavoriteTeam(row.team.id)}

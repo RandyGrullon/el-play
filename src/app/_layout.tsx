@@ -76,6 +76,7 @@ const Navigator: React.FC = () => {
             <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="juego/[gamePk]" />
+                <Stack.Screen name="equipo/[id]" />
                 <Stack.Screen name="jugador/[id]" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="en-vivo" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="privacidad" />

@@ -1,6 +1,6 @@
 // Posiciones (igual que StandingsPage de la web): fases de LIDOM, líder en tarjeta con el color del equipo,
-// filas con rango, logo, G-P, JD y estrella de favorito; Clásico por grupos y Serie del Caribe. El PRO es otra pantalla
-// (pro/posiciones/ProStandings.tsx): posiciones.tsx elige cuál.
+// filas con rango, logo, G-P, JD y estrella de favorito; Clásico por grupos y Serie del Caribe. Tocar el equipo abre su
+// página. El PRO es otra pantalla (pro/posiciones/ProStandings.tsx): posiciones.tsx elige cuál.
 import React, { useState } from 'react';
 import { Pressable, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -16,7 +16,7 @@ import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Screen } from '../layout';
 import { Card, ErrorState, OfflineState, Pill, Row, Skeleton, TeamLogo, Txt, useErrorText } from '../ui';
-import { ChipRow, HeaderButton, Notice, SectionHeader, poolTitle, shareText, waitingForNetwork } from './common';
+import { ChipRow, HeaderButton, Notice, SectionHeader, openTeam, poolTitle, shareText, waitingForNetwork } from './common';
 import { RaceChart } from './RaceChart';
 import { raceStatus, type RaceStatus } from '../../lib/standings';
 
@@ -86,7 +86,12 @@ const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabe
                 <Txt size={56} weight="extrabold" color={ink} style={{ lineHeight: 58 }}>
                     {leader.rank}
                 </Txt>
-                <View style={{ flex: 1, minWidth: 0 }}>
+                <Pressable
+                    onPress={() => openTeam(leader.team.id)}
+                    accessibilityRole="link"
+                    accessibilityLabel={t('team.open', { team: teamDisplayName(leader.team, i18n.language) })}
+                    style={({ pressed }) => ({ flex: 1, minWidth: 0, opacity: pressed ? 0.8 : 1 })}
+                >
                     <Txt size={22} weight="extrabold" color={ink} numberOfLines={1}>
                         {teamDisplayName(leader.team, i18n.language)}
                     </Txt>
@@ -98,7 +103,7 @@ const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabe
                             {t('standings.lastTenShort', { record: `${leader.lastTen.wins}-${leader.lastTen.losses}` })}
                         </Txt>
                     )}
-                </View>
+                </Pressable>
                 <StatusBadge status={statuses?.get(leader.team.id)} ink={ink} />
                 {streak ? (
                     <View style={{ backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 4 }}>
@@ -128,18 +133,25 @@ const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabe
                                     {row.rank}
                                 </Txt>
                             </View>
-                            <TeamLogo team={row.team} size={26} />
-                            <View style={{ flex: 1, minWidth: 0 }}>
-                                <Txt size={compact ? 14 : 15} weight="bold" tone={below ? 'muted' : 'ink'} numberOfLines={2} style={{ lineHeight: 18 }}>
-                                    {teamDisplayName(row.team, i18n.language)}
-                                </Txt>
-                                {/* Racha y últimos 10, cortos para que quepan bajo el nombre */}
-                                {(streakLabel(row.streak, t) || row.lastTen) && (
-                                    <Txt size={11} weight="semibold" tone="muted" numberOfLines={1}>
-                                        {[streakLabel(row.streak, t) || null, row.lastTen ? t('standings.lastTenShort', { record: `${row.lastTen.wins}-${row.lastTen.losses}` }) : null].filter(Boolean).join(' · ')}
+                            <Pressable
+                                onPress={() => openTeam(row.team.id)}
+                                accessibilityRole="link"
+                                accessibilityLabel={t('team.open', { team: teamDisplayName(row.team, i18n.language) })}
+                                style={({ pressed }) => ({ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: compact ? 8 : 12, opacity: pressed ? 0.7 : 1 })}
+                            >
+                                <TeamLogo team={row.team} size={26} />
+                                <View style={{ flex: 1, minWidth: 0 }}>
+                                    <Txt size={compact ? 14 : 15} weight="bold" tone={below ? 'muted' : 'ink'} numberOfLines={2} style={{ lineHeight: 18 }}>
+                                        {teamDisplayName(row.team, i18n.language)}
                                     </Txt>
-                                )}
-                            </View>
+                                    {/* Racha y últimos 10, cortos para que quepan bajo el nombre */}
+                                    {(streakLabel(row.streak, t) || row.lastTen) && (
+                                        <Txt size={11} weight="semibold" tone="muted" numberOfLines={1}>
+                                            {[streakLabel(row.streak, t) || null, row.lastTen ? t('standings.lastTenShort', { record: `${row.lastTen.wins}-${row.lastTen.losses}` }) : null].filter(Boolean).join(' · ')}
+                                        </Txt>
+                                    )}
+                                </View>
+                            </Pressable>
                             <StatusBadge status={statuses?.get(row.team.id)} />
                             <Txt weight="bold" tabular>
                                 {row.wins}-{row.losses}
