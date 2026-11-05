@@ -1,5 +1,5 @@
-// «Tabla»: ranking del día o de la temporada (todos o una liga privada), crear liga con código, unirse y nombre
-// para la tabla. Cada fila abre el perfil del fanático.
+// «Tabla»: ranking del día o de la temporada (todos o una liga privada, con su resumen: campeón de la semana, racha,
+// compartir y salir), crear liga con código, unirse y nombre para la tabla. Cada fila abre el perfil del fanático.
 import React, { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ import { Card, Row, Segmented, Skeleton, Txt } from '../ui';
 import { AccountCard } from '../account/AccountCard';
 import { Field, FieldButton } from '../account/Field';
 import { FanRow, SeasonTable } from './FanSearch';
+import { LeagueSummary } from './LeagueSummary';
 import { useLocalText } from './texts';
 
 export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (userId: string) => void }> = ({ day, dayName, onOpenFan }) => {
@@ -26,7 +27,8 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (
     // Mis ligas privadas y los equipos del día (de todos o de la liga escogida)
     const leaguesQuery = useQuery({ queryKey: ['fantasy-leagues', session?.user.id], queryFn: () => myLeagues().catch(() => []), enabled: !!session, staleTime: 60000 });
     const leagues = leaguesQuery.data ?? [];
-    const members = scope === 'all' ? undefined : leagues.find((l) => l.id === scope)?.members;
+    const current = scope === 'all' ? undefined : leagues.find((l) => l.id === scope);
+    const members = current?.members;
     const rivalsQuery = useQuery({
         queryKey: ['fantasy-table', session?.user.id, day.league, day.date, scope, members?.join(',') ?? ''],
         queryFn: () => dayEntries(day.league, day.date, members).catch(() => []),
@@ -114,10 +116,18 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (
                     )}
                 </Card>
             )}
-            {scope !== 'all' && (
-                <Txt size={12} tone="muted" selectable>
-                    {t('fantasy.leagueCode', { code: leagues.find((l) => l.id === scope)?.code })}
-                </Txt>
+            {current && (
+                <LeagueSummary
+                    league={current}
+                    fantasyLeague={day.league}
+                    dayName={dayName}
+                    ownId={session.user.id}
+                    day={ranking.map((row) => ({ userId: row.userId, name: row.name, points: row.points }))}
+                    onLeft={() => {
+                        setScope('all');
+                        load();
+                    }}
+                />
             )}
 
             <Card style={{ gap: 12 }}>

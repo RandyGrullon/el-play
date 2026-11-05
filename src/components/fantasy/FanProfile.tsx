@@ -1,17 +1,18 @@
-// Perfil de un fanático (como FanProfile de la web): su temporada, sus últimos días, el equipo de hoy (a los demás
-// se les esconde lo que no ha empezado) y los días anteriores, que al tocarlos muestran ese equipo.
+// Perfil de un fanático (como FanProfile de la web): su temporada, sus últimos días, sus logros, el equipo de hoy (a
+// los demás se les esconde lo que no ha empezado) y los días anteriores, que al tocarlos muestran ese equipo.
 import React, { useMemo, useState } from 'react';
 import { Pressable, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Crown, Lock, Sparkles, User } from 'lucide-react-native';
 import type { LeagueId } from '../../types';
 import { useSession } from '../../lib/account';
+import { achievements } from '../../lib/fantasyExtras';
 import { RULES, effectiveEntry, entryKey, gameStarted, isLocked, pickPoints, pickResult, playerScore, teamPoints, useFantasyDay, useFantasyStore, type DayEntry, type FantasyPlayer } from '../../lib/fantasy';
 import { formatTime, localeFor, seasonLabel, todayKey } from '../../lib/format';
 import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Card, ErrorState, Gradient, OfflineState, PlayerPhoto, Row, Skeleton, TeamLogo, Txt, useErrorText } from '../ui';
-import { useFanEntry, useFanProfile, useSeasonRanking, withRanks, type FanDay } from './fans';
+import { useFanEntry, useFanProfile, useSeasonRanking, withRanks, type FanDay, type FanProfileData } from './fans';
 import { gameStatus, lineText, teamOf, useOpenPlayer } from './shared';
 import { useLocalText } from './texts';
 
@@ -110,6 +111,8 @@ export const FanProfileView: React.FC<{ userId: string; league: LeagueId }> = ({
                 <ErrorState message={notFound ? L('fans.notFound') : errorText(query.error)} onRetry={notFound ? undefined : () => query.refetch()} />
             ) : profile ? (
                 <>
+                    <Achievements profile={profile} />
+
                     <View style={{ gap: 8 }}>
                         <Txt eyebrow accessibilityRole="header">
                             {own ? L('fans.yourTeamToday') : L('fans.teamToday')}
@@ -138,6 +141,51 @@ export const FanProfileView: React.FC<{ userId: string; league: LeagueId }> = ({
                 </>
             ) : null}
         </>
+    );
+};
+
+const ACHIEVEMENT_ICONS: Record<string, string> = { firstTeam: '⚾', tenDays: '📅', fifty: '🔥', hundred: '💯', streak3: '⚡', streak7: '🏃', perfectPicks: '🎯', fiveHundred: '🏆' };
+
+/** Logros: los que ya tiene en dorado y los que faltan apagados, con lo que lleva */
+const Achievements: React.FC<{ profile: FanProfileData }> = ({ profile }) => {
+    const { t } = useTranslation();
+    const colors = useColors();
+    const list = achievements(profile);
+    const done = list.filter((item) => item.done).length;
+    return (
+        <View style={{ gap: 8 }}>
+            <Txt eyebrow accessibilityRole="header">
+                {`${t('fantasyMore.achievements')} · ${done}/${list.length}`}
+            </Txt>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {list.map((item) => {
+                    const name = t(`fantasyMore.badges.${item.key}.name`);
+                    const progress = !item.done && item.progress ? `${item.progress.value}/${item.progress.goal}` : null;
+                    return (
+                        // Cuatro por fila: (100 % − 3 huecos de 8) / 4
+                        <View
+                            key={item.key}
+                            accessible
+                            accessibilityLabel={[name, t(`fantasyMore.badges.${item.key}.hint`), progress].filter(Boolean).join('. ')}
+                            accessibilityState={{ disabled: !item.done }}
+                            style={{ flexBasis: '22%', flexGrow: 1, alignItems: 'center', gap: 4, borderRadius: 16, padding: 8, backgroundColor: item.done ? alpha(colors.gold, 0.15) : colors.raised, opacity: item.done ? 1 : 0.6 }}
+                        >
+                            <Txt size={24} style={{ opacity: item.done ? 1 : 0.5 }}>
+                                {ACHIEVEMENT_ICONS[item.key]}
+                            </Txt>
+                            <Txt size={10} weight="extrabold" center numberOfLines={2} style={{ lineHeight: 12 }}>
+                                {name}
+                            </Txt>
+                            {progress && (
+                                <Txt size={10} weight="semibold" tone="muted" tabular>
+                                    {progress}
+                                </Txt>
+                            )}
+                        </View>
+                    );
+                })}
+            </View>
+        </View>
     );
 };
 

@@ -127,6 +127,35 @@ export interface PlayerDetail {
     ppg: number;
     log: GameLogRow[];
     career: CareerRow[];
+    /** Por situación: contra zurdos (vl) y derechos (vr), con corredores en posición (risp), en casa (h) y de visita (a) */
+    splits?: { code: 'vl' | 'vr' | 'risp' | 'h' | 'a'; hitting?: HittingLine; pitching?: PitchingLine }[];
+    /** Round Robin y Serie Final de la temporada */
+    postseason?: { hitting?: HittingLine; pitching?: PitchingLine } | null;
+}
+
+/** Un pitcheo de sus últimos juegos; el último de cada turno trae cómo terminó y dónde cayó la bola */
+export interface RecentPitch {
+    x: number | null;
+    z: number | null;
+    top: number | null;
+    bot: number | null;
+    r: 'ball' | 'strike' | 'inplay' | 'hbp';
+    code: string | null;
+    type: string | null;
+    typeDesc: string | null;
+    mph: number | null;
+    event?: string | null;
+    hit?: { x: number; y: number; ev: number | null; dist: number | null } | null;
+    /** Mano del rival (del lanzador si es bateador, del bateador si es lanzador) */
+    side: string | null;
+}
+
+export interface PlayerPitches {
+    id: number;
+    role: 'B' | 'P';
+    season: number;
+    games: number;
+    pitches: RecentPitch[];
 }
 
 const getJson = async <T>(path: string, signal?: AbortSignal): Promise<T> => {
@@ -161,6 +190,16 @@ export const usePlayer = (id: number | null, league: LeagueId, season?: number) 
         queryFn: ({ signal }) => getJson<PlayerDetail>(`${API_BASE}/api/v2/player/${id}?league=${league}${season ? `&season=${season}` : ''}`, signal),
         enabled: !!id,
         staleTime: 5 * 60 * 1000,
+        retry
+    });
+
+/** Sus últimos juegos pitcheo a pitcheo (batazos, zonas y repertorio de la ficha) */
+export const usePlayerPitches = (id: number | null, league: LeagueId, season?: number) =>
+    useQuery({
+        queryKey: ['player-pitches', league, id, season ?? 'actual'],
+        queryFn: ({ signal }) => getJson<PlayerPitches>(`${API_BASE}/api/v2/player/${id}/pitches?league=${league}${season ? `&season=${season}` : ''}`, signal),
+        enabled: !!id,
+        staleTime: 30 * 60 * 1000,
         retry
     });
 

@@ -13,6 +13,7 @@ import { BRAND_GRADIENT, alpha, fonts, radius, shadow } from '../theme/tokens';
 import type { Palette } from '../theme/tokens';
 import { photoSources, rememberMiss, usePhotoIndex } from '../lib/photos';
 import { hideToast, useToast } from '../lib/toast';
+import { useTextScale } from '../state/preferences';
 
 // ---------------------------------------------------------------- «Reducir movimiento» del sistema
 
@@ -43,10 +44,22 @@ export const useReduceMotion = () =>
 type Weight = 'regular' | 'medium' | 'semibold' | 'bold' | 'extrabold' | 'black';
 type Tone = keyof Palette | 'white';
 
+/** «Texto grande»: el tamaño y el alto de línea (también los que llegan en `style`) por la escala */
+const scaleText = (style: StyleProp<TextStyle>, scale: number): StyleProp<TextStyle> => {
+    if (scale === 1) return style;
+    const flat = StyleSheet.flatten(style) ?? {};
+    return {
+        ...flat,
+        fontSize: typeof flat.fontSize === 'number' ? flat.fontSize * scale : flat.fontSize,
+        lineHeight: typeof flat.lineHeight === 'number' ? flat.lineHeight * scale : flat.lineHeight
+    };
+};
+
 export const Txt: React.FC<
     TextProps & { size?: number; weight?: Weight; tone?: Tone; color?: string; tabular?: boolean; eyebrow?: boolean; condensed?: boolean; center?: boolean; style?: StyleProp<TextStyle> }
 > = ({ size = 15, weight = 'regular', tone = 'ink', color, tabular, eyebrow, condensed, center, style, ...props }) => {
     const colors = useColors();
+    const scale = useTextScale();
     const base: TextStyle = {
         fontFamily: condensed ? fonts.condensed : fonts[weight],
         fontSize: eyebrow ? 11 : size,
@@ -55,10 +68,10 @@ export const Txt: React.FC<
         textAlign: center ? 'center' : undefined
     };
     if (eyebrow) Object.assign(base, { fontFamily: fonts.extrabold, letterSpacing: 1.4, textTransform: 'uppercase', color: color ?? colors.muted });
-    return <Text {...props} style={[base, style]} />;
+    return <Text {...props} style={scaleText([base, style], scale)} />;
 };
 
-/** Título grande de pantalla (display) */
+/** Título grande de pantalla (display); con «Texto grande» crece en Txt */
 export const Title: React.FC<{ children: React.ReactNode; size?: number; style?: StyleProp<TextStyle> }> = ({ children, size = 32, style }) => (
     <Txt size={size} weight="black" style={[{ lineHeight: size * 1.1, letterSpacing: -0.5 }, style]}>
         {children}

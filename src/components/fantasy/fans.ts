@@ -34,6 +34,10 @@ export interface SeasonRow {
     name: string | null;
     points: number;
     days: number;
+    /** Puntos de los últimos 7 días (el campeón de la semana de una liga) */
+    week?: number;
+    /** Días de juego seguidos que jugó, hasta hoy */
+    streak?: number;
 }
 
 export interface SeasonRanking {
@@ -102,17 +106,26 @@ export const useFanProfile = (userId: string | null, league: LeagueId) =>
         retry
     });
 
-/** `enabled` solo lo usa el PRO (respaldo si su ruta no existe); el Lite la monta siempre */
-export const useSeasonRanking = (league: LeagueId, enabled = true) =>
-    useQuery({
-        queryKey: ['fantasy-season', league],
-        queryFn: ({ signal }) => getJson<SeasonRanking>(`/api/v2/fantasy/season?league=${league}`, signal),
-        enabled,
+// Cuentas que se pueden pedir de una vez con `users`
+const MAX_USERS = 100;
+
+/**
+ * Tabla de la temporada. `enabled` solo lo usa el PRO (respaldo si su ruta no existe); el Lite la monta siempre.
+ * Con `users` (los miembros de una liga privada) trae esas cuentas aunque no entren en el top, como en la web.
+ */
+export const useSeasonRanking = (league: LeagueId, enabled = true, users?: string[]) => {
+    // Ordenadas para que la misma liga sea la misma dirección (y la misma copia en el CDN)
+    const ids = users ? [...new Set(users.filter(isFanId).map((id) => id.toLowerCase()))].sort().slice(0, MAX_USERS).join(',') : null;
+    return useQuery({
+        queryKey: ids === null ? ['fantasy-season', league] : ['fantasy-season', league, ids],
+        queryFn: ({ signal }) => getJson<SeasonRanking>(`/api/v2/fantasy/season?league=${league}${ids ? `&users=${ids}` : ''}`, signal),
+        enabled: enabled && ids !== '',
         staleTime: 5 * 60000,
         // Si se cortó por tiempo, en un rato está completa
         refetchInterval: (query) => (query.state.data?.partial ? 60000 : false),
         retry
     });
+};
 
 /** Puestos con empates (dos con los mismos puntos comparten el puesto) */
 export const withRanks = <T extends { points: number }>(rows: T[]) => {

@@ -1,6 +1,7 @@
-// Ficha del pelotero (igual que PlayerSheet de la web): quién es, cómo va en el fantasy, su temporada,
-// juego a juego y su carrera en la liga. La usa la pantalla /jugador/[id]; `PlayerProfile` es solo el contenido,
-// por si otra pantalla la quiere dentro de su propia hoja (con `action`). En PRO es la ficha de pro/ficha.
+// Ficha del pelotero (igual que PlayerSheet de la web): quién es, cómo va en el fantasy, su temporada (con
+// percentiles, por situación, postemporada y sus últimos juegos pitcheo a pitcheo), juego a juego y su carrera en la
+// liga. La usa la pantalla /jugador/[id]; `PlayerProfile` es solo el contenido, por si otra pantalla la quiere dentro
+// de su propia hoja (con `action`). En PRO es la ficha de pro/ficha.
 import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
@@ -16,6 +17,7 @@ import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Card, ErrorState, Gradient, PlayerPhoto, Row, Segmented, Skeleton, TeamLogo, Txt, useErrorText, type LogoTeam } from '../ui';
 import { CellText, FrozenTable, HeadText, type FrozenColumn } from './FrozenTable';
 import { MoreButton } from './common';
+import { Percentiles, Postseason, RecentPitches, Situations } from './PlayerExtras';
 import { PlayerProfilePro } from '../pro/ficha/PlayerProfilePro';
 
 export interface PlayerProfileProps {
@@ -124,7 +126,13 @@ const PlayerProfileLite: React.FC<PlayerProfileProps> = ({ id, name, team, seaso
                     )}
                     <FantasyCard player={player} />
                     {player.g > 0 ? (
-                        <SeasonGrid player={player} />
+                        <>
+                            <SeasonGrid player={player} />
+                            <Percentiles player={player} league={activeLeague} />
+                            <Situations player={player} />
+                            <Postseason player={player} />
+                            <RecentPitches player={player} league={activeLeague} />
+                        </>
                     ) : (
                         player.season > player.currentSeason - 2 && <MoreButton label={t('statsPage.seePrevious', { season: seasonLabel(player.season - 1, activeLeague) })} onPress={() => onSeasonChange(player.season - 1)} />
                     )}
