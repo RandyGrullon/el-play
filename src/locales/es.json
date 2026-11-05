@@ -279,7 +279,8 @@
     "win": "G: {{name}}",
     "loss": "P: {{name}}",
     "save": "S: {{name}}",
-    "notifying": "Te avisaremos"
+    "notifying": "Te avisaremos",
+    "rescheduled": "Reprogramado"
   },
   "teams": {
     "favorite": "Tu equipo",
@@ -725,7 +726,32 @@
     "toRight": "por el right",
     "drivesIn_one": "Remolca {{count}} carrera",
     "drivesIn_other": "Remolca {{count}} carreras",
-    "drivesInChip": "Remolca"
+    "drivesInChip": "Remolca",
+    "walk_bb": "BASE|POR BOLAS",
+    "walk_ibb": "BASE|INTENCIONAL",
+    "walk_hbp": "¡GOLPEADO!",
+    "steal": "¡ROBO!",
+    "caught": "¡ATRAPADO!",
+    "stealTo_2": "Robo de 2da",
+    "stealTo_3": "Robo de 3ra",
+    "stealTo_4": "Robo del home",
+    "caughtTo_2": "Atrapado robando 2da",
+    "caughtTo_3": "Atrapado robando 3ra",
+    "caughtTo_4": "Atrapado robando home",
+    "runScores": "Entra la carrera",
+    "pitchingChange": "Cambio de lanzador",
+    "reliever": "RELEVO",
+    "pitcherLine": "{{ip}} IP · {{k}} K",
+    "pitcherLineNp": "{{ip}} IP · {{k}} K · {{np}} lanz.",
+    "lead_open": "¡ABREN EL|MARCADOR!",
+    "lead_ahead": "¡SE VAN|ARRIBA!",
+    "lead_comeback": "¡LE DAN LA|VUELTA!",
+    "lead_tie": "¡EMPATE!",
+    "leadAhead": "{{team}} {{runs}} – {{rival}} {{rivalRuns}}",
+    "leadTie": "Empatados a {{runs}}",
+    "walkoff": "¡EN EL|TERRENO!",
+    "walkoffKicker": "Final · {{n}}.ª entrada",
+    "walkoffSub": "{{batter}} deja en el terreno a {{rival}}"
   },
   "fantasy": {
     "title": "Fantasy",

@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Bell, BellRing, Share2, Star } from 'lucide-react-native';
 import type { ScheduleGame, ScheduleTeam } from '../../types';
-import { finalLabel, inningName, isNotPlayed, stateName } from '../../lib/baseball';
+import { finalLabel, inningName, isOnHold, isSuspended, stateName } from '../../lib/baseball';
 import { formatCountdown, formatTime } from '../../lib/format';
 import { usePrefetchGame } from '../../lib/queries';
 import { teamDisplayName } from '../../lib/teams';
@@ -109,7 +109,8 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame; onShare?: (game: Sched
     const { subscribedGames } = usePreferences();
     const toggleAlert = useAlertToggle();
     const now = useNow();
-    const notPlayed = isNotPlayed(game.detailedState);
+    // Pospuesto, cancelado o suspendido todavía sin fecha nueva («Suspendido»)
+    const notPlayed = isOnHold(game, now);
     const final = game.state === 'final';
     const subscribed = subscribedGames.includes(game.gamePk);
     const startsIn = new Date(game.date).getTime() - now;
@@ -165,6 +166,15 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame; onShare?: (game: Sched
                                 </Txt>,
                                 colors.raised
                             )}
+                    {/* Suspendido con fecha nueva: sale programado en esa fecha, pero se dice */}
+                    {game.state === 'preview' && !notPlayed && isSuspended(game.detailedState)
+                        ? pill(
+                              <Txt size={12} weight="bold" color={colors.accentInk}>
+                                  {t('card.rescheduled')}
+                              </Txt>,
+                              alpha(colors.accent, 0.1)
+                          )
+                        : null}
                     {game.description && game.gameType !== 'R' ? (
                         <Txt size={12} tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
                             {game.description}

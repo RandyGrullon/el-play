@@ -5,6 +5,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSyncExternalStore } from 'react';
 import type { LeagueId, ScheduleGame } from '../types';
+import { isOnHold } from './baseball';
 import { API_BASE } from './config';
 import { getItem, onHydrated, removeItem, setItem } from './storage';
 
@@ -97,7 +98,6 @@ export const fetchFantasyDay = async (league: LeagueId, date?: string, signal?: 
 };
 
 const MINUTE = 60 * 1000;
-const NOT_PLAYING = /postponed|cancel|suspended/i;
 const startTime = (game: Pick<FantasyGame, 'date'>) => (game.date ? new Date(game.date).getTime() : NaN);
 
 /**
@@ -107,7 +107,8 @@ const startTime = (game: Pick<FantasyGame, 'date'>) => (game.date ? new Date(gam
 export const fantasyInterval = (day: FantasyDay | undefined, now = Date.now()): number | false => {
     if (!day) return false;
     if (day.games.some((game) => game.state === 'live')) return 20000;
-    const pending = day.games.filter((game) => game.state === 'preview' && !game.startTimeTBD && !NOT_PLAYING.test(game.detailedState)).map((game) => startTime(game) - now);
+    // Sin los que están en espera (el suspendido con fecha nueva sí cuenta: se cierra cuando se reanuda)
+    const pending = day.games.filter((game) => game.state === 'preview' && !game.startTimeTBD && !isOnHold(game, now)).map((game) => startTime(game) - now);
     if (!pending.length || pending.every((startsIn) => Number.isNaN(startsIn))) return false;
     const next = Math.min(...pending.filter((startsIn) => !Number.isNaN(startsIn)));
     if (next <= 15 * MINUTE) return 30000;

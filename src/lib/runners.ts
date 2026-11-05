@@ -1,7 +1,7 @@
-// Quién corre y hasta dónde en un hit, para la animación: el bateador llega a su base, los que anotan cruzan home y
-// los demás avanzan. Las bases ocupadas salen de la lectura anterior del juego (los corredores antes de la jugada) y
-// cuántos anotan, del marcador (o de las impulsadas). Si no se sabe quién estaba en base, anotan los de las bases más
-// altas. Lógica pura, la misma de la web (src/lib/runners.ts); sus casos de prueba corren con
+// Quién corre y hasta dónde en un hit (o una base por bolas), para la animación: el bateador llega a su base, los que
+// anotan cruzan home y los demás avanzan. Las bases ocupadas salen de la lectura anterior del juego (los corredores
+// antes de la jugada) y cuántos anotan, del marcador (o de las impulsadas). Si no se sabe quién estaba en base, anotan
+// los de las bases más altas. Lógica pura, la misma de la web (src/lib/runners.ts); sus casos de prueba corren con
 // `node scripts/probar-jugadas.js` (la app no tiene corredor de pruebas).
 import type { Runners } from '../types';
 
@@ -52,6 +52,22 @@ export const runnerPaths = (kind: keyof typeof BASES_BY_KIND, bases: Bases | nul
         paths.push({ from: base, to: to as RunnerPath['to'], batter: false });
     });
     return [...paths, batter];
+};
+
+/**
+ * Base por bolas (o golpeado): el bateador a primera y solo avanzan los forzados; con las bases llenas anota el de
+ * tercera. Sin saber quién estaba en base, solo corre el bateador.
+ */
+export const walkPaths = (bases: Bases | null): RunnerPath[] => {
+    const paths: RunnerPath[] = [];
+    if (bases?.first) {
+        if (bases.second) {
+            if (bases.third) paths.push({ from: 3, to: 4, batter: false });
+            paths.push({ from: 2, to: 3, batter: false });
+        }
+        paths.push({ from: 1, to: 2, batter: false });
+    }
+    return [...paths, { from: 0, to: 1, batter: true }];
 };
 
 /** Bases que recorre (incluida la de salida); home es 0 al salir y 4 al anotar */

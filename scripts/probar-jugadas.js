@@ -1,7 +1,8 @@
-// Casos de prueba de la lógica pura de las animaciones de jugada (los mismos de la web: lib.test.ts y runners.test.ts):
-// el vuelo del jonrón a escala (src/lib/flight.ts), los corredores que anotan en un hit (src/lib/runners.ts) y lo que
-// lleva cada jugada (src/lib/playEvents.ts, solo el Lite). La app no tiene corredor de pruebas: los .ts se pasan a
-// JavaScript con el TypeScript del proyecto en una carpeta temporal y se prueban con node:assert.
+// Casos de prueba de la lógica pura de las animaciones de jugada (los mismos de la web: lib.test.ts, runners.test.ts y
+// playEventsNew.test.ts): el vuelo del jonrón a escala (src/lib/flight.ts), los corredores que anotan en un hit o una
+// base por bolas (src/lib/runners.ts), lo que lleva cada jugada (src/lib/playEvents.ts) y, de paso, los juegos
+// suspendidos en espera (src/lib/baseball.ts y src/lib/polling.ts). La app no tiene corredor de pruebas: los .ts se
+// pasan a JavaScript con el TypeScript del proyecto en una carpeta temporal y se prueban con node:assert.
 //
 // Uso:  node scripts/probar-jugadas.js
 const assert = require('assert');
@@ -20,13 +21,15 @@ const compile = (name) => {
     const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } });
     fs.writeFileSync(path.join(OUT, `${name}.js`), outputText);
 };
-['flight', 'runners', 'playEvents'].forEach(compile);
+['flight', 'runners', 'playEvents', 'baseball', 'polling'].forEach(compile);
 // playEvents usa el modo PRO de la cuenta (React Native): aquí siempre Lite
 fs.writeFileSync(path.join(OUT, 'pro.js'), 'exports.proActive = () => false;\n');
 
 const { camera, flightMs, flightOf, gamedayToFeet, groundAt, heightAt, parkFor, wallAt, wallCrossing } = require(path.join(OUT, 'flight.js'));
-const { basesOf, legsOf, runnerPaths } = require(path.join(OUT, 'runners.js'));
-const { newPlayEvents } = require(path.join(OUT, 'playEvents.js'));
+const { basesOf, legsOf, runnerPaths, walkPaths } = require(path.join(OUT, 'runners.js'));
+const { leadChange, newPlayEvents } = require(path.join(OUT, 'playEvents.js'));
+const { isOnHold } = require(path.join(OUT, 'baseball.js'));
+const { gameInterval } = require(path.join(OUT, 'polling.js'));
 
 let failed = 0;
 const it = (name, run) => {
@@ -160,10 +163,179 @@ it('la jugada lleva el estadio, quién estaba en base y las carreras que entraro
     const next = { ...prev, runners: { first: null, second: null, third: null }, atBats: [turn(0, {}), turn(1, { event: 'double', rbi: 2, away: 3, scoring: true })] };
     const [event] = newPlayEvents(prev, next);
     partial(event, { kind: 'double', venue: 'Estadio Quisqueya', bases: { first: true, second: false, third: true }, runs: { count: 2, away: 3, home: 0 } });
-    // De la segunda jugada nueva de la misma lectura ya no se sabe quién estaba en base
+    // Una base por bolas en la misma lectura sabe quién estaba en base, pero del hit siguiente ya no se sabe
     const later = { ...next, atBats: [turn(0, {}), turn(1, { event: 'walk', away: 1 }), turn(2, { event: 'single', rbi: 1, away: 2 })] };
-    const [single] = newPlayEvents(prev, later);
+    const [walk, single] = newPlayEvents(prev, later);
+    partial(walk, { kind: 'walk', walk: 'bb', bases: { first: true, second: false, third: true } });
     partial(single, { kind: 'single', bases: null, runs: { count: 1, away: 2, home: 0 } });
+});
+
+console.log('base por bolas, robo, relevo, cambio en el marcador y dejado en el terreno (Lite)');
+// Nombres de prueba, como en la web (playEventsNew.test.ts)
+const club = (id, abbrev, runs = 0, isWinner = false) => ({ id, abbrev, name: abbrev, logo: '', color: '#0069e0', record: null, teamName: abbrev, runs, hits: 0, errors: 0, lob: 0, isWinner });
+const ab = (i, event, extra = {}) => ({
+    i,
+    inning: 1,
+    top: true,
+    complete: event !== null,
+    scoring: false,
+    batter: { id: 100 + i, name: `Bateador ${i}`, side: 'R' },
+    pitcher: { id: 99, name: 'Lanzador Uno', hand: 'R' },
+    event,
+    eventLabel: null,
+    desc: '',
+    rbi: 0,
+    away: 0,
+    home: 0,
+    outs: 0,
+    pitches: [],
+    actions: [],
+    ...extra
+});
+const juego = (atBats, extra = {}) => ({
+    gamePk: 1,
+    state: 'live',
+    scheduledInnings: 9,
+    atBats,
+    inning: { n: 1, ordinal: '1st', isTop: true, state: 'Top' },
+    runners: { first: null, second: null, third: null },
+    away: club(672, 'LIC'),
+    home: club(671, 'ESC'),
+    box: {
+        away: { batters: [{ id: 501, name: 'Corredor' }], pitchers: [] },
+        home: {
+            batters: [],
+            pitchers: [
+                { id: 601, name: 'Abridor', ip: '5.1', k: 6, np: 88 },
+                { id: 602, name: 'Relevista', ip: '0.0', k: 0, np: 0 }
+            ]
+        }
+    },
+    ...extra
+});
+
+it('base por bolas: el bateador a primera y solo avanzan los forzados', () => {
+    const batter = { from: 0, to: 1, batter: true };
+    assert.deepStrictEqual(walkPaths(null), [batter]);
+    assert.deepStrictEqual(walkPaths({ first: false, second: true, third: true }), [batter]);
+    assert.deepStrictEqual(walkPaths({ first: true, second: false, third: true }), [{ from: 1, to: 2, batter: false }, batter]);
+    assert.deepStrictEqual(walkPaths({ first: true, second: true, third: false }), [{ from: 2, to: 3, batter: false }, { from: 1, to: 2, batter: false }, batter]);
+    assert.deepStrictEqual(walkPaths({ first: true, second: true, third: true }), [{ from: 3, to: 4, batter: false }, { from: 2, to: 3, batter: false }, { from: 1, to: 2, batter: false }, batter]);
+});
+
+it('base por bolas, intencional o golpeado: del equipo al bate y con quién estaba en base', () => {
+    const prev = juego([ab(0, 'field_out')], { runners: { first: { id: 1, name: 'Uno' }, second: null, third: null } });
+    const next = juego([ab(0, 'field_out'), ab(1, 'walk'), ab(2, 'intent_walk'), ab(3, 'hit_by_pitch')]);
+    const events = newPlayEvents(prev, next).filter((event) => event.kind === 'walk');
+    assert.deepStrictEqual(
+        events.map((event) => [event.walk, event.team.abbrev]),
+        [
+            ['bb', 'LIC'],
+            ['ibb', 'LIC'],
+            ['hbp', 'LIC']
+        ]
+    );
+    assert.deepStrictEqual(events[0].bases, { first: true, second: false, third: false });
+    assert.strictEqual(events[1].bases, null);
+});
+
+it('robo: lo celebra el corredor; atrapado: la defensa; y van antes del resultado del turno', () => {
+    const prev = juego([ab(0, null)]);
+    const next = juego([
+        ab(0, 'single', {
+            actions: [
+                { event: 'stolen_base_2b', desc: 'Juan Corredor steals (1) 2nd base.' },
+                { event: 'caught_stealing_3b', desc: 'Juan Corredor caught stealing 3rd base.' }
+            ]
+        }),
+        ab(1, null, { actions: [{ event: 'stolen_base_home', desc: 'Juan Corredor steals (2) home.' }] })
+    ]);
+    const events = newPlayEvents(prev, next);
+    assert.deepStrictEqual(
+        events.map((event) => [event.kind, event.team.abbrev, event.steal ? event.steal.base : null, event.steal ? event.steal.caught : null]),
+        [
+            ['steal', 'LIC', 2, false],
+            ['steal', 'ESC', 3, true],
+            ['single', 'LIC', null, null],
+            ['steal', 'LIC', 4, false]
+        ]
+    );
+    assert.strictEqual(events[0].steal.runner, 'Juan Corredor');
+});
+
+it('cambio de lanzador: del equipo que defiende, con la línea del que sale y su id del box', () => {
+    const prev = juego([ab(0, 'field_out')]);
+    const next = juego([ab(0, 'field_out'), ab(1, null, { pitcher: { id: 602, name: 'Juan Relevista', hand: 'R' }, actions: [{ event: 'pitching_substitution', desc: 'Pitching Change: Juan Relevista replaces Pedro Abridor.' }] })]);
+    const [event] = newPlayEvents(prev, next);
+    partial(event, { kind: 'pitchingChange', team: { abbrev: 'ESC' }, change: { in: { id: 602, name: 'Juan Relevista' }, out: { id: 601, name: 'Pedro Abridor' }, line: { ip: '5.1', k: 6, np: 88 } } });
+    // En el PRO, igual que antes (sin la línea)
+    const [pro] = newPlayEvents(prev, next, { pro: true });
+    partial(pro, { kind: 'pitchingChange', change: { in: { id: 602 }, out: { id: 601 } } });
+    assert.strictEqual(pro.change.line, undefined);
+});
+
+it('cambio en el marcador: abre, se va arriba, le da la vuelta, empata o nada', () => {
+    assert.deepStrictEqual(leadChange({ away: 0, home: 0 }, { away: 1, home: 0 }), { side: 'away', lead: 'open' });
+    assert.deepStrictEqual(leadChange({ away: 2, home: 2 }, { away: 2, home: 3 }), { side: 'home', lead: 'ahead' });
+    assert.deepStrictEqual(leadChange({ away: 3, home: 1 }, { away: 3, home: 5 }), { side: 'home', lead: 'comeback' });
+    assert.deepStrictEqual(leadChange({ away: 3, home: 1 }, { away: 3, home: 3 }), { side: 'home', lead: 'tie' });
+    assert.strictEqual(leadChange({ away: 3, home: 1 }, { away: 4, home: 1 }), null);
+    assert.strictEqual(leadChange({ away: 3, home: 0 }, { away: 3, home: 2 }), null);
+    assert.strictEqual(leadChange({ away: 1, home: 1 }, { away: 2, home: 2 }), null);
+    // Sale después de la jugada que lo hizo, con el equipo que anotó y cómo estaba antes
+    const prev = juego([ab(0, 'field_out')], { away: club(672, 'LIC', 1), home: club(671, 'ESC', 2) });
+    const next = juego([ab(0, 'field_out'), ab(1, 'home_run', { away: 3, home: 2 })], { away: club(672, 'LIC', 3), home: club(671, 'ESC', 2) });
+    const events = newPlayEvents(prev, next);
+    assert.deepStrictEqual(
+        events.map((event) => event.kind),
+        ['hr', 'lead']
+    );
+    partial(events[1], { team: { abbrev: 'LIC' }, lead: { change: 'comeback', before: { away: 1, home: 2 } } });
+    // El PRO no lo tiene
+    assert.ok(!newPlayEvents(prev, next, { pro: true }).some((event) => event.kind === 'lead'));
+});
+
+it('dejado en el terreno: el local gana en la baja de la última entrada (o en extra); si no, victoria normal', () => {
+    const final = (lastTop, inning, scheduledInnings = 9, pro = false) => {
+        const prev = juego([ab(0, null, { top: lastTop, inning })], { away: club(672, 'LIC', 3), home: club(671, 'ESC', 3) });
+        const next = juego([ab(0, lastTop ? 'field_out' : 'single', { top: lastTop, inning })], { state: 'final', scheduledInnings, away: club(672, 'LIC', 3), home: club(671, 'ESC', 4, true) });
+        return newPlayEvents(prev, next, { pro }).filter((event) => event.kind === 'win' || event.kind === 'walkoff');
+    };
+    assert.deepStrictEqual(
+        final(false, 9).map((event) => event.kind),
+        ['walkoff']
+    );
+    partial(final(false, 11)[0], { kind: 'walkoff', atBat: { i: 0 } });
+    assert.deepStrictEqual(
+        final(false, 7, 7).map((event) => event.kind),
+        ['walkoff']
+    );
+    assert.deepStrictEqual(
+        final(true, 9).map((event) => event.kind),
+        ['win']
+    );
+    assert.deepStrictEqual(
+        final(false, 6).map((event) => event.kind),
+        ['win']
+    );
+    // El PRO sigue con la victoria de siempre
+    partial(final(false, 9, 9, true)[0], { kind: 'win', atBat: null });
+});
+
+console.log('juegos suspendidos');
+
+it('suspendido: con fecha nueva se espera como programado; sin ella, en espera como un pospuesto', () => {
+    const NOW = Date.parse('2026-11-05T20:00:00Z');
+    const MIN = 60000;
+    const at = (minutes) => new Date(NOW + minutes * MIN).toISOString();
+    const partido = (minutes, detailedState) => ({ state: 'preview', detailedState, date: at(minutes) });
+    assert.strictEqual(gameInterval(partido(45, 'Suspended'), NOW), 3 * MIN);
+    assert.ok(gameInterval(partido(-10, 'Suspended: Rain'), NOW) < 15000);
+    assert.strictEqual(gameInterval(partido(-120, 'Suspended: Rain'), NOW), 10 * MIN);
+    assert.strictEqual(isOnHold({ detailedState: 'Suspended', date: at(60) }, NOW), false);
+    assert.strictEqual(isOnHold({ detailedState: 'Suspended', date: at(-180) }, NOW), true);
+    assert.strictEqual(isOnHold({ detailedState: 'Postponed', date: at(60) }, NOW), true);
+    assert.strictEqual(isOnHold({ detailedState: 'Scheduled', date: at(-180) }, NOW), false);
 });
 
 fs.rmSync(OUT, { recursive: true, force: true });

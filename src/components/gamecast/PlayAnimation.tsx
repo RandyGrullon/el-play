@@ -7,7 +7,7 @@ import { lastName } from '../../lib/format';
 import type { OutVariant, PlayEvent } from '../../lib/playEvents';
 import { useIsPro } from '../../lib/pro';
 import { useMotion } from '../../lib/motion';
-import { legsOf, runnerPaths, type RunnerPath } from '../../lib/runners';
+import { legsOf, runnerPaths, walkPaths, type RunnerPath } from '../../lib/runners';
 import { alpha, fonts, inkOn } from '../../theme/tokens';
 import { PlayerPhoto, TeamLogo, Txt } from '../ui';
 import { ProPlayAnimation } from '../pro/animaciones/ProPlayAnimation';
@@ -18,11 +18,12 @@ import { Confetti, type Burst } from './Confetti';
 import { HomeRunFlight, homeRunFlightMs } from './HomeRunFlight';
 
 // Animaciones de jugada en el juego en vivo (calcadas de la web): fin de entrada, ponche, hit, doble, triple, jonrón,
-// outs, emergentes, la victoria al terminar y el campeonato cuando ese juego da el título; con el logo y los colores del
-// equipo protagonista. Se cierran solas o al tocarlas y solo ocupan la parte de arriba. Con «reducir movimiento» en el
-// teléfono solo aparecen y desaparecen.
+// outs, base por bolas, robo, emergentes, cambio de lanzador, cambio en el marcador, la victoria (o el dejado en el
+// terreno) al terminar y el campeonato cuando ese juego da el título; con el logo y los colores del equipo protagonista.
+// Se cierran solas o al tocarlas y solo ocupan la parte de arriba. Con «reducir movimiento» en el teléfono solo aparecen
+// y desaparecen.
 
-// Las del modo PRO (base por bolas, error, robo…) no llegan al Lite; si alguna llegara, dura como un hit
+// Las del modo PRO (error, WP/PB, carrera…) no llegan al Lite; si alguna llegara, dura como un hit
 const HOLD: Record<PlayEvent['kind'], number> = {
     inning: 2800,
     k: 2300,
@@ -36,10 +37,12 @@ const HOLD: Record<PlayEvent['kind'], number> = {
     pinchRunner: 2800,
     out: 2300,
     walk: 2120,
+    steal: 2700,
+    pitchingChange: 3000,
+    lead: 2800,
+    walkoff: 4300,
     error: 2120,
-    steal: 2120,
     wildPitch: 2120,
-    pitchingChange: 2800,
     run: 2120,
     noHitter: 2800,
     missed: 2120
@@ -78,6 +81,17 @@ const FLIGHT_STAGE_H = 570;
 const RUN_START = 620;
 const RUN_LEG = 380;
 
+// Robo: el corredor sale, el tiro llega a la base casi a la vez y después se sabe si fue quieto o out
+const STEAL_START = 450;
+const STEAL_RUN = 650;
+const STEAL_THROW = 430;
+
+/** Tamaño de la palabra grande según su renglón más largo (para que quepa al lado del diamante en un teléfono) */
+const bigSize = (word: string) => {
+    const longest = Math.max(...word.split('|').map((line) => [...line].length));
+    return longest <= 4 ? 74 : longest <= 6 ? 54 : longest <= 8 ? 44 : longest <= 10 ? 32 : 28;
+};
+
 /** Puntos del diamante (cuadro de 100) que recorre un corredor; anotar es volver a home */
 const routeOf = (path: Pick<RunnerPath, 'from' | 'to'>) => Array.from({ length: path.to - path.from + 1 }, (_, step) => BASES[(path.from + step) % 4]);
 
@@ -94,8 +108,9 @@ AccessibilityInfo.isReduceMotionEnabled?.()
     .catch(() => undefined);
 AccessibilityInfo.addEventListener?.('reduceMotionChanged', (value) => (reduceMotion = value));
 
-// r0…r3: cada corredor del hit (bases recorridas); g0…g3: el que anota se desvanece; field: el vuelo del jonrón
-const NAMES = ['stage', 'card', 'logo', 'sub', 'kicker', 'runner', 'rays', 'trail', 'ball', 'zone', 'k', 'shake', 'label', 'wipe', 'scoreline', 'glow', 'trophy', 'panel', 'shutter', 'nextLogo', 'outP', 'inP', 'arrows', 'm0', 'm1', 'm2', 'd0', 'd1', 'd2', 'b1', 'b2', 'b3', 'r0', 'r1', 'r2', 'r3', 'g0', 'g1', 'g2', 'g3', 'field', 'rbiPop', 'plus', 'scorePop'] as const;
+// r0…r3: cada corredor del hit (bases recorridas); g0…g3: el que anota se desvanece; field: el vuelo del jonrón;
+// leadPop: el salto del número del que anotó en el cambio en el marcador
+const NAMES = ['stage', 'card', 'logo', 'sub', 'kicker', 'runner', 'rays', 'trail', 'ball', 'zone', 'k', 'shake', 'label', 'wipe', 'scoreline', 'glow', 'trophy', 'panel', 'shutter', 'nextLogo', 'outP', 'inP', 'arrows', 'm0', 'm1', 'm2', 'd0', 'd1', 'd2', 'b1', 'b2', 'b3', 'r0', 'r1', 'r2', 'r3', 'g0', 'g1', 'g2', 'g3', 'field', 'rbiPop', 'plus', 'scorePop', 'leadPop'] as const;
 type Name = (typeof NAMES)[number];
 // Empiezan «en reposo» (1): los saltos de «+N» y del marcador, que se reinician con cada carrera
 const REST: Name[] = ['rbiPop', 'scorePop'];
@@ -137,7 +152,8 @@ const Badge: React.FC<{ team: PlayEvent['team']; size: number; pad: number; ring
 /**
  * La animación de jugada del juego en vivo. En el modo PRO las jugadas con datos reales (batazo, corredores, base por
  * bolas, robo, error, relevo, sin hit…) y «Te lo perdiste» las pinta el PRO (components/pro/animaciones); el resto
- * (fin de entrada, emergentes, victoria y campeonato) sigue con la del Lite. El Lite no cambia.
+ * (fin de entrada, emergentes, victoria y campeonato) sigue con la del Lite. Sin PRO, todo va con la del Lite (que tiene
+ * su propia base por bolas, robo, relevo, cambio en el marcador y dejado en el terreno).
  */
 export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> = ({ event, onDone }) => {
     const pro = useIsPro();
@@ -180,7 +196,9 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
     const H = (flight !== null ? Math.min(FLIGHT_STAGE_H, Math.max(STAGE_H, window.height - 120)) : STAGE_H) + insets.top;
     const [reduce] = useState(() => reduceMotion);
     const [v] = useState(() => Object.fromEntries(NAMES.map((name) => [name, new Animated.Value((name === 'stage' && !reduce) || REST.includes(name) ? 1 : 0)])) as Record<Name, Animated.Value>);
-    const [letterValues] = useState(() => Array.from({ length: 18 }, () => new Animated.Value(0)));
+    const [letterValues] = useState(() => Array.from({ length: 24 }, () => new Animated.Value(0)));
+    // Cambio en el marcador: la mitad del que anotó crece (flexGrow no va por el hilo nativo: valor aparte y sin él)
+    const [grow] = useState(() => new Animated.Value(0));
     const doneRef = useRef(onDone);
     useEffect(() => {
         doneRef.current = onDone;
@@ -193,15 +211,35 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
     const second = team.color2 || on;
     const outPath = kind === 'out' && event.out ? OUT_PATHS[event.out.variant] : null;
     const outTotal = outPath ? outPath.legs.length * LEG_MS + (event.out?.variant === 'fly' || event.out?.variant === 'sac' ? 260 : 0) : 0;
-    // Hits: quién corre y cuántas entran (del marcador; si no se sabe, las impulsadas)
+    // Hits y bases por bolas: quién corre y cuántas entran (del marcador; si no se sabe, las impulsadas)
     const rbi = atBat?.rbi ?? 0;
     const scored = event.runs ? event.runs.count : rbi;
-    const hitPaths = kind === 'single' || kind === 'double' || kind === 'triple' ? runnerPaths(kind, event.bases ?? null, scored) : [];
+    const runnerCard = kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'walk';
+    // En la base por bolas solo entra carrera con las bases llenas
+    const walkBases = kind === 'walk' ? event.bases ?? (scored > 0 ? { first: true, second: true, third: true } : null) : null;
+    const forced = kind === 'walk' ? walkPaths(walkBases) : [];
+    // …y los que no van forzados se quedan quietos en su base (un recorrido de cero bases: se ven, sin moverse)
+    const stay = ([1, 2, 3] as const)
+        .filter((base) => (base === 1 ? walkBases?.first : base === 2 ? walkBases?.second : walkBases?.third) && !forced.some((path) => path.from === base))
+        .map((base): RunnerPath => ({ from: base, to: base, batter: false }));
+    const hitPaths = kind === 'walk' ? [...stay, ...forced] : kind === 'single' || kind === 'double' || kind === 'triple' ? runnerPaths(kind, event.bases ?? null, scored) : [];
     const runLegs = Math.max(0, ...hitPaths.map(legsOf));
-    // Marcador del equipo al bate antes y después de la jugada: sube con cada corredor que pisa home
+    // La palabra grande de la tarjeta del hit, la base por bolas y el robo («BASE|POR BOLAS» va en dos renglones)
+    const cardWord =
+        kind === 'walk'
+            ? t(`anim.walk_${event.walk ?? 'bb'}`)
+            : kind === 'steal'
+              ? t(event.steal?.caught ? 'anim.caught' : 'anim.steal')
+              : runnerCard
+                ? t(`anim.${kind}`)
+                : '';
+    // Marcador del equipo al bate antes y después de la jugada: sube con cada corredor que pisa home. En el cambio en el
+    // marcador, el lado del que anotó.
     const runsSide = team.id === event.away.id ? 'away' : 'home';
     const score = event.runs ? { before: event.runs[runsSide] - event.runs.count, after: event.runs[runsSide] } : null;
     const [runsIn, setRunsIn] = useState(() => (reduce ? hitPaths.filter((path) => path.to === 4).length : 0));
+    // Cambio en el marcador: el número del que anotó pasa del de antes al de ahora a mitad de la animación
+    const [leadScored, setLeadScored] = useState(reduce);
 
     useLayoutEffect(() => {
         const running: Animated.CompositeAnimation[] = [];
@@ -218,7 +256,8 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
             animation.start();
         };
         const letters = (count: number, duration: number, start: number, step: number, easing?: (x: number) => number) => letterValues.slice(0, count).forEach((value, index) => go(value, 1, duration, start + index * step, easing));
-        const word = (text: string) => [...text].length;
+        // Letras de la palabra (la «|» solo separa los renglones)
+        const word = (text: string) => [...text.replace(/\|/g, '')].length;
 
         if (reduce) {
             v.stage.setValue(0);
@@ -226,10 +265,10 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
             running[0].start();
         }
 
-        if (kind === 'single' || kind === 'double' || kind === 'triple') {
+        if (runnerCard) {
             go(v.card, 1, 480);
             go(v.logo, 1, 520, 220);
-            letters(word(t(`anim.${kind}`)), 300, 300, 60);
+            letters(word(cardWord), 300, 300, 60);
             go(v.sub, 1, 300, 650);
             // Todos corren a la vez: el bateador a su base, los que anotan cruzan home (+1 y sube el marcador) y el resto
             // avanza. Sin movimiento cada uno queda ya en su base (los que anotaron no se ven) y la cuenta, completa.
@@ -253,6 +292,25 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                     if (!reduce) timers.push(setTimeout(score, arrive));
                 } else go(v[`b${path.to}` as Name], 1, 120, arrive);
             });
+        } else if (kind === 'steal' && event.steal) {
+            const { base, caught } = event.steal;
+            const arrive = STEAL_START + STEAL_RUN;
+            go(v.card, 1, 480);
+            go(v.logo, 1, 520, 220);
+            go(v.kicker, 1, 260, 260);
+            // Se barre al final: sale rápido y frena llegando a la base
+            go(v.runner, 1, STEAL_RUN, STEAL_START, Easing.bezier(0.3, 0.1, 0.3, 1));
+            // El tiro llega un poco antes que el corredor si lo atrapan y un poco después si llega quieto
+            go(v.ball, 1, STEAL_THROW, arrive - STEAL_THROW - (caught ? 80 : -60), Easing.linear);
+            if (caught) go(v.m0, 1, 300, arrive + 40);
+            else if (base < 4) go(v[`b${base}` as Name], 1, 160, arrive);
+            letters(word(cardWord), 260, arrive + 120, 45, BOUNCE);
+            go(v.sub, 1, 260, arrive + 380);
+            // Robo del home: «+1» salta cuando aparece «Entra la carrera»
+            if (base === 4 && !caught) {
+                v.scorePop.setValue(0);
+                go(v.scorePop, 1, 320, arrive + 380, BOUNCE_BIG);
+            }
         } else if (kind === 'hr' && flight !== null) {
             // El batazo de verdad: primero el vuelo sobre el parque y, al caer, el logo, «¡JONRÓN!» y el confeti
             go(v.rays, 1, landAt + 2600, 0, Easing.out(Easing.quad));
@@ -290,18 +348,43 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
             letters(word(outWord.replace(' ', '')), 260, 320 + outTotal, 50, BOUNCE);
             for (let index = 0; index < Math.min(3, event.out.outs); index++) go(v[`d${index}` as Name], 1, 320, 380 + outTotal + index * 80);
             go(v.sub, 1, 260, 420 + outTotal);
-        } else if (kind === 'pinchHitter' || kind === 'pinchRunner') {
+        } else if (kind === 'pinchHitter' || kind === 'pinchRunner' || kind === 'pitchingChange') {
             go(v.card, 1, 460);
-            letters(word(t('anim.sub')), 280, 260, 50);
+            letters(word(t(kind === 'pitchingChange' ? 'anim.reliever' : 'anim.sub')), 280, 260, 50);
             go(v.outP, 1, 500, 800);
             go(v.arrows, 1, 600, 700, Easing.bezier(0.6, 0, 0.2, 1));
             go(v.inP, 1, 560, 950);
-        } else if (kind === 'win') {
+        } else if (kind === 'win' || kind === 'walkoff') {
             go(v.wipe, 1, 520, 0, Easing.bezier(0.7, 0, 0.2, 1));
             go(v.logo, 1, 600, 380);
-            letters(word(t('anim.win')), 340, 620, 50, BOUNCE);
-            go(v.scoreline, 1, 380, 1100);
-            go(v.sub, 1, 300, 1350);
+            if (kind === 'walkoff') {
+                // En el terreno: las letras caen de golpe, la pantalla tiembla y salen dos ráfagas de papelitos
+                go(v.kicker, 1, 420, 300);
+                letters(word(t('anim.walkoff')), 360, 640, 35, Easing.bezier(0.5, 0, 0.75, 0));
+                go(v.shake, 1, 300, 1000, Easing.linear);
+                go(v.scoreline, 1, 380, 1300);
+                go(v.sub, 1, 300, 1600);
+            } else {
+                letters(word(t('anim.win')), 340, 620, 50, BOUNCE);
+                go(v.scoreline, 1, 380, 1100);
+                go(v.sub, 1, 300, 1350);
+            }
+        } else if (kind === 'lead' && event.lead) {
+            // Las dos mitades entran, el número del que anotó cambia y su mitad crece (en el empate quedan iguales)
+            go(v.shutter, 1, 380);
+            go(v.panel, 1, 380, 300);
+            letters(word(t(`anim.lead_${event.lead.change}`)), 340, 520, 40, BOUNCE_BIG);
+            if (!reduce) timers.push(setTimeout(() => setLeadScored(true), 760));
+            go(v.leadPop, 1, 560, 560, BOUNCE_BIG);
+            if (event.lead.change !== 'tie') {
+                if (reduce) grow.setValue(1);
+                else {
+                    const animation = Animated.timing(grow, { toValue: 1, duration: 700, delay: 820, easing: EASE, useNativeDriver: false });
+                    running.push(animation);
+                    animation.start();
+                }
+            }
+            go(v.sub, 1, 300, 1100);
         } else if (kind === 'champion') {
             go(v.glow, 1, 1600, 200);
             go(v.trophy, 1, 900, 300, Easing.bezier(0.2, 0.9, 0.3, 1.2));
@@ -325,8 +408,8 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                 animation.start();
             };
             if (reduce) exit(v.stage, 0);
-            else if (kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'out' || kind === 'pinchHitter' || kind === 'pinchRunner') exit(v.card, 2);
-            else if (kind === 'inning') {
+            else if (runnerCard || kind === 'steal' || kind === 'out' || kind === 'pinchHitter' || kind === 'pinchRunner' || kind === 'pitchingChange') exit(v.card, 2);
+            else if (kind === 'inning' || kind === 'lead') {
                 exit(v.panel, 2, 200);
                 exit(v.shutter, 2, EXIT, 120);
             } else exit(v.stage, 0);
@@ -369,10 +452,14 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
             {[...text].map((char, index) => {
                 const value = letterValues[Math.min(offset + index, letterValues.length - 1)];
                 let transform: object[];
+                // En el terreno cada letra cae de golpe (ya se ve al 70 % de su caída)
+                const opacity = kind === 'walkoff' ? value.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0, 1, 1], extrapolate: 'clamp' }) : value.interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolate: 'clamp' });
                 if (kind === 'hr') transform = [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [-size * 1.2, 0] }) }, { scale: value.interpolate({ inputRange: [0, 1], outputRange: [1.4, 1] }) }];
-                else if (kind === 'out') transform = [{ scale: value.interpolate({ inputRange: [0, 1], outputRange: [2, 1] }) }];
+                else if (kind === 'out' || kind === 'steal') transform = [{ scale: value.interpolate({ inputRange: [0, 1], outputRange: [2, 1] }) }];
                 else if (kind === 'win') transform = [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [size * 0.8, 0] }) }, { rotate: value.interpolate({ inputRange: [0, 1], outputRange: ['6deg', '0deg'] }) }];
+                else if (kind === 'walkoff') transform = [{ scale: value.interpolate({ inputRange: [0, 0.7, 1], outputRange: [2.6, 0.94, 1] }) }];
                 else if (kind === 'champion') transform = [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [-size * 0.9, 0] }) }, { scale: value.interpolate({ inputRange: [0, 1], outputRange: [1.5, 1] }) }];
+                else if (kind === 'lead') transform = [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [-size * 0.9, 0] }) }, { scale: value.interpolate({ inputRange: [0, 1], outputRange: [1.4, 1] }) }];
                 else transform = [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [size * 0.6, 0] }) }];
                 return (
                     <Animated.Text
@@ -380,13 +467,22 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                         style={[
                             big(size, color),
                             kind === 'champion' && Platform.select({ web: { textShadow: '0 4px 12px rgba(0,0,0,0.5)' } as object, default: { textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 12, textShadowOffset: { width: 0, height: 4 } } }),
-                            { opacity: value.interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolate: 'clamp' }), transform: transform as never }
+                            { opacity, transform: transform as never }
                         ]}
                     >
                         {char === ' ' ? ' ' : char}
                     </Animated.Text>
                 );
             })}
+        </View>
+    );
+
+    /** La palabra grande en uno o dos renglones («BASE|POR BOLAS»); cada renglón sigue la numeración de letras del anterior */
+    const bigWord = (text: string, size = bigSize(text), color = on, center = false) => (
+        <View style={center ? { alignItems: 'center' } : undefined}>
+            {text.split('|').map((line, index, all) => (
+                <React.Fragment key={index}>{letters(line, size, [...all.slice(0, index).join('')].length, color)}</React.Fragment>
+            ))}
         </View>
     );
 
@@ -402,24 +498,48 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
     );
 
     // ---------------------------------------------------------------- cada jugada
+    // Tarjeta del hit, la base por bolas y el robo: entra por la derecha y sale por la izquierda
+    const hitCard = [
+        styles.card,
+        { top: insets.top + 70, height: 168, backgroundColor: team.color },
+        cardShadow,
+        {
+            opacity: v.card.interpolate({ inputRange: [0, 0.75, 1, 2], outputRange: [0, 1, 1, 0] }),
+            transform: [
+                { translateX: v.card.interpolate({ inputRange: [0, 0.75, 1, 2], outputRange: [W * 1.15, -W * 0.03, 0, -W * 1.15] }) },
+                { skewX: v.card.interpolate({ inputRange: [0, 0.75, 1, 2], outputRange: ['-8deg', '2deg', '0deg', '8deg'] }) }
+            ]
+        }
+    ];
+    /** El diamante de la tarjeta con sus tres bases, que se encienden al llegar alguien (b1…b3) */
+    const diamondBases = (
+        <>
+            <Svg width={DIAMOND} height={DIAMOND} viewBox="0 0 100 100" style={StyleSheet.absoluteFill}>
+                <Path d="M50 88 L86 52 L50 16 L14 52 Z" fill="none" stroke={on} strokeOpacity={0.45} strokeWidth={3} />
+            </Svg>
+            {BASES.slice(1).map(([x, y], index) => (
+                <Animated.View
+                    key={index}
+                    style={{
+                        position: 'absolute',
+                        left: (x - 8) * k,
+                        top: (y - 8) * k,
+                        width: 16 * k,
+                        height: 16 * k,
+                        backgroundColor: on,
+                        transform: [{ rotate: '45deg' }],
+                        opacity: v[(['b1', 'b2', 'b3'] as const)[index]].interpolate({ inputRange: [0, 1], outputRange: [0.25, 1] })
+                    }}
+                />
+            ))}
+        </>
+    );
+
     let body: React.ReactNode;
-    if (kind === 'single' || kind === 'double' || kind === 'triple') {
+    if (runnerCard) {
         const drivesIn = rbi > 0 ? t('anim.drivesIn', { count: rbi }) : undefined;
         body = (
-            <Animated.View
-                style={[
-                    styles.card,
-                    { top: insets.top + 70, height: 168, backgroundColor: team.color },
-                    cardShadow,
-                    {
-                        opacity: v.card.interpolate({ inputRange: [0, 0.75, 1, 2], outputRange: [0, 1, 1, 0] }),
-                        transform: [
-                            { translateX: v.card.interpolate({ inputRange: [0, 0.75, 1, 2], outputRange: [W * 1.15, -W * 0.03, 0, -W * 1.15] }) },
-                            { skewX: v.card.interpolate({ inputRange: [0, 0.75, 1, 2], outputRange: ['-8deg', '2deg', '0deg', '8deg'] }) }
-                        ]
-                    }
-                ]}
-            >
+            <Animated.View style={hitCard}>
                 <Stripes color={on} id={id} />
                 <Animated.View style={pop(v.logo, [0, 1.18, 1], [0, 0.7, 1], ['-30deg', '6deg', '0deg'])}>
                     <Badge team={team} size={74} pad={9} />
@@ -428,7 +548,8 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                     <Txt style={kicker} numberOfLines={1}>
                         {team.abbrev} · {atBat?.batter.name}
                     </Txt>
-                    {letters(t(`anim.${kind}`), 74)}
+                    {/* La base por bolas en uno o dos renglones, al tamaño que quepa junto al diamante */}
+                    {kind === 'walk' ? bigWord(cardWord) : letters(cardWord, 74)}
                     <Animated.View style={[{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 2 }, fade(v.sub, 0.9)]}>
                         <Txt style={[subStyle, { flexShrink: 1 }]} numberOfLines={1}>
                             {drivesIn ?? t('anim.vs', { pitcher: atBat?.pitcher.name ?? '' })}
@@ -445,24 +566,7 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                     </Animated.View>
                 </View>
                 <View style={{ width: DIAMOND, height: DIAMOND }} accessible={!!drivesIn} accessibilityRole={drivesIn ? 'image' : undefined} accessibilityLabel={drivesIn}>
-                    <Svg width={DIAMOND} height={DIAMOND} viewBox="0 0 100 100" style={StyleSheet.absoluteFill}>
-                        <Path d="M50 88 L86 52 L50 16 L14 52 Z" fill="none" stroke={on} strokeOpacity={0.45} strokeWidth={3} />
-                    </Svg>
-                    {BASES.slice(1).map(([x, y], index) => (
-                        <Animated.View
-                            key={index}
-                            style={{
-                                position: 'absolute',
-                                left: (x - 8) * k,
-                                top: (y - 8) * k,
-                                width: 16 * k,
-                                height: 16 * k,
-                                backgroundColor: on,
-                                transform: [{ rotate: '45deg' }],
-                                opacity: v[(['b1', 'b2', 'b3'] as const)[index]].interpolate({ inputRange: [0, 1], outputRange: [0.25, 1] })
-                            }}
-                        />
-                    ))}
+                    {diamondBases}
                     {/* Carreras que entran: el total en el centro del diamante y un «+1» que salta en home */}
                     {scored > 0 && (
                         <Animated.View
@@ -527,6 +631,80 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                             />
                         );
                     })}
+                </View>
+            </Animated.View>
+        );
+    } else if (kind === 'steal' && event.steal) {
+        const { base, caught, runner: who } = event.steal;
+        const [x0, y0] = BASES[base - 1];
+        const [x1, y1] = BASES[base % 4];
+        // El tiro sale del receptor (o del lanzador, si se roban el home)
+        const [bx, by] = base === 4 ? [50, 52] : BASES[0];
+        const home = base === 4 && !caught;
+        body = (
+            <Animated.View style={hitCard}>
+                <Stripes color={on} id={id} />
+                <Animated.View style={pop(v.logo, [0, 1.18, 1], [0, 0.7, 1], ['-30deg', '6deg', '0deg'])}>
+                    <Badge team={team} size={74} pad={9} />
+                </Animated.View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                    <Animated.Text style={[kicker, fade(v.kicker, 0.85)]} numberOfLines={1}>
+                        {team.abbrev} · {t(caught ? `anim.caughtTo_${base}` : `anim.stealTo_${base}`)}
+                    </Animated.Text>
+                    {bigWord(cardWord)}
+                    <Animated.View style={[{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 2 }, fade(v.sub, 0.9)]}>
+                        <Txt style={[subStyle, { flexShrink: 1 }]} numberOfLines={1}>
+                            {who ?? ''}
+                        </Txt>
+                        {/* Robo del home: entra la carrera */}
+                        {home && (
+                            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, paddingHorizontal: 8, paddingVertical: 1, borderRadius: 999, backgroundColor: alpha(on, 0.16) }}>
+                                <Txt style={[subStyle, { fontFamily: fonts.extrabold }]}>{t('anim.runScores')}</Txt>
+                                <Animated.Text style={[big(16), { lineHeight: 18, transform: [{ scale: v.scorePop.interpolate({ inputRange: [0, 1], outputRange: [1.5, 1] }) }] }]}>+1</Animated.Text>
+                            </View>
+                        )}
+                    </Animated.View>
+                </View>
+                <View style={{ width: DIAMOND, height: DIAMOND }}>
+                    {diamondBases}
+                    {/* El corredor (con el color de su equipo) se barre a la base y el tiro llega */}
+                    <Animated.View
+                        style={{
+                            position: 'absolute',
+                            left: x0 * k - 7,
+                            top: y0 * k - 7,
+                            width: 14,
+                            height: 14,
+                            borderRadius: 7,
+                            backgroundColor: '#fff',
+                            borderWidth: 2.5,
+                            borderColor: caught ? rival.color : second,
+                            transform: [{ translateX: v.runner.interpolate({ inputRange: [0, 1], outputRange: [0, (x1 - x0) * k] }) }, { translateY: v.runner.interpolate({ inputRange: [0, 1], outputRange: [0, (y1 - y0) * k] }) }]
+                        }}
+                    />
+                    <Animated.View
+                        style={{
+                            position: 'absolute',
+                            left: bx * k - 4,
+                            top: by * k - 4,
+                            width: 8,
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: '#fff',
+                            borderWidth: 1.5,
+                            borderColor: on,
+                            transform: [{ translateX: v.ball.interpolate({ inputRange: [0, 1], outputRange: [0, (x1 - bx) * k] }) }, { translateY: v.ball.interpolate({ inputRange: [0, 1], outputRange: [0, (y1 - by) * k] }) }]
+                        }}
+                    />
+                    {/* Atrapado: la X del out en la base */}
+                    {caught && (
+                        <Animated.View style={[{ position: 'absolute', left: x1 * k - 12, top: y1 * k - 12, width: 24, height: 24 }, pop(v.m0, [0, 1.3, 1], [0, 0.6, 1])]}>
+                            <Svg width={24} height={24} viewBox="-13 -13 26 26">
+                                <Circle r={13} fill="#fff" />
+                                <Path d="M-6 -6 L6 6 M6 -6 L-6 6" stroke={team.color} strokeWidth={4.5} strokeLinecap="round" />
+                            </Svg>
+                        </Animated.View>
+                    )}
                 </View>
             </Animated.View>
         );
@@ -789,8 +967,9 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                 </View>
             </Animated.View>
         );
-    } else if (kind === 'pinchHitter' || kind === 'pinchRunner') {
-        const person = (who: { id: number | null; name: string } | null, label: string, style: object) =>
+    } else if (kind === 'pinchHitter' || kind === 'pinchRunner' || kind === 'pitchingChange') {
+        const pitching = kind === 'pitchingChange';
+        const person = (who: { id: number | null; name: string } | null, label: string, style: object, detail?: string | null) =>
             who && (
                 <Animated.View style={[{ flex: 1, minWidth: 0, alignItems: 'center', gap: 4 }, style]}>
                     <PlayerPhoto personId={who.id} name={who.name} size={64} background="rgba(255,255,255,0.9)" team={team} />
@@ -800,8 +979,18 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                     <Txt size={14} weight="bold" color={on} numberOfLines={1} center style={{ maxWidth: 120 }}>
                         {who.name}
                     </Txt>
+                    {detail ? (
+                        <Txt size={11} weight="semibold" color={on} tabular numberOfLines={1} center style={{ maxWidth: 140, opacity: 0.8 }}>
+                            {detail}
+                        </Txt>
+                    ) : null}
                 </Animated.View>
             );
+        // Lo que hizo en el juego el lanzador que sale
+        const line = pitching ? event.change?.line : null;
+        const detail = line ? t(line.np ? 'anim.pitcherLineNp' : 'anim.pitcherLine', { ip: line.ip, k: line.k, np: line.np }) : null;
+        const outgoing = pitching ? event.change?.out ?? null : event.sub?.out ?? null;
+        const incoming = pitching ? event.change?.in ?? null : event.sub?.in ?? null;
         body = (
             <Animated.View
                 style={[
@@ -818,33 +1007,46 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                 <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
                     <View style={{ flex: 1, minWidth: 0 }}>
                         <Txt style={kicker} numberOfLines={1}>
-                            {team.abbrev} · {t(kind === 'pinchHitter' ? 'anim.pinchHitter' : 'anim.pinchRunner')}
+                            {team.abbrev} · {t(pitching ? 'anim.pitchingChange' : kind === 'pinchHitter' ? 'anim.pinchHitter' : 'anim.pinchRunner')}
                         </Txt>
-                        {letters(t('anim.sub'), 54)}
+                        {letters(t(pitching ? 'anim.reliever' : 'anim.sub'), 54)}
                     </View>
                     <Badge team={team} size={48} pad={6} />
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    {person(event.sub?.out ?? null, t('anim.out'), {
-                        opacity: v.outP.interpolate({ inputRange: [0, 1], outputRange: [1, 0.5] }),
-                        transform: [{ translateX: v.outP.interpolate({ inputRange: [0, 1], outputRange: [0, -6] }) }, { scale: v.outP.interpolate({ inputRange: [0, 1], outputRange: [1, 0.9] }) }]
-                    })}
+                    {person(
+                        outgoing,
+                        t('anim.out'),
+                        {
+                            opacity: v.outP.interpolate({ inputRange: [0, 1], outputRange: [1, 0.5] }),
+                            transform: [{ translateX: v.outP.interpolate({ inputRange: [0, 1], outputRange: [0, -6] }) }, { scale: v.outP.interpolate({ inputRange: [0, 1], outputRange: [1, 0.9] }) }]
+                        },
+                        detail
+                    )}
                     <Animated.View style={{ transform: [{ rotate: v.arrows.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] }) }] }}>
                         <Svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke={on} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
                             <Path d="M4 9h14l-4-4M20 15H6l4 4" />
                         </Svg>
                     </Animated.View>
-                    {person(event.sub?.in ?? null, t('anim.in'), {
+                    {person(incoming, t('anim.in'), {
                         opacity: v.inP.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0, 1, 1] }),
                         transform: [{ translateX: v.inP.interpolate({ inputRange: [0, 0.7, 1], outputRange: [70, -4, 0] }) }, { scale: v.inP.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0.6, 1.08, 1] }) }]
                     })}
                 </View>
             </Animated.View>
         );
-    } else if (kind === 'win') {
+    } else if (kind === 'win' || kind === 'walkoff') {
+        // En el terreno es la victoria más fuerte: «¡EN EL TERRENO!» cae de golpe, todo tiembla y hay dos ráfagas
+        const walkoff = kind === 'walkoff';
+        const shake = walkoff
+            ? [
+                  { translateX: v.shake.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, -7, 6, -4, 0] }) },
+                  { translateY: v.shake.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, 4, -4, 2, 0] }) }
+              ]
+            : [];
         // La cortina entra desde la izquierda y su contenido se queda quieto (como el clip-path de la web)
         body = (
-            <Animated.View style={[StyleSheet.absoluteFill, { overflow: 'hidden', transform: [{ translateX: v.wipe.interpolate({ inputRange: [0, 1], outputRange: [-W, 0] }) }] }]}>
+            <Animated.View style={[StyleSheet.absoluteFill, { overflow: 'hidden', transform: [{ translateX: v.wipe.interpolate({ inputRange: [0, 1], outputRange: [-W, 0] }) }, ...shake] }]}>
                 <Animated.View
                     style={[
                         StyleSheet.absoluteFill,
@@ -852,18 +1054,113 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                     ]}
                 >
                     <Stripes color={on} id={id} />
-                    <Txt style={kicker}>{t('anim.final')}</Txt>
+                    {walkoff ? (
+                        <Animated.Text style={[kicker, { opacity: v.kicker.interpolate({ inputRange: [0, 1], outputRange: [0, 0.9] }), transform: [{ scaleX: v.kicker.interpolate({ inputRange: [0, 1], outputRange: [1.4, 1] }) }] }]} numberOfLines={1}>
+                            {atBat?.inning ? t('anim.walkoffKicker', { n: atBat.inning }) : t('anim.final')}
+                        </Animated.Text>
+                    ) : (
+                        <Txt style={kicker}>{t('anim.final')}</Txt>
+                    )}
                     <Animated.View style={pop(v.logo, [0, 1.2, 1], [0, 0.7, 1], ['-20deg', '4deg', '0deg'])}>
                         <Badge team={team} size={104} pad={12} />
                     </Animated.View>
-                    {letters(t('anim.win'), 76)}
+                    {walkoff ? bigWord(t('anim.walkoff'), 64, on, true) : letters(t('anim.win'), 76)}
                     <Animated.View style={{ opacity: v.scoreline, transform: [{ translateY: v.scoreline.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }] }}>{scoreline(40, on)}</Animated.View>
-                    <Animated.Text style={[subStyle, fade(v.sub, 0.9)]}>
-                        {event.seriesRecord ? t('anim.seriesLead', { team: team.name, wins: event.seriesRecord.wins, losses: event.seriesRecord.losses }) : team.name}
+                    <Animated.Text style={[subStyle, { paddingHorizontal: 24, textAlign: 'center' }, fade(v.sub, 0.9)]}>
+                        {walkoff && atBat
+                            ? t('anim.walkoffSub', { batter: atBat.batter.name, rival: rival.name })
+                            : event.seriesRecord
+                              ? t('anim.seriesLead', { team: team.name, wins: event.seriesRecord.wins, losses: event.seriesRecord.losses })
+                              : team.name}
                     </Animated.Text>
                 </Animated.View>
-                {!reduce && <Confetti width={W} height={H} colors={[team.color, second, '#ffffff']} bursts={[{ at: 700, count: 50 }]} />}
+                {!reduce && (
+                    <Confetti
+                        width={W}
+                        height={H}
+                        colors={[team.color, second, '#ffffff']}
+                        bursts={
+                            walkoff
+                                ? [
+                                      { at: 1000, count: 90 },
+                                      { at: 2200, count: 70 }
+                                  ]
+                                : [{ at: 700, count: 50 }]
+                        }
+                    />
+                )}
             </Animated.View>
+        );
+    } else if (kind === 'lead' && event.lead) {
+        // El marcador partido en los dos colores: entra cada mitad por su lado, el número del que anotó salta al nuevo y su
+        // mitad crece (en el empate quedan iguales); arriba, el letrero
+        const { change, before } = event.lead;
+        const half = (side: 'away' | 'home') => {
+            const club = event[side];
+            const ink = inkOn(club.color);
+            const scoring = side === runsSide;
+            return (
+                <Animated.View key={side} style={{ flexBasis: 0, minWidth: 0, flexGrow: scoring && change !== 'tie' ? grow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.7] }) : 1 }}>
+                    <Animated.View
+                        style={[
+                            StyleSheet.absoluteFill,
+                            {
+                                backgroundColor: club.color,
+                                alignItems: 'center',
+                                justifyContent: 'flex-end',
+                                gap: 4,
+                                paddingBottom: 54,
+                                transform: [{ translateX: v.shutter.interpolate({ inputRange: [0, 1, 2], outputRange: side === 'away' ? [-W, 0, -W] : [W, 0, W] }) }]
+                            }
+                        ]}
+                    >
+                        <Badge team={club} size={62} pad={8} />
+                        <Animated.Text
+                            style={[
+                                big(104, ink),
+                                { lineHeight: 96, fontVariant: ['tabular-nums'] },
+                                scoring && { transform: [{ scale: v.leadPop.interpolate({ inputRange: [0, 0.45, 1], outputRange: [1, 1.6, 1], extrapolate: 'clamp' }) }] }
+                            ]}
+                        >
+                            {scoring && !leadScored ? before[side] : club.runs}
+                        </Animated.Text>
+                        <Txt size={14} weight="extrabold" color={ink} style={{ letterSpacing: 1.7 }}>
+                            {club.abbrev}
+                        </Txt>
+                    </Animated.View>
+                </Animated.View>
+            );
+        };
+        body = (
+            <View style={[StyleSheet.absoluteFill, { flexDirection: 'row', overflow: 'hidden' }]} accessible accessibilityLabel={`${team.name}: ${t(`anim.lead_${change}`).replace(/\|/g, ' ')}`}>
+                {half('away')}
+                {half('home')}
+                <Animated.View
+                    style={{
+                        position: 'absolute',
+                        left: 14,
+                        right: 14,
+                        top: insets.top + 30,
+                        alignItems: 'center',
+                        gap: 6,
+                        paddingTop: 14,
+                        paddingBottom: 16,
+                        paddingHorizontal: 16,
+                        borderRadius: 26,
+                        backgroundColor: 'rgba(0,0,0,0.58)',
+                        opacity: v.panel.interpolate({ inputRange: [0, 1, 2], outputRange: [0, 1, 0] }),
+                        transform: [{ translateY: v.panel.interpolate({ inputRange: [0, 1, 2], outputRange: [-24, 0, 0] }) }, { scale: v.panel.interpolate({ inputRange: [0, 1, 2], outputRange: [0.92, 1, 1] }) }]
+                    }}
+                >
+                    <Txt style={[kicker, { color: '#fff' }]} numberOfLines={1}>
+                        {team.name}
+                    </Txt>
+                    {bigWord(t(`anim.lead_${change}`), 50, '#fff', true)}
+                    <Animated.Text style={[subStyle, { color: '#fff' }, fade(v.sub, 0.9)]}>
+                        {t(change === 'tie' ? 'anim.leadTie' : 'anim.leadAhead', { team: team.abbrev, runs: event[runsSide].runs, rival: rival.abbrev, rivalRuns: rival.runs })}
+                    </Animated.Text>
+                </Animated.View>
+            </View>
         );
     } else if (kind === 'champion') {
         const colorsList = [team.color, second, '#f2c14e', '#ffe08a', '#ffffff'];

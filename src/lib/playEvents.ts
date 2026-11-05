@@ -1,8 +1,9 @@
 // Jugadas que disparan una animación en la pantalla del juego en vivo: se comparan dos lecturas seguidas del
 // juego y solo cuenta lo nuevo (al abrir el juego no se repite nada de lo que ya pasó).
-// El modo PRO (newPlayEvents con { pro: true }) suma base por bolas, error, robo, WP/PB, cambio de lanzador, carrera,
-// el aviso de sin hit y «Te lo perdiste» al volver del segundo plano; el Lite sigue igual.
-import type { AtBat, GameDetail, GameTeam, LeagueId, SeriesStatus } from '../types';
+// El Lite (como la web) anima también la base por bolas, el robo, el cambio de lanzador, el cambio en el marcador y el
+// dejado en el terreno. El modo PRO (newPlayEvents con { pro: true }) suma error, WP/PB, carrera, el aviso de sin hit y
+// «Te lo perdiste» al volver del segundo plano, y no tiene ni el cambio en el marcador ni el dejado en el terreno.
+import type { AtBat, GameDetail, GameTeam, LeagueId, PitcherLine, SeriesStatus } from '../types';
 import type { AnimationMode } from '../state/preferences';
 import { proActive } from './pro';
 import { basesOf, type Bases } from './runners';
@@ -19,12 +20,15 @@ export type PlayKind =
     | 'pinchHitter'
     | 'pinchRunner'
     | 'out'
-    // Solo en el modo PRO
     | 'walk'
-    | 'error'
     | 'steal'
-    | 'wildPitch'
     | 'pitchingChange'
+    // Solo en el Lite
+    | 'lead'
+    | 'walkoff'
+    // Solo en el modo PRO
+    | 'error'
+    | 'wildPitch'
     | 'run'
     | 'noHitter'
     | 'missed';
@@ -34,6 +38,9 @@ export interface PlayPerson {
     id: number | null;
     name: string;
 }
+
+/** Cambio en el marcador: abre el marcador, se va arriba, le da la vuelta o empata */
+export type LeadChange = 'open' | 'ahead' | 'comeback' | 'tie';
 
 /** Cómo fue el out: cada uno tiene su propia trayectoria en la animación */
 export type OutVariant = 'ground' | 'fly' | 'line' | 'pop' | 'force' | 'dp' | 'tp' | 'sac';
@@ -61,24 +68,27 @@ export interface PlayEvent {
     out?: { variant: OutVariant; outs: number };
     /** Estadio (para dibujar el parque con sus medidas en el jonrón) */
     venue?: string;
-    /** Hits y jonrones del Lite: quién estaba en base antes (de la lectura anterior; null si no se sabe) */
+    /** Hits, jonrones y bases por bolas del Lite: quién estaba en base antes (de la lectura anterior; null si no se sabe) */
     bases?: Bases | null;
     /**
      * Carreras que entraron con la jugada y el marcador después. En el PRO, en cada jugada que las trae; en el Lite, en
-     * los hits y jonrones (del marcador del turno anterior al de este) para los corredores que anotan y «Remolca N».
+     * los hits, jonrones y bases por bolas (del marcador del turno anterior al de este) para los corredores que anotan y
+     * «Remolca N».
      */
     runs?: { count: number; away: number; home: number };
+    /** Base por bolas, intencional o golpeado */
+    walk?: 'bb' | 'ibb' | 'hbp';
+    /** Robo (o atrapado robando): a qué base (4 = home) y quién (su nombre en la narración) */
+    steal?: { base: 2 | 3 | 4; caught: boolean; runner: string | null };
+    /** Cambio de lanzador: quién entra y quién sale; en el Lite, con lo que hizo en el juego el que sale (del box) */
+    change?: { in: PlayPerson | null; out: PlayPerson | null; line?: PitcherLine | null };
+    /** Lite: cambio en el marcador (el protagonista es el equipo que anotó) y cómo estaba antes */
+    lead?: { change: LeadChange; before: { away: number; home: number } };
     // ---- Modo PRO
     /** Juego de la jugada (para leer sus extras PRO: corredores, quién fildeó, medidas del parque) */
     gamePk?: number | null;
-    /** Base por bolas, intencional o golpeado */
-    walk?: 'bb' | 'ibb' | 'hbp';
-    /** Robo (o atrapado robando): a qué base (4 = home) y quién */
-    steal?: { base: 2 | 3 | 4; caught: boolean; runner: string | null };
     /** Lanzamiento descontrolado o passed ball */
     wild?: 'wp' | 'pb';
-    /** Cambio de lanzador: quién entra y quién sale */
-    change?: { in: PlayPerson | null; out: PlayPerson | null };
     /** Sin hit: entradas completas del equipo que batea sin un hit */
     noHit?: { innings: number };
     /** Índice de la acción dentro del turno (robo, WP, cambio) */
@@ -132,6 +142,72 @@ const KIND: Record<string, PlayKind> = {
 
 export const playKind = (atBat: Pick<AtBat, 'event'>): PlayKind | null => (atBat.event ? KIND[atBat.event] ?? null : null);
 
+// ---------------------------------------------------------------- compartido (Lite y PRO)
+
+const WALKS: Record<string, 'bb' | 'ibb' | 'hbp'> = { walk: 'bb', intent_walk: 'ibb', hit_by_pitch: 'hbp' };
+const STEAL = /^(stolen_base|caught_stealing|pickoff_caught_stealing)_/;
+
+/** Base del robo según el código de MLB (stolen_base_2b, caught_stealing_home, pickoff_caught_stealing_3b…) */
+const stealBase = (code: string): 2 | 3 | 4 | null => {
+    const base = /_(2b|3b|home)$/.exec(code)?.[1];
+    return base === '2b' ? 2 : base === '3b' ? 3 : base === 'home' ? 4 : null;
+};
+
+/** Quién roba, según la narración de MLB («Kevin Alcántara steals (1) 2nd base.», «X caught stealing 2nd base…») */
+export const stealRunner = (desc: string) => /^(.+?)\s+(?:steals|caught stealing|picked off and caught stealing)\b/i.exec(desc.trim())?.[1] ?? null;
+
+/** Quién entra y quién sale en un cambio de lanzador («Pitching Change: Michael Arias replaces Adonis Medina.») */
+export const pitchingChangeNames = (desc: string) => {
+    const match = /Pitching Change:\s*(.+?)\s+replaces\s+(.+?)\.?\s*$/i.exec(desc.trim());
+    return match ? { in: match[1], out: match[2] } : null;
+};
+
+/** El box de MLB pone el apellido («Rhoades») o apellido e inicial («Espada, J»); la narración, el nombre completo */
+export const sameName = (boxName: string, fullName: string) => {
+    if (boxName === fullName) return true;
+    const [last, initial] = boxName.split(',').map((part) => part.trim());
+    return !!last && fullName.endsWith(` ${last}`) && (!initial || fullName.startsWith(initial));
+};
+
+/** Busca a un lanzador del box por su nombre (para tener su id y su foto) */
+const pitcherByName = (game: GameDetail, side: 'away' | 'home', name: string | null | undefined): PlayPerson | null => {
+    if (!name) return null;
+    const found = game.box?.[side]?.pitchers.find((pitcher) => sameName(pitcher.name, name));
+    return { id: found?.id ?? null, name };
+};
+
+/**
+ * Quién entra y quién sale en el cambio de lanzador del turno `position`: de la narración y, con su id, del box. Si la
+ * narración no dice quién sale, el último que lanzó a este mismo equipo.
+ */
+const pitchingChangeOf = (game: GameDetail, position: number, desc: string) => {
+    const atBat = game.atBats[position];
+    const side = atBat.top ? 'home' : 'away';
+    const names = pitchingChangeNames(desc);
+    const before = game.atBats
+        .slice(0, position)
+        .reverse()
+        .find((other) => other.top === atBat.top);
+    const incoming = pitcherByName(game, side, names?.in) ?? { id: atBat.pitcher.id, name: atBat.pitcher.name };
+    const outgoing = pitcherByName(game, side, names?.out) ?? (before && before.pitcher.id !== incoming.id ? { id: before.pitcher.id, name: before.pitcher.name } : null);
+    return { in: incoming, out: outgoing };
+};
+
+/** Cómo cambió el marcador entre dos lecturas, si anotó un solo equipo (con los dos no se sabe el orden) */
+export const leadChange = (before: { away: number; home: number }, after: { away: number; home: number }): { side: 'away' | 'home'; lead: LeadChange } | null => {
+    const away = after.away > before.away;
+    const home = after.home > before.home;
+    if (away === home) return null;
+    const side = away ? 'away' : 'home';
+    const other = away ? 'home' : 'away';
+    const was = before[side] - before[other];
+    const now = after[side] - after[other];
+    if (was < 0 && now === 0) return { side, lead: 'tie' };
+    if (was < 0 && now > 0) return { side, lead: 'comeback' };
+    if (was === 0 && now > 0) return { side, lead: before.away + before.home === 0 ? 'open' : 'ahead' };
+    return null;
+};
+
 export interface PlayEventOptions {
     /** Modo PRO: eventos nuevos y carreras en cada jugada */
     pro?: boolean;
@@ -144,82 +220,121 @@ const litePlayEvents = (prev: GameDetail | null | undefined, next: GameDetail): 
     // Solo si ya se estaba viendo este juego en vivo (un jonrón que deja en el terreno sí sale aunque el juego ya diga «final»)
     if (!prev || prev.gamePk !== next.gamePk || prev.state !== 'live') return [];
     const done = new Set(prev.atBats.filter((atBat) => atBat.complete).map((atBat) => atBat.i));
-    const events: PlayEvent[] = [];
+    // Jugadas y acciones en el orden en que pasaron: las acciones de un turno (robo, cambio de lanzador) van antes de su resultado
+    const ordered: { order: number; event: PlayEvent }[] = [];
+    const ordinal = (atBat: AtBat, index: number) => atBat.i * 1000 + index;
+    const sides = (atBat: AtBat) => ({ batting: atBat.top ? next.away : next.home, fielding: atBat.top ? next.home : next.away });
     // Los corredores de la lectura anterior son los de antes de la primera jugada nueva (de las siguientes no se sabe)
     let basesKnown = true;
     const battingRuns = (atBat: AtBat | undefined, top: boolean) => (atBat ? (top ? atBat.away : atBat.home) : 0);
 
     for (const atBat of next.atBats) {
         if (!atBat.complete || done.has(atBat.i)) continue;
-        // Cualquier turno nuevo (también una base por bolas, que el Lite no anima) cambia las bases para los siguientes
+        // Cualquier turno nuevo cambia las bases para los siguientes
         const firstNew = basesKnown;
         basesKnown = false;
         const variant = outVariant(atBat);
-        const kind = playKind(atBat) ?? (variant ? 'out' : null);
+        const walk = atBat.event ? WALKS[atBat.event] : undefined;
+        const kind = playKind(atBat) ?? (variant ? 'out' : walk ? 'walk' : null);
         if (!kind) continue;
-        const batting = atBat.top ? next.away : next.home;
-        const fielding = atBat.top ? next.home : next.away;
+        const { batting, fielding } = sides(atBat);
         // El out lo celebra el equipo que lo hizo (como el ponche)
         const defense = kind === 'k' || kind === 'out';
-        // Hits y jonrones: quién estaba en base y cuántas entraron (marcador del turno anterior contra el de este)
-        const hit = kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'hr';
+        // Jugadas en las que corren las bases (la base por bolas solo empuja a los forzados): quién estaba en base y
+        // cuántas entraron (marcador del turno anterior contra el de este)
+        const moves = kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'hr' || kind === 'walk';
         const after = battingRuns(atBat, atBat.top);
         const before = battingRuns(next.atBats.find((other) => other.i === atBat.i - 1), atBat.top);
-        const scored = hit && after !== null && before !== null && atBat.away !== null && atBat.home !== null && after > before ? after - before : 0;
-        events.push({
-            key: `ab-${atBat.i}`,
-            kind,
-            team: defense ? fielding : batting,
-            rival: defense ? batting : fielding,
-            out: kind === 'out' && variant ? { variant, outs: atBat.outs ?? 0 } : undefined,
-            away: next.away,
-            home: next.home,
-            atBat,
-            inning: null,
-            venue: next.venue,
-            bases: hit && firstNew ? basesOf(prev.runners) : null,
-            runs: scored > 0 ? { count: scored, away: atBat.away ?? 0, home: atBat.home ?? 0 } : undefined,
-            strikeouts:
-                kind === 'k'
-                    ? next.atBats.filter((other) => other.complete && other.i <= atBat.i && other.pitcher.id === atBat.pitcher.id && playKind(other) === 'k').length
-                    : undefined
-        });
-    }
-
-    // Bateador o corredor emergente: acciones nuevas de cambio ofensivo (PH / PR)
-    const seenActions = new Map(prev.atBats.map((atBat) => [atBat.i, atBat.actions.length]));
-    for (const atBat of next.atBats) {
-        atBat.actions.forEach((action, index) => {
-            if (index < (seenActions.get(atBat.i) ?? 0) || !action.sub) return;
-            const kind: PlayKind | null = action.sub.pos === 'PH' ? 'pinchHitter' : action.sub.pos === 'PR' ? 'pinchRunner' : null;
-            if (!kind) return;
-            events.push({
-                key: `sub-${atBat.i}-${index}`,
+        const scored = moves && after !== null && before !== null && atBat.away !== null && atBat.home !== null && after > before ? after - before : 0;
+        ordered.push({
+            order: ordinal(atBat, 999),
+            event: {
+                key: `ab-${atBat.i}`,
                 kind,
-                team: atBat.top ? next.away : next.home,
-                rival: atBat.top ? next.home : next.away,
+                team: defense ? fielding : batting,
+                rival: defense ? batting : fielding,
+                out: kind === 'out' && variant ? { variant, outs: atBat.outs ?? 0 } : undefined,
+                walk,
                 away: next.away,
                 home: next.home,
                 atBat,
                 inning: null,
-                sub: { in: action.sub.in, out: action.sub.out }
-            });
+                venue: next.venue,
+                bases: moves && firstNew ? basesOf(prev.runners) : null,
+                runs: scored > 0 ? { count: scored, away: atBat.away ?? 0, home: atBat.home ?? 0 } : undefined,
+                strikeouts:
+                    kind === 'k'
+                        ? next.atBats.filter((other) => other.complete && other.i <= atBat.i && other.pitcher.id === atBat.pitcher.id && playKind(other) === 'k').length
+                        : undefined
+            }
         });
     }
 
-    // Final del juego: victoria del ganador, o campeonato si con este juego se lleva el título
+    // Acciones nuevas dentro de los turnos: emergentes (PH / PR), robos y cambios de lanzador
+    const seenActions = new Map(prev.atBats.map((atBat) => [atBat.i, atBat.actions.length]));
+    next.atBats.forEach((atBat, position) => {
+        atBat.actions.forEach((action, index) => {
+            if (index < (seenActions.get(atBat.i) ?? 0)) return;
+            const { batting, fielding } = sides(atBat);
+            const shared = { away: next.away, home: next.home, atBat, inning: null };
+            const code = action.event ?? '';
+            const key = `act-${atBat.i}-${index}`;
+            if (action.sub && (action.sub.pos === 'PH' || action.sub.pos === 'PR')) {
+                ordered.push({
+                    order: ordinal(atBat, index),
+                    event: { key: `sub-${atBat.i}-${index}`, kind: action.sub.pos === 'PH' ? 'pinchHitter' : 'pinchRunner', team: batting, rival: fielding, ...shared, sub: { in: action.sub.in, out: action.sub.out } }
+                });
+            } else if (STEAL.test(code)) {
+                const base = stealBase(code);
+                if (!base) return;
+                // El robo lo celebra el corredor; el atrapado, la defensa (como un out)
+                const caught = !code.startsWith('stolen_base');
+                ordered.push({ order: ordinal(atBat, index), event: { key, kind: 'steal', team: caught ? fielding : batting, rival: caught ? batting : fielding, ...shared, steal: { base, caught, runner: stealRunner(action.desc) } } });
+            } else if (code === 'pitching_substitution') {
+                // Con la línea del que sale en el box (entradas, ponches y lanzamientos)
+                const change = pitchingChangeOf(next, position, action.desc);
+                const out = change.out;
+                const line = out ? next.box?.[atBat.top ? 'home' : 'away']?.pitchers.find((pitcher) => (out.id !== null ? pitcher.id === out.id : sameName(pitcher.name, out.name))) ?? null : null;
+                ordered.push({ order: ordinal(atBat, index), event: { key, kind: 'pitchingChange', team: fielding, rival: batting, ...shared, change: { ...change, line } } });
+            }
+        });
+    });
+    const events = ordered.sort((a, b) => a.order - b.order).map((item) => item.event);
+
+    // Cambio en el marcador (después de la jugada que lo hizo): abren el marcador, se van arriba, le dan la vuelta o empatan
+    const shown = { away: prev.away.runs, home: prev.home.runs };
+    const lead = next.state === 'live' ? leadChange(shown, { away: next.away.runs, home: next.home.runs }) : null;
+    if (lead) {
+        const team = next[lead.side];
+        events.push({
+            key: `lead-${next.away.runs}-${next.home.runs}`,
+            kind: 'lead',
+            team,
+            rival: team === next.home ? next.away : next.home,
+            away: next.away,
+            home: next.home,
+            atBat: [...next.atBats].reverse().find((atBat) => atBat.complete) ?? null,
+            inning: null,
+            lead: { change: lead.lead, before: shown }
+        });
+    }
+
+    // Final del juego: victoria del ganador, dejado en el terreno o campeonato si con este juego se lleva el título
     if (next.state === 'final') {
         const winner = next.home.isWinner ? next.home : next.away.isWinner ? next.away : null;
         if (winner) {
             const { champion, record } = titleClinch(next.series ?? prev.series, winner.id);
+            // En el terreno: el local gana en la baja de la última entrada (si iba arriba, esa baja no se juega)
+            const last = next.atBats[next.atBats.length - 1];
+            const walkoff = winner === next.home && !!last && !last.top && last.inning >= (next.scheduledInnings || 9);
             events.push({
                 key: `final-${next.gamePk}`,
-                kind: champion ? 'champion' : 'win',
+                kind: champion ? 'champion' : walkoff ? 'walkoff' : 'win',
                 team: winner,
                 rival: winner === next.home ? next.away : next.home,
                 away: next.away,
                 home: next.home,
-                atBat: null,
+                atBat: walkoff && !champion ? last : null,
                 inning: null,
                 league: next.league,
                 seriesRecord: record
@@ -253,14 +368,15 @@ export const STALE_READ_MS = 30000;
 
 /**
  * Lo que se anima al llegar una lectura nueva (`at` = cuándo se leyó). Si la anterior es vieja o la app está en segundo
- * plano, las jugadas ya pasaron: no se repiten y a lo sumo sale el final del juego (victoria o campeonato) como resumen.
+ * plano, las jugadas ya pasaron: no se repiten y a lo sumo sale el final del juego (victoria, dejado en el terreno o
+ * campeonato) como resumen.
  * En PRO (`pro`, por defecto el modo de la cuenta abierta) salen los eventos PRO y, al volver tras un rato fuera, una sola
  * tarjeta «Te lo perdiste» con lo que pasó en vez de repetir jugadas viejas.
  */
 export const playsSince = (prev: { game: GameDetail; at: number } | null, next: GameDetail, at: number, background = false, pro = proActive()): PlayEvent[] => {
     const events = newPlayEvents(prev?.game, next, { pro });
     const stale = background || !prev || at - prev.at > STALE_READ_MS;
-    if (!pro) return stale ? events.filter((event) => event.kind === 'win' || event.kind === 'champion') : events;
+    if (!pro) return stale ? events.filter((event) => event.kind === 'win' || event.kind === 'walkoff' || event.kind === 'champion') : events;
     return proPlaysSince(prev, next, events, stale, background);
 };
 
@@ -272,7 +388,7 @@ export const queuePlays = (queue: PlayEvent[], fresh: PlayEvent[], max = 4): Pla
 };
 
 /** Las que siempre salen aunque el juego no sea de tu equipo */
-const BIG: PlayKind[] = ['hr', 'k', 'inning', 'win', 'champion', 'noHitter'];
+const BIG: PlayKind[] = ['hr', 'k', 'inning', 'win', 'champion', 'noHitter', 'lead', 'walkoff'];
 
 /**
  * Filtra las animaciones según lo elegido en «Más» (en «smart», tu equipo las ve todas; «cine» es «all» más largo).
@@ -286,37 +402,7 @@ export const forMode = (events: PlayEvent[], mode: AnimationMode, favoriteTeamId
 
 // ---------------------------------------------------------------- modo PRO
 
-const WALKS: Record<string, 'bb' | 'ibb' | 'hbp'> = { walk: 'bb', intent_walk: 'ibb', hit_by_pitch: 'hbp' };
 const ERRORS = ['field_error', 'catcher_interf', 'fielder_interference'];
-
-/** Base del robo según el código de MLB (stolen_base_2b, caught_stealing_home, pickoff_caught_stealing_3b…) */
-const stealBase = (code: string): 2 | 3 | 4 | null => {
-    const base = /_(2b|3b|home)$/.exec(code)?.[1];
-    return base === '2b' ? 2 : base === '3b' ? 3 : base === 'home' ? 4 : null;
-};
-
-/** Quién roba, según la narración de MLB («Kevin Alcántara steals (1) 2nd base.», «X caught stealing 2nd base…») */
-export const stealRunner = (desc: string) => /^(.+?)\s+(?:steals|caught stealing|picked off and caught stealing)\b/i.exec(desc.trim())?.[1] ?? null;
-
-/** Quién entra y quién sale en un cambio de lanzador («Pitching Change: Michael Arias replaces Adonis Medina.») */
-export const pitchingChangeNames = (desc: string) => {
-    const match = /Pitching Change:\s*(.+?)\s+replaces\s+(.+?)\.?\s*$/i.exec(desc.trim());
-    return match ? { in: match[1], out: match[2] } : null;
-};
-
-/** El box de MLB pone el apellido («Rhoades») o apellido e inicial («Espada, J»); la narración, el nombre completo */
-export const sameName = (boxName: string, fullName: string) => {
-    if (boxName === fullName) return true;
-    const [last, initial] = boxName.split(',').map((part) => part.trim());
-    return !!last && fullName.endsWith(` ${last}`) && (!initial || fullName.startsWith(initial));
-};
-
-/** Busca a un lanzador del box por su nombre (para tener su id y su foto) */
-const pitcherByName = (game: GameDetail, side: 'away' | 'home', name: string | null | undefined): PlayPerson | null => {
-    if (!name) return null;
-    const found = game.box?.[side]?.pitchers.find((pitcher) => sameName(pitcher.name, name));
-    return { id: found?.id ?? null, name };
-};
 
 const scoreOf = (atBat: AtBat | undefined, fallback: { away: number; home: number }) =>
     atBat && atBat.away !== null && atBat.home !== null ? { away: atBat.away, home: atBat.home } : fallback;
@@ -342,7 +428,7 @@ const proPlayEvents = (prev: GameDetail | null | undefined, next: GameDetail): P
             if (index < (seenActions.get(atBat.i) ?? 0) || !action.event) return;
             const code = action.event;
             const key = `act-${atBat.i}-${index}`;
-            if (/^(stolen_base|caught_stealing|pickoff_caught_stealing)_/.test(code)) {
+            if (STEAL.test(code)) {
                 const target = stealBase(code);
                 if (!target) return;
                 const caught = !code.startsWith('stolen_base');
@@ -350,15 +436,7 @@ const proPlayEvents = (prev: GameDetail | null | undefined, next: GameDetail): P
             } else if (code === 'wild_pitch' || code === 'passed_ball') {
                 ordered.push({ order: ordinal(atBat, index), event: { key, kind: 'wildPitch', ...roles(atBat, false), wild: code === 'wild_pitch' ? 'wp' : 'pb', action: index } });
             } else if (code === 'pitching_substitution') {
-                const side = atBat.top ? 'home' : 'away';
-                const names = pitchingChangeNames(action.desc);
-                const before = next.atBats
-                    .slice(0, position)
-                    .reverse()
-                    .find((other) => other.top === atBat.top);
-                const incoming = pitcherByName(next, side, names?.in) ?? { id: atBat.pitcher.id, name: atBat.pitcher.name };
-                const outgoing = pitcherByName(next, side, names?.out) ?? (before && before.pitcher.id !== incoming.id ? { id: before.pitcher.id, name: before.pitcher.name } : null);
-                ordered.push({ order: ordinal(atBat, index), event: { key, kind: 'pitchingChange', ...roles(atBat, false), change: { in: incoming, out: outgoing }, action: index } });
+                ordered.push({ order: ordinal(atBat, index), event: { key, kind: 'pitchingChange', ...roles(atBat, false), change: pitchingChangeOf(next, position, action.desc), action: index } });
             } else if (action.sub && (action.sub.pos === 'PH' || action.sub.pos === 'PR')) {
                 ordered.push({
                     order: ordinal(atBat, index),
@@ -419,8 +497,13 @@ const proPlayEvents = (prev: GameDetail | null | undefined, next: GameDetail): P
 
     const events = ordered.sort((a, b) => a.order - b.order).map((item) => item.event);
 
-    // Final o fin de media entrada (igual que en el Lite) y, desde la 5.ª, el aviso de sin hit
+    // Final o fin de media entrada (igual que en el Lite, pero el dejado en el terreno es la victoria de siempre) y, desde
+    // la 5.ª, el aviso de sin hit
     for (const event of litePlayEvents(prev, next)) {
+        if (event.kind === 'walkoff') {
+            events.push({ ...event, kind: 'win', atBat: null, gamePk: next.gamePk });
+            continue;
+        }
         if (event.kind !== 'win' && event.kind !== 'champion' && event.kind !== 'inning') continue;
         events.push({ ...event, gamePk: next.gamePk });
         if (event.kind !== 'inning' || !event.inning || event.inning.n < 5 || next.state !== 'live') continue;

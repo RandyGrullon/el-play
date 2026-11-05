@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Share2, Star } from 'lucide-react-native';
 import type { GameDetail, GameState, ScheduleGame, TeamBase } from '../../types';
-import { finalLabel, inningName, isNotPlayed, stateName } from '../../lib/baseball';
+import { finalLabel, inningName, isOnHold, isSuspended, stateName } from '../../lib/baseball';
 import { formatCountdown, formatShortDate, formatTime } from '../../lib/format';
 import { teamDisplayName } from '../../lib/teams';
 import { usePreferences } from '../../state/preferences';
@@ -117,9 +117,10 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
     const insets = useSafeAreaInsets();
     const { favoriteTeamId, toggleFavoriteTeam } = usePreferences();
     const pro = useIsPro();
-    const notPlayed = isNotPlayed(model.detailedState);
-    const showScores = model.state !== 'preview' && !notPlayed;
     const now = useNow();
+    // Pospuesto, cancelado o suspendido todavía sin fecha nueva
+    const notPlayed = isOnHold(model, now);
+    const showScores = model.state !== 'preview' && !notPlayed;
     const startsIn = model.date ? new Date(model.date).getTime() - now : 0;
 
     let status: string;
@@ -128,7 +129,11 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
     else if (model.state === 'live') {
         // La entrada va en grande al centro: aquí «En vivo» y los outs
         status = model.inning?.n ? `${t('game.tabs.live')} · ${t('game.outsCount', { count: model.outs })}` : stateName(model.detailedState, i18n.language);
-    } else status = model.date ? `${formatShortDate(model.date, i18n.language)} · ${formatTime(model.date, i18n.language)}` : '';
+    } else {
+        status = model.date ? `${formatShortDate(model.date, i18n.language)} · ${formatTime(model.date, i18n.language)}` : '';
+        // Suspendido con fecha nueva: se dice para que no parezca un juego más
+        if (isSuspended(model.detailedState)) status = `${t('card.rescheduled')} · ${status}`;
+    }
     if (model.state === 'preview' && startsIn > 0 && !notPlayed) status += ` · ${formatCountdown(startsIn, i18n.language)}`;
 
     const half = (team: HeroModel['away'], align: 'start' | 'end') => {
