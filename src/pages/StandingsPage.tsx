@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Info, Share2, Star } from 'lucide-react';
 import type { StandingRow } from '../types';
@@ -69,13 +70,13 @@ const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabe
         <div className="space-y-2">
             <div className="flex items-center gap-4 rounded-[26px] p-5 shadow-float" style={{ backgroundColor: leader.team.color, color: ink }}>
                 <span className="text-[56px] font-extrabold leading-none">{leader.rank}</span>
-                <span className="min-w-0 flex-1">
+                <Link to={`/equipo/${leader.team.id}`} className="min-w-0 flex-1">
                     <span className="block truncate text-[22px] font-extrabold">{teamDisplayName(leader.team, i18n.language)}</span>
                     <span className="block text-sm font-semibold opacity-80 tabular-nums">
                         {leader.wins}-{leader.losses} · {leader.pct}
                     </span>
                     {leader.lastTen && <span className="block text-xs font-semibold opacity-75">{t('standings.lastTenIs', { record: `${leader.lastTen.wins}-${leader.lastTen.losses}` })}</span>}
-                </span>
+                </Link>
                 <StatusBadge status={statuses?.get(leader.team.id)} onColor />
                 {streakLabel(leader.streak, t) && <span className="pill bg-black/10">{streakLabel(leader.streak, t)}</span>}
                 {favoriteButton(leader, ink)}
@@ -95,11 +96,13 @@ const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabe
                             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] font-extrabold" style={{ backgroundColor: row.team.color, color: inkOn(row.team.color) }}>
                                 {row.rank}
                             </span>
-                            <TeamLogo team={row.team} size={26} />
-                            <span className="min-w-0 flex-1">
-                                <span className={`line-clamp-2 text-[15px] font-bold leading-tight ${below ? 'text-muted' : ''}`}>{teamDisplayName(row.team, i18n.language)}</span>
-                                {formLine(row, t) && <span className="block truncate text-[11px] font-semibold text-muted">{formLine(row, t)}</span>}
-                            </span>
+                            <Link to={`/equipo/${row.team.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                                <TeamLogo team={row.team} size={26} />
+                                <span className="min-w-0 flex-1">
+                                    <span className={`line-clamp-2 text-[15px] font-bold leading-tight ${below ? 'text-muted' : ''}`}>{teamDisplayName(row.team, i18n.language)}</span>
+                                    {formLine(row, t) && <span className="block truncate text-[11px] font-semibold text-muted">{formLine(row, t)}</span>}
+                                </span>
+                            </Link>
                             <StatusBadge status={statuses?.get(row.team.id)} />
                             <span className="font-bold tabular-nums">{row.wins}-{row.losses}</span>
                             <span className="w-9 text-right text-sm font-semibold text-muted tabular-nums">{row.gamesBack === '-' ? '—' : row.gamesBack}</span>

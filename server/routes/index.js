@@ -7,7 +7,7 @@ const { getSchedule, getScheduleV2 } = require('../controllers/scheduleControlle
 const { getStandings, getLeaders, getLeadersV2, getRace } = require('../controllers/statsController');
 const { getPhotos, getPhoto } = require('../controllers/photoController');
 const { getFantasyDay, getFantasyFan, getFantasySeason, getFantasyOwners } = require('../controllers/fantasyController');
-const { getPlayers, getPlayer, getPlayerPitches, getTeamStats, getTransactions } = require('../controllers/playersController');
+const { getPlayers, getPlayer, getPlayerPitches, getTeamStats, getTransactions, getTeamGames } = require('../controllers/playersController');
 const { getPreview } = require('../controllers/previewController');
 const { getPushConfig, subscribe, unsubscribe, run, clientError } = require('../controllers/pushController');
 
@@ -27,6 +27,7 @@ router.get('/v2/fantasy/owners', getFantasyOwners);
 router.get('/v2/fantasy', getFantasyDay);
 router.get('/v2/players', getPlayers);
 router.get('/v2/team-stats', getTeamStats);
+router.get('/v2/team/:id/games', getTeamGames);
 router.get('/v2/preview', getPreview);
 router.get('/v2/race', getRace);
 router.get('/v2/push/config', getPushConfig);

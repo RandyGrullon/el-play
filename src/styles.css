@@ -410,3 +410,40 @@
 html.text-large body {
     zoom: 1.12;
 }
+
+/* Botón flotante de la página del equipo y del pelotero: las opciones salen en abanico a su alrededor */
+.dial { position: fixed; z-index: 45; right: max(16px, calc((100vw - 768px) / 2 + 16px)); bottom: calc(96px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
+.dial-fab {
+    position: absolute; inset: 0; display: grid; place-items: center; border-radius: 9999px;
+    box-shadow: 0 10px 28px rgb(0 0 0 / 0.32), inset 0 0 0 2px rgb(255 255 255 / 0.18);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+}
+.dial-fab:active { transform: scale(0.9); }
+.dial-fab svg { transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.dial[data-open='true'] .dial-fab { box-shadow: 0 14px 34px rgb(0 0 0 / 0.45), inset 0 0 0 2px rgb(255 255 255 / 0.3); }
+.dial[data-open='true'] .dial-fab svg { transform: rotate(135deg); }
+.dial-item { position: absolute; left: 6px; top: 6px; width: 48px; height: 48px; pointer-events: none; transition: transform 0.48s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.22s ease-out; }
+.dial[data-open='true'] .dial-item { pointer-events: auto; }
+.dial-option {
+    position: relative; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 9999px; background: rgb(var(--surface));
+    box-shadow: 0 8px 22px rgb(0 0 0 / 0.3); transition: transform 0.2s;
+}
+.dial-option:active { transform: scale(0.9); }
+.dial-option:disabled { opacity: 0.45; }
+.dial-label {
+    position: absolute; top: calc(100% + 5px); left: 50%; width: max-content; max-width: 78px; transform: translateX(-50%); text-align: center;
+    font-size: 11px; font-weight: 800; line-height: 1.15; color: #fff; text-shadow: 0 1px 6px rgb(0 0 0 / 0.7); pointer-events: none;
+}
+.dial-backdrop { position: fixed; inset: 0; z-index: 44; background: rgb(8 10 14 / 0.58); backdrop-filter: blur(3px); animation: dial-fade 0.25s ease-out; }
+.dial-ring { position: absolute; inset: 0; border-radius: 9999px; border: 2px solid var(--dial-c); pointer-events: none; animation: dial-ring 0.65s ease-out forwards; }
+@keyframes dial-ring { from { transform: scale(1); opacity: 0.8; } to { transform: scale(3.4); opacity: 0; } }
+@keyframes dial-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+    .dial-item, .dial-fab, .dial-fab svg { transition-duration: 0s; }
+    .dial-ring { display: none; }
+}
+
+/* Comparar: barra partida en el color de cada uno (el mejor se lleva más) */
+.cmp-bar { display: flex; height: 8px; overflow: hidden; border-radius: 9999px; background: rgb(var(--raised)); }
+.cmp-bar > span { display: block; height: 100%; transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.cmp-bar > span + span { margin-left: 2px; }

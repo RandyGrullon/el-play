@@ -1,15 +1,13 @@
 // Más de la ficha del pelotero: percentiles en la liga, por situación, postemporada, sus últimos juegos pitcheo a
-// pitcheo (batazos, zonas y repertorio) y comparar con otro pelotero.
+// pitcheo (batazos, zonas y repertorio) y lo que se mira al compararlo con otro (el botón flotante de su página).
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GitCompare, Search, X } from 'lucide-react';
 import type { LeagueId } from '../../types';
-import { normalize, qualifies, usePlayerPitches, usePlayers, type HittingLine, type PitchingLine, type PlayerDetail, type PlayerRow, type RecentPitch } from '../../lib/stats';
+import { qualifies, usePlayerPitches, usePlayers, type HittingLine, type PitchingLine, type PlayerDetail, type PlayerRow, type RecentPitch } from '../../lib/stats';
 import { HITTING_METRICS, PITCHING_METRICS, percentiles, recentBatted, zoneGrid, type Metric } from '../../lib/playerPitches';
 import { arsenal } from '../../lib/baseball';
 import type { Pitch } from '../../types';
 import { Segmented } from '../ui/Segmented';
-import { TeamLogo } from '../ui/TeamLogo';
 import { FIELD_VIEWBOX, FieldBackdrop, SPRAY_COLORS, fieldPoint } from '../game/SprayChart';
 
 const Heading: React.FC<{ children: React.ReactNode; aside?: React.ReactNode }> = ({ children, aside }) => (
@@ -271,9 +269,11 @@ export const RecentPitches: React.FC<{ player: PlayerDetail; league: LeagueId }>
     );
 };
 
-// ---------------------------------------------------------------- comparar
+// ---------------------------------------------------------------- comparar (lo usa el botón flotante de la página)
 
-const COMPARE_HITTING: (Metric | { key: string; higher: boolean; value: (l: HittingLine) => number; show: (v: number) => string })[] = [
+type CompareMetric<L> = Metric | { key: string; higher: boolean; value: (l: L) => number; show: (v: number) => string };
+
+export const COMPARE_HITTING: CompareMetric<HittingLine>[] = [
     { key: 'g', higher: true, value: (l: HittingLine) => l.g, show: String },
     ...HITTING_METRICS.slice(0, 4),
     { key: 'hr', higher: true, value: (l: HittingLine) => l.hr, show: String },
@@ -281,101 +281,10 @@ const COMPARE_HITTING: (Metric | { key: string; higher: boolean; value: (l: Hitt
     { key: 'sb', higher: true, value: (l: HittingLine) => l.sb, show: String },
     ...HITTING_METRICS.slice(5)
 ];
-const COMPARE_PITCHING: (Metric | { key: string; higher: boolean; value: (l: PitchingLine) => number; show: (v: number) => string })[] = [
+export const COMPARE_PITCHING: CompareMetric<PitchingLine>[] = [
     { key: 'g', higher: true, value: (l: PitchingLine) => l.g, show: String },
     { key: 'ip', higher: true, value: (l: PitchingLine) => l.outs / 3, show: (v) => `${Math.floor(v)}.${Math.round((v % 1) * 3)}` },
     ...PITCHING_METRICS.slice(0, 2),
     { key: 'k', higher: true, value: (l: PitchingLine) => l.k, show: String },
     ...PITCHING_METRICS.slice(2)
 ];
-
-export const Compare: React.FC<{ player: PlayerDetail; league: LeagueId }> = ({ player, league }) => {
-    const { t } = useTranslation();
-    const players = usePlayers(league, player.season);
-    const [open, setOpen] = useState(false);
-    const [search, setSearch] = useState('');
-    const [otherId, setOtherId] = useState<number | null>(null);
-    const list = players.data?.players ?? [];
-    const pitcher = player.role === 'P';
-    const other = list.find((row) => row.id === otherId) ?? null;
-    const matches = useMemo(() => {
-        const text = normalize(search.trim());
-        return list.filter((row) => row.role === player.role && row.id !== player.id && (!text || normalize(row.name).includes(text))).slice(0, 8);
-    }, [list, search, player.role, player.id]);
-    const mine = pitcher ? player.pitching : player.hitting;
-    if (!mine) return null;
-    const theirs = other ? (pitcher ? other.pitching : other.hitting) : null;
-    const metrics = pitcher ? COMPARE_PITCHING : COMPARE_HITTING;
-    const teams = players.data?.teams ?? {};
-
-    return (
-        <section aria-label={t('playerMore.compare')}>
-            <Heading
-                aside={
-                    other ? (
-                        <button type="button" onClick={() => setOtherId(null)} className="inline-flex h-8 items-center gap-1 rounded-full bg-raised px-3 text-xs font-bold" aria-label={t('playerMore.compareClear')}>
-                            <X className="h-3.5 w-3.5" /> {t('playerMore.compareClear')}
-                        </button>
-                    ) : null
-                }
-            >
-                {t('playerMore.compare')}
-            </Heading>
-            {!other ? (
-                open ? (
-                    <div className="card p-3">
-                        <label className="flex h-11 items-center gap-2 rounded-xl bg-raised px-3">
-                            <Search className="h-4 w-4 text-muted" aria-hidden="true" />
-                            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('playerMore.compareSearch')} className="min-w-0 flex-1 bg-transparent text-base outline-none" autoFocus />
-                        </label>
-                        <ul className="mt-2 divide-y divide-line/10">
-                            {matches.map((row) => {
-                                const team = row.teamId ? teams[row.teamId] : undefined;
-                                return (
-                                    <li key={row.id}>
-                                        <button type="button" onClick={() => setOtherId(row.id)} className="flex w-full items-center gap-2.5 py-2 text-left">
-                                            {team && <TeamLogo team={team} size={22} />}
-                                            <span className="min-w-0 flex-1 truncate font-semibold">{row.name}</span>
-                                            <span className="text-xs text-muted">{row.pos}</span>
-                                        </button>
-                                    </li>
-                                );
-                            })}
-                            {!matches.length && <li className="py-3 text-center text-sm text-muted">{t('playerMore.compareNone')}</li>}
-                        </ul>
-                    </div>
-                ) : (
-                    <button type="button" onClick={() => setOpen(true)} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-surface text-sm font-bold shadow-card">
-                        <GitCompare className="h-4 w-4" /> {t('playerMore.compareWith')}
-                    </button>
-                )
-            ) : (
-                <div className="card overflow-hidden">
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-line/10 px-4 py-3 text-sm font-extrabold">
-                        <span className="truncate">{player.name}</span>
-                        <span className="text-xs text-faint">vs</span>
-                        <span className="truncate text-right">{other.name}</span>
-                    </div>
-                    <table className="w-full text-sm tabular-nums">
-                        <tbody className="divide-y divide-line/10">
-                            {metrics.map((metric) => {
-                                const a = (metric.value as (l: HittingLine & PitchingLine) => number | null)(mine as HittingLine & PitchingLine);
-                                const b = theirs ? (metric.value as (l: HittingLine & PitchingLine) => number | null)(theirs as HittingLine & PitchingLine) : null;
-                                const better = a === null || b === null || a === b ? null : metric.higher ? (a > b ? 'a' : 'b') : a < b ? 'a' : 'b';
-                                return (
-                                    <tr key={metric.key}>
-                                        <td className={`w-[38%] px-4 py-2 ${better === 'a' ? 'font-extrabold text-accent-ink' : ''}`}>{a === null ? '—' : metric.show(a)}</td>
-                                        <th scope="row" className="py-2 text-center text-[11px] font-bold uppercase tracking-wide text-muted">
-                                            {t(`playerMore.metrics.${metric.key}`, { defaultValue: t(`statsPage.labels.${metric.key}`) })}
-                                        </th>
-                                        <td className={`w-[38%] px-4 py-2 text-right ${better === 'b' ? 'font-extrabold text-accent-ink' : ''}`}>{b === null ? '—' : metric.show(b)}</td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-        </section>
-    );
-};

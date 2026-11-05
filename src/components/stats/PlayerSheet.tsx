@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronRight, Maximize2, Sparkles } from 'lucide-react';
 import { useLeague } from '../../store/LeagueContext';
 import { BottomSheet } from '../ui/BottomSheet';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
@@ -13,7 +13,7 @@ import { localeFor, seasonLabel } from '../../lib/format';
 import { gameLine, usePlayer, type CareerRow, type GameLogRow, type PlayerDetail } from '../../lib/stats';
 import { battingAdvanced, eraPlus, fmtDec, fmtPct, fmtRate, leagueLineOf, opsPlus, pitchingAdvanced } from '../../lib/advanced';
 import { useTeamStats } from '../../lib/teamStats';
-import { Compare, Percentiles, Postseason, RecentPitches, Situations } from './PlayerExtras';
+import { Percentiles, Postseason, RecentPitches, Situations } from './PlayerExtras';
 import { useIsPro } from '../../lib/pro';
 import { ProBadge } from '../pro/ProBadge';
 
@@ -35,78 +35,122 @@ const shortDay = (day: string, lang: string) => new Date(`${day}T12:00:00Z`).toL
 
 const FANTASY_GRADIENT = 'linear-gradient(135deg, #1e4fd8 0%, #6d28d9 55%, #e11d48 100%)';
 
-// Ficha del pelotero: quién es, cómo va en el fantasy, su temporada, juego a juego y su carrera en la liga.
+// Ficha del pelotero en una hoja (desde el fantasy): lo mismo que su página, con un botón para abrirla completa.
 export const PlayerSheet: React.FC<PlayerSheetProps> = ({ id, name, team, season: initialSeason, onClose, onOpenGame, action }) => {
     const { t } = useTranslation();
     const { activeLeague } = useLeague();
     const [season, setSeason] = useState<number | undefined>(initialSeason);
+    const player = usePlayer(id, activeLeague, season).data;
+    return (
+        <BottomSheet open onClose={onClose} title={player?.name || name} tall>
+            <PlayerProfile
+                id={id}
+                name={name}
+                team={team}
+                season={season}
+                onSeasonChange={setSeason}
+                onLeave={onOpenGame ?? onClose}
+                action={
+                    <>
+                        <Link to={`/jugador/${id}${season ? `?temporada=${season}` : ''}`} onClick={onClose} className="flex h-11 items-center justify-center gap-2 rounded-full bg-surface text-sm font-bold shadow-card">
+                            <Maximize2 className="h-4 w-4" /> {t('player.openPage')}
+                        </Link>
+                        {action}
+                    </>
+                }
+            />
+        </BottomSheet>
+    );
+};
+
+interface PlayerProfileProps {
+    id: number;
+    name: string;
+    team?: PlayerSheetProps['team'];
+    season: number | undefined;
+    onSeasonChange: (season: number) => void;
+    /** Al irse a otra pantalla (un juego del juego a juego, su equipo): la hoja se cierra */
+    onLeave?: () => void;
+    action?: React.ReactNode;
+}
+
+// Ficha del pelotero: quién es, cómo va en el fantasy, su temporada, juego a juego y su carrera en la liga.
+// La usan su página y la hoja del fantasy.
+export const PlayerProfile: React.FC<PlayerProfileProps> = ({ id, name, team, season, onSeasonChange: setSeason, onLeave, action }) => {
+    const { t } = useTranslation();
+    const { activeLeague } = useLeague();
     const query = usePlayer(id, activeLeague, season);
     const player = query.data;
     const color = player?.team?.color || team?.color || '#2563eb';
     const ink = inkOn(color);
+    const leave = onLeave ?? (() => undefined);
 
     return (
-        <BottomSheet open onClose={onClose} title={player?.name || name} tall>
-            <div className="space-y-4 pb-4">
-                {/* Cabecera en el color del equipo */}
-                <section className="relative overflow-hidden rounded-[28px] p-4" style={{ backgroundColor: color, color: ink }}>
-                    <div className="flex items-center gap-4">
-                        <PlayerPhoto personId={id} name={player?.name || name} size={96} background="rgba(255,255,255,0.25)" team={player?.team ? { id: player.team.id, logo: player.team.logo, color: player.team.color } : team} />
-                        <div className="min-w-0 flex-1">
-                            <p className="text-[13px] font-bold opacity-85">
-                                {[player?.number ? `#${player.number}` : null, player?.pos, player?.team?.abbrev].filter(Boolean).join(' · ') || ' '}
-                            </p>
-                            <h3 className="font-display text-[26px] font-extrabold leading-[1.05] [text-wrap:balance]">{player?.name || name}</h3>
-                            <p className="mt-0.5 truncate text-sm font-semibold opacity-85">{player?.team?.name || ' '}</p>
-                        </div>
-                    </div>
-                    {player && <Bio player={player} />}
-                </section>
-
-                {action}
-
-                {query.isPending ? (
-                    <div className="space-y-3">
-                        <Skeleton className="h-32 rounded-card" />
-                        <Skeleton className="h-40 rounded-card" />
-                    </div>
-                ) : query.isError && !player ? (
-                    <ErrorState error={query.error as Error} onRetry={() => query.refetch()} />
-                ) : player ? (
-                    <>
-                        {player.currentSeason > 0 && (
-                            <Segmented<string>
-                                size="sm"
-                                label={t('statsPage.season', { season: '' })}
-                                value={String(player.season)}
-                                onChange={(value) => setSeason(Number(value))}
-                                options={[player.currentSeason, player.currentSeason - 1, player.currentSeason - 2].map((year) => ({ value: String(year), label: seasonLabel(year, activeLeague) }))}
-                            />
-                        )}
-                        <FantasyCard player={player} />
-                        {player.g > 0 ? (
-                            <>
-                                <SeasonGrid player={player} />
-                                <AdvancedGrid player={player} />
-                                <Percentiles player={player} league={activeLeague} />
-                                <Situations player={player} />
-                                <Postseason player={player} />
-                                <RecentPitches player={player} league={activeLeague} />
-                                <Compare player={player} league={activeLeague} />
-                            </>
+        <div className="space-y-4 pb-4">
+            {/* Cabecera en el color del equipo */}
+            <section className="relative overflow-hidden rounded-[28px] p-4" style={{ backgroundColor: color, color: ink }}>
+                <div className="flex items-center gap-4">
+                    <PlayerPhoto personId={id} name={player?.name || name} size={96} background="rgba(255,255,255,0.25)" team={player?.team ? { id: player.team.id, logo: player.team.logo, color: player.team.color } : team} />
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-bold opacity-85">
+                            {[player?.number ? `#${player.number}` : null, player?.pos, player?.team?.abbrev].filter(Boolean).join(' · ') || ' '}
+                        </p>
+                        <h3 className="font-display text-[26px] font-extrabold leading-[1.05] [text-wrap:balance]">{player?.name || name}</h3>
+                        {player?.team ? (
+                            <Link to={`/equipo/${player.team.id}`} onClick={leave} className="mt-0.5 flex max-w-full items-center gap-0.5 text-sm font-semibold opacity-90 underline-offset-2 hover:underline">
+                                <span className="truncate">{player.team.name}</span>
+                                <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                            </Link>
                         ) : (
-                            player.season > player.currentSeason - 2 && (
-                                <button type="button" onClick={() => setSeason(player.season - 1)} className="h-11 w-full rounded-full bg-surface text-sm font-bold shadow-card">
-                                    {t('statsPage.seePrevious', { season: seasonLabel(player.season - 1, activeLeague) })}
-                                </button>
-                            )
+                            <p className="mt-0.5 truncate text-sm font-semibold opacity-85"> </p>
                         )}
-                        <GameLog player={player} onOpen={onOpenGame ?? onClose} />
-                        <Career player={player} />
-                    </>
-                ) : null}
-            </div>
-        </BottomSheet>
+                    </div>
+                </div>
+                {player && <Bio player={player} />}
+            </section>
+
+            {action}
+
+            {query.isPending ? (
+                <div className="space-y-3">
+                    <Skeleton className="h-32 rounded-card" />
+                    <Skeleton className="h-40 rounded-card" />
+                </div>
+            ) : query.isError && !player ? (
+                <ErrorState error={query.error as Error} onRetry={() => query.refetch()} />
+            ) : player ? (
+                <>
+                    {player.currentSeason > 0 && (
+                        <Segmented<string>
+                            size="sm"
+                            label={t('statsPage.season', { season: '' })}
+                            value={String(player.season)}
+                            onChange={(value) => setSeason(Number(value))}
+                            options={[player.currentSeason, player.currentSeason - 1, player.currentSeason - 2].map((year) => ({ value: String(year), label: seasonLabel(year, activeLeague) }))}
+                        />
+                    )}
+                    <FantasyCard player={player} />
+                    {player.g > 0 ? (
+                        <>
+                            <SeasonGrid player={player} />
+                            <AdvancedGrid player={player} />
+                            <Percentiles player={player} league={activeLeague} />
+                            <Situations player={player} />
+                            <Postseason player={player} />
+                            <RecentPitches player={player} league={activeLeague} />
+                        </>
+                    ) : (
+                        player.season > player.currentSeason - 2 && (
+                            <button type="button" onClick={() => setSeason(player.season - 1)} className="h-11 w-full rounded-full bg-surface text-sm font-bold shadow-card">
+                                {t('statsPage.seePrevious', { season: seasonLabel(player.season - 1, activeLeague) })}
+                            </button>
+                        )
+                    )}
+                    <GameLog player={player} onOpen={leave} />
+                    <Career player={player} />
+                </>
+            ) : null}
+        </div>
     );
 };
 

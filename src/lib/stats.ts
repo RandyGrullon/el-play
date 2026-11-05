@@ -166,7 +166,7 @@ export interface Transaction {
     description: string;
 }
 
-const getJson = async <T>(path: string, signal?: AbortSignal): Promise<T> => {
+export const getJson = async <T>(path: string, signal?: AbortSignal): Promise<T> => {
     const response = await fetch(path, { signal, headers: { Accept: 'application/json' } }).catch((error: Error) => {
         if (error.name === 'AbortError') throw error;
         throw new ApiError(error.message, typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'network');
@@ -178,7 +178,7 @@ const getJson = async <T>(path: string, signal?: AbortSignal): Promise<T> => {
     return (await response.json()) as T;
 };
 
-const retry = (failureCount: number, error: Error) => !(error instanceof ApiError && [400, 404].includes(error.status)) && failureCount < 2;
+export const retry = (failureCount: number, error: Error) => !(error instanceof ApiError && [400, 404].includes(error.status)) && failureCount < 2;
 
 export const usePlayers = (league: LeagueId, season?: number) =>
     useQuery({

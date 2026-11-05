@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Info, Search, X } from 'lucide-react';
 import { useLeague } from '../store/LeagueContext';
@@ -12,7 +12,6 @@ import { Segmented } from '../components/ui/Segmented';
 import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { StatsTabs } from '../components/layout/StatsTabs';
-import { PlayerSheet } from '../components/stats/PlayerSheet';
 import { StatsTable } from '../components/pro/StatsTable';
 import { ProBadge } from '../components/pro/ProBadge';
 import { useIsPro } from '../lib/pro';
@@ -31,7 +30,7 @@ type View = 'B' | 'P' | 'T';
 export const StatsPage: React.FC = () => {
     const { t } = useTranslation();
     const { activeLeague } = useLeague();
-    const [params, setParams] = useSearchParams();
+    const [params] = useSearchParams();
     const [season, setSeason] = useState<number | undefined>(undefined);
     const [view, setView] = useState<View>('B');
     const role: 'B' | 'P' = view === 'P' ? 'P' : 'B';
@@ -68,24 +67,14 @@ export const StatsPage: React.FC = () => {
     const rows = useMemo(() => sortPlayers(filtered, sort, teamGames), [filtered, sort, teamGames]);
 
     const navigate = useNavigate();
-    const location = useLocation();
-    const viewingId = Number(params.get('jugador')) || null;
-    const viewing = viewingId ? data?.players.find((row) => row.id === viewingId) : undefined;
-    const open = (row: PlayerRow) => setParams((current) => ({ ...Object.fromEntries(current), jugador: String(row.id) }), { replace: false, state: { playerSheet: true } });
-    const dropPlayer = () =>
-        setParams(
-            (current) => {
-                const next = new URLSearchParams(current);
-                next.delete('jugador');
-                return next;
-            },
-            { replace: true }
-        );
-    // Si se abrió desde aquí se vuelve atrás (así no queda repetida en el historial); si llegó por enlace se quita
-    const close = () => {
-        if ((location.state as { playerSheet?: boolean } | null)?.playerSheet) navigate(-1);
-        else dropPlayer();
-    };
+    // Cada pelotero tiene su página (con la temporada que se está viendo si no es la actual)
+    const playerPath = (id: number) => `/jugador/${id}${data && data.season !== data.currentSeason ? `?temporada=${data.season}` : ''}`;
+    const open = (row: PlayerRow) => navigate(playerPath(row.id));
+    // Los enlaces viejos `?jugador=<id>` llevan a su página
+    const linkedId = Number(params.get('jugador')) || null;
+    useEffect(() => {
+        if (linkedId) navigate(`/jugador/${linkedId}`, { replace: true });
+    }, [linkedId, navigate]);
 
     const top = !search && rows.length >= 3 && rows[0].ranked ? rows.slice(0, 3).map((item) => item.row) : [];
     const rest = top.length ? rows.slice(3) : rows;
@@ -93,13 +82,6 @@ export const StatsPage: React.FC = () => {
     const averageKey = role === 'B' ? (sort.key === 'avg' || sort.key === 'ops' ? sort.key : null) : sort.key === 'era' || sort.key === 'whip' ? sort.key : null;
     const averageSort = averageKey ? teamSort(role === 'B' ? 'bat' : 'pitch', averageKey) : null;
     const average = averageSort && teamQuery.data?.teams.length ? leagueAverage(teamQuery.data.teams, averageSort) : null;
-    const showTeamPlayers = (id: number) => {
-        setView('B');
-        setTeamId(id);
-        setSortKey('pts');
-        setSearch('');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
 
     return (
         <PullToRefresh onRefresh={async () => { await query.refetch(); }}>
@@ -216,9 +198,9 @@ export const StatsPage: React.FC = () => {
                         </div>
                     ) : teamQuery.data?.teams.length ? (
                         <>
-                            <TeamStatsView teams={teamQuery.data.teams} players={data} onOpenPlayer={open} onShowPlayers={showTeamPlayers} />
+                            <TeamStatsView teams={teamQuery.data.teams} onOpenTeam={(id) => navigate(`/equipo/${id}`)} />
                             <div className="px-4 pt-4">
-                                <TransactionsCard league={activeLeague} onOpenPlayer={(id) => setParams((current) => ({ ...Object.fromEntries(current), jugador: String(id) }), { replace: false, state: { playerSheet: true } })} />
+                                <TransactionsCard league={activeLeague} onOpenPlayer={(id) => navigate(playerPath(id))} />
                             </div>
                         </>
                     ) : (
@@ -267,18 +249,6 @@ export const StatsPage: React.FC = () => {
                 ) : null}
             </div>
 
-            {viewingId && (
-                <PlayerSheet
-                    key={viewingId}
-                    id={viewingId}
-                    name={viewing?.name ?? ''}
-                    team={viewing?.teamId && data?.teams[viewing.teamId] ? { id: viewing.teamId, logo: data.teams[viewing.teamId].logo, color: data.teams[viewing.teamId].color } : null}
-                    season={data && data.season !== data.currentSeason ? data.season : undefined}
-                    onClose={close}
-                    // Ir a un juego ya agrega su propia entrada: aquí no se vuelve atrás (chocaría con esa navegación)
-                    onOpenGame={dropPlayer}
-                />
-            )}
         </PullToRefresh>
     );
 };

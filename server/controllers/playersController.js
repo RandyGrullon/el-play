@@ -2,6 +2,7 @@ const { cached } = require('../utils/cache');
 const { fetchPlayers, fetchPlayer, fetchPlayerPitches, fetchTransactions } = require('../services/players');
 const { fetchGame } = require('../services/mlbService');
 const { fetchTeamStats } = require('../services/teamStats');
+const { fetchTeamGames } = require('../services/teamGames');
 const { LEAGUES, isLeague } = require('../config/constants');
 
 const leagueFrom = (req) => (isLeague(req.query.league) ? req.query.league : 'lidom');
@@ -79,4 +80,20 @@ const getTeamStats = async (req, res, next) => {
     }
 };
 
-module.exports = { getPlayers, getPlayer, getPlayerPitches, getTeamStats, getTransactions };
+// Los juegos de un equipo en la temporada: con un juego en vivo cambia a cada rato (30 s); si no, cada 5 minutos
+const getTeamGames = async (req, res, next) => {
+    try {
+        if (!/^\d{1,9}$/.test(req.params.id)) return res.status(400).json({ error: 'invalid_team' });
+        if (req.query.season && !seasonFrom(req)) return res.status(400).json({ error: 'invalid_season' });
+        const league = leagueFrom(req);
+        const season = seasonFrom(req);
+        const ttl = (data) => (data.games.some((game) => game.state === 'live') ? 30 : ttlOf(data));
+        const data = await cached(`team_games_${league}_${req.params.id}_${season || 'actual'}`, ttl, () => fetchTeamGames(league, Number(req.params.id), season), { staleSec: 3600 });
+        setCache(res, ttl(data));
+        res.json(data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { getPlayers, getPlayer, getPlayerPitches, getTeamStats, getTransactions, getTeamGames };

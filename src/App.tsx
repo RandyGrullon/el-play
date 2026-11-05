@@ -18,6 +18,8 @@ const loadLeaders = () => import('./pages/LeadersPage');
 const loadMore = () => import('./pages/MorePage');
 const loadFantasy = () => import('./pages/FantasyPage');
 const loadStats = () => import('./pages/StatsPage');
+const loadTeam = () => import('./pages/TeamPage');
+const loadPlayer = () => import('./pages/PlayerPage');
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage').then((module) => ({ default: module.PrivacyPage })));
 const GamePage = lazy(() => loadGame().then((module) => ({ default: module.GamePage })));
 const StandingsPage = lazy(() => loadStandings().then((module) => ({ default: module.StandingsPage })));
@@ -25,9 +27,11 @@ const LeadersPage = lazy(() => loadLeaders().then((module) => ({ default: module
 const MorePage = lazy(() => loadMore().then((module) => ({ default: module.MorePage })));
 const FantasyPage = lazy(() => loadFantasy().then((module) => ({ default: module.FantasyPage })));
 const StatsPage = lazy(() => loadStats().then((module) => ({ default: module.StatsPage })));
+const TeamPage = lazy(() => loadTeam().then((module) => ({ default: module.TeamPage })));
+const PlayerPage = lazy(() => loadPlayer().then((module) => ({ default: module.PlayerPage })));
 
 if (typeof window !== 'undefined') {
-    const prefetch = () => [loadGame, loadStandings, loadLeaders, loadMore, loadFantasy, loadStats].forEach((load) => load().catch(() => undefined));
+    const prefetch = () => [loadGame, loadStandings, loadLeaders, loadMore, loadFantasy, loadStats, loadTeam, loadPlayer].forEach((load) => load().catch(() => undefined));
     if ('requestIdleCallback' in window) window.requestIdleCallback(prefetch, { timeout: 3000 });
     else setTimeout(prefetch, 1500);
 }
@@ -71,6 +75,8 @@ const App: React.FC = () => (
                             <Route path="/mas" element={<MorePage />} />
                             <Route path="/fantasy" element={<FantasyPage />} />
                             <Route path="/estadisticas" element={<StatsPage />} />
+                            <Route path="/equipo/:teamId" element={<TeamPage />} />
+                            <Route path="/jugador/:playerId" element={<PlayerPage />} />
                             <Route path="/privacidad" element={<PrivacyPage />} />
                             <Route path="/instalar" element={<InstallLink />} />
                             <Route path="/install" element={<InstallLink />} />

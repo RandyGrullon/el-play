@@ -10,11 +10,12 @@ import { TeamLogo } from '../ui/TeamLogo';
 const KNOWN = new Set(['SFA', 'SGN', 'REL', 'TR', 'ASG', 'OPT', 'CU', 'SC', 'DES', 'OUT', 'CLW', 'RET', 'SU', 'NUM', 'LON']);
 const PAGE = 8;
 
-export const TransactionsCard: React.FC<{ league: LeagueId; onOpenPlayer?: (id: number, name: string) => void }> = ({ league, onOpenPlayer }) => {
+export const TransactionsCard: React.FC<{ league: LeagueId; teamId?: number; onOpenPlayer?: (id: number, name: string) => void }> = ({ league, teamId, onOpenPlayer }) => {
     const { t, i18n } = useTranslation();
     const query = useTransactions(league);
     const [limit, setLimit] = useState(PAGE);
-    const list = query.data?.transactions ?? [];
+    // En la página de un equipo, solo los suyos (los que llegan y los que se van)
+    const list = (query.data?.transactions ?? []).filter((item) => !teamId || item.team.id === teamId || item.other?.id === teamId);
     if (!list.length) return null;
     const es = !i18n.language.startsWith('en');
 
