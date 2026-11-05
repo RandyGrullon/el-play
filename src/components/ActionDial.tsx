@@ -35,6 +35,8 @@ export const dialPositions = (count: number) => {
 
 const FAB = 60;
 const OPTION = 48;
+/** Ancho del nombre de cada opción (cabe «Próximo juego» en una línea) */
+const LABEL = 100;
 /** Separación del borde de la pantalla y alto de la barra de abajo (si la pantalla la tiene) */
 const EDGE = 16;
 const TAB_BAR = 84;
@@ -101,30 +103,30 @@ const DialOption: React.FC<{
             >
                 <Icon size={22} color={action.active ? ink : iconColor} fill={action.active ? ink : 'transparent'} />
             </Pressable>
-            {/* El nombre debajo, en blanco con sombra (va sobre el fondo oscuro); el lector ya lo lee en el botón */}
-            <Text
-                accessible={false}
-                accessibilityElementsHidden
-                importantForAccessibility="no"
-                numberOfLines={2}
-                style={{
-                    position: 'absolute',
-                    top: OPTION + 5,
-                    left: (OPTION - 84) / 2,
-                    width: 84,
-                    textAlign: 'center',
-                    fontFamily: fonts.extrabold,
-                    fontSize: 11,
-                    lineHeight: 13,
-                    color: '#ffffff',
-                    opacity: action.disabled ? 0.6 : 1,
-                    textShadowColor: 'rgba(0,0,0,0.7)',
-                    textShadowOffset: { width: 0, height: 1 },
-                    textShadowRadius: 6
-                }}
-            >
-                {action.label}
-            </Text>
+            {/* El nombre debajo, en blanco con sombra (va sobre el fondo oscuro); el lector ya lo lee en el botón.
+                Va en su propia caja ancha: dentro de la de 48 px la web lo partía a la mitad de la palabra */}
+            <View pointerEvents="none" style={{ position: 'absolute', top: OPTION + 5, left: (OPTION - LABEL) / 2, width: LABEL, alignItems: 'center' }}>
+                <Text
+                    accessible={false}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no"
+                    numberOfLines={1}
+                    style={{
+                        maxWidth: LABEL,
+                        textAlign: 'center',
+                        fontFamily: fonts.extrabold,
+                        fontSize: 11,
+                        lineHeight: 13,
+                        color: '#ffffff',
+                        opacity: action.disabled ? 0.6 : 1,
+                        textShadowColor: 'rgba(0,0,0,0.7)',
+                        textShadowOffset: { width: 0, height: 1 },
+                        textShadowRadius: 6
+                    }}
+                >
+                    {action.label}
+                </Text>
+            </View>
         </Animated.View>
     );
 };

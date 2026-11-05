@@ -19,7 +19,8 @@ export const numOf = (value: string | number | null | undefined) => {
 
 export const battingAdvanced = (h: HittingLine) => {
     const singles = h.h - h.d - h.t - h.hr;
-    const tb = h.tb ?? singles + 2 * h.d + 3 * h.t + 4 * h.hr;
+    // Con 0 (algunos datos no traen las bases totales) se calculan de los hits, como en la web
+    const tb = h.tb || singles + 2 * h.d + 3 * h.t + 4 * h.hr;
     const attempts = h.sb + (h.cs ?? 0);
     return {
         iso: ratio(tb - h.h, h.ab),
