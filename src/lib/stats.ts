@@ -164,6 +164,27 @@ export const usePlayer = (id: number | null, league: LeagueId, season?: number) 
         retry
     });
 
+/** Un movimiento de los equipos (firma, cambio, baja, alta…) de los últimos 30 días; `other` es el equipo del que viene */
+export interface Transaction {
+    id: number;
+    date: string | null;
+    type: string | null;
+    person: { id: number; name: string };
+    team: StatsTeam;
+    other: StatsTeam | null;
+    description: string;
+}
+
+/** Movimientos de la liga en los últimos 30 días (los mismos de la web) */
+export const useTransactions = (league: LeagueId, enabled = true) =>
+    useQuery({
+        queryKey: ['transactions', league],
+        queryFn: ({ signal }) => getJson<{ league: LeagueId; transactions: Transaction[] }>(`${API_BASE}/api/v2/transactions?league=${league}`, signal),
+        enabled,
+        staleTime: 30 * 60 * 1000,
+        retry
+    });
+
 // ---------------------------------------------------------------- catálogo de columnas del PRO
 
 /**

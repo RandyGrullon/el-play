@@ -1,5 +1,6 @@
 // Líderes (igual que LeadersPage de la web): un carrusel por categoría de bateo y pitcheo;
-// la primera tarjeta va en el color del equipo del líder, con su foto grande. Tocar foto o nombre abre la ficha.
+// la primera tarjeta va en el color del equipo del líder, con su foto grande. Tocar foto o nombre abre la ficha; la
+// sigla del equipo, su página.
 import React, { useState } from 'react';
 import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -13,7 +14,7 @@ import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Screen } from '../layout';
 import { Card, ErrorState, OfflineState, Pill, PlayerPhoto, Row, Skeleton, Txt, useErrorText } from '../ui';
-import { ChipRow, Notice, SectionHeader, openPlayer, shareText, waitingForNetwork } from './common';
+import { ChipRow, Notice, SectionHeader, openPlayer, openTeam, shareText, waitingForNetwork } from './common';
 
 const GAP = 12;
 
@@ -48,9 +49,23 @@ const LeaderCard: React.FC<{ leader: Leader; first: boolean; width: number; cate
                 <Txt size={13} weight="bold" color={soft} style={first && { opacity: 0.85 }}>
                     {t('leaders.rank', { rank: leader.rank })}
                 </Txt>
-                <Txt size={13} weight="bold" color={soft} style={first && { opacity: 0.85 }}>
-                    {leader.teamAbbrev}
-                </Txt>
+                {leader.teamId ? (
+                    <Pressable
+                        onPress={() => openTeam(leader.teamId!)}
+                        accessibilityRole="link"
+                        accessibilityLabel={t('team.open', { team: leader.teamName || leader.teamAbbrev })}
+                        hitSlop={12}
+                        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                    >
+                        <Txt size={13} weight="bold" color={soft} style={first && { opacity: 0.85 }}>
+                            {leader.teamAbbrev}
+                        </Txt>
+                    </Pressable>
+                ) : (
+                    <Txt size={13} weight="bold" color={soft} style={first && { opacity: 0.85 }}>
+                        {leader.teamAbbrev}
+                    </Txt>
+                )}
             </Row>
             <Row align="flex-end" justify="space-between" gap={8} style={{ marginTop: 12 }}>
                 <Txt size={first ? 64 : 48} weight="extrabold" color={ink} tabular numberOfLines={1} adjustsFontSizeToFit style={{ lineHeight: first ? 66 : 50, letterSpacing: -1, flexShrink: 1 }}>

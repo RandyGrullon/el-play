@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useColors } from '../../../theme/theme';
 import { alpha } from '../../../theme/tokens';
@@ -21,6 +21,8 @@ export interface HBarRow {
     color?: string;
     /** Valor en negrita (el líder, tu equipo) */
     emphasis?: boolean;
+    /** Tocar la fila (p. ej. abrir la página del equipo); el lector de pantalla sigue leyendo el bloque entero */
+    onPress?: () => void;
 }
 
 export interface HBarChartProps {
@@ -60,7 +62,14 @@ export const HBarChart: React.FC<HBarChartProps> = ({ rows, label, max, center, 
             {rows.map((row, index) => {
                 const color = row.color ?? colors.accent;
                 return (
-                    <View key={row.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Pressable
+                        key={row.id}
+                        onPress={row.onPress}
+                        disabled={!row.onPress}
+                        accessible={false}
+                        hitSlop={{ top: 3, bottom: 3 }}
+                        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 8, opacity: pressed ? 0.7 : 1 })}
+                    >
                         <View style={{ width: labelWidth, flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 }}>
                             {row.label ?? (
                                 <Txt size={13} weight="bold" numberOfLines={1}>
@@ -83,7 +92,7 @@ export const HBarChart: React.FC<HBarChartProps> = ({ rows, label, max, center, 
                         <Txt size={13} weight={row.emphasis ? 'extrabold' : 'semibold'} color={row.emphasis ? colors.ink : alpha(colors.ink, 0.8)} tabular numberOfLines={1} style={{ minWidth: 44, textAlign: 'right' }}>
                             {row.display ?? (row.value === null ? '—' : String(row.value))}
                         </Txt>
-                    </View>
+                    </Pressable>
                 );
             })}
         </View>

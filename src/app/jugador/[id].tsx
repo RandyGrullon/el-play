@@ -3,7 +3,7 @@ import { Platform, Pressable, ScrollView, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { Share2, X } from 'lucide-react-native';
+import { GitCompare, History, Share2, Shield, X } from 'lucide-react-native';
 import { useLeague } from '../../state/league';
 import { usePlayer } from '../../lib/stats';
 import { useIsPro } from '../../lib/pro';
@@ -11,9 +11,13 @@ import { useColors } from '../../theme/theme';
 import { ErrorState, ProBadge, Row, Txt } from '../../components/ui';
 import { PlayerProfile, useCachedTeam } from '../../components/stats/PlayerSheet';
 import { ProScroll } from '../../components/pro/estadisticas/scroll';
+import { ActionDial } from '../../components/ActionDial';
+import { PlayerCompareSheet } from '../../components/compare/CompareSheet';
+import { openTeam, shareLink } from '../../components/stats/common';
 
 // Ficha del pelotero (modal). Parámetros: id; opcionales season (año) y name/teamId para pintar la cabecera mientras carga.
-// En PRO la cabecera dice «Ficha del pelotero» con la insignia y un botón para compartirla como imagen.
+// En PRO la cabecera dice «Ficha del pelotero» con la insignia y un botón para compartirla como imagen. En los dos, el
+// botón flotante: compararlo con otro, compartir su página, ir a su equipo o a su último juego.
 export default function JugadorScreen() {
     const params = useLocalSearchParams<{ id: string; season?: string; name?: string; teamId?: string }>();
     const { t } = useTranslation();
@@ -24,11 +28,15 @@ export default function JugadorScreen() {
     const id = Number(params.id) || 0;
     const [season, setSeason] = useState<number | undefined>(() => Number(params.season) || undefined);
     const [shareOpen, setShareOpen] = useState(false);
+    const [comparing, setComparing] = useState(false);
     const team = useCachedTeam(Number(params.teamId) || null);
     const player = usePlayer(id || null, activeLeague, season).data;
     const name = player?.name || params.name || '';
     // En iOS el modal es una hoja con su propio borde; en Android y la web ocupa toda la pantalla
     const top = Platform.OS === 'ios' ? 8 : insets.top + 8;
+    const color = player?.team?.color || team?.color || '#2563eb';
+    // El log viene del más nuevo al más viejo
+    const lastGame = player?.log[0];
 
     const close = () => (router.canGoBack() ? router.back() : router.replace('/posiciones'));
     const openGame = (gamePk: number) => router.push({ pathname: '/juego/[gamePk]', params: { gamePk } });
@@ -85,12 +93,24 @@ export default function JugadorScreen() {
             )}
             {pro ? (
                 // Sabe cuánto se bajó: el juego a juego largo solo monta las filas que se ven
-                <ProScroll tabScreen={false} contentStyle={{ width: '100%', maxWidth: 640, alignSelf: 'center' }}>
+                <ProScroll tabScreen={false} contentStyle={{ width: '100%', maxWidth: 640, alignSelf: 'center', paddingBottom: 72 }}>
                     {profile}
                 </ProScroll>
             ) : (
-                <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: insets.bottom + 32, width: '100%', maxWidth: 640, alignSelf: 'center' }}>{profile}</ScrollView>
+                <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: insets.bottom + 104, width: '100%', maxWidth: 640, alignSelf: 'center' }}>{profile}</ScrollView>
             )}
+
+            <ActionDial
+                label={t('dial.playerMenu', { name })}
+                color={color}
+                actions={[
+                    { key: 'compare', label: t('dial.compare'), icon: GitCompare, disabled: !player || (!player.hitting && !player.pitching), onSelect: () => setComparing(true) },
+                    { key: 'share', label: t('dial.share'), icon: Share2, disabled: !player, onSelect: () => player && shareLink(`/jugador/${player.id}`, player.name, t('dial.playerShareText', { name: player.name })) },
+                    { key: 'team', label: t('dial.team'), icon: Shield, disabled: !player?.team, onSelect: () => player?.team && openTeam(player.team.id) },
+                    { key: 'last', label: t('dial.lastGame'), icon: History, disabled: !lastGame, onSelect: () => lastGame && openGame(lastGame.gamePk) }
+                ]}
+            />
+            {player && <PlayerCompareSheet open={comparing} player={player} league={activeLeague} onClose={() => setComparing(false)} />}
         </View>
     );
 }
