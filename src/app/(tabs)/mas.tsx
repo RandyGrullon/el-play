@@ -1,7 +1,7 @@
-// «Más»: cuenta, modo Lite/PRO, liga, tema, idioma, animaciones, pasarle El Play a alguien (los pasos de la web para
-// instalarla según el navegador) y privacidad (igual que MorePage de la web).
+// «Más»: cuenta, modo Lite/PRO, liga, tema, idioma, texto grande, animaciones, pasarle El Play a alguien (los pasos
+// de la web para instalarla según el navegador) y privacidad (igual que MorePage de la web).
 import React, { useId, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Switch, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { useTranslation } from 'react-i18next';
@@ -39,7 +39,7 @@ export default function MoreScreen() {
     const router = useRouter();
     const { leagues, activeLeague, setActiveLeague } = useLeague();
     const { preference, setPreference } = useTheme();
-    const { animationMode, setAnimationMode } = usePreferences();
+    const { animationMode, setAnimationMode, largeText, setLargeText } = usePreferences();
     const lang = i18n.language.startsWith('en') ? 'en' : 'es';
     const version = Constants.expoConfig?.version ?? '1.0.0';
     const [invite, setInvite] = useState(false);
@@ -110,6 +110,25 @@ export default function MoreScreen() {
                                     { value: 'es', label: 'Español' },
                                     { value: 'en', label: 'English' }
                                 ]}
+                            />
+                        </Row>
+                    </Card>
+                    {/* Toda la letra un 12 % más grande (como la web); se suma al tamaño de letra del teléfono */}
+                    <Card>
+                        <Row justify="space-between" gap={12}>
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                                <Txt weight="semibold">{t('more.largeText')}</Txt>
+                                <Txt size={14} tone="muted">
+                                    {t('more.largeTextHint')}
+                                </Txt>
+                            </View>
+                            <Switch
+                                value={largeText}
+                                onValueChange={setLargeText}
+                                accessibilityLabel={t('more.largeText')}
+                                trackColor={{ false: colors.raised, true: colors.accent }}
+                                ios_backgroundColor={colors.raised}
+                                thumbColor="#fff"
                             />
                         </Row>
                     </Card>

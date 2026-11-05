@@ -1,11 +1,11 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 // Los enums con import propio: el plugin import/namespace de ESLint no los ve dentro de Notifications
 import { AndroidImportance, IosAuthorizationStatus } from 'expo-notifications';
 import { useQueryClient } from '@tanstack/react-query';
-import { readJson, writeJson } from '../lib/storage';
+import { onHydrated, readJson, writeJson } from '../lib/storage';
 import { teamDisplayName } from '../lib/teams';
 import { nationalTeamName } from '../lib/nationalTeams';
 import { isNotPlayed } from '../lib/baseball';
@@ -28,6 +28,9 @@ interface Preferences {
     toggleGameSubscription: (game: AlertGame) => Promise<AlertResult>;
     animationMode: AnimationMode;
     setAnimationMode: (mode: AnimationMode) => void;
+    /** «Texto grande» de Más → Apariencia: toda la letra un 12 % más grande */
+    largeText: boolean;
+    setLargeText: (on: boolean) => void;
 }
 
 /** Avisos programados de un juego y la hora para la que se programaron */
@@ -41,9 +44,36 @@ const PreferencesContext = createContext<Preferences | null>(null);
 const FAVORITE_KEY = 'el-play-favorite-team';
 const ALERTS_KEY = 'el-play-alerts';
 const ANIMATION_KEY = 'el-play-animation-mode';
+const LARGE_TEXT_KEY = 'el-play-large-text';
 const CHANNEL = 'juegos';
 /** El primer aviso: el texto dice «empieza en 10 minutos» (igual que en la web) */
 const BEFORE = 10 * 60 * 1000;
+
+// ---------------------------------------------------------------- texto grande
+
+/** Cuánto crece la letra con «Texto grande» (igual que la web) */
+export const LARGE_TEXT_SCALE = 1.12;
+// Fuera del contexto: Txt la lee en todas partes, también en lo que se pinta antes o fuera de PreferencesProvider
+let largeText = false;
+const textListeners = new Set<() => void>();
+const setLargeTextValue = (on: boolean) => {
+    if (largeText === on) return;
+    largeText = on;
+    textListeners.forEach((listener) => listener());
+};
+const subscribeText = (listener: () => void) => {
+    textListeners.add(listener);
+    return () => {
+        textListeners.delete(listener);
+    };
+};
+// Lo guardado se lee cuando termina de cargar el teléfono (antes de pintar la app)
+onHydrated(() => setLargeTextValue(readJson<unknown>(LARGE_TEXT_KEY, false) === true));
+
+const useLargeText = () => useSyncExternalStore(subscribeText, () => largeText, () => false);
+
+/** 1 o 1,12: las piezas de texto de ui.tsx multiplican por esto el tamaño de la letra y el alto de línea */
+export const useTextScale = () => (useLargeText() ? LARGE_TEXT_SCALE : 1);
 
 // En la web no hay avisos programados (y la librería avisa en la consola que no lo soporta)
 if (Platform.OS !== 'web') {
@@ -101,6 +131,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const [favoriteTeamId, setFavorite] = useState<number | null>(() => readJson<number | null>(FAVORITE_KEY, null));
     const [alerts, setAlerts] = useState<Alerts>(readAlerts);
     const [animationMode, setMode] = useState<AnimationMode>(() => readAnimationMode(readJson<unknown>(ANIMATION_KEY, 'smart')));
+    const largeTextOn = useLargeText();
     // Copia al día para las tareas asíncronas (dos toques seguidos no deben leer un estado viejo)
     const alertsRef = useRef(alerts);
     // Última tarea en la fila de cada juego con un cambio de avisos en curso
@@ -241,9 +272,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
             setAnimationMode: (mode) => {
                 setMode(mode);
                 writeJson(ANIMATION_KEY, mode);
+            },
+            largeText: largeTextOn,
+            setLargeText: (on) => {
+                setLargeTextValue(on);
+                writeJson(LARGE_TEXT_KEY, on);
             }
         }),
-        [favoriteTeamId, toggleFavoriteTeam, alerts, toggleGameSubscription, animationMode]
+        [favoriteTeamId, toggleFavoriteTeam, alerts, toggleGameSubscription, animationMode, largeTextOn]
     );
     return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;
 };

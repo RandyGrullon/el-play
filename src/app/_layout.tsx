@@ -11,6 +11,7 @@ import { useFonts, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outf
 import { BarlowCondensed_800ExtraBold } from '@expo-google-fonts/barlow-condensed';
 import { useTranslation } from 'react-i18next';
 import { hydrateStorage } from '../lib/storage';
+import { installErrorReporting, useErrorScreen } from '../lib/errorReport';
 import { queryClient } from '../lib/queries';
 // Al arrancar (no al abrir un juego): recupera la Live Activity / notificación del juego que se seguía
 import '../lib/follow';
@@ -23,6 +24,8 @@ import { Toast } from '../components/layout';
 import { ErrorScreen } from '../components/ErrorScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
+// Los errores sin atrapar van al servidor (como en la web), lo antes posible
+installErrorReporting();
 
 // React Query sabe si hay internet y si la app está a la vista (para refrescar el marcador al volver)
 onlineManager.setEventListener((setOnline) => NetInfo.addEventListener((state) => setOnline(state.isConnected !== false)));
@@ -40,6 +43,7 @@ const ScreenError: React.FC<ErrorBoundaryProps> = ({ error, retry }) => {
             title={t('errors.screenTitle')}
             body={t('errors.screenBody')}
             detail={__DEV__ ? error.message : undefined}
+            error={error}
             actions={[
                 { label: t('common.retry'), run: retry },
                 { label: t('errors.goGames'), run: () => router.navigate('/') }
@@ -59,12 +63,13 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
     useEffect(() => {
         SplashScreen.hideAsync().catch(() => undefined);
     }, []);
-    return <ErrorScreen colors={colors} title={t('errors.screenTitle')} body={t('errors.screenBody')} detail={__DEV__ ? error.message : undefined} actions={[{ label: t('common.retry'), run: retry }]} />;
+    return <ErrorScreen colors={colors} title={t('errors.screenTitle')} body={t('errors.screenBody')} detail={__DEV__ ? error.message : undefined} error={error} actions={[{ label: t('common.retry'), run: retry }]} />;
 }
 
 const Navigator: React.FC = () => {
     const { colors, isDark } = useTheme();
     useAlertTaps();
+    useErrorScreen();
     return (
         <>
             <StatusBar style={isDark ? 'light' : 'dark'} />

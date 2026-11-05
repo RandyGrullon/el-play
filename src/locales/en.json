@@ -562,7 +562,9 @@
       "smart": "Every play in your team's games; in the rest, only homers, strikeouts, inning changes and wins.",
       "all": "An animation for every play in any game.",
       "off": "No animations: just the score."
-    }
+    },
+    "largeText": "Large text",
+    "largeTextHint": "Slightly bigger text, buttons and tables"
   },
   "stories": {
     "label": "Teams",
@@ -909,6 +911,122 @@
       "startedAgo_other": "started {{count}} days ago"
     }
   },
+  "fantasyMore": {
+    "breakdownOf": "Where {{name}}'s points come from",
+    "captainBonus": "Captain ×{{x}}",
+    "achievements": "Achievements",
+    "badges": {
+      "firstTeam": {
+        "name": "First team",
+        "hint": "Play one day"
+      },
+      "tenDays": {
+        "name": "10 days",
+        "hint": "Play 10 days this season"
+      },
+      "fifty": {
+        "name": "50 in a day",
+        "hint": "Score 50 points in a day"
+      },
+      "hundred": {
+        "name": "100 in a day",
+        "hint": "Score 100 points in a day"
+      },
+      "streak3": {
+        "name": "3-day streak",
+        "hint": "Play 3 days in a row"
+      },
+      "streak7": {
+        "name": "7-day streak",
+        "hint": "Play 7 days in a row"
+      },
+      "perfectPicks": {
+        "name": "Perfect picks",
+        "hint": "Get every pick right in a day (3 or more)"
+      },
+      "fiveHundred": {
+        "name": "500 points",
+        "hint": "Reach 500 points this season"
+      }
+    }
+  },
+  "leagueSummary": {
+    "members_one": "{{count}} member",
+    "members_other": "{{count}} members",
+    "copyCode": "Copy code {{code}}",
+    "codeCopied": "Code copied: send it to your friends",
+    "copied": "Summary copied",
+    "week": "Champion of the week",
+    "streak": "Longest streak",
+    "pts": "{{pts}} pts in 7 days",
+    "days_one": "{{count}} day in a row",
+    "days_other": "{{count}} days in a row",
+    "share": "Share the day",
+    "shareTitle": "🏆 {{league}} · {{day}}",
+    "shareChampion": "Champion of the week: {{name}} ({{pts}} pts)",
+    "shareJoin": "Join with code {{code}} on El Play Fantasy",
+    "leave": "Leave the league",
+    "confirmLeave": "Yes, leave",
+    "left": "You left {{league}}"
+  },
+  "playerMore": {
+    "percentiles": "League percentiles",
+    "notQualified": "Not qualified yet: percentiles compare his numbers with qualified players'.",
+    "rankAria": "{{metric}}: {{rank}} percentile",
+    "percentilesNote": "Against {{count}} qualified players this season. 50 is average; red is better.",
+    "metrics": {
+      "avg": "AVG",
+      "obp": "OBP",
+      "slg": "SLG",
+      "ops": "OPS",
+      "iso": "ISO",
+      "kPct": "K%",
+      "bbPct": "BB%",
+      "era": "ERA",
+      "whip": "WHIP",
+      "fip": "FIP",
+      "h9": "H/9",
+      "g": "G",
+      "hr": "HR",
+      "rbi": "RBI",
+      "sb": "SB",
+      "ip": "IP",
+      "k": "K",
+      "babip": "BABIP",
+      "k9": "K/9"
+    },
+    "situations": "Splits",
+    "situation": "Split",
+    "sit": {
+      "vl": "vs. lefties",
+      "vr": "vs. righties",
+      "vlP": "vs. LHB",
+      "vrP": "vs. RHB",
+      "risp": "Runners in scoring pos.",
+      "h": "Home",
+      "a": "Away"
+    },
+    "postseason": "Postseason (Round Robin and Final)",
+    "recent_one": "His last game, pitch by pitch",
+    "recent_other": "His last {{count}} games, pitch by pitch",
+    "spray": "Spray",
+    "zones": "Zones",
+    "arsenal": "Arsenal",
+    "seen": "Pitches seen",
+    "sprayNote": "{{hits}} hits, {{hr}} home runs and {{outs}} outs in play",
+    "sprayNoteP": "Allowed {{hits}} hits, {{hr}} home runs and {{outs}} outs in play",
+    "noBatted": "No balls in play in these games.",
+    "noLocations": "No pitch locations in these games.",
+    "noTypes": "No pitch types in these games.",
+    "zonesAria": "Average by strike zone",
+    "zonesAriaP": "Where he throws in the zone",
+    "zonesNote": "Average in each part of the zone (catcher's view). Red: hot; blue: cold.",
+    "zonesNoteP": "{{count}} pitches: share in each part of the zone (catcher's view), {{out}}% outside",
+    "abs_one": "{{count}} AB",
+    "abs_other": "{{count}} AB",
+    "chase": "chases {{pct}}% outside",
+    "whiffPct": "Whiff"
+  },
   "account": {
     "title": "Your account",
     "soon": "Accounts are coming soon, and with them Fantasy opens. Your favorites and alerts are saved on this phone.",
@@ -1047,7 +1165,8 @@
       "season": "Season",
       "team": "Team",
       "pts": "Pts",
-      "player": "Player"
+      "player": "Player",
+      "pa": "PA"
     },
     "open": "Stats",
     "info": "Profile",
