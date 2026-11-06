@@ -669,6 +669,18 @@ it('id para abrir una página: solo enteros positivos (0, null, NaN o texto vac�
     [0, -3, 1.5, null, undefined, NaN, '', 'abc'].forEach((value) => assert.strictEqual(linkId(value), null, String(value)));
 });
 
+it('ya en esa página: la ruta del equipo o de la ficha con ese id (sin la barra final ni la consulta)', () => {
+    const { isOnPage } = links;
+    assert.strictEqual(isOnPage('/equipo/9001', 'equipo', 9001), true);
+    assert.strictEqual(isOnPage('/equipo/9001/', 'equipo', 9001), true);
+    assert.strictEqual(isOnPage('/jugador/12345678?name=Pelotero', 'jugador', 12345678), true);
+    assert.strictEqual(isOnPage('/equipo/9001', 'equipo', 9002), false);
+    assert.strictEqual(isOnPage('/jugador/9001', 'equipo', 9001), false);
+    assert.strictEqual(isOnPage('/equipo/90011', 'equipo', 9001), false);
+    assert.strictEqual(isOnPage('/juego/777', 'jugador', null), false);
+    assert.strictEqual(isOnPage(null, 'equipo', 9001), false);
+});
+
 it('parámetros de la ficha: nombre y equipo si se tienen, temporada solo si no es la actual', () => {
     const { playerParams } = links;
     assert.deepStrictEqual(playerParams({ id: 12345678, name: 'Pelotero Uno', teamId: 9001 }, 2099), { id: 12345678, name: 'Pelotero Uno', teamId: 9001, season: 2099 });
@@ -686,15 +698,6 @@ it('línea de decisiones: ganador y salvado; sin salvamento, el perdedor; sin ga
     assert.deepStrictEqual(decisionParts({ winner: uno, loser: null, save: null }).map((part) => part.key), ['win']);
     assert.deepStrictEqual(decisionParts({ winner: null, loser: dos, save: null }), []);
     assert.deepStrictEqual(decisionParts(null), []);
-});
-
-it('equipo por sigla entre los que hay (sin importar mayúsculas); sin coincidencia, null', () => {
-    const { teamByAbbrev } = links;
-    const equipos = [{ id: 9001, abbrev: 'AAA' }, null, { id: 9002, abbrev: 'BBB' }];
-    assert.strictEqual(teamByAbbrev(equipos, 'bbb').id, 9002);
-    assert.strictEqual(teamByAbbrev(equipos, ' AAA ').id, 9001);
-    assert.strictEqual(teamByAbbrev(equipos, 'CCC'), null);
-    assert.strictEqual(teamByAbbrev(equipos, null), null);
 });
 
 it('nombres dentro de una jugada: cada nombre entero de la lista es un pedazo con su pelotero', () => {

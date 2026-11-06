@@ -7,6 +7,10 @@ export const linkId = (id: number | string | null | undefined): number | null =>
     return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : null;
 };
 
+/** Ya se está en esa página (la del equipo o la ficha): el enlace no apila otra igual encima */
+export const isOnPage = (pathname: string | null | undefined, kind: 'equipo' | 'jugador', id: number | null | undefined) =>
+    !!linkId(id) && (pathname ?? '').split('?')[0].replace(/\/+$/, '') === `/${kind}/${id}`;
+
 /** Parámetros de /jugador/[id]: el nombre y el equipo pintan la cabecera mientras carga; la temporada, si no es la actual */
 export const playerParams = (player: { id: number; name?: string | null; teamId?: number | null }, season?: number | null) => {
     const teamId = linkId(player.teamId);
@@ -29,13 +33,6 @@ export const decisionParts = (decisions: { winner: Person | null; loser: Person 
     if (!decisions?.winner) return [];
     const second = decisions.save ? { key: 'save' as const, person: decisions.save } : decisions.loser ? { key: 'loss' as const, person: decisions.loser } : null;
     return [{ key: 'win' as const, person: decisions.winner }, ...(second ? [second] : [])];
-};
-
-/** El equipo de una sigla entre los que se tienen a mano (las piezas que solo traen la sigla); sin coincidencia, null */
-export const teamByAbbrev = <T extends { id: number; abbrev: string }>(teams: readonly (T | null | undefined)[], abbrev: string | null | undefined): T | null => {
-    if (!abbrev) return null;
-    const wanted = abbrev.trim().toUpperCase();
-    return teams.find((team): team is T => !!team && team.abbrev.toUpperCase() === wanted) ?? null;
 };
 
 export type LinkPerson = { id: number; name: string; teamId?: number | null };

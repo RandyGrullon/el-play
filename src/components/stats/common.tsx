@@ -1,14 +1,14 @@
 // Piezas que comparten Posiciones, Líderes, Estadísticas y la ficha del pelotero.
 import React from 'react';
 import { Platform, Pressable, ScrollView, Share, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Info } from 'lucide-react-native';
 import { useColors } from '../../theme/theme';
 import { alpha, radius, shadow } from '../../theme/tokens';
 import { ProBadge, Row, Title, Txt, leaveSheets } from '../ui';
 import { WEB_URL } from '../../lib/config';
-import { linkId, nameSegments, playerParams, type LinkPerson } from '../../lib/links';
+import { isOnPage, linkId, nameSegments, playerParams, type LinkPerson } from '../../lib/links';
 
 /** Esta pantalla no se había abierto y no hay internet (en vez de cargar para siempre) */
 export const waitingForNetwork = (query: { isPending: boolean; fetchStatus: string }) => query.isPending && query.fetchStatus === 'paused';
@@ -104,12 +104,14 @@ type LinkProps = { style?: StyleProp<ViewStyle>; hitSlop?: number; disabled?: bo
 /**
  * Lo que muestra un equipo (logo, siglas, nombre) lleva a su página. Se pinta igual que antes: el estilo de la caja va en
  * `style`. Sin id (o `disabled`) queda una caja con el mismo estilo que no se toca. Dentro de otra pieza que se toca (la
- * tarjeta de un juego) gana esta: en el teléfono el toque es del Pressable más adentro y en la web corta el clic.
+ * tarjeta de un juego) gana esta: en el teléfono el toque es del Pressable más adentro y en la web corta el clic. En la
+ * página de ese mismo equipo no enlaza (no apila otra igual).
  */
 export const TeamLink: React.FC<LinkProps & { id: number | null | undefined; name: string }> = ({ id, name, style, hitSlop, disabled, label, children }) => {
     const { t } = useTranslation();
+    const here = isOnPage(usePathname(), 'equipo', id);
     const target = linkId(id);
-    if (!target || disabled) return <View style={style} accessible={label ? true : undefined} accessibilityLabel={label}>{children}</View>;
+    if (!target || disabled || here) return <View style={style} accessible={label ? true : undefined} accessibilityLabel={label}>{children}</View>;
     return (
         <Pressable onPress={() => openTeam(target)} accessibilityRole="link" accessibilityLabel={label ?? t('team.open', { team: name })} hitSlop={hitSlop} style={({ pressed }) => [style, pressed && { opacity: 0.7 }]}>
             {children}
@@ -120,8 +122,9 @@ export const TeamLink: React.FC<LinkProps & { id: number | null | undefined; nam
 /** Lo que muestra un pelotero (foto, nombre) lleva a su ficha (/jugador/[id], con el botón de comparar); igual que TeamLink */
 export const PlayerLink: React.FC<LinkProps & { player: { id: number | null | undefined; name: string; teamId?: number | null } | null | undefined; season?: number }> = ({ player, season, style, hitSlop, disabled, label, children }) => {
     const { t } = useTranslation();
+    const here = isOnPage(usePathname(), 'jugador', player?.id);
     const target = linkId(player?.id);
-    if (!player || !target || disabled) return <View style={style} accessible={label ? true : undefined} accessibilityLabel={label}>{children}</View>;
+    if (!player || !target || disabled || here) return <View style={style} accessible={label ? true : undefined} accessibilityLabel={label}>{children}</View>;
     return (
         <Pressable
             onPress={() => openPlayer({ id: target, name: player.name, teamId: player.teamId }, season)}
