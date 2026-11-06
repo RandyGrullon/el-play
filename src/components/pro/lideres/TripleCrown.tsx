@@ -13,6 +13,7 @@ import { Txt } from '../../ui';
 import { Chip, CountUp, GradientCard, ModuleHeader, fmtSigned, shortName, useGrow, useInView, useProColors } from '../kit';
 import { histogram, joinList, marginOverSecond, tripleCrown, type LeaderBoard, type LeaderContext } from './logic';
 import { LeaderPhoto } from './LeaderPhoto';
+import { teamTextLink } from '../../stats/common';
 
 interface TripleCrownProps {
     /** AVG, HR y CI de la temporada regular */
@@ -139,7 +140,7 @@ export const TripleCrown: React.FC<TripleCrownProps> = ({ hitting, pitching, qua
                                 <Txt size={13} weight="extrabold" numberOfLines={2} style={{ marginTop: 2, lineHeight: 16 }}>
                                     {firsts.length > 1 ? names(firsts.map((item) => item.row), label, t) : label(first.row)}
                                 </Txt>
-                                <Txt size={11} weight="bold" tone="muted">
+                                <Txt size={11} weight="bold" tone="muted" {...teamTextLink(team?.id)}>
                                     {team?.abbrev ?? ''}
                                 </Txt>
                                 <Spread values={values} leader={first.value} color={team?.color ?? colors.accent} seen={seen} label={t('pro.lideres.crown.spreadAria', { stat: abbr, count: values.length })} />

@@ -13,6 +13,7 @@ import { ChipButton, ChipRow, ModuleHeader, ProButton, ProTable, sortRows, type 
 import { tintOf } from '../StatsTable';
 import { minFieldingOuts, standingsOf, type Standing } from './logic';
 import { PercentileLegend } from './parts';
+import { TeamLink } from '../../stats/common';
 
 const POSITIONS = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
 const PAGE = 10;
@@ -95,12 +96,13 @@ export const FieldingPanel: React.FC<FieldingPanelProps> = ({ league, season, ph
                         <Txt size={13} weight="bold" numberOfLines={1} style={{ lineHeight: 16 }}>
                             {names.get(row.id) ?? row.name}
                         </Txt>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        {/* Logo y siglas van a la página del equipo; el resto de la fila, a la ficha */}
+                        <TeamLink id={team?.id} name={team?.name ?? ''} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' }}>
                             {team && <TeamLogo team={team} size={12} />}
                             <Txt size={11} tone="muted">
                                 {team?.abbrev ?? ''}
                             </Txt>
-                        </View>
+                        </TeamLink>
                     </View>
                 );
             },

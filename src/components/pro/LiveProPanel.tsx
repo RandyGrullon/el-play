@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Svg, { Polyline } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react-native';
@@ -15,6 +15,7 @@ import { fastballTrend, pitchItems, typeMix, type PitchItem, type TypeMixRow } f
 import { Avatar, fmtInches, fmtMph, ordinal } from './juego/vivo/parts';
 import { TypeStack } from './juego/zona/ZoneCard';
 import { pitchColor } from './juego/zona/ZoneField';
+import { TeamLink, playerTextLink } from '../stats/common';
 
 // Pestaña «Lanzadores» del juego PRO: todos los lanzadores que han tirado, de los dos equipos y sin tope. El que
 // está lanzando va arriba en grande (línea, pitcheos, mezcla, velocidad de la recta y movimiento); los demás en
@@ -237,7 +238,7 @@ const FullCard: React.FC<{ game: GameDetail; entry: PitcherEntry; current: boole
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
             <Avatar person={{ id: entry.id, name: entry.name }} team={team} size={46} />
             <View style={{ flex: 1, minWidth: 0 }}>
-                <Txt size={17} weight="black" numberOfLines={1} accessibilityRole="header">
+                <Txt size={17} weight="black" numberOfLines={1} accessibilityRole="header" {...playerTextLink({ id: entry.id, name: entry.name, teamId: team.id })}>
                     {entry.name}
                 </Txt>
                 <Txt size={12} tone="muted" numberOfLines={2}>
@@ -337,7 +338,7 @@ const CompactCard: React.FC<{ game: GameDetail; entry: PitcherEntry; onExpand: (
                 <Avatar person={{ id: entry.id, name: entry.name }} team={team} size={40} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                     <Txt size={15} weight="black" numberOfLines={1}>
-                        {entry.name}
+                        <Text {...playerTextLink({ id: entry.id, name: entry.name, teamId: team.id })}>{entry.name}</Text>
                     </Txt>
                     <Txt size={12} tone="muted" numberOfLines={1}>
                         {roleLine(t, entry, lang)}
@@ -444,12 +445,12 @@ export const LiveProPanel: React.FC<LiveProPanelProps> = ({ game, pro }) => {
                     <View key={side} accessibilityLabel={game[side].name} style={{ gap: 10 }}>
                         <ModuleHeader
                             title={
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}>
+                                <TeamLink id={game[side].id} name={game[side].name} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}>
                                     <TeamLogo team={game[side]} size={20} />
                                     <Txt size={14} weight="extrabold" accessibilityRole="header" numberOfLines={1} style={{ flexShrink: 1 }}>
                                         {game[side].teamName || game[side].name}
                                     </Txt>
-                                </View>
+                                </TeamLink>
                             }
                             aside={t('pro.vivo.pitchers.teamTotal', { count: all.length, pitches: total })}
                         />

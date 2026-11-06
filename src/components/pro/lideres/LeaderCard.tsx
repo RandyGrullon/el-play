@@ -15,6 +15,7 @@ import { CountUp, GrowBar, mix, teamInk, useInView } from '../kit';
 import { leaderBar, type LeaderBoard, type RankedLeader } from './logic';
 import { leaderDetail } from './detail';
 import { LeaderPhoto } from './LeaderPhoto';
+import { LinkedNames, LinkedTeams, teamTextLink } from '../../stats/common';
 
 interface LeaderCardProps {
     board: LeaderBoard;
@@ -94,7 +95,7 @@ export const LeaderCard: React.FC<LeaderCardProps> = ({ board, teams, onOpen, on
                         <LinearGradient colors={teamGradient(color)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ minHeight: 150, padding: 12 }}>
                             <View style={{ alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: ink === '#ffffff' ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.45)' }}>
                                 <Txt size={10} weight="extrabold" color={ink} style={{ textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                                    {first.tied ? t('pro.lideres.board.rankTied', { rank: first.rank, team: firstTeam?.abbrev ?? '' }) : t('pro.lideres.board.rank', { team: firstTeam?.abbrev ?? '' })}
+                                    <LinkedTeams text={first.tied ? t('pro.lideres.board.rankTied', { rank: first.rank, team: firstTeam?.abbrev ?? '' }) : t('pro.lideres.board.rank', { team: firstTeam?.abbrev ?? '' })} teams={[firstTeam]} />
                                 </Txt>
                             </View>
                             <View style={{ marginTop: 4, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 4 }}>
@@ -141,7 +142,7 @@ export const LeaderCard: React.FC<LeaderCardProps> = ({ board, teams, onOpen, on
                                         </View>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                                             <GrowBar value={leaderBar(item.value, first.value, category, average)} color={barColor} index={index} seen={seen} height={4} style={{ flex: 1 }} />
-                                            <Txt size={10} weight="bold" tone="muted" style={{ lineHeight: 11 }}>
+                                            <Txt size={10} weight="bold" tone="muted" style={{ lineHeight: 11 }} {...teamTextLink(team?.id)}>
                                                 {team?.abbrev ?? ''}
                                             </Txt>
                                         </View>
@@ -180,11 +181,14 @@ export const LeaderCard: React.FC<LeaderCardProps> = ({ board, teams, onOpen, on
                             </View>
                             {showTied && tiedOut.length > 0 && (
                                 <Txt size={11} weight="semibold" tone="muted" style={{ lineHeight: 15 }}>
-                                    {t('pro.lideres.board.tiedOutDetail', {
-                                        rank: tiedOut[0].rank,
-                                        value: tiedOut[0].display,
-                                        names: tiedOut.map((item) => `${item.row.name} (${teamOf(item.row)?.abbrev ?? '—'})`).join(', ')
-                                    })}
+                                    <LinkedNames
+                                        text={t('pro.lideres.board.tiedOutDetail', {
+                                            rank: tiedOut[0].rank,
+                                            value: tiedOut[0].display,
+                                            names: tiedOut.map((item) => `${item.row.name} (${teamOf(item.row)?.abbrev ?? '—'})`).join(', ')
+                                        })}
+                                        people={tiedOut.map((item) => ({ id: item.row.id, name: item.row.name, teamId: item.row.teamId }))}
+                                    />
                                 </Txt>
                             )}
                         </View>

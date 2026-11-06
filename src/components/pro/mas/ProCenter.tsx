@@ -14,6 +14,7 @@ import { CountUp, MOTION_EASE, useMotion } from '../kit';
 import type { StatsTeam } from '../../../lib/stats';
 import { LogoMark } from './LogoMark';
 import { useNotificationPermission } from './notifications';
+import { TeamLink } from '../../stats/common';
 
 // Centro PRO: la cabecera de «Más» con el degradado de la marca (que se mueve lento), la cuenta, el interruptor
 // Lite ↔ PRO y el estado de la app (instalada, avisos, juegos con aviso). Al activar PRO, un barrido cruza la tarjeta.
@@ -138,9 +139,9 @@ export const ProCenter: React.FC<{ favorite: StatsTeam | null; alertCount: numbe
                             <UserIcon size={24} color="#fff" />
                         )}
                         {favorite && (
-                            <View style={{ position: 'absolute', right: -4, bottom: -4, width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', borderWidth: 2, borderColor: PURPLE, alignItems: 'center', justifyContent: 'center' }}>
+                            <TeamLink id={favorite.id} name={favorite.name} hitSlop={6} style={{ position: 'absolute', right: -4, bottom: -4, width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', borderWidth: 2, borderColor: PURPLE, alignItems: 'center', justifyContent: 'center' }}>
                                 <TeamLogo team={favorite} size={16} />
-                            </View>
+                            </TeamLink>
                         )}
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>

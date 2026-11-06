@@ -11,6 +11,7 @@ import type { LeagueAverages } from '../../../types/pro-liga';
 import { PlayerPhoto, Txt } from '../../ui';
 import { ChipButton, ProSection, ScatterChart, niceDomain, niceTicks, type ScatterPoint } from '../kit';
 import type { Role } from './logic';
+import { LinkedTeams, TeamLink } from '../../stats/common';
 
 interface ProfileScatterProps {
     role: Role;
@@ -151,12 +152,12 @@ export const ProfileScatter: React.FC<ProfileScatterProps> = ({ role, pool, team
 
             <View accessible accessibilityLabel={`${t('pro.estadisticas.scatter.legend')}: ${legendTeams.map((team) => team.abbrev).join(', ')}`} style={{ marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', columnGap: 12, rowGap: 4 }}>
                 {legendTeams.map((team) => (
-                    <View key={team.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, opacity: teamId !== null && team.id !== teamId ? 0.4 : 1 }}>
+                    <TeamLink key={team.id} id={team.id} name={team.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, opacity: teamId !== null && team.id !== teamId ? 0.4 : 1 }}>
                         <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: team.color }} />
                         <Txt size={11} weight="bold">
                             {team.abbrev}
                         </Txt>
-                    </View>
+                    </TeamLink>
                 ))}
             </View>
 
@@ -173,7 +174,7 @@ export const ProfileScatter: React.FC<ProfileScatterProps> = ({ role, pool, team
                             {chosen.row.name}
                         </Txt>
                         <Txt size={12} tone="muted" numberOfLines={1}>
-                            {[chosenTeam?.abbrev, chosen.row.pos].filter(Boolean).join(' · ')}
+                            {chosenTeam ? <LinkedTeams text={[chosenTeam.abbrev, chosen.row.pos].filter(Boolean).join(' · ')} teams={[chosenTeam]} /> : chosen.row.pos}
                         </Txt>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>

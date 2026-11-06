@@ -11,6 +11,7 @@ import { MOTION_EASE, MOTION_MS, useElementWidth, useInView, useMotion, useProCo
 import { shortDay } from './data';
 import type { HeadToHeadCell } from './logic';
 import type { RaceTeam } from './RaceChart';
+import { TeamLink } from '../../stats/common';
 
 interface HeadToHeadProps {
     teams: RaceTeam[];
@@ -83,16 +84,16 @@ export const HeadToHead: React.FC<HeadToHeadProps> = ({ teams, matrix }) => {
             <View style={{ flexDirection: 'row', gap: GAP }}>
                 <View style={{ width: axis }} />
                 {teams.map((team) => (
-                    <View key={team.id} accessible accessibilityLabel={team.name} style={{ width: cell, height: 28, alignItems: 'center', justifyContent: 'center' }}>
+                    <TeamLink key={team.id} id={team.id} name={team.name} style={{ width: cell, height: 28, alignItems: 'center', justifyContent: 'center' }}>
                         <TeamLogo team={team} size={22} />
-                    </View>
+                    </TeamLink>
                 ))}
             </View>
             {teams.map((team, row) => (
                 <View key={team.id} style={{ flexDirection: 'row', gap: GAP, alignItems: 'center' }}>
-                    <View accessible accessibilityLabel={team.name} style={{ width: axis, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+                    <TeamLink id={team.id} name={team.name} style={{ width: axis, height: 44, alignItems: 'center', justifyContent: 'center' }}>
                         <TeamLogo team={team} size={22} />
-                    </View>
+                    </TeamLink>
                     {teams.map((rival, column) => {
                         const value = matrix[row]?.[column] ?? null;
                         const box = { width: cell, height: 44, borderRadius: 8, alignItems: 'center' as const, justifyContent: 'center' as const, paddingHorizontal: 2 };

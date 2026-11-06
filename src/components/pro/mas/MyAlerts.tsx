@@ -17,6 +17,7 @@ import { alertGamesOf } from './logic';
 import { LogoMark } from './LogoMark';
 import { askPermission, recheckPermission, sendTestAlert, useNotificationPermission } from './notifications';
 import { setFollowMode, useFollowMode, type FollowMode } from './prefs';
+import { TeamLink } from '../../stats/common';
 
 // Mis avisos: el permiso de avisos del teléfono (con «Probar aviso» y «Revisar permiso»), cómo llega el aviso y los
 // juegos con y sin campana (10 minutos antes y al empezar, programados en el teléfono). Al quitar un aviso la fila se
@@ -116,13 +117,17 @@ export const MyAlerts: React.FC<{ games: ScheduleGame[] | undefined; loading: bo
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                            <TeamLogo team={game.away} size={22} />
-                            <Txt weight="extrabold">{game.away.abbrev}</Txt>
+                            <TeamLink id={game.away.id} name={game.away.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                <TeamLogo team={game.away} size={22} />
+                                <Txt weight="extrabold">{game.away.abbrev}</Txt>
+                            </TeamLink>
                             <Txt size={12} weight="semibold" tone="muted">
                                 {t('pro.mas.alerts.at')}
                             </Txt>
-                            <TeamLogo team={game.home} size={22} />
-                            <Txt weight="extrabold">{game.home.abbrev}</Txt>
+                            <TeamLink id={game.home.id} name={game.home.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                <TeamLogo team={game.home} size={22} />
+                                <Txt weight="extrabold">{game.home.abbrev}</Txt>
+                            </TeamLink>
                             {mine && <Star size={14} color={pro.warn} fill={pro.warn} />}
                         </View>
                         <Txt size={12} tone="muted" numberOfLines={1}>

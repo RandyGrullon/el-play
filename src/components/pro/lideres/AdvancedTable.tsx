@@ -1,7 +1,7 @@
 // Categorías avanzadas (igual que la web): el N.º 1 de cada una (siempre de la regular), su valor y la ventaja sobre
 // el 2.º. Cuatro columnas que caben a 320 px sin deslizar (por eso no es ProTable: filas de dos líneas más altas).
 import React from 'react';
-import { Pressable, View, useWindowDimensions } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight } from 'lucide-react-native';
@@ -13,6 +13,7 @@ import { Txt } from '../../ui';
 import { Enter, ModuleHeader, fmtSigned, useProColors } from '../kit';
 import type { LeaderBoard } from './logic';
 import { LeaderPhoto } from './LeaderPhoto';
+import { teamTextLink } from '../../stats/common';
 
 interface AdvancedTableProps {
     boards: LeaderBoard[];
@@ -100,7 +101,7 @@ export const AdvancedTable: React.FC<AdvancedTableProps> = ({ boards, teams, asi
                                             {label(first.row)}
                                         </Txt>
                                         <Txt size={11} weight="semibold" tone="muted" numberOfLines={1}>
-                                            {team?.abbrev ?? '—'}
+                                            <Text {...teamTextLink(team?.id)}>{team?.abbrev ?? '—'}</Text>
                                             {second ? ` · ${t('pro.lideres.advanced.second', { name: label(second.row) })}` : ''}
                                         </Txt>
                                     </View>

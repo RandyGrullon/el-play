@@ -10,6 +10,7 @@ import { PlayerPhoto, Txt } from '../../ui';
 import { ChipButton, CountUp, GrowBar, ModuleHeader, ProButton, ProSegmented, teamInk, useInView } from '../kit';
 import { columnOf, columnStandings, duelOf, sortPool, type Duel, type Role, type Standing } from './logic';
 import { ShareImageSheet, type CardNode } from './share';
+import { LinkedTeams, PlayerLink } from '../../stats/common';
 
 /** Métricas del cara a cara (las del diseño): ganan por percentil contra el grupo */
 export const COMPARE_KEYS: Record<Role, string[]> = {
@@ -216,12 +217,15 @@ const Side: React.FC<{ row: PlayerRow; team?: StatsTeam; color: string; name: st
     return (
         <View style={{ flex: 1, flexBasis: 0, minWidth: 0, alignItems: 'center', paddingHorizontal: 8, paddingTop: 16, paddingBottom: 12, backgroundColor: color }}>
             {ink === '#ffffff' && <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.35)']} locations={[0.3, 1]} style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }} />}
-            <PlayerPhoto personId={row.id} name={row.name} size={72} background="rgba(255,255,255,0.22)" team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
-            <Txt size={17} weight="black" color={ink} numberOfLines={1} style={{ marginTop: 8, alignSelf: 'stretch', textAlign: 'center' }}>
-                {name}
-            </Txt>
+            {/* Foto y nombre abren su ficha; las siglas, la página del equipo */}
+            <PlayerLink player={{ id: row.id, name: row.name, teamId: row.teamId }} style={{ alignItems: 'center', alignSelf: 'stretch' }}>
+                <PlayerPhoto personId={row.id} name={row.name} size={72} background="rgba(255,255,255,0.22)" team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
+                <Txt size={17} weight="black" color={ink} numberOfLines={1} style={{ marginTop: 8, alignSelf: 'stretch', textAlign: 'center' }}>
+                    {name}
+                </Txt>
+            </PlayerLink>
             <Txt size={12} weight="bold" color={ink} style={{ opacity: 0.85 }}>
-                {[team?.abbrev, row.pos].filter(Boolean).join(' · ')}
+                {team ? <LinkedTeams text={[team.abbrev, row.pos].filter(Boolean).join(' · ')} teams={[team]} /> : row.pos}
             </Txt>
         </View>
     );

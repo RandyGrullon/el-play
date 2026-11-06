@@ -12,6 +12,7 @@ import { TeamLogo, Txt } from '../../ui';
 import { Enter, LiveDot, teamInk, useProColors } from '../kit';
 import { shortVenue } from './logic';
 import type { RaceTeam } from './RaceChart';
+import { TeamLink } from '../../stats/common';
 
 interface TodayGamesProps {
     games: CalendarGame[];
@@ -23,9 +24,11 @@ interface TodayGamesProps {
     timeZone: string;
 }
 
-// Mitad de la píldora de un juego con el color del equipo
+// Mitad de la píldora de un juego con el color del equipo: lleva a la página del equipo (el resto de la fila, al juego)
 const Half: React.FC<{ team: RaceTeam; side: 'away' | 'home'; narrow: boolean }> = ({ team, side, narrow }) => (
-    <View
+    <TeamLink
+        id={team.id}
+        name={team.name}
         style={{
             flex: 1,
             minWidth: 0,
@@ -50,7 +53,7 @@ const Half: React.FC<{ team: RaceTeam; side: 'away' | 'home'; narrow: boolean }>
         <Txt size={13} weight="black" color={teamInk(team.color)} numberOfLines={1}>
             {team.abbrev}
         </Txt>
-    </View>
+    </TeamLink>
 );
 
 export const TodayGames: React.FC<TodayGamesProps> = ({ games, teams, ranks, advance, timeZone }) => {

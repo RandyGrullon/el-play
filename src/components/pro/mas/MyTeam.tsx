@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,7 @@ import { Skeleton, TeamLogo, Txt } from '../../ui';
 import { useAlertToggle } from '../../feed/alerts';
 import { MOTION_EASE, MOTION_MS, ModuleHeader, ProNote, fmtSigned, teamInk, useInView, useMotion, useProColors } from '../kit';
 import { teamCardOf, type TableRow } from './logic';
+import { TeamLink, teamTextLink } from '../../stats/common';
 
 // Mi equipo: carrusel con los logos en el orden de la tabla para elegir el favorito y, debajo, su tarjeta en el color
 // del equipo: récord, lugar, juegos detrás, diferencia, racha, casa/visita, récord esperado, últimos 10 y el próximo
@@ -185,10 +186,11 @@ export const MyTeam: React.FC<MyTeamProps> = ({ rows, cardRows, calendar, schedu
                             style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
                         />
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                            <View style={[{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }, shadow('card')]}>
+                            {/* Su equipo: logo y nombre van a su página */}
+                            <TeamLink id={team.id} name={team.name} style={[{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }, shadow('card')]}>
                                 <TeamLogo team={team} size={42} />
-                            </View>
-                            <Txt size={22} weight="black" color={ink} numberOfLines={2} accessibilityRole="header" style={{ flex: 1, lineHeight: 26, letterSpacing: -0.3 }}>
+                            </TeamLink>
+                            <Txt size={22} weight="black" color={ink} numberOfLines={2} accessibilityRole="header" style={{ flex: 1, lineHeight: 26, letterSpacing: -0.3 }} {...teamTextLink(team.id)}>
                                 {team.name}
                             </Txt>
                             <Pressable
@@ -338,7 +340,7 @@ export const MyTeam: React.FC<MyTeamProps> = ({ rows, cardRows, calendar, schedu
                                         {t('pro.mas.team.next')} · {nextDay === todayKey() ? t('pro.mas.alerts.today') : `${formatWeekday(nextDay, lang)} ${formatDayNumber(nextDay)}`}
                                     </Txt>
                                     <Txt size={16} weight="extrabold" numberOfLines={1}>
-                                        {nextHome ? t('pro.mas.team.vs') : t('pro.mas.team.at')} {nextOpponent.abbrev} · {formatTime(next.date, lang)}
+                                        {nextHome ? t('pro.mas.team.vs') : t('pro.mas.team.at')} <Text {...teamTextLink(nextOpponent.id)}>{nextOpponent.abbrev}</Text> · {formatTime(next.date, lang)}
                                     </Txt>
                                     <Txt size={13} tone="muted" numberOfLines={1}>
                                         {nextHome ? t('pro.mas.team.atHome') : t('pro.mas.team.away')} · {next.venue}

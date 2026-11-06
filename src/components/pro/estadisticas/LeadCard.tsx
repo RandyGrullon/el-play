@@ -11,6 +11,7 @@ import { PlayerPhoto, Txt } from '../../ui';
 import { CountUp, teamInk, useGrow, useInView } from '../kit';
 import { columnOf, type Role, type Standing, type StatsView } from './logic';
 import { barTone } from './parts';
+import { LinkedTeams } from '../../stats/common';
 
 interface LeadCardProps {
     role: Role;
@@ -64,7 +65,9 @@ export const LeadCard: React.FC<LeadCardProps> = ({ role, view, row, rank, isSea
             <View style={{ flexDirection: 'row' }}>
                 <View style={{ width: panel, alignItems: 'center', justifyContent: 'center', paddingVertical: 16, backgroundColor: color }}>
                     {dark && <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.3)']} locations={[0.3, 1]} style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }} />}
-                    <PlayerPhoto personId={row.id} name={row.name} size={76} background="rgba(255,255,255,0.22)" team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
+                    <Pressable onPress={() => onOpen(row)} accessibilityRole="link" accessibilityLabel={t('statsPage.viewPlayer', { name: row.name })} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+                        <PlayerPhoto personId={row.id} name={row.name} size={76} background="rgba(255,255,255,0.22)" team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
+                    </Pressable>
                 </View>
                 <View style={{ flex: 1, minWidth: 0, paddingLeft: 14, paddingRight: 8, paddingVertical: 10 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
@@ -84,12 +87,12 @@ export const LeadCard: React.FC<LeadCardProps> = ({ role, view, row, rank, isSea
                             <ChevronRight size={16} color={colors.accentInk} />
                         </Pressable>
                     </View>
-                    <Txt size={20} weight="black" numberOfLines={2} style={{ marginTop: 4, lineHeight: 22, letterSpacing: -0.3 }}>
+                    <Txt size={20} weight="black" numberOfLines={2} style={{ marginTop: 4, lineHeight: 22, letterSpacing: -0.3 }} onPress={() => onOpen(row)} accessibilityRole="link">
                         {row.name}
                     </Txt>
                     <View style={{ marginTop: 4, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 6 }}>
                         <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} style={{ flexShrink: 1, marginBottom: 4 }}>
-                            {meta}
+                            {team ? <LinkedTeams text={meta} teams={[team]} /> : meta}
                         </Txt>
                         <Txt condensed size={34} tabular style={{ lineHeight: 36 }} accessibilityLabel={`${value} ${sortShort}`}>
                             {counted ? <CountUp value={counted.numeric} format={counted.format} /> : value}

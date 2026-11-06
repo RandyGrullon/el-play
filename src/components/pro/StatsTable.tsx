@@ -3,7 +3,7 @@
 // pelotero buscado fijado arriba y solo las filas que se ven montadas (las demás se montan al bajar). Al ordenar,
 // cada fila se desliza a su nuevo lugar. Cada vista cabe en el ancho del teléfono (de 320 px en adelante).
 import React, { useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { ArrowDown, ArrowUp } from 'lucide-react-native';
@@ -16,6 +16,7 @@ import { columnOf, percentileTint, type Role, type Standing, type StatsView } fr
 import { MovingRow, StickyHeader, useRowWindow } from './estadisticas/scroll';
 import type { ProPlayerRow } from '../../types/pro-liga';
 import type { PlayerRow } from '../../lib/stats';
+import { TeamLink, teamTextLink } from '../stats/common';
 
 export interface StatsTableSort {
     key: string;
@@ -88,16 +89,26 @@ export const StatsTable: React.FC<StatsTableProps> = ({ role, view, rows, standi
 
     const nameCell = (item: Row, rankText: string, hit: boolean) => {
         const team = item.teamId ? teams[item.teamId] : undefined;
-        const sub = [rankText, team?.abbrev, item.pos].filter(Boolean).join(' · ');
+        // «3 · AAA · SS»: las siglas (y el logo) van a la página del equipo; el resto de la fila, a la ficha
+        const parts = [rankText, team?.abbrev, item.pos].filter(Boolean) as string[];
         return (
             <View style={{ width: nameWidth, paddingLeft: 10, paddingRight: 4, justifyContent: 'center' }}>
                 <Txt size={13} weight={hit ? 'extrabold' : 'bold'} numberOfLines={1} style={{ lineHeight: 16 }}>
                     {names.get(item.id) ?? item.name}
                 </Txt>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 0 }}>
-                    {team && <TeamLogo team={team} size={12} />}
+                    {team && (
+                        <TeamLink id={team.id} name={team.name} hitSlop={4}>
+                            <TeamLogo team={team} size={12} />
+                        </TeamLink>
+                    )}
                     <Txt size={11} color={hit ? pro.fantasy : colors.muted} numberOfLines={1} style={{ flexShrink: 1, lineHeight: 15 }}>
-                        {sub}
+                        {parts.map((part, index) => (
+                            <React.Fragment key={index}>
+                                {index ? ' · ' : ''}
+                                {team && part === team.abbrev ? <Text {...teamTextLink(team.id)}>{part}</Text> : part}
+                            </React.Fragment>
+                        ))}
                     </Txt>
                 </View>
             </View>
