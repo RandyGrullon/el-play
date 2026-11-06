@@ -11,6 +11,7 @@ import * as Haptics from 'expo-haptics';
 import { useColors, useTheme } from '../theme/theme';
 import { shadow } from '../theme/tokens';
 import { Txt } from './ui';
+import { Splash } from './Splash';
 import { useNow } from './feed/useNow';
 import { useSchedule } from '../lib/queries';
 import { offlineAge } from '../lib/format';
@@ -151,8 +152,9 @@ const OfflineBanner: React.FC<{ top: number }> = ({ top }) => {
 };
 
 /**
- * Marco de toda la app (el AppShell de la web): el aviso de «sin conexión» arriba, encima de cualquier pantalla. Con el
- * aviso puesto, el aviso ya cubre la barra de estado y las pantallas quedan debajo: para ellas el margen de arriba es 0.
+ * Marco de toda la app (el AppShell de la web): el aviso de «sin conexión» arriba, encima de cualquier pantalla, y la
+ * pantalla de entrada al abrir. Con el aviso puesto, el aviso ya cubre la barra de estado y las pantallas quedan
+ * debajo: para ellas el margen de arriba es 0.
  */
 export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const insets = useSafeAreaInsets();
@@ -162,6 +164,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
         <View style={{ flex: 1 }}>
             {!online && <OfflineBanner top={insets.top} />}
             <SafeAreaInsetsContext.Provider value={inner}>{children}</SafeAreaInsetsContext.Provider>
+            <Splash />
         </View>
     );
 };
