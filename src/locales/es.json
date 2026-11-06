@@ -210,6 +210,17 @@
       "ios": "un iPhone",
       "android": "un Android",
       "desktop": "una computadora"
+    },
+    "invite": {
+      "row": "Pásale El Play a alguien",
+      "rowHint": "Cómo instalar la versión web en otro teléfono, según su navegador",
+      "title": "Pásale El Play a alguien",
+      "body": "¿No tiene la app? Puede instalar la versión web desde su navegador: gratis, sin tienda y en segundos. Escoge su teléfono y su navegador:",
+      "open": "Abre {{url}} en {{browser}}.",
+      "copy": "Copiar el enlace",
+      "copied": "Enlace copiado",
+      "share": "Compartir",
+      "shareText": "Sigue los juegos de LIDOM en vivo con El Play:"
     }
   },
   "offline": {
@@ -583,7 +594,8 @@
       "off": "Sin animaciones: solo el marcador."
     },
     "largeText": "Texto grande",
-    "largeTextHint": "Letras, botones y tablas un poco más grandes"
+    "largeTextHint": "Letras, botones y tablas un poco más grandes",
+    "version": "Versión {{v}}"
   },
   "stories": {
     "label": "Equipos",

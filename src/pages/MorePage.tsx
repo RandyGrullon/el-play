@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check } from 'lucide-react';
+import { Check, ChevronRight, Share2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLeague } from '../store/LeagueContext';
 import { usePreferences, type AnimationMode, type ThemePreference } from '../store/preferences';
 import { LogoMark } from '../components/brand/Logo';
 import { Segmented } from '../components/ui/Segmented';
 import { InstallRow } from '../components/install/InstallCard';
+import { InviteSheet } from '../components/install/InviteSheet';
+import { shortVersion } from '../lib/appUpdate';
 import { AccountCard } from '../components/account/AccountCard';
 import { ModeCard } from '../components/pro/ModeCard';
 import { setLanguage } from '../i18n';
@@ -21,6 +23,7 @@ export const MorePage: React.FC = () => {
     const { leagues, activeLeague, setActiveLeague } = useLeague();
     const { theme, setTheme, animationMode, setAnimationMode, largeText, setLargeText } = usePreferences();
     const lang = i18n.language.startsWith('en') ? 'en' : 'es';
+    const [invite, setInvite] = useState(false);
 
     return (
         <div className="space-y-6 px-4 pt-5">
@@ -118,11 +121,28 @@ export const MorePage: React.FC = () => {
 
             <AlertSettings />
 
+            {/* Pasarle El Play a alguien: los pasos para instalar la web en otro teléfono, según su navegador */}
+            <section className="card overflow-hidden">
+                <button type="button" onClick={() => setInvite(true)} className="flex w-full items-center gap-3 p-4 text-left">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-raised">
+                        <Share2 className="h-[18px] w-[18px]" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block font-semibold">{t('install.invite.row')}</span>
+                        <span className="block text-sm text-muted">{t('install.invite.rowHint')}</span>
+                    </span>
+                    <ChevronRight className="h-[18px] w-[18px] shrink-0 text-muted" />
+                </button>
+            </section>
+            <InviteSheet open={invite} onClose={() => setInvite(false)} />
+
             <section className="card flex items-center gap-3 p-4">
                 <LogoMark size={44} />
                 <div className="flex-1">
                     <p className="font-extrabold">El Play</p>
                     <p className="text-sm text-muted">{t('more.tagline')}</p>
+                    {/* El commit de este build (el mismo de /version.json) */}
+                    <p className="text-xs font-semibold tabular-nums text-faint">{t('more.version', { v: shortVersion() })}</p>
                 </div>
                 <Link to="/privacidad" className="text-sm font-semibold text-accent-ink">
                     {t('privacy.title')}
