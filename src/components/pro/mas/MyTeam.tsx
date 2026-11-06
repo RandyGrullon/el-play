@@ -190,8 +190,8 @@ export const MyTeam: React.FC<MyTeamProps> = ({ rows, cardRows, calendar, schedu
                             <TeamLink id={team.id} name={team.name} style={[{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }, shadow('card')]}>
                                 <TeamLogo team={team} size={42} />
                             </TeamLink>
-                            <Txt size={22} weight="black" color={ink} numberOfLines={2} accessibilityRole="header" style={{ flex: 1, lineHeight: 26, letterSpacing: -0.3 }} {...teamTextLink(team.id)}>
-                                {team.name}
+                            <Txt size={22} weight="black" color={ink} numberOfLines={2} accessibilityRole="header" style={{ flex: 1, lineHeight: 26, letterSpacing: -0.3 }}>
+                                <Text {...teamTextLink(team.id)}>{team.name}</Text>
                             </Txt>
                             <Pressable
                                 onPress={() => toggleFavoriteTeam(team.id)}

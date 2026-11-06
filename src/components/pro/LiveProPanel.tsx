@@ -238,8 +238,8 @@ const FullCard: React.FC<{ game: GameDetail; entry: PitcherEntry; current: boole
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
             <Avatar person={{ id: entry.id, name: entry.name }} team={team} size={46} />
             <View style={{ flex: 1, minWidth: 0 }}>
-                <Txt size={17} weight="black" numberOfLines={1} accessibilityRole="header" {...playerTextLink({ id: entry.id, name: entry.name, teamId: team.id })}>
-                    {entry.name}
+                <Txt size={17} weight="black" numberOfLines={1} accessibilityRole="header">
+                    <Text {...playerTextLink({ id: entry.id, name: entry.name, teamId: team.id })}>{entry.name}</Text>
                 </Txt>
                 <Txt size={12} tone="muted" numberOfLines={2}>
                     {sub}
