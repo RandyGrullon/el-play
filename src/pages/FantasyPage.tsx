@@ -6,6 +6,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useLeague } from '../store/LeagueContext';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
 import { TeamLogo } from '../components/ui/TeamLogo';
+import { TeamLink } from '../components/ui/TeamLink';
+import { PlayerLink } from '../components/ui/PlayerLink';
+import { CardLink, OVER_CARD } from '../components/ui/CardLink';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { Segmented } from '../components/ui/Segmented';
 import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
@@ -20,6 +23,7 @@ import { formatLongDate, formatTime } from '../lib/format';
 import { inningName } from '../lib/baseball';
 import { bestLineup, projectedPoints, valueOf } from '../lib/fantasyBest';
 import { showToast } from '../lib/toast';
+import { playerPath } from '../lib/links';
 import {
     RULES,
     addPlayer,
@@ -299,7 +303,6 @@ const FantasyTabs: React.FC<{ value: Tab; onChange: (tab: Tab) => void; options:
 const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ day, loading }) => {
     const { t, i18n } = useTranslation();
     const [rules, setRules] = useState(false);
-    const [info, setInfo] = useState<FantasyPlayer | null>(null);
     const started = !!day?.games.some((game) => game.state !== 'preview');
     const top = day && started ? day.players.filter((p) => p.played).sort((a, b) => b.points - a.points).slice(0, 5) : [];
     const steps = [
@@ -339,19 +342,19 @@ const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ day, lo
                             const team = day?.teams[player.teamId];
                             const line = lineText(player, t);
                             return (
-                                <li key={player.id}>
-                                    <button type="button" onClick={() => setInfo(player)} className="flex w-full items-center gap-3 px-3 py-2.5 text-left" aria-label={t('statsPage.viewPlayer', { name: player.name })}>
-                                        <span className="w-5 text-center font-display text-lg font-extrabold text-muted">{index + 1}</span>
-                                        <PlayerPhoto personId={player.id} name={player.name} size={44} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
-                                        <span className="min-w-0 flex-1">
-                                            <span className="block truncate text-sm font-extrabold">{player.name}</span>
-                                            <span className="block truncate text-xs text-muted">
-                                                {team?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')}
-                                                {line ? ` · ${line}` : ''}
-                                            </span>
+                                // Toda la fila abre su página; la sigla, la de su equipo
+                                <li key={player.id} className="relative isolate flex w-full items-center gap-3 px-3 py-2.5 text-left">
+                                    <CardLink to={playerPath(player.id)} label={t('statsPage.viewPlayer', { name: player.name })} />
+                                    <span className="w-5 text-center font-display text-lg font-extrabold text-muted">{index + 1}</span>
+                                    <PlayerPhoto personId={player.id} name={player.name} size={44} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-sm font-extrabold">{player.name}</span>
+                                        <span className="block truncate text-xs text-muted">
+                                            <TeamLink id={team?.id} className={OVER_CARD}>{team?.abbrev}</TeamLink> · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')}
+                                            {line ? ` · ${line}` : ''}
                                         </span>
-                                        <span className="font-display text-xl font-extrabold tabular-nums">{player.points}</span>
-                                    </button>
+                                    </span>
+                                    <span className="font-display text-xl font-extrabold tabular-nums">{player.points}</span>
                                 </li>
                             );
                         })}
@@ -363,11 +366,15 @@ const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ day, lo
                     <div className="grid gap-2 sm:grid-cols-2">
                         {day.games.map((game) => (
                             <div key={game.gamePk} className="card flex items-center gap-2 p-3">
-                                <TeamLogo team={game.away} size={30} />
-                                <span className="text-sm font-extrabold">{game.away.abbrev}</span>
+                                <TeamLink id={game.away.id} className="flex items-center gap-2">
+                                    <TeamLogo team={game.away} size={30} />
+                                    <span className="text-sm font-extrabold">{game.away.abbrev}</span>
+                                </TeamLink>
                                 <span className="flex-1 text-center text-xs font-semibold text-muted">{formatTime(game.date, i18n.language)}</span>
-                                <span className="text-sm font-extrabold">{game.home.abbrev}</span>
-                                <TeamLogo team={game.home} size={30} />
+                                <TeamLink id={game.home.id} className="flex items-center gap-2">
+                                    <span className="text-sm font-extrabold">{game.home.abbrev}</span>
+                                    <TeamLogo team={game.home} size={30} />
+                                </TeamLink>
                             </div>
                         ))}
                     </div>
@@ -383,7 +390,6 @@ const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ day, lo
                     {rules && <ScoringTable day={day} />}
                 </>
             )}
-            {info && <PlayerSheet id={info.id} name={info.name} team={teamOf(day, info)} onClose={() => setInfo(null)} />}
         </>
     );
 };
@@ -465,7 +471,7 @@ const LockNotice: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, entry
                 {game && (
                     <span className="text-muted">
                         {' '}
-                        · {game.away.abbrev}–{game.home.abbrev}, <span className="whitespace-nowrap">{formatTime(game.date, i18n.language)}</span>
+                        · <TeamLink id={game.away.id}>{game.away.abbrev}</TeamLink>–<TeamLink id={game.home.id}>{game.home.abbrev}</TeamLink>, <span className="whitespace-nowrap">{formatTime(game.date, i18n.language)}</span>
                     </span>
                 )}
                 {missing > 0 && <span className="block font-semibold text-live">{t('fantasy.smart.missing', { count: missing })}</span>}
@@ -564,14 +570,16 @@ const LineupList: React.FC<{ day: FantasyDay; lineup: number[]; captain: number 
                 const points = metric === 'proj' ? player.proj ?? 0 : player.points;
                 return (
                     <li key={player.id} className="flex items-center gap-3 py-2">
-                        <PlayerPhoto personId={player.id} name={player.name} size={40} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
+                        <PlayerLink id={player.id} decorative className="flex shrink-0">
+                            <PlayerPhoto personId={player.id} name={player.name} size={40} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
+                        </PlayerLink>
                         <div className="min-w-0 flex-1">
                             <p className="flex items-center gap-1.5 truncate text-sm font-extrabold">
                                 {captain === player.id && <Crown className="h-3.5 w-3.5 shrink-0 text-gold" aria-label={t('fantasy.captain')} />}
-                                <span className="truncate">{player.name}</span>
+                                <PlayerLink id={player.id} className="truncate">{player.name}</PlayerLink>
                             </p>
                             <p className="truncate text-xs text-muted">
-                                {team?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')}
+                                <TeamLink id={team?.id}>{team?.abbrev}</TeamLink> · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')}
                                 {player.price !== undefined ? ` · ${t('fantasy.credits.price', { price: credits(player.price, i18n.language) })}` : ''}
                             </p>
                         </div>
@@ -683,13 +691,14 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
     const locked = isLocked(day, player);
     const captain = entry.captain === player.id;
     const line = lineText(player, t);
-    const [info, setInfo] = useState(false);
     const [breakdown, setBreakdown] = useState(false);
     const items = pointsBreakdown(player, day.scoring);
     return (
         <div>
         <div className="relative flex h-[84px] items-center gap-3 rounded-[22px] bg-surface px-3 shadow-card">
-            <button type="button" onClick={() => setInfo(true)} className="flex min-w-0 flex-1 items-center gap-3 text-left" aria-label={t('statsPage.viewPlayer', { name: player.name })}>
+            {/* Su foto y su nombre abren su página (el enlace cubre esta parte); la sigla, la de su equipo */}
+            <div className="relative isolate flex min-w-0 flex-1 items-center gap-3 self-stretch text-left">
+                <CardLink to={playerPath(player.id)} label={t('statsPage.viewPlayer', { name: player.name })} />
                 <PlayerPhoto personId={player.id} name={player.name} size={56} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
                 <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-1.5 truncate font-extrabold">
@@ -697,7 +706,7 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
                         <span className="truncate">{player.name}</span>
                     </p>
                     <p className="truncate text-xs font-semibold text-muted">
-                        {team?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')} · {gameStatus(day, player.gamePk, i18n.language, t)}
+                        <TeamLink id={team?.id} className={OVER_CARD}>{team?.abbrev}</TeamLink> · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')} · {gameStatus(day, player.gamePk, i18n.language, t)}
                         {day.credits && player.price !== undefined ? ` · ${t('fantasy.credits.price', { price: credits(player.price, i18n.language) })}` : ''}
                     </p>
                     {line ? (
@@ -712,7 +721,7 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
                         )
                     )}
                 </div>
-            </button>
+            </div>
             <div className="flex flex-col items-end gap-1">
                 {items.length ? (
                     <button type="button" onClick={() => setBreakdown((value) => !value)} aria-expanded={breakdown} aria-label={t('fantasyMore.breakdownOf', { name: player.name })} className="font-display text-2xl font-extrabold leading-none tabular-nums underline decoration-dotted decoration-2 underline-offset-4">
@@ -737,7 +746,6 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
                     </span>
                 )}
             </div>
-            {info && <PlayerSheet id={player.id} name={player.name} team={teamOf(day, player)} onClose={() => setInfo(false)} />}
         </div>
         {breakdown && items.length > 0 && (
             <ul className="mx-3 -mt-2 rounded-b-[18px] bg-raised px-4 pb-2.5 pt-4 text-sm" aria-label={t('fantasyMore.breakdownOf', { name: player.name })}>
