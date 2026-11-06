@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Home, Menu, Radio, Sparkles, BarChart3 } from 'lucide-react';
 import { useLeague } from '../../store/LeagueContext';
@@ -9,6 +9,12 @@ import { inningName } from '../../lib/baseball';
 import { useNow } from '../../hooks/useNow';
 import { BottomSheet } from '../ui/BottomSheet';
 import { TeamLogo } from '../ui/TeamLogo';
+import { TeamLink } from '../ui/TeamLink';
+import { PlayerLink } from '../ui/PlayerLink';
+import { CardLink, OVER_CARD } from '../ui/CardLink';
+import { withNodes } from '../ui/TextLinks';
+import { slot } from '../../lib/links';
+import { teamDisplayName } from '../../lib/teams';
 import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../ui/States';
 import { Bases } from '../game/Bases';
 import { OfflineBanner } from './OfflineBanner';
@@ -80,7 +86,8 @@ const BottomNav: React.FC<{ onLive: () => void; liveCount: number }> = ({ onLive
 };
 
 // Hoja del botón rojo de la barra: los juegos en vivo de la liga (quién batea y las bases); si no hay, los próximos tres
-// con su fecha. Al tocar o pasar por un juego se precarga, para que abra ya listo.
+// con su fecha. Al tocar o pasar por un juego se precarga, para que abra ya listo. Los equipos y el bateador abren su
+// página (la hoja es de toda la app: se cierra al irse a cualquiera de ellos).
 const LiveSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
     const { t, i18n } = useTranslation();
     const { activeLeague } = useLeague();
@@ -119,27 +126,46 @@ const LiveSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onC
                             const warm = () => {
                                 prefetch(game.gamePk).catch(() => undefined);
                             };
+                            const team = (side: 'away' | 'home') => (
+                                <TeamLink id={game[side].id} onClick={onClose} className={OVER_CARD}>
+                                    {game[side].abbrev}
+                                </TeamLink>
+                            );
+                            const logo = (side: 'away' | 'home') => (
+                                <TeamLink id={game[side].id} decorative onClick={onClose} className={`${OVER_CARD} flex shrink-0`}>
+                                    <TeamLogo team={game[side]} size={36} />
+                                </TeamLink>
+                            );
                             return (
-                                <li key={game.gamePk}>
-                                    <Link to={`/juego/${game.gamePk}`} onClick={onClose} onPointerEnter={warm} onTouchStart={warm} onFocus={warm} className="flex items-center gap-3 rounded-2xl bg-surface p-3 shadow-card">
-                                        <TeamLogo team={game.away} size={36} />
-                                        <span className="min-w-0 flex-1">
-                                            <span className="block truncate font-bold">
-                                                {game.away.abbrev} {game.away.score ?? ''} <span className="text-muted">·</span> {game.home.abbrev} {game.home.score ?? ''}
-                                            </span>
-                                            {playing ? (
-                                                playing.batter && <span className="block truncate text-xs text-muted">{t('card.batting', { name: playing.batter.name })}</span>
-                                            ) : (
-                                                <span className="block truncate text-xs text-muted">{formatShortDate(game.date, i18n.language)}</span>
-                                            )}
+                                <li key={game.gamePk} onPointerEnter={warm} onTouchStart={warm} className="relative isolate flex items-center gap-3 rounded-2xl bg-surface p-3 shadow-card">
+                                    <CardLink to={`/juego/${game.gamePk}`} onClick={onClose} onFocus={warm} label={t('card.openGame', { away: teamDisplayName(game.away, i18n.language), home: teamDisplayName(game.home, i18n.language) })} />
+                                    {logo('away')}
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block truncate font-bold">
+                                            {team('away')} {game.away.score ?? ''} <span className="text-muted">·</span> {team('home')} {game.home.score ?? ''}
                                         </span>
-                                        {playing && !between && <Bases runners={playing.runners} size={24} color={(playing.isTop ? game.away : game.home).color} className="shrink-0" />}
-                                        <span className={`pill shrink-0 ${playing ? 'bg-live text-white' : 'bg-raised text-muted'}`}>
-                                            {playing && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />}
-                                            {playing ? inningName({ n: playing.inning, isTop: playing.isTop, state: playing.inningState }, i18n.language, true) : formatTime(game.date, i18n.language)}
-                                        </span>
-                                        <TeamLogo team={game.home} size={36} />
-                                    </Link>
+                                        {playing ? (
+                                            playing.batter && (
+                                                <span className="block truncate text-xs text-muted">
+                                                    {withNodes(t('card.batting', { name: slot('name') }), {
+                                                        name: (
+                                                            <PlayerLink id={playing.batter.id} onClick={onClose} className={OVER_CARD}>
+                                                                {playing.batter.name}
+                                                            </PlayerLink>
+                                                        )
+                                                    })}
+                                                </span>
+                                            )
+                                        ) : (
+                                            <span className="block truncate text-xs text-muted">{formatShortDate(game.date, i18n.language)}</span>
+                                        )}
+                                    </span>
+                                    {playing && !between && <Bases runners={playing.runners} size={24} color={(playing.isTop ? game.away : game.home).color} className="shrink-0" />}
+                                    <span className={`pill shrink-0 ${playing ? 'bg-live text-white' : 'bg-raised text-muted'}`}>
+                                        {playing && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />}
+                                        {playing ? inningName({ n: playing.inning, isTop: playing.isTop, state: playing.inningState }, i18n.language, true) : formatTime(game.date, i18n.language)}
+                                    </span>
+                                    {logo('home')}
                                 </li>
                             );
                         })}
