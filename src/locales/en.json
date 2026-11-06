@@ -254,7 +254,11 @@
     "screenTitle": "Something went wrong",
     "screenBody": "This screen ran into a problem. Try again or go back to Games.",
     "notFoundTitle": "This screen doesn't exist",
-    "goGames": "Go to Games"
+    "goGames": "Go to Games",
+    "player_not_found": "We couldn't find that player.",
+    "invalid_user": "That profile link isn't valid.",
+    "accounts_disabled": "Accounts aren't available right now.",
+    "accounts_unavailable": "We couldn't load the fans. Try again in a moment."
   },
   "games": {
     "title": "Games",
@@ -1071,7 +1075,11 @@
     "deleteYes": "Yes, delete",
     "deleteNo": "Cancel",
     "google": "Continue with Google",
-    "orEmail": "or with your email"
+    "orEmail": "or with your email",
+    "noNameHint": "You don't have a name yet: others see you as “Fan”. Choose one below.",
+    "keptSession": "You stayed signed in as {{email}}.",
+    "switchConfirm": "You're signed in as {{current}}. Switch to {{next}}?",
+    "switchYes": "Switch"
   },
   "statsPage": {
     "title": "Stats",

@@ -13,6 +13,7 @@ import { Button, Card, Row, Txt } from '../ui';
 import { Field, FieldButton } from './Field';
 import { GoogleMark } from './GoogleMark';
 import { LoginMethods } from './LoginMethods';
+import { useLocalText } from '../fantasy/texts';
 
 const validEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
@@ -59,7 +60,9 @@ const SignedIn: React.FC<{ session: Session; compact: boolean }> = ({ session, c
     const [confirmDelete, setConfirmDelete] = useState(false);
     const fail = (err: unknown) => setError(t(`account.errors.${err instanceof AccountError ? err.code : 'unknown'}`));
 
-    const display = session.name || session.user.email.split('@')[0];
+    const L = useLocalText();
+    // Sin nombre se muestra lo que ven los demás («Fanático»), nunca el inicio del correo (como la web)
+    const display = session.name || L('fans.anonymous');
     const submitName = async () => {
         if (!name.trim()) return;
         setError(null);
@@ -72,9 +75,13 @@ const SignedIn: React.FC<{ session: Session; compact: boolean }> = ({ session, c
         <Card style={{ gap: 12 }}>
             <Row gap={12}>
                 <View style={{ width: 44, height: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent }}>
-                    <Txt size={18} weight="extrabold" tone="white">
-                        {(session.name || session.user.email)[0]?.toUpperCase()}
-                    </Txt>
+                    {session.name ? (
+                        <Txt size={18} weight="extrabold" tone="white">
+                            {Array.from(session.name)[0]?.toUpperCase()}
+                        </Txt>
+                    ) : (
+                        <UserRound size={20} color="#fff" />
+                    )}
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
                     <Txt weight="extrabold" numberOfLines={1}>
@@ -98,6 +105,11 @@ const SignedIn: React.FC<{ session: Session; compact: boolean }> = ({ session, c
                     )}
                 </Pressable>
             </Row>
+            {!compact && !session.name && (
+                <Txt size={12} weight="semibold" tone="muted">
+                    {t('account.noNameHint')}
+                </Txt>
+            )}
             {!compact && (
                 <Row gap={8}>
                     <Field

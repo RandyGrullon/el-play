@@ -254,7 +254,11 @@
     "screenTitle": "Algo salió mal",
     "screenBody": "Esta pantalla tuvo un problema. Intenta de nuevo o vuelve a Juegos.",
     "notFoundTitle": "Esta pantalla no existe",
-    "goGames": "Ir a Juegos"
+    "goGames": "Ir a Juegos",
+    "player_not_found": "No encontramos a ese pelotero.",
+    "invalid_user": "Ese enlace de perfil no es válido.",
+    "accounts_disabled": "Las cuentas no están disponibles ahora mismo.",
+    "accounts_unavailable": "No pudimos cargar los fanáticos. Intenta en un momento."
   },
   "games": {
     "title": "Juegos",
@@ -1071,7 +1075,11 @@
     "deleteYes": "Sí, borrar",
     "deleteNo": "Cancelar",
     "google": "Continuar con Google",
-    "orEmail": "o con tu correo"
+    "orEmail": "o con tu correo",
+    "noNameHint": "Todavía no tienes nombre: los demás te ven como «Fanático». Elige uno aquí abajo.",
+    "keptSession": "Seguiste con tu cuenta {{email}}.",
+    "switchConfirm": "Ya tienes abierta la cuenta {{current}}. ¿Cambiar a {{next}}?",
+    "switchYes": "Cambiar"
   },
   "statsPage": {
     "title": "Estadísticas",
