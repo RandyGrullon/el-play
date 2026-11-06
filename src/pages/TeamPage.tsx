@@ -15,6 +15,7 @@ import { nextGame, standingOf, summarize, teamResults, useTeamGames, versusAll, 
 import { pythagorean } from '../lib/advanced';
 import { formatShortDate, formatTime, localeFor, seasonLabel } from '../lib/format';
 import { showToast } from '../lib/toast';
+import { useNow } from '../hooks/useNow';
 import { inkOn } from '../components/gamecast/GameHero';
 import { TeamLogo } from '../components/ui/TeamLogo';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
@@ -66,6 +67,8 @@ export const TeamPage: React.FC = () => {
     const gamesQuery = useTeamGames(activeLeague, teamId);
     const players = usePlayers(activeLeague);
     const [comparing, setComparing] = useState(false);
+    // La hora de ahora (cada minuto): cuál es el próximo juego y cuáles faltan
+    const now = useNow(60000);
 
     const games = gamesQuery.data?.games ?? [];
     const results = useMemo(() => (teamId ? teamResults(games, teamId) : []), [games, teamId]);
@@ -76,7 +79,7 @@ export const TeamPage: React.FC = () => {
     // Quién es: de las estadísticas, de las posiciones o de sus juegos (lo que llegue primero)
     const fromGames = games.map((game) => (game.home.id === teamId ? game.home : game.away)).find(Boolean);
     const team = row ?? (standing ? { ...standing.row.team } : null) ?? fromGames ?? null;
-    const upcoming = nextGame(games);
+    const upcoming = nextGame(games, now);
 
     if (!teamId) return null;
     if (!team) {
@@ -194,7 +197,7 @@ export const TeamPage: React.FC = () => {
             {players.data && <Leaders teamId={team.id} players={players.data} team={team} />}
             {players.data && <Roster teamId={team.id} players={players.data} team={team} />}
             {results.length > 0 && <Results results={results} />}
-            <Upcoming games={games} teamId={team.id} />
+            <Upcoming games={games} teamId={team.id} now={now} />
 
             <div className="px-4">
                 <TransactionsCard league={activeLeague} teamId={team.id} onOpenPlayer={(id) => navigate(`/jugador/${id}`)} />
@@ -495,9 +498,8 @@ const Results: React.FC<{ results: TeamResult[] }> = ({ results }) => {
 };
 
 /** Los próximos juegos (después del de hoy) */
-const Upcoming: React.FC<{ games: ScheduleGame[]; teamId: number }> = ({ games, teamId }) => {
+const Upcoming: React.FC<{ games: ScheduleGame[]; teamId: number; now: number }> = ({ games, teamId, now }) => {
     const { t, i18n } = useTranslation();
-    const now = Date.now();
     const list = games.filter((game) => game.state === 'preview' && Date.parse(game.date) > now).slice(1, 7);
     if (!list.length) return null;
     const weekday = (date: string) => new Date(date).toLocaleDateString(localeFor(i18n.language), { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Santo_Domingo' });

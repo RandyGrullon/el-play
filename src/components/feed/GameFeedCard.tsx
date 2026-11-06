@@ -83,9 +83,9 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
     const notPlayed = isOnHold(game);
     const final = game.state === 'final';
     const subscribed = subscribedGames.includes(game.gamePk);
-    // La cuenta regresiva avanza sola (cada 30 s) mientras falten menos de 6 horas
-    const soon = game.state === 'preview' && new Date(game.date).getTime() - Date.now() < 6 * 3600000;
-    const now = useNow(30000, soon);
+    // La cuenta regresiva avanza sola (cada 30 s) en todo juego por empezar: así sale también la del que entra en las
+    // 6 horas con la página abierta (antes solo corría si ya faltaban menos de 6 horas al pintar la tarjeta)
+    const now = useNow(30000, game.state === 'preview' && !notPlayed);
     const startsIn = new Date(game.date).getTime() - now;
     const handlers = { onMouseEnter: () => prefetch(game.gamePk), onTouchStart: () => prefetch(game.gamePk), onFocus: () => prefetch(game.gamePk) };
 

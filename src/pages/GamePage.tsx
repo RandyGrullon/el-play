@@ -11,6 +11,7 @@ import { atBatForZone, inningBreak, isNotPlayed, weatherName, weatherTemp } from
 import { formatCountdown, formatShortDate, formatTime, surname } from '../lib/format';
 import { teamDisplayName } from '../lib/teams';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { useNow } from '../hooks/useNow';
 import { useLeague } from '../store/LeagueContext';
 import { usePreferences } from '../store/preferences';
 import { useShare } from '../share/ShareSheet';
@@ -207,7 +208,9 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
     const gamePk = game.gamePk ?? 0;
     const subscribed = subscribedGames.includes(gamePk);
     const notPlayed = isNotPlayed(game.detailedState);
-    const startsIn = game.date ? new Date(game.date).getTime() - Date.now() : 0;
+    // La cuenta regresiva avanza sola
+    const now = useNow();
+    const startsIn = game.date ? new Date(game.date).getTime() - now : 0;
 
     return (
         <div className="space-y-3 px-4 pt-4">
