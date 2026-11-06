@@ -10,6 +10,7 @@ import { atBatForZone } from '../../../../lib/baseball';
 import { useColors } from '../../../../theme/theme';
 import { alpha, shadow } from '../../../../theme/tokens';
 import { Txt } from '../../../ui';
+import { FatigueMeter } from '../../../game/LiveGamePieces';
 import { Chip, Gauge, LiveDot, ModuleHeader, fmtPercent, lastName, shortName, useProColors } from '../../kit';
 import { countryShort, useSeasonContext } from './logic';
 import { Avatar, isBetween, ordinal } from './parts';
@@ -192,6 +193,8 @@ const PitcherCard: React.FC<{ game: GameDetail; pro?: GamePro; pitcher: PitcherS
     const usePrev = !!season && season.gamesBefore === 0 && !!prev;
     const number = pitcher.player?.number ?? box?.number;
     const role = box ? t(box.starter ? 'pro.vivo.duel.starter' : 'pro.vivo.duel.reliever') : null;
+    // Abridor como en el Lite: el primero de su equipo en el box (o lo que diga el box PRO)
+    const starter = box?.starter ?? game.box[pitcher.team.id === game.home.id ? 'home' : 'away'].pitchers[0]?.id === pitcher.ref.id;
     const tto = pro?.current && pro.current.pitcher === pitcher.ref.id ? pro.current.tto : null;
     const pct = pitcher.pitches ? fmtPercent(pitcher.strikes / pitcher.pitches, 0, lang) : null;
     return (
@@ -241,6 +244,10 @@ const PitcherCard: React.FC<{ game: GameDetail; pro?: GamePro; pitcher: PitcherS
                     ))}
                 </View>
             )}
+            {/* El cansancio del Lite (los pitcheos ya van en el medidor de arriba) */}
+            <View style={{ marginTop: 10 }}>
+                <FatigueMeter game={game} pitcherId={pitcher.ref.id} pitches={pitcher.pitches} starter={starter} showCount={false} />
+            </View>
 
             {usePrev || box?.season.era ? (
                 <>

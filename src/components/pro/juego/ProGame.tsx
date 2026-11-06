@@ -12,6 +12,7 @@ import { useGamePro, useWinProb } from '../../../lib/pro/juego';
 import { useColors } from '../../../theme/theme';
 import { alpha } from '../../../theme/tokens';
 import { Sheet, Txt } from '../../ui';
+import { NoHitterBanner, StaleNotice } from '../../game/LiveGamePieces';
 import { LiveProPanel } from '../LiveProPanel';
 import { Chip, ChipRow, MOTION_EASE, MOTION_MS, ModuleHeader, ProSegmented, UpdatedAgo, shortName, toCelsius, useChipInk, useMotion, useNow } from '../kit';
 import { KitDemo } from '../kit/__demo__/KitDemo';
@@ -267,6 +268,13 @@ export const ProGame: React.FC<ProGameProps> = ({ game, onShare, onSharePerforme
             <ProGameStrip game={game} pro={pro} fetchedAt={fetchedAt} onLayout={(event) => scroll?.top.set(event.nativeEvent.layout.y)} />
 
             <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 16 }}>
+                {/* Los avisos del Lite: datos que pueden estar viejos (solo en vivo) y juego sin hit (en vivo y al final) */}
+                {phase !== 'preview' && (
+                    <>
+                        <StaleNotice game={game} />
+                        <NoHitterBanner game={game} />
+                    </>
+                )}
                 {phase === 'preview' && <ProPreview game={game} pro={pro} onShare={onShare} />}
                 {phase === 'live' && <ProLive game={game} pro={pro} winProb={winProb} onOpenZone={() => setSheet('zone')} />}
                 {phase === 'final' && <ProFinal game={game} pro={pro} winProb={winProb} onShare={onShare} onSharePerformer={onSharePerformer} onOpenPlays={openPlays} />}

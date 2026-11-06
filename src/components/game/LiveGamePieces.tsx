@@ -352,6 +352,46 @@ export const GameFlow: React.FC<{ game: GameDetail }> = ({ game }) => {
 
 const FATIGUE_TONE: Record<Fatigue, 'ball' | 'inplay' | 'gold' | 'live'> = { fresh: 'ball', normal: 'inplay', tired: 'gold', limit: 'live' };
 
+/**
+ * Cansancio del lanzador: nivel, barra y velocidad de la recta. Va en la tarjeta del lanzador del Lite y en el duelo
+ * PRO (que ya enseña los pitcheos en su medidor: ahí va con showCount={false}).
+ */
+export const FatigueMeter: React.FC<{ game: GameDetail; pitcherId: number; pitches: number; starter: boolean; showCount?: boolean }> = ({ game, pitcherId, pitches, starter, showCount = true }) => {
+    const { t } = useTranslation();
+    const colors = useColors();
+    const fatigue = fatigueOf(pitches, starter);
+    const trend = velocityTrend(game, pitcherId);
+    return (
+        <View style={{ gap: 6 }}>
+            <Row justify="space-between">
+                <Row gap={6}>
+                    <Flame size={14} color={colors.muted} />
+                    <Txt size={12} weight="bold">
+                        {t('pitcherNow.fatigue')}: {t(`pitcherNow.level.${fatigue.level}`)}
+                    </Txt>
+                </Row>
+                {showCount && (
+                    <Txt size={12} weight="bold" tone="muted" tabular>
+                        {t('pitcherNow.pitches', { count: pitches })}
+                    </Txt>
+                )}
+            </Row>
+            <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.raised, overflow: 'hidden' }} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(fatigue.share * 100) }}>
+                <View style={{ width: `${Math.max(4, fatigue.share * 100)}%`, height: '100%', borderRadius: 4, backgroundColor: colors[FATIGUE_TONE[fatigue.level]] }} />
+            </View>
+            {trend && (
+                <Txt size={12} tone="muted">
+                    {t('pitcherNow.velocity', { first: trend.first.toFixed(1), last: trend.last.toFixed(1) })}{' '}
+                    <Txt size={12} weight="bold" tone={trend.change <= -1.5 ? 'live' : 'ink'}>
+                        ({trend.change > 0 ? '+' : ''}
+                        {trend.change.toFixed(1)})
+                    </Txt>
+                </Txt>
+            )}
+        </View>
+    );
+};
+
 export const PitcherCard: React.FC<{ game: GameDetail }> = ({ game }) => {
     const { t } = useTranslation();
     const colors = useColors();
@@ -363,8 +403,6 @@ export const PitcherCard: React.FC<{ game: GameDetail }> = ({ game }) => {
     const line = lines.find((item) => item.id === pitcher.id);
     const starter = lines[0]?.id === pitcher.id;
     const pitches = line?.np ?? pitcher.pitches ?? 0;
-    const fatigue = fatigueOf(pitches, starter);
-    const trend = velocityTrend(game, pitcher.id);
     const stats: [string, string | number][] = line
         ? [
               ['ip', line.ip],
@@ -405,31 +443,7 @@ export const PitcherCard: React.FC<{ game: GameDetail }> = ({ game }) => {
                     ))}
                 </Row>
             )}
-            <View style={{ gap: 6 }}>
-                <Row justify="space-between">
-                    <Row gap={6}>
-                        <Flame size={14} color={colors.muted} />
-                        <Txt size={12} weight="bold">
-                            {t('pitcherNow.fatigue')}: {t(`pitcherNow.level.${fatigue.level}`)}
-                        </Txt>
-                    </Row>
-                    <Txt size={12} weight="bold" tone="muted" tabular>
-                        {t('pitcherNow.pitches', { count: pitches })}
-                    </Txt>
-                </Row>
-                <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.raised, overflow: 'hidden' }} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(fatigue.share * 100) }}>
-                    <View style={{ width: `${Math.max(4, fatigue.share * 100)}%`, height: '100%', borderRadius: 4, backgroundColor: colors[FATIGUE_TONE[fatigue.level]] }} />
-                </View>
-                {trend && (
-                    <Txt size={12} tone="muted">
-                        {t('pitcherNow.velocity', { first: trend.first.toFixed(1), last: trend.last.toFixed(1) })}{' '}
-                        <Txt size={12} weight="bold" tone={trend.change <= -1.5 ? 'live' : 'ink'}>
-                            ({trend.change > 0 ? '+' : ''}
-                            {trend.change.toFixed(1)})
-                        </Txt>
-                    </Txt>
-                )}
-            </View>
+            <FatigueMeter game={game} pitcherId={pitcher.id} pitches={pitches} starter={starter} />
         </Card>
     );
 };
