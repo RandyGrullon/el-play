@@ -171,10 +171,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const [alerts, setAlerts] = useState<Alerts>(readAlerts);
     const [alertKinds, setKinds] = useState<AlertKinds>(() => readAlertKinds(readJson<unknown>(ALERT_KINDS_KEY, {})));
     const [animationMode, setMode] = useState<AnimationMode>(() => readAnimationMode(readJson<unknown>(ANIMATION_KEY, 'smart')));
+    const [savedTeam] = useState<TeamAlerts>(() => readJson<TeamAlerts>(TEAM_ALERTS_KEY, {}));
     const largeTextOn = useLargeText();
     // Copias al día para las tareas asíncronas (dos toques seguidos no deben leer un estado viejo)
     const alertsRef = useRef(alerts);
-    const teamRef = useRef<TeamAlerts>(readJson<TeamAlerts>(TEAM_ALERTS_KEY, {}));
+    const teamRef = useRef(savedTeam);
     const favoriteRef = useRef(favoriteTeamId);
     const kindsRef = useRef(alertKinds);
     // Última tarea en la fila de cada juego con un cambio de avisos en curso
