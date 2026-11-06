@@ -1404,7 +1404,9 @@
       "hr9": "HR/9",
       "kBb": "K/BB",
       "fip": "FIP",
-      "ppi": "Pit/IP"
+      "ppi": "Pit/IP",
+      "opsPlus": "OPS+",
+      "eraPlus": "EFE+"
     },
     "columns": {
       "pts": "Puntos de fantasy",
