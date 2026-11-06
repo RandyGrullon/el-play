@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import type { Pitch } from '../../types';
 import { pitchCallName, pitchTypeColor, pitchTypeName } from '../../lib/baseball';
+import { MOTION_EASE, useMotion } from '../../lib/motion';
 import { useColors } from '../../theme/theme';
 import { alpha, fonts, light as lightPalette } from '../../theme/tokens';
 import { Row, Txt } from '../ui';
@@ -20,6 +22,8 @@ const VIEW_W = HALF_WIDTH * 2 * UNIT;
 const VIEW_H = GROUND + 40;
 const HALF_PLATE = 17 / 12 / 2; // 8.5 pulgadas
 const BALL_R = 0.145 * UNIT; // un poco mayor que la bola real para que se lea el número
+// Cuadro (en unidades del dibujo) del pitcheo más nuevo con su aro
+const POP_BOX = (BALL_R + 9 + 3) * 2;
 const STD_TOP = 3.4;
 const STD_BOT = 1.6;
 
@@ -43,6 +47,19 @@ interface StrikeZoneProps {
     /** Colores fijos de tema claro (zona sobre fondo blanco en el resumen) */
     light?: boolean;
 }
+
+/** El pitcheo más nuevo entra grande y transparente y se posa (animate-pitch-in de la web); sin movimiento, ya está */
+const PitchPop: React.FC<{ children: React.ReactNode; style?: StyleProp<ViewStyle> }> = ({ children, style }) => {
+    const motion = useMotion();
+    const progress = useSharedValue(motion.animate ? 0 : 1);
+    useEffect(() => {
+        if (motion.animate) progress.set(withTiming(1, { duration: 350, easing: MOTION_EASE }));
+        // Una vez, al llegar
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    const pop = useAnimatedStyle(() => ({ opacity: progress.get(), transform: [{ scale: 1.8 - 0.8 * progress.get() }] }));
+    return <Animated.View style={[style, pop]}>{children}</Animated.View>;
+};
 
 const median = (values: number[], fallback: number) => {
     const list = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
@@ -94,6 +111,26 @@ export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches, mode = 'sequenc
     const side = batterSide === 'L' ? 'L' : batterSide === 'R' ? 'R' : null;
     const label = (pitch: Pitch) => `${pitch.n ?? ''} ${pitchTypeName(pitch, i18n.language)} ${pitch.mph ? `${pitch.mph} mph` : ''} — ${pitchCallName(pitch, i18n.language)}`;
 
+    // Un pitcheo en la zona: el aro si es el último o el elegido, la bola y su número
+    const mark = ({ pitch, index, cx, cy, outside }: (typeof located)[number]) => {
+        const isLast = index === lastIndex && !byType;
+        const isSelected = selected === index;
+        const color = byType && anyType ? pitchTypeColor(pitch.type) : resultColor(colors, pitch.r);
+        const radius = byType ? BALL_R * 0.72 : BALL_R;
+        return (
+            <G opacity={selected !== null && !isSelected ? 0.35 : outside ? 0.7 : byType ? 0.85 : 1}>
+                {(isLast || isSelected) && <Circle cx={cx} cy={cy} r={radius + 9} fill="none" stroke={color} strokeWidth={3} opacity={0.55} />}
+                <Circle cx={cx} cy={cy} r={radius} fill={color} stroke={colors.surface} strokeWidth={3} />
+                {!byType && (
+                    <SvgText x={cx} y={cy + radius * 0.42} textAnchor="middle" fontSize={radius * 1.15} fontFamily={fonts.bold} fill="#fff">
+                        {String(pitch.n ?? index + 1)}
+                    </SvgText>
+                )}
+            </G>
+        );
+    };
+    const newest = byType ? undefined : located.find((item) => item.index === lastIndex);
+
     const legend = (
         <>
             <Legend color={resultColor(colors, 'ball')} label={t('zone.ball')} />
@@ -111,28 +148,31 @@ export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches, mode = 'sequenc
                     {pitches.map((pitch, index) => {
                         const isSelected = selected === index;
                         const color = resultColor(colors, pitch.r);
+                        const Wrap = index === pitches.length - 1 ? PitchPop : React.Fragment;
                         return (
                             <View key={`${index}-${pitch.n}`} style={{ alignItems: 'center', gap: 4 }}>
-                                <Pressable
-                                    accessibilityLabel={label(pitch)}
-                                    disabled={!onSelect}
-                                    onPress={() => onSelect?.(isSelected ? null : index)}
-                                    style={{
-                                        width: 40,
-                                        height: 40,
-                                        borderRadius: 20,
-                                        backgroundColor: color,
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        opacity: selected !== null && !isSelected ? 0.4 : 1,
-                                        borderWidth: isSelected ? 3 : 0,
-                                        borderColor: colors.surface
-                                    }}
-                                >
-                                    <Txt size={14} weight="bold" tone="white">
-                                        {pitch.n ?? index + 1}
-                                    </Txt>
-                                </Pressable>
+                                <Wrap>
+                                    <Pressable
+                                        accessibilityLabel={label(pitch)}
+                                        disabled={!onSelect}
+                                        onPress={() => onSelect?.(isSelected ? null : index)}
+                                        style={{
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: 20,
+                                            backgroundColor: color,
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            opacity: selected !== null && !isSelected ? 0.4 : 1,
+                                            borderWidth: isSelected ? 3 : 0,
+                                            borderColor: colors.surface
+                                        }}
+                                    >
+                                        <Txt size={14} weight="bold" tone="white">
+                                            {pitch.n ?? index + 1}
+                                        </Txt>
+                                    </Pressable>
+                                </Wrap>
                                 <Txt size={11} tone="muted" tabular>
                                     {pitch.b !== null && pitch.s !== null && pitch.r !== 'inplay' ? `${pitch.b}-${pitch.s}` : '·'}
                                 </Txt>
@@ -190,24 +230,25 @@ export const StrikeZone: React.FC<StrikeZoneProps> = ({ pitches, mode = 'sequenc
                     />
 
                     {/* Pitcheos: el más reciente encima */}
-                    {located.map(({ pitch, index, cx, cy, outside }) => {
-                        const isLast = index === lastIndex && !byType;
-                        const isSelected = selected === index;
-                        const color = byType && anyType ? pitchTypeColor(pitch.type) : resultColor(colors, pitch.r);
-                        const radius = byType ? BALL_R * 0.72 : BALL_R;
-                        return (
-                            <G key={`${index}-${pitch.n}-${pitch.mph}`} opacity={selected !== null && !isSelected ? 0.35 : outside ? 0.7 : byType ? 0.85 : 1}>
-                                {(isLast || isSelected) && <Circle cx={cx} cy={cy} r={radius + 9} fill="none" stroke={color} strokeWidth={3} opacity={0.55} />}
-                                <Circle cx={cx} cy={cy} r={radius} fill={color} stroke={colors.surface} strokeWidth={3} />
-                                {!byType && (
-                                    <SvgText x={cx} y={cy + radius * 0.42} textAnchor="middle" fontSize={radius * 1.15} fontFamily={fonts.bold} fill="#fff">
-                                        {String(pitch.n ?? index + 1)}
-                                    </SvgText>
-                                )}
-                            </G>
-                        );
-                    })}
+                    {located.map((item) => (item.index === lastIndex && !byType ? null : <React.Fragment key={`${item.index}-${item.pitch.n}-${item.pitch.mph}`}>{mark(item)}</React.Fragment>))}
                 </Svg>
+                {/* El más nuevo va encima, en su propio dibujo, para que entre con su animación */}
+                {newest && (
+                    <PitchPop
+                        key={`${newest.index}-${newest.pitch.n}-${newest.pitch.mph}`}
+                        style={{
+                            position: 'absolute',
+                            left: `${((newest.cx - POP_BOX / 2) / VIEW_W) * 100}%`,
+                            top: `${((newest.cy - POP_BOX / 2) / VIEW_H) * 100}%`,
+                            width: `${(POP_BOX / VIEW_W) * 100}%`,
+                            height: `${(POP_BOX / VIEW_H) * 100}%`
+                        }}
+                    >
+                        <Svg width="100%" height="100%" viewBox={`${newest.cx - POP_BOX / 2} ${newest.cy - POP_BOX / 2} ${POP_BOX} ${POP_BOX}`} pointerEvents="none">
+                            {mark(newest)}
+                        </Svg>
+                    </PitchPop>
+                )}
                 {/* Zonas para tocar cada pitcheo (encima del dibujo: los toques en el SVG no van igual en web y en el teléfono) */}
                 {onSelect &&
                     located.map(({ pitch, index, cx, cy }) => (
