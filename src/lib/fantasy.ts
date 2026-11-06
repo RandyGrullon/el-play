@@ -115,10 +115,11 @@ export const fantasyInterval = (day: FantasyDay | undefined, now = Date.now()): 
     return Math.min(next - 15 * MINUTE, 60 * MINUTE);
 };
 
-export const useFantasyDay = (league: LeagueId, date?: string) =>
+export const useFantasyDay = (league: LeagueId, date?: string, enabled = true) =>
     useQuery({
         queryKey: ['fantasy', league, date ?? 'hoy'],
         queryFn: ({ signal }) => fetchFantasyDay(league, date, signal),
+        enabled,
         staleTime: 15000,
         refetchInterval: (query) => fantasyInterval(query.state.data),
         refetchOnWindowFocus: true

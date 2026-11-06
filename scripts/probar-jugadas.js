@@ -1,7 +1,8 @@
 // Casos de prueba de la lógica pura de las animaciones de jugada (los mismos de la web: lib.test.ts, runners.test.ts y
 // playEventsNew.test.ts): el vuelo del jonrón a escala (src/lib/flight.ts), los corredores que anotan en un hit o una
 // base por bolas (src/lib/runners.ts), lo que lleva cada jugada (src/lib/playEvents.ts) y, de paso, los juegos
-// suspendidos en espera (src/lib/baseball.ts y src/lib/polling.ts). La app no tiene corredor de pruebas: los .ts se
+// suspendidos en espera (src/lib/baseball.ts y src/lib/polling.ts) y los avisos de los juegos y del Fantasy
+// (src/lib/gameAlerts.ts: qué se programa, qué se avisa y que no se repita). La app no tiene corredor de pruebas: los .ts se
 // pasan a JavaScript con el TypeScript del proyecto en una carpeta temporal y se prueban con node:assert.
 //
 // Uso:  node scripts/probar-jugadas.js
@@ -21,7 +22,7 @@ const compile = (name) => {
     const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } });
     fs.writeFileSync(path.join(OUT, `${name}.js`), outputText);
 };
-['flight', 'runners', 'playEvents', 'baseball', 'polling'].forEach(compile);
+['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts'].forEach(compile);
 // playEvents usa el modo PRO de la cuenta (React Native): aquí siempre Lite
 fs.writeFileSync(path.join(OUT, 'pro.js'), 'exports.proActive = () => false;\n');
 
@@ -30,6 +31,7 @@ const { basesOf, legsOf, runnerPaths, walkPaths } = require(path.join(OUT, 'runn
 const { forMode, leadChange, newPlayEvents } = require(path.join(OUT, 'playEvents.js'));
 const { isOnHold } = require(path.join(OUT, 'baseball.js'));
 const { gameInterval } = require(path.join(OUT, 'polling.js'));
+const alertsLib = require(path.join(OUT, 'gameAlerts.js'));
 
 let failed = 0;
 const it = (name, run) => {
@@ -384,6 +386,158 @@ it('suspendido: con fecha nueva se espera como programado; sin ella, en espera c
     assert.strictEqual(isOnHold({ detailedState: 'Postponed', date: at(60) }, NOW), true);
     assert.strictEqual(isOnHold({ detailedState: 'Scheduled', date: at(-180) }, NOW), false);
 });
+
+console.log('avisos de los juegos y del Fantasy');
+
+{
+    const { DEFAULT_ALERT_KINDS, readAlertKinds, scheduledKinds, sameKinds, bellExpired, planTeamAlerts, watchedFromSchedule, watchedFromDetail, liveAlerts, liveAlertText, watchInterval, pruneNotified, fantasyStep, fantasyText } = alertsLib;
+    const NOW = Date.parse('2026-11-05T23:00:00Z');
+    const MIN = 60000;
+    const HOUR = 60 * MIN;
+    const at = (ms) => new Date(NOW + ms).toISOString();
+    const ON = DEFAULT_ALERT_KINDS;
+    const off = (...kinds) => ({ ...ON, ...Object.fromEntries(kinds.map((kind) => [kind, false])) });
+    // Equipos y juegos de mentira (ids descarados)
+    const equipo = (id, abbrev, extra = {}) => ({ id, abbrev, name: `Equipo ${abbrev}`, flag: null, score: null, hits: null, isWinner: false, ...extra });
+    const juego = (gamePk, extra = {}) => ({ gamePk, state: 'preview', detailedState: 'Scheduled', date: at(2 * HOUR), live: null, away: equipo(11111, 'AAA'), home: equipo(22222, 'BBB'), ...extra });
+    const visto = (gamePk, extra = {}) => watchedFromSchedule(juego(gamePk, extra));
+    const opts = (extra = {}) => ({ bell: [], favoriteTeamId: null, kinds: ON, now: NOW, notified: () => false, ...extra });
+    const t = (key, options = {}) => `${key}${JSON.stringify(options)}`;
+
+    it('tipos de aviso: todos encendidos de fábrica; lo guardado manda y lo que no es sí/no se ignora', () => {
+        assert.deepStrictEqual(readAlertKinds(undefined), ON);
+        assert.deepStrictEqual(readAlertKinds('roto'), ON);
+        assert.deepStrictEqual(readAlertKinds({ soon: false, final: 'no', extra: true }), off('soon'));
+    });
+
+    it('programados: 10 min antes solo con campana; playball con campana o tu equipo; nada si ya pasó o está apagado', () => {
+        const start = NOW + HOUR;
+        assert.deepStrictEqual(scheduledKinds({ bell: true, favorite: false, kinds: ON, start, now: NOW }), ['soon', 'start']);
+        assert.deepStrictEqual(scheduledKinds({ bell: false, favorite: true, kinds: ON, start, now: NOW }), ['start']);
+        assert.deepStrictEqual(scheduledKinds({ bell: false, favorite: false, kinds: ON, start, now: NOW }), []);
+        assert.deepStrictEqual(scheduledKinds({ bell: true, favorite: false, kinds: off('soon'), start, now: NOW }), ['start']);
+        assert.deepStrictEqual(scheduledKinds({ bell: true, favorite: true, kinds: off('start'), start, now: NOW }), ['soon']);
+        // A 5 minutos ya no da tiempo para el de 10 minutos antes
+        assert.deepStrictEqual(scheduledKinds({ bell: true, favorite: false, kinds: ON, start: NOW + 5 * MIN, now: NOW }), ['start']);
+        assert.deepStrictEqual(scheduledKinds({ bell: true, favorite: false, kinds: ON, start: NOW - MIN, now: NOW }), []);
+        assert.ok(sameKinds(['start', 'soon'], ['soon', 'start']));
+        assert.ok(!sameKinds(undefined, []));
+        assert.ok(!sameKinds(['soon'], ['soon', 'start']));
+    });
+
+    it('campana guardada: se queda hasta 12 h después de la hora (para el final); se va si el teléfono perdió sus avisos', () => {
+        const pending = new Set(['a1']);
+        assert.strictEqual(bellExpired({ ids: ['a1', 'a2'], date: at(HOUR) }, pending, NOW), false);
+        assert.strictEqual(bellExpired({ ids: ['zz'], date: at(HOUR) }, pending, NOW), true);
+        // Con todo apagado no hay avisos programados, pero la campana sigue
+        assert.strictEqual(bellExpired({ ids: [], date: at(HOUR) }, pending, NOW), false);
+        // Ya sonó el playball: sigue para el final
+        assert.strictEqual(bellExpired({ ids: ['zz'], date: at(-3 * HOUR) }, pending, NOW), false);
+        assert.strictEqual(bellExpired({ ids: ['zz'], date: at(-13 * HOUR) }, pending, NOW), true);
+        // Formato viejo sin hora
+        assert.strictEqual(bellExpired({ ids: ['a1'], date: null }, pending, NOW), false);
+        assert.strictEqual(bellExpired({ ids: ['zz'], date: null }, pending, NOW), true);
+    });
+
+    it('playball de tu equipo: programa los suyos sin campana, reprograma si cambió la hora y quita lo que ya no va', () => {
+        const fav = 11111;
+        const games = [juego(900001), juego(900002, { away: equipo(33333, 'CCC') }), juego(900003, { date: at(5 * HOUR) }), juego(900004, { detailedState: 'Postponed' }), juego(900005, { startTimeTBD: true }), juego(900006, { state: 'live' })];
+        let plan = planTeamAlerts({ games, current: {}, bell: [900003], favoriteTeamId: fav, kinds: ON, now: NOW });
+        assert.deepStrictEqual(plan.schedule.map((game) => game.gamePk), [900001]);
+        assert.deepStrictEqual(plan.cancel, []);
+        const current = {
+            900001: { ids: ['x'], date: at(HOUR), teamId: fav }, // cambió la hora
+            900003: { ids: ['y'], date: at(5 * HOUR), teamId: fav }, // ahora tiene campana
+            900004: { ids: ['z'], date: at(2 * HOUR), teamId: fav }, // pospuesto
+            900099: { ids: ['w'], date: at(3 * HOUR), teamId: fav }, // no está en el calendario guardado: se deja
+            900098: { ids: ['v'], date: at(-HOUR), teamId: fav } // ya sonó
+        };
+        plan = planTeamAlerts({ games, current, bell: [900003], favoriteTeamId: fav, kinds: ON, now: NOW });
+        assert.deepStrictEqual(plan.cancel.sort(), ['900001', '900003', '900004', '900098']);
+        assert.deepStrictEqual(plan.schedule.map((game) => game.gamePk), [900001]);
+        // Otro favorito o el playball apagado: se quitan todos
+        assert.strictEqual(planTeamAlerts({ games, current, bell: [], favoriteTeamId: 44444, kinds: ON, now: NOW }).cancel.length, 5);
+        plan = planTeamAlerts({ games, current, bell: [], favoriteTeamId: fav, kinds: off('start'), now: NOW });
+        assert.strictEqual(plan.cancel.length, 5);
+        assert.deepStrictEqual(plan.schedule, []);
+    });
+
+    it('final: con campana o tu equipo, hasta 6 h después de la hora, una sola vez', () => {
+        const final = visto(900010, { state: 'final', date: at(-3 * HOUR), away: equipo(11111, 'AAA', { score: 5, isWinner: true }), home: equipo(22222, 'BBB', { score: 3 }) });
+        assert.deepStrictEqual(liveAlerts([final], opts()), []);
+        assert.deepStrictEqual(
+            liveAlerts([final], opts({ bell: [900010] })).map((alert) => alert.key),
+            ['final-900010']
+        );
+        assert.strictEqual(liveAlerts([final], opts({ favoriteTeamId: 22222 })).length, 1);
+        assert.strictEqual(liveAlerts([final], opts({ bell: [900010], kinds: off('final') })).length, 0);
+        assert.strictEqual(liveAlerts([final], opts({ bell: [900010], notified: (key) => key === 'final-900010' })).length, 0);
+        // El mismo juego dos veces en la misma lectura (calendario y detalle): un aviso
+        assert.strictEqual(liveAlerts([final, final], opts({ bell: [900010] })).length, 1);
+        assert.strictEqual(liveAlerts([{ ...final, date: at(-7 * HOUR) }], opts({ bell: [900010] })).length, 0);
+        // Sin ganador todavía (empate suspendido): no
+        assert.strictEqual(liveAlerts([{ ...final, away: { ...final.away, isWinner: false } }], opts({ bell: [900010] })).length, 0);
+        const text = liveAlertText(liveAlerts([final], opts({ bell: [900010] }))[0], t, (team) => team.name);
+        assert.strictEqual(text.title, 'notifications.final{"away":"AAA","awayRuns":5,"home":"BBB","homeRuns":3}');
+        assert.strictEqual(text.body, 'notifications.finalBody{"team":"Equipo AAA"}');
+    });
+
+    it('juego sin hit: desde la 6.ª, por el equipo que no ha conectado, con el detalle o el calendario', () => {
+        const live = (inning, awayHits, homeHits) => visto(900020, { state: 'live', live: { inning }, away: equipo(11111, 'AAA', { hits: awayHits }), home: equipo(22222, 'BBB', { hits: homeHits }) });
+        assert.strictEqual(liveAlerts([live(5, 0, 3)], opts({ favoriteTeamId: 11111 })).length, 0);
+        const found = liveAlerts([live(6, 0, 3)], opts({ favoriteTeamId: 11111 }));
+        assert.deepStrictEqual(
+            found.map((alert) => alert.key),
+            ['noHitter-900020-11111']
+        );
+        partial(found[0], { batting: { abbrev: 'AAA' }, pitching: { abbrev: 'BBB' } });
+        assert.strictEqual(liveAlertText(found[0], t, (team) => team.name).body, 'notifications.noHitterBody{"team":"Equipo AAA","count":6}');
+        // Los dos sin hit: dos avisos; sin el dato de hits, ninguno
+        assert.strictEqual(liveAlerts([live(7, 0, 0)], opts({ bell: [900020] })).length, 2);
+        assert.strictEqual(liveAlerts([live(7, null, null)], opts({ bell: [900020] })).length, 0);
+        assert.strictEqual(liveAlerts([live(7, 0, 0)], opts({ bell: [900020], kinds: off('noHitter') })).length, 0);
+        // El detalle (runs/hits/inning.n) da lo mismo
+        const detail = watchedFromDetail({ gamePk: 900020, state: 'live', date: at(-2 * HOUR), inning: { n: 8 }, away: { id: 11111, name: 'Equipo AAA', abbrev: 'AAA', runs: 0, hits: 0, isWinner: false }, home: { id: 22222, name: 'Equipo BBB', abbrev: 'BBB', runs: 2, hits: 6, isWinner: false } });
+        assert.deepStrictEqual(
+            liveAlerts([detail], opts({ bell: [900020] })).map((alert) => alert.key),
+            ['noHitter-900020-11111']
+        );
+        assert.strictEqual(watchedFromDetail({ gamePk: null }), null);
+    });
+
+    it('vigilancia: cada minuto con un juego tuyo en vivo; antes, se despierta un minuto antes (máx. 10 min); sin juegos tuyos, nada', () => {
+        const mine = (game) => game.away.id === 11111;
+        assert.strictEqual(watchInterval(undefined, mine, NOW), false);
+        assert.strictEqual(watchInterval([visto(1, { state: 'live' })], mine, NOW), MIN);
+        assert.strictEqual(watchInterval([visto(1, { state: 'live', away: equipo(55555, 'EEE') })], mine, NOW), false);
+        assert.strictEqual(watchInterval([visto(1, { date: at(5 * MIN) })], mine, NOW), 4 * MIN);
+        assert.strictEqual(watchInterval([visto(1, { date: at(3 * HOUR) })], mine, NOW), 10 * MIN);
+        assert.strictEqual(watchInterval([visto(1, { date: at(-20 * MIN) })], mine, NOW), MIN);
+        assert.strictEqual(watchInterval([visto(1, { state: 'final' })], mine, NOW), false);
+    });
+
+    it('lo ya avisado se recuerda 3 días; lo raro se descarta', () => {
+        assert.deepStrictEqual(pruneNotified({ 'final-1': NOW - HOUR, 'final-2': NOW - 4 * 24 * HOUR, roto: 'x' }, NOW), { 'final-1': NOW - HOUR });
+        assert.deepStrictEqual(pruneNotified(null, NOW), {});
+    });
+
+    it('Fantasy: la primera lectura solo marca; después, lo que sumó cada pelotero (1 punto o más)', () => {
+        let points = { 101: 2, 102: 0, 103: 4 };
+        const scoreOf = (id) => (id in points ? points[id] : null);
+        let step = fantasyStep(null, '2026-11-05', [101, 102, 103, 104], scoreOf);
+        assert.deepStrictEqual(step.gains, []);
+        points = { 101: 5, 102: 0.5, 103: 4 };
+        step = fantasyStep(step.seen, '2026-11-05', [101, 102, 103, 104], scoreOf);
+        assert.deepStrictEqual(step.gains, [{ id: 101, gain: 3 }]);
+        // Otro día: vuelve a empezar
+        points = { 101: 9 };
+        assert.deepStrictEqual(fantasyStep(step.seen, '2026-11-06', [101], scoreOf).gains, []);
+        assert.strictEqual(
+            fantasyText([{ name: 'Pelotero Uno', gain: 3.04 }, { name: 'Pelotero Dos', gain: 1.5 }], 15.5, t),
+            'fantasyAlerts.gain{"name":"Pelotero Uno","pts":3} · fantasyAlerts.gain{"name":"Pelotero Dos","pts":1.5} · fantasyAlerts.total{"pts":15.5}'
+        );
+    });
+}
 
 fs.rmSync(OUT, { recursive: true, force: true });
 if (failed) {

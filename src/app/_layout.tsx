@@ -18,6 +18,7 @@ import '../lib/follow';
 import { initLanguage } from '../i18n';
 import { LeagueProvider } from '../state/league';
 import { PreferencesProvider, useAlertTaps } from '../state/preferences';
+import { useAlerts } from '../hooks/useAlerts';
 import { ThemeProvider, useColors, useTheme } from '../theme/theme';
 import { dark, light } from '../theme/tokens';
 import { Toast } from '../components/layout';
@@ -69,6 +70,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 const Navigator: React.FC = () => {
     const { colors, isDark } = useTheme();
     useAlertTaps();
+    useAlerts();
     useErrorScreen();
     return (
         <>

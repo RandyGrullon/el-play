@@ -1,11 +1,14 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 // Los enums con import propio: el plugin import/namespace de ESLint no los ve dentro de Notifications
-import { AndroidImportance, IosAuthorizationStatus } from 'expo-notifications';
-import { useQueryClient } from '@tanstack/react-query';
+import { IosAuthorizationStatus } from 'expo-notifications';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { onHydrated, readJson, writeJson } from '../lib/storage';
+import { BEFORE_MS, bellExpired, planTeamAlerts, readAlertKinds, sameKinds, scheduledKinds, type AlertKinds, type ScheduledKind, type TeamAlert } from '../lib/gameAlerts';
+import { CHANNEL, alertsAllowed, ensureChannel } from '../lib/notify';
+import { findScheduledGame, keys } from '../lib/queries';
 import { teamDisplayName } from '../lib/teams';
 import { nationalTeamName } from '../lib/nationalTeams';
 import { isNotPlayed } from '../lib/baseball';
@@ -31,23 +34,42 @@ interface Preferences {
     /** «Texto grande» de Más → Apariencia: toda la letra un 12 % más grande */
     largeText: boolean;
     setLargeText: (on: boolean) => void;
+    /** Qué avisos quiere (Más → Avisos; todos encendidos al principio, como la web) */
+    alertKinds: AlertKinds;
+    setAlertKind: (kind: keyof AlertKinds, on: boolean) => void;
+    /** Vuelve a mirar los avisos programados (p. ej. al dar el permiso desde Más) */
+    syncAlerts: () => void;
+}
+export type { AlertKinds };
+
+/** Lo que hace falta de un equipo para el texto del aviso */
+interface AlertTeam {
+    name: string;
+    abbrev: string;
+    flag?: string | null;
 }
 
-/** Avisos programados de un juego y la hora para la que se programaron */
+/** Avisos programados de un juego con campana y la hora para la que se programaron */
 interface GameAlert {
     ids: string[];
     date: string | null;
+    /** Qué avisos se programaron (los guardados antes no lo traen) */
+    kinds?: ScheduledKind[];
+    /** Los dos equipos: para reprogramar al cambiar los avisos en Más sin volver a pedir el juego */
+    teams?: { away: AlertTeam; home: AlertTeam };
 }
 type Alerts = Record<string, GameAlert>;
+/** Playball programado de los juegos de tu equipo favorito que no tienen campana */
+type TeamAlerts = Record<string, TeamAlert>;
 
 const PreferencesContext = createContext<Preferences | null>(null);
 const FAVORITE_KEY = 'el-play-favorite-team';
 const ALERTS_KEY = 'el-play-alerts';
+const TEAM_ALERTS_KEY = 'el-play-team-alerts';
+// La misma clave que la web
+const ALERT_KINDS_KEY = 'el-play-alert-kinds';
 const ANIMATION_KEY = 'el-play-animation-mode';
 const LARGE_TEXT_KEY = 'el-play-large-text';
-const CHANNEL = 'juegos';
-/** El primer aviso: el texto dice «empieza en 10 minutos» (igual que en la web) */
-const BEFORE = 10 * 60 * 1000;
 
 // ---------------------------------------------------------------- texto grande
 
@@ -82,8 +104,9 @@ if (Platform.OS !== 'web') {
     });
 }
 
-const ensurePermission = async () => {
-    if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync(CHANNEL, { name: i18n.t('notifications.channel', { defaultValue: 'Juegos' }), importance: AndroidImportance.HIGH });
+/** Pide el permiso de avisos si falta (desde un toque: la campana o «Activar avisos» de Más) */
+export const ensurePermission = async () => {
+    await ensureChannel();
     const current = await Notifications.getPermissionsAsync();
     if (current.granted || current.ios?.status === IosAuthorizationStatus.PROVISIONAL) return true;
     if (!current.canAskAgain) return false;
@@ -100,57 +123,79 @@ const readAlerts = (): Alerts => {
 const cancelAlerts = (ids: string[]) => Promise.all(ids.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => undefined)));
 
 /** Las selecciones con el nombre en el idioma de la app («República Dominicana», no «Dominican Republic») */
-const alertName = (team: TeamBase, lang: string) => {
+export const alertName = (team: AlertTeam, lang: string) => {
     const name = teamDisplayName(team, lang);
-    // Hermes no trae Intl.DisplayNames: ahí teamDisplayName deja el nombre de MLB, en inglés
+    // Hermes no trae Intl.DisplayNames: ahí teamDisplayName deja el nombre en inglés
     return (name === team.name && team.flag && nationalTeamName(team.abbrev, lang)) || name;
 };
 
-/** Programa el aviso de 10 minutos antes (si todavía da tiempo) y el de playball */
-const scheduleAlerts = async (game: { gamePk: number; away: TeamBase; home: TeamBase }, start: number) => {
+const alertTeam = (team: Pick<TeamBase, 'name' | 'abbrev' | 'flag'>): AlertTeam => ({ name: team.name, abbrev: team.abbrev ?? '', flag: team.flag ?? null });
+const teamsOf = (game: { away: Pick<TeamBase, 'name' | 'abbrev' | 'flag'>; home: Pick<TeamBase, 'name' | 'abbrev' | 'flag'> }) => ({ away: alertTeam(game.away), home: alertTeam(game.home) });
+
+/** Los equipos de un juego que ya está en la caché (calendario o detalle), para los guardados sin ellos */
+const cachedTeams = (client: QueryClient, key: string) => {
+    const game = findScheduledGame(client, key) ?? client.getQueryData<GameDetail>(keys.game(key));
+    return game ? teamsOf(game) : null;
+};
+
+/** Programa los avisos pedidos: el de 10 minutos antes (si todavía da tiempo) y el de playball */
+const scheduleAlerts = async (game: { gamePk: number; away: AlertTeam; home: AlertTeam }, start: number, kinds: ScheduledKind[]) => {
     const lang = i18n.language;
     const names = { away: alertName(game.away, lang), home: alertName(game.home, lang) };
     const data = { gamePk: game.gamePk };
     const trigger = (date: number) => ({ type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(date), channelId: CHANNEL }) as const;
     const ids: string[] = [];
+    const scheduled: ScheduledKind[] = [];
+    if (!kinds.length) return { ids, kinds: scheduled };
+    await ensureChannel();
     try {
-        if (start - BEFORE > Date.now()) {
-            ids.push(await Notifications.scheduleNotificationAsync({ content: { title: i18n.t('notifications.gameStarting'), body: i18n.t('notifications.gameStartingBody', names), data }, trigger: trigger(start - BEFORE) }));
+        if (kinds.includes('soon') && start - BEFORE_MS > Date.now()) {
+            ids.push(await Notifications.scheduleNotificationAsync({ content: { title: i18n.t('notifications.gameStarting'), body: i18n.t('notifications.gameStartingBody', names), data }, trigger: trigger(start - BEFORE_MS) }));
+            scheduled.push('soon');
         }
-        ids.push(await Notifications.scheduleNotificationAsync({ content: { title: i18n.t('notifications.playball'), body: i18n.t('notifications.playballBody', names), data }, trigger: trigger(start) }));
+        if (kinds.includes('start')) {
+            ids.push(await Notifications.scheduleNotificationAsync({ content: { title: i18n.t('notifications.playball'), body: i18n.t('notifications.playballBody', names), data }, trigger: trigger(start) }));
+            scheduled.push('start');
+        }
     } catch (error) {
         // Sin avisos a medias que después nadie puede quitar
         await cancelAlerts(ids);
         throw error;
     }
-    return ids;
+    return { ids, kinds: scheduled };
 };
 
 export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const client = useQueryClient();
     const [favoriteTeamId, setFavorite] = useState<number | null>(() => readJson<number | null>(FAVORITE_KEY, null));
     const [alerts, setAlerts] = useState<Alerts>(readAlerts);
+    const [alertKinds, setKinds] = useState<AlertKinds>(() => readAlertKinds(readJson<unknown>(ALERT_KINDS_KEY, {})));
     const [animationMode, setMode] = useState<AnimationMode>(() => readAnimationMode(readJson<unknown>(ANIMATION_KEY, 'smart')));
+    const [savedTeam] = useState<TeamAlerts>(() => readJson<TeamAlerts>(TEAM_ALERTS_KEY, {}));
     const largeTextOn = useLargeText();
-    // Copia al día para las tareas asíncronas (dos toques seguidos no deben leer un estado viejo)
+    // Copias al día para las tareas asíncronas (dos toques seguidos no deben leer un estado viejo)
     const alertsRef = useRef(alerts);
+    const teamRef = useRef(savedTeam);
+    const favoriteRef = useRef(favoriteTeamId);
+    const kindsRef = useRef(alertKinds);
     // Última tarea en la fila de cada juego con un cambio de avisos en curso
     const queue = useRef(new Map<string, Promise<unknown>>());
     // Toque de la campana que todavía no termina, por juego
     const taps = useRef(new Map<string, { wantsOn: boolean; promise: Promise<AlertResult> }>());
-
-    const toggleFavoriteTeam = useCallback((teamId: number) => {
-        setFavorite((current) => {
-            const next = current === teamId ? null : teamId;
-            writeJson(FAVORITE_KEY, next);
-            return next;
-        });
-    }, []);
+    // Juegos con una revisión del playball de tu equipo esperando en la fila (no se encola otra igual)
+    const teamWaiting = useRef(new Set<string>());
+    // Calendarios ya revisados (React Query da el mismo objeto si nada cambió)
+    const seenSchedules = useRef(new WeakSet<object>());
 
     const saveAlerts = useCallback((next: Alerts) => {
         alertsRef.current = next;
         setAlerts(next);
         writeJson(ALERTS_KEY, next);
+    }, []);
+
+    const saveTeam = useCallback((next: TeamAlerts) => {
+        teamRef.current = next;
+        writeJson(TEAM_ALERTS_KEY, next);
     }, []);
 
     /** Las tareas de un juego van en fila, una a la vez: cada una lee los avisos como los dejó la anterior */
@@ -163,6 +208,99 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         });
         return result;
     }, []);
+
+    /** El plan de los playball de tu equipo con lo que hay ahora en la caché (los calendarios de todas las ligas) */
+    const teamPlan = useCallback(
+        () =>
+            planTeamAlerts({
+                games: client.getQueriesData<Schedule>({ queryKey: ['schedule'] }).flatMap(([, schedule]) => schedule?.games ?? []),
+                current: teamRef.current,
+                bell: Object.keys(alertsRef.current).map(Number),
+                favoriteTeamId: favoriteRef.current,
+                kinds: kindsRef.current,
+                now: Date.now()
+            }),
+        [client]
+    );
+
+    /**
+     * El playball de los juegos de tu equipo favorito sin campana (como la web). Cada juego se revisa en su fila con el
+     * plan del momento; no pide el permiso: si no está dado, no se programa (lo piden la campana y Más).
+     */
+    const syncTeam = useCallback(() => {
+        if (Platform.OS === 'web') return;
+        const plan = teamPlan();
+        const touched = new Set([...plan.cancel, ...plan.schedule.map((game) => String(game.gamePk))]);
+        for (const key of touched) {
+            if (teamWaiting.current.has(key)) continue;
+            teamWaiting.current.add(key);
+            enqueue(key, async () => {
+                teamWaiting.current.delete(key);
+                const fresh = teamPlan();
+                const current = teamRef.current[key];
+                if (current && fresh.cancel.includes(key)) {
+                    await cancelAlerts(current.ids);
+                    const { [key]: _removed, ...rest } = teamRef.current;
+                    saveTeam(rest);
+                }
+                const game = fresh.schedule.find((item) => String(item.gamePk) === key);
+                const teamId = favoriteRef.current;
+                if (!game || teamId === null || !(await alertsAllowed())) return;
+                const scheduled = await scheduleAlerts({ gamePk: game.gamePk, ...teamsOf(game) }, Date.parse(game.date), ['start']);
+                if (scheduled.ids.length) saveTeam({ ...teamRef.current, [key]: { ids: scheduled.ids, date: game.date, teamId } });
+            }).catch(() => {
+                teamWaiting.current.delete(key);
+            });
+        }
+    }, [enqueue, saveTeam, teamPlan]);
+
+    /** Al cambiar «10 minutos antes» o «Playball» en Más: los juegos con campana por empezar se reprograman */
+    const rescheduleBells = useCallback(() => {
+        if (Platform.OS === 'web') return;
+        for (const [key, alert] of Object.entries(alertsRef.current)) {
+            const start = alert.date ? Date.parse(alert.date) : NaN;
+            if (!(start > Date.now()) || sameKinds(alert.kinds, scheduledKinds({ bell: true, favorite: false, kinds: kindsRef.current, start, now: Date.now() }))) continue;
+            enqueue(key, async () => {
+                const current = alertsRef.current[key];
+                // Quitado o reprogramado a otra hora mientras esperaba
+                if (!current || current.date !== alert.date || !(start > Date.now())) return;
+                const wanted = scheduledKinds({ bell: true, favorite: false, kinds: kindsRef.current, start, now: Date.now() });
+                if (sameKinds(current.kinds, wanted)) return;
+                // Sin los equipos (guardado antes) ni el juego en la caché: se quedan los avisos que tenía
+                const teams = current.teams ?? cachedTeams(client, key);
+                if (!teams) return;
+                await cancelAlerts(current.ids);
+                const scheduled = await scheduleAlerts({ gamePk: Number(key), ...teams }, start, wanted).catch(() => ({ ids: [] as string[], kinds: [] as ScheduledKind[] }));
+                // La campana sigue aunque no quede nada programado: avisa el final y el juego sin hit
+                if (alertsRef.current[key]) saveAlerts({ ...alertsRef.current, [key]: { ...current, ids: scheduled.ids, kinds: scheduled.kinds, teams } });
+            }).catch(() => undefined);
+        }
+    }, [client, enqueue, saveAlerts]);
+
+    const toggleFavoriteTeam = useCallback(
+        (teamId: number) => {
+            const next = favoriteRef.current === teamId ? null : teamId;
+            favoriteRef.current = next;
+            setFavorite(next);
+            writeJson(FAVORITE_KEY, next);
+            syncTeam();
+        },
+        [syncTeam]
+    );
+
+    const setAlertKind = useCallback(
+        (kind: keyof AlertKinds, on: boolean) => {
+            const next = { ...kindsRef.current, [kind]: on };
+            kindsRef.current = next;
+            setKinds(next);
+            writeJson(ALERT_KINDS_KEY, next);
+            if (kind === 'soon' || kind === 'start') {
+                rescheduleBells();
+                syncTeam();
+            }
+        },
+        [rescheduleBells, syncTeam]
+    );
 
     const removeAlerts = useCallback(
         async (key: string, current: GameAlert) => {
@@ -192,36 +330,57 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
                 const start = new Date(game.date).getTime();
                 if (!(start > Date.now())) return 'past';
                 if (Platform.OS === 'web' || !(await ensurePermission())) return 'blocked';
-                const ids = await scheduleAlerts(game, start);
-                saveAlerts({ ...alertsRef.current, [key]: { ids, date: game.date } });
+                const teams = teamsOf(game);
+                const scheduled = await scheduleAlerts({ gamePk: game.gamePk, ...teams }, start, scheduledKinds({ bell: true, favorite: false, kinds: kindsRef.current, start, now: Date.now() }));
+                // Si era de tu equipo, su playball ya lo da la campana
+                const team = teamRef.current[key];
+                if (team) {
+                    await cancelAlerts(team.ids);
+                    const { [key]: _removed, ...rest } = teamRef.current;
+                    saveTeam(rest);
+                }
+                saveAlerts({ ...alertsRef.current, [key]: { ids: scheduled.ids, kinds: scheduled.kinds, date: game.date, teams } });
                 return 'on';
             });
             taps.current.set(key, { wantsOn, promise });
             const clear = () => {
                 if (taps.current.get(key)?.promise === promise) taps.current.delete(key);
+                // Sin la campana, el juego de tu equipo vuelve a tener su playball
+                syncTeam();
             };
             promise.then(clear, clear);
             return promise;
         },
-        [enqueue, removeAlerts, saveAlerts]
+        [enqueue, removeAlerts, saveAlerts, saveTeam, syncTeam]
     );
 
-    // Al abrir: se olvidan los juegos cuyos avisos ya sonaron (o el teléfono ya no tiene programados)
+    // Al abrir: se olvidan las campanas que ya no hacen falta (12 h después del juego, o avisos que el teléfono ya no
+    // tiene) y los playball de tu equipo que ya sonaron; después se revisan los de tu equipo. También al volver a la app
+    // (p. ej. de dar el permiso en los ajustes del teléfono).
     useEffect(() => {
         if (Platform.OS === 'web') return;
         const before = alertsRef.current;
+        const beforeTeam = teamRef.current;
         Notifications.getAllScheduledNotificationsAsync()
             .then((scheduled) => {
                 const pending = new Set(scheduled.map((request) => request.identifier));
+                const now = Date.now();
                 // Solo los que no cambiaron mientras tanto (un toque durante la consulta)
-                const gone = Object.keys(before).filter((key) => alertsRef.current[key] === before[key] && !before[key].ids.some((id) => pending.has(id)));
+                const gone = Object.keys(before).filter((key) => alertsRef.current[key] === before[key] && bellExpired(before[key], pending, now));
                 if (gone.length) saveAlerts(Object.fromEntries(Object.entries(alertsRef.current).filter(([key]) => !gone.includes(key))));
+                const teamGone = Object.keys(beforeTeam).filter((key) => teamRef.current[key] === beforeTeam[key] && bellExpired(beforeTeam[key], pending, now));
+                if (teamGone.length) saveTeam(Object.fromEntries(Object.entries(teamRef.current).filter(([key]) => !teamGone.includes(key))));
             })
-            .catch(() => undefined);
-    }, [saveAlerts]);
+            .catch(() => undefined)
+            .finally(syncTeam);
+        const subscription = AppState.addEventListener('change', (status) => {
+            if (status === 'active') syncTeam();
+        });
+        return () => subscription.remove();
+    }, [saveAlerts, saveTeam, syncTeam]);
 
-    // Lo que llega del juego (en el calendario o en el detalle): si cambió la hora se reprograma;
-    // si se pospuso o se canceló, se quitan los avisos y la campana
+    // Lo que llega del juego (en el calendario o en el detalle): si cambió la hora se reprograma; si se pospuso o se
+    // canceló, se quitan los avisos y la campana. Con cada calendario nuevo se revisa el playball de tu equipo.
     useEffect(() => {
         if (Platform.OS === 'web') return;
         return client.getQueryCache().subscribe((event) => {
@@ -254,13 +413,19 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
                     if (!current || sameTime(current)) return;
                     await cancelAlerts(current.ids);
                     // Si ya no se puede programar (avisos bloqueados después), se quita la campana
-                    const ids = await scheduleAlerts({ gamePk: Number(key), away: game.away, home: game.home }, start).catch(() => null);
+                    const teams = teamsOf(game);
+                    const wanted = scheduledKinds({ bell: true, favorite: false, kinds: kindsRef.current, start, now: Date.now() });
+                    const scheduled = await scheduleAlerts({ gamePk: Number(key), ...teams }, start, wanted).catch(() => null);
                     const { [key]: _removed, ...rest } = alertsRef.current;
-                    saveAlerts(ids ? { ...rest, [key]: { ids, date } } : rest);
+                    saveAlerts(scheduled ? { ...rest, [key]: { ids: scheduled.ids, kinds: scheduled.kinds, date, teams } } : rest);
                 }).catch(() => undefined);
             }
+            if (kind === 'schedule' && data && !seenSchedules.current.has(data)) {
+                seenSchedules.current.add(data);
+                syncTeam();
+            }
         });
-    }, [client, enqueue, removeAlerts, saveAlerts]);
+    }, [client, enqueue, removeAlerts, saveAlerts, syncTeam]);
 
     const value = useMemo<Preferences>(
         () => ({
@@ -277,9 +442,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
             setLargeText: (on) => {
                 setLargeTextValue(on);
                 writeJson(LARGE_TEXT_KEY, on);
-            }
+            },
+            alertKinds,
+            setAlertKind,
+            syncAlerts: syncTeam
         }),
-        [favoriteTeamId, toggleFavoriteTeam, alerts, toggleGameSubscription, animationMode, largeTextOn]
+        [favoriteTeamId, toggleFavoriteTeam, alerts, toggleGameSubscription, animationMode, largeTextOn, alertKinds, setAlertKind, syncTeam]
     );
     return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;
 };
@@ -291,14 +459,19 @@ export const usePreferences = () => {
 };
 
 /**
- * Tocar un aviso de juego abre ese juego: con la app abierta y cuando el aviso la abre desde cerrada.
- * Va en el layout raíz, dentro del navegador (como en la guía de expo-notifications con Expo Router).
+ * Tocar un aviso de juego abre ese juego (el del Fantasy, el Fantasy): con la app abierta y cuando el aviso la abre
+ * desde cerrada. Va en el layout raíz, dentro del navegador (como en la guía de expo-notifications con Expo Router).
  */
 export const useAlertTaps = () => {
     useEffect(() => {
         if (Platform.OS === 'web') return;
         const open = (response: Notifications.NotificationResponse | null) => {
             if (!response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+            if (response.notification.request.content.data?.screen === 'fantasy') {
+                router.navigate('/fantasy');
+                Notifications.clearLastNotificationResponse();
+                return;
+            }
             const gamePk = String(response.notification.request.content.data?.gamePk ?? '');
             if (!/^\d+$/.test(gamePk)) return;
             // navigate y no push: si ya está en ese juego (banner con la app abierta) no lo apila otra vez

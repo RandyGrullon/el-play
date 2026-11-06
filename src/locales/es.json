@@ -524,7 +524,45 @@
     "gameStarting": "¡El juego va a empezar!",
     "gameStartingBody": "{{away}} vs {{home}} empieza en 10 minutos.",
     "playball": "¡Playball!",
-    "playballBody": "Empezó {{away}} vs {{home}}."
+    "playballBody": "Empezó {{away}} vs {{home}}.",
+    "final": "Final: {{away}} {{awayRuns}} - {{homeRuns}} {{home}}",
+    "finalBody": "Ganó {{team}}",
+    "noHitter": "¡{{team}} lanza sin hit!",
+    "noHitterBody_one": "{{team}} no ha conectado hit en {{count}} entrada",
+    "noHitterBody_other": "{{team}} no ha conectado hit en {{count}} entradas"
+  },
+  "alertsMore": {
+    "title": "Avisos",
+    "kinds": {
+      "soon": "10 minutos antes",
+      "start": "Playball",
+      "final": "Resultado final",
+      "noHitter": "Juego sin hit en marcha",
+      "fantasy": "Tu equipo del Fantasy"
+    },
+    "hints": {
+      "soon": "De los juegos con campana",
+      "start": "De los juegos con campana y de tu equipo favorito",
+      "final": "De los juegos con campana y de tu equipo favorito",
+      "noHitter": "Desde la 6.ª entrada",
+      "fantasy": "Cuando tus peloteros suman puntos (con la app abierta)"
+    },
+    "closed": "Con la app cerrada",
+    "status": {
+      "checking": "…",
+      "on": "Los de 10 minutos antes y el playball te llegan aunque la app esté cerrada. El resultado final y el juego sin hit, por ahora, solo con la app abierta.",
+      "off": "Toca para activarlos: el teléfono te va a pedir permiso.",
+      "blocked": "Están bloqueados en los ajustes del teléfono para El Play.",
+      "unsupported": "Los avisos llegan en la app del teléfono."
+    },
+    "enable": "Activar avisos",
+    "settings": "Abrir ajustes",
+    "how": "Los de la campana y los de tu equipo favorito (la estrella en Posiciones)."
+  },
+  "fantasyAlerts": {
+    "title": "Tu equipo del Fantasy",
+    "gain": "{{name}} +{{pts}}",
+    "total": "tu equipo va con {{pts}}"
   },
   "minigame": {
     "title": "Flappy Ball",

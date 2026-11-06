@@ -20,6 +20,7 @@ import { api } from './api';
 import { gameInterval } from './polling';
 import { keys, queryClient } from './queries';
 import { proJuegoApi, proKeys, type LiveGame, type LiveSlate, type WinProb } from './pro/juego';
+import { notifyOnce } from './notify';
 import { getItem, onHydrated, readJson, removeItem, writeJson } from './storage';
 import { showToast } from './toast';
 
@@ -183,7 +184,9 @@ const checkAlerts = (game: GameDetail) => {
     const result = detectAlerts(memory, game, prefs.alerts, readJson<number | null>(FAVORITE_KEY, null));
     memory = result.memory;
     result.alerts.forEach((alert) => {
-        postAlert(alert, game.gamePk ?? 0).catch(() => undefined);
+        const post = () => postAlert(alert, game.gamePk ?? 0);
+        // El final y el juego sin hit también los avisa Más (campana o tu equipo): sale uno solo, el primero
+        (alert.key ? notifyOnce(alert.key, post) : post()).catch(() => undefined);
     });
 };
 

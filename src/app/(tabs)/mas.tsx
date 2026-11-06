@@ -1,4 +1,4 @@
-// «Más»: cuenta, modo Lite/PRO, liga, tema, idioma, texto grande, animaciones, pasarle El Play a alguien (los pasos
+// «Más»: cuenta, modo Lite/PRO, liga, tema, idioma, texto grande, animaciones, avisos, pasarle El Play a alguien (los pasos
 // de la web para instalarla según el navegador) y privacidad (igual que MorePage de la web).
 import React, { useId, useState } from 'react';
 import { Pressable, Switch, View } from 'react-native';
@@ -12,6 +12,7 @@ import { Card, Row, Segmented, Title, Txt } from '../../components/ui';
 import { AccountCard } from '../../components/account/AccountCard';
 import { ModeCard } from '../../components/pro/ModeCard';
 import { InstallGuide } from '../../components/install/InstallGuide';
+import { AlertSettings } from '../../components/alerts/AlertSettings';
 import { useLeague } from '../../state/league';
 import { usePreferences, type AnimationMode } from '../../state/preferences';
 import { useColors, useTheme, type ThemePreference } from '../../theme/theme';
@@ -152,6 +153,8 @@ export default function MoreScreen() {
                     </Card>
                 </View>
             </Section>
+
+            <AlertSettings />
 
             <Card padded={false} style={{ overflow: 'hidden' }}>
                 <Pressable onPress={() => setInvite(true)} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, opacity: pressed ? 0.7 : 1 })}>
