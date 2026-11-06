@@ -3,8 +3,10 @@ import { Linking, PixelRatio, Platform, Pressable, Share, View, useWindowDimensi
 import { useTranslation } from 'react-i18next';
 import i18next from 'i18next';
 import Svg, { Line, Path, Rect } from 'react-native-svg';
-import { Link2, MessageCircle, Share2 } from 'lucide-react-native';
+import { Download, ImagePlus, Link2, MessageCircle, Share2, X } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
+import { Asset, requestPermissionsAsync } from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 import { WEB_URL } from '../../lib/config';
@@ -90,8 +92,11 @@ const ShareSheet: React.FC<{ request: ShareRequest | null; onClose: () => void }
     const [style, setStyle] = useState<ShareStyle>('color');
     const [busy, setBusy] = useState(false);
     const [picked, setPicked] = useState<Destination | null>(null);
+    // Foto propia de fondo (como el «Usar mi foto» de la web): solo vive mientras la hoja está abierta
+    const [photo, setPhoto] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
     const card = useRef<CardHandle>(null);
-    // Como en la web, cada vez que se abre empieza en historia, color del equipo y sin destino escogido
+    // Como en la web, cada vez que se abre empieza en historia, color del equipo, sin foto y sin destino escogido
     const [opened, setOpened] = useState(request);
     if (opened !== request) {
         setOpened(request);
@@ -99,26 +104,57 @@ const ShareSheet: React.FC<{ request: ShareRequest | null; onClose: () => void }
             setFormat('story');
             setStyle('color');
             setPicked(null);
+            setPhoto(null);
         }
     }
     // Como en la web: la historia a un 46 % del alto de la pantalla y el post a un 40 %
     const story = format === 'story';
     const width = Math.min(window.width - 32, window.height * (story ? 0.46 * (9 / 16) : 0.4 * (4 / 5)));
 
-    /** La imagen a 1080 de ancho en un archivo temporal; sin compartir archivos (web) no hay */
+    /** La imagen a 1080 de ancho en un archivo temporal; en la web no hay */
     const capture = async (name: string) => {
-        if (Platform.OS === 'web' || !(await Sharing.isAvailableAsync())) throw new Error('sin compartir archivos');
+        if (Platform.OS === 'web') throw new Error('sin archivos en la web');
         const ratio = PixelRatio.get();
         return captureRef(card.current as unknown as Parameters<typeof captureRef>[0], { format: 'png', quality: 1, result: 'tmpfile', width: 1080 / ratio, height: (1080 * (story ? 16 / 9 : 5 / 4)) / ratio, fileName: name });
     };
 
     const openPage = (url: string) => Linking.openURL(url).catch(() => showToast(t('share.failed'), undefined, 3000));
 
+    /** Escoger una foto de la galería (el selector del sistema, sin pedir acceso a todas las fotos) */
+    const pickPhoto = async () => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.9 });
+            if (!result.canceled && result.assets?.[0]?.uri) setPhoto(result.assets[0].uri);
+        } catch {
+            showToast(t('share.failed'), undefined, 3000);
+        }
+    };
+
+    /** Guardar la imagen en las fotos del teléfono (como «Guardar» de la web, que la descarga) */
+    const save = async () => {
+        if (!request) return;
+        setSaving(true);
+        try {
+            const permission = await requestPermissionsAsync(true);
+            if (!permission.granted) {
+                showToast(t('share.saveDenied'), undefined, 4000);
+                return;
+            }
+            await Asset.create(await capture(`${request.fileName}-${format}`));
+            showToast(t('share.saved'), undefined, 3000);
+        } catch {
+            showToast(t('share.failed'), undefined, 3000);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const shareTo = async (destination: Destination) => {
         if (!request) return;
         setPicked(destination);
         setBusy(true);
         try {
+            if (!(await Sharing.isAvailableAsync())) throw new Error('sin compartir archivos');
             const uri = await capture(`${request.fileName}-${format}`);
             await Sharing.shareAsync(uri, { mimeType: 'image/png', UTI: 'public.png', dialogTitle: t('share.title') });
         } catch {
@@ -157,8 +193,12 @@ const ShareSheet: React.FC<{ request: ShareRequest | null; onClose: () => void }
                     </View>
                     <View style={{ alignItems: 'center' }} accessibilityLabel={t('share.previewAlt')}>
                         <View style={{ borderRadius: 20, overflow: 'hidden' }}>
-                            <ShareCard ref={card} data={request.data} format={format} style={style} width={width} />
+                            <ShareCard ref={card} data={request.data} format={format} style={style} width={width} photo={photo} />
                         </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Button label={photo ? t('share.changePhoto') : t('share.usePhoto')} kind="secondary" icon={<ImagePlus size={18} color={colors.ink} />} onPress={pickPhoto} disabled={busy || saving} style={{ height: 44, borderRadius: 22 }} />
+                        {photo && <Button label={t('share.removePhoto')} kind="ghost" icon={<X size={18} color={colors.ink} />} onPress={() => setPhoto(null)} style={{ height: 44 }} />}
                     </View>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                         {DESTINATIONS.map((destination) => {
@@ -191,7 +231,11 @@ const ShareSheet: React.FC<{ request: ShareRequest | null; onClose: () => void }
                             );
                         })}
                     </View>
-                    <Button label={t('share.more')} icon={<Share2 size={18} color="#fff" />} busy={busy && picked === 'more'} disabled={busy} onPress={() => shareTo('more')} />
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                        {/* En la web del teléfono (Expo web) no hay archivo que guardar: ahí solo «Más opciones» */}
+                        {Platform.OS !== 'web' && <Button label={t('share.save')} kind="secondary" icon={<Download size={18} color={colors.ink} />} busy={saving} disabled={busy} onPress={save} style={{ flex: 1 }} />}
+                        <Button label={t('share.more')} icon={<Share2 size={18} color="#fff" />} busy={busy && picked === 'more'} disabled={busy || saving} onPress={() => shareTo('more')} style={{ flex: 1 }} />
+                    </View>
                     <Button
                         label={t('share.linkOnly')}
                         kind="secondary"

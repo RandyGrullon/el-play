@@ -699,6 +699,8 @@
     "changePhoto": "Change photo",
     "removePhoto": "Remove",
     "save": "Save",
+    "saved": "Image saved to your photos.",
+    "saveDenied": "To save it, let El Play save photos in your phone's settings.",
     "share": "Share",
     "hint": "Pick where to share: on your phone, your app list opens with the image ready.",
     "more": "More options",

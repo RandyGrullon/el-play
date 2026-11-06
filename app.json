@@ -31,6 +31,13 @@
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
         "com.google.android.gms.permission.AD_ID"
       ]
     },
@@ -73,6 +80,23 @@
         }
       ],
       "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "El Play usa la foto que escojas como fondo de la imagen que vas a compartir.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "El Play usa la foto que escojas como fondo de la imagen que vas a compartir.",
+          "savePhotosPermission": "El Play guarda en tus fotos la imagen que preparaste para compartir.",
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": []
+        }
+      ],
       [
         "expo-notifications",
         {

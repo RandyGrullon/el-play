@@ -699,6 +699,8 @@
     "changePhoto": "Cambiar foto",
     "removePhoto": "Quitar",
     "save": "Guardar",
+    "saved": "Imagen guardada en tus fotos.",
+    "saveDenied": "Para guardarla, deja que El Play guarde fotos en los ajustes del teléfono.",
     "share": "Compartir",
     "hint": "Elige dónde compartir: en el teléfono se abre tu lista de apps con la imagen lista.",
     "more": "Más opciones",
