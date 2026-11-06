@@ -241,8 +241,8 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                         );
                     })}
                 </ul>
-                {/* MLB no recibe los abridores de LIDOM (0 de 185 juegos en 2025-26): se dice en vez de dejar el hueco */}
-                {!game.probables.away && !game.probables.home && <p className="mt-3 text-sm text-muted">{t('preview.probablesLater')}</p>}
+                {/* MLB no recibe los abridores de LIDOM (0 de 185 juegos en 2025-26): se dice en vez de dejar el hueco (no en pospuestos ni cancelados) */}
+                {!notPlayed && !game.probables.away && !game.probables.home && <p className="mt-3 text-sm text-muted">{t('preview.probablesLater')}</p>}
             </section>
 
             {!notPlayed && (
@@ -270,16 +270,19 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                 )}
             </section>
 
-            <div className="flex gap-2">
-                {!notPlayed && alertsAvailable() && (
-                    <ActionButton
-                        icon={subscribed ? <BellRing className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-                        label={subscribed ? t('preview.notifyOff') : t('preview.notifyOn')}
-                        onClick={() => toggleAlert(gamePk)}
-                    />
-                )}
-                <ActionButton icon={<Share2 className="h-4 w-4" />} label={t('share.short')} onClick={onShare} primary />
-            </div>
+            {/* Pospuesto o cancelado: ni aviso ni Compartir (saldría «0 - 0») */}
+            {!notPlayed && (
+                <div className="flex gap-2">
+                    {alertsAvailable() && (
+                        <ActionButton
+                            icon={subscribed ? <BellRing className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                            label={subscribed ? t('preview.notifyOff') : t('preview.notifyOn')}
+                            onClick={() => toggleAlert(gamePk)}
+                        />
+                    )}
+                    <ActionButton icon={<Share2 className="h-4 w-4" />} label={t('share.short')} onClick={onShare} primary />
+                </div>
+            )}
         </div>
     );
 };
@@ -368,10 +371,11 @@ export const GamePage: React.FC = () => {
     const model = game ? fromDetail(game) : scheduled ? fromSchedule(scheduled) : null;
     // Juego que no existe o enlace roto: se dice claro y se ofrece volver (antes salía una previa vacía)
     const notFoundCode = !game && query.error instanceof ApiError && ['game_not_found', 'invalid_game'].includes(query.error.code) ? query.error.code : null;
+    const notPlayed = !!game && isNotPlayed(game.detailedState);
 
     return (
         <PullToRefresh onRefresh={async () => { await query.refetch(); }}>
-            {model ? <GameHero model={model} onShare={game ? shareGame : undefined} /> : notFoundCode ? null : <Skeleton className="h-[230px] rounded-none sm:mx-4 sm:mt-4 sm:rounded-card" />}
+            {model ? <GameHero model={model} onShare={game && !notPlayed ? shareGame : undefined} /> : notFoundCode ? null : <Skeleton className="h-[230px] rounded-none sm:mx-4 sm:mt-4 sm:rounded-card" />}
 
             {notFoundCode ? (
                 <div className="px-4 pt-6">
@@ -401,7 +405,8 @@ export const GamePage: React.FC = () => {
                 </div>
             ) : game.state === 'live' ? (
                 <LiveView game={game} open={setSheet} onShare={shareGame} />
-            ) : game.state === 'final' ? (
+            ) : game.state === 'final' && !notPlayed ? (
+                // MLB da los pospuestos y cancelados como «final»: van con la previa (sin resumen ni marcador 0 - 0)
                 <FinalView game={game} open={setSheet} onShare={shareGame} onSharePerformer={sharePerformer} />
             ) : (
                 <PreviewView game={game} onShare={shareGame} />
