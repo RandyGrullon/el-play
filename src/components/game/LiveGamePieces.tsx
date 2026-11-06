@@ -2,7 +2,7 @@
 // de victoria jugada a jugada y carreras por entrada), el lanzador en el montículo con su cansancio, los detalles del
 // juego, el aviso de datos detenidos, el juego sin hit y los corredores con nombre.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import { Clock, Flame, Info } from 'lucide-react-native';
@@ -17,6 +17,7 @@ import { useColors } from '../../theme/theme';
 import { alpha, fonts, inkOn, radius } from '../../theme/tokens';
 import { Card, PlayerPhoto, Row, Segmented, TeamLogo, Txt } from '../ui';
 import { useNow } from '../feed/useNow';
+import { PlayerLink, TeamLink, playerTextLink, teamTextLink } from '../stats/common';
 
 // ---------------------------------------------------------------- pizarra
 
@@ -60,13 +61,13 @@ export const LineScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                 <View style={{ paddingLeft: 10, paddingRight: 6 }}>
                     <View style={{ height: 26 }} />
                     {sides.map((side) => (
-                        <Row key={side} gap={6} style={{ height: 36, opacity: final && !game[side].isWinner ? 0.6 : 1 }}>
+                        <TeamLink key={side} id={game[side].id} name={game[side].name} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, opacity: final && !game[side].isWinner ? 0.6 : 1 }}>
                             <View style={{ width: 3, height: 24, borderRadius: 2, backgroundColor: game[side].color }} />
                             <TeamLogo team={game[side]} size={20} />
                             <Txt size={13} weight="extrabold">
                                 {game[side].abbrev}
                             </Txt>
-                        </Row>
+                        </TeamLink>
                     ))}
                 </View>
                 <ScrollView ref={scroller} horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
@@ -126,7 +127,7 @@ export const LineScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                         return (
                             <View key={side} accessible accessibilityLabel={t('lineScore.absAria', { team: game[side].abbrev, left: count.remaining ?? '—', won: count.won, lost: count.lost })} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: game[side].color }} />
-                                <Txt size={12} weight="semibold">
+                                <Txt size={12} weight="semibold" {...teamTextLink(game[side].id)}>
                                     {game[side].abbrev}
                                 </Txt>
                                 <View style={{ borderRadius: 6, backgroundColor: colors.raised, paddingHorizontal: 6 }}>
@@ -281,19 +282,21 @@ export const GameFlow: React.FC<{ game: GameDetail }> = ({ game }) => {
             {view === 'win' ? (
                 <>
                     <View accessible accessibilityLabel={t('flow.now', { team: leader.abbrev, pct: leaderPct })} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <TeamLogo team={leader} size={24} />
+                        <TeamLink id={leader.id} name={leader.name}>
+                            <TeamLogo team={leader} size={24} />
+                        </TeamLink>
                         <Txt size={28} weight="extrabold" tabular style={{ lineHeight: 30 }}>
                             {final ? t('flow.won') : `${leaderPct}%`}
                         </Txt>
-                        <Txt size={14} weight="semibold" tone="muted">
+                        <Txt size={14} weight="semibold" tone="muted" {...teamTextLink(leader.id)}>
                             {final ? leader.abbrev : t('flow.toWin', { team: leader.abbrev })}
                         </Txt>
                     </View>
                     <Row justify="space-between">
-                        <Txt size={10} weight="extrabold" tone="faint">
+                        <Txt size={10} weight="extrabold" tone="faint" {...teamTextLink(game.home.id)}>
                             {game.home.abbrev} ↑
                         </Txt>
-                        <Txt size={10} weight="extrabold" tone="faint">
+                        <Txt size={10} weight="extrabold" tone="faint" {...teamTextLink(game.away.id)}>
                             {game.away.abbrev} ↓
                         </Txt>
                     </Row>
@@ -315,7 +318,7 @@ export const GameFlow: React.FC<{ game: GameDetail }> = ({ game }) => {
                                             <Txt size={14} weight="bold">
                                                 {eventName(atBat, i18n.language)}
                                             </Txt>{' '}
-                                            · {lastName(atBat.batter.name)}
+                                            · <Text {...playerTextLink({ ...atBat.batter, teamId: (atBat.top ? game.away : game.home).id })}>{lastName(atBat.batter.name)}</Text>
                                         </Txt>
                                         <Txt size={12} weight="semibold" tone="muted">
                                             {inningName({ n: atBat.inning, isTop: atBat.top }, i18n.language, true)}
@@ -335,7 +338,7 @@ export const GameFlow: React.FC<{ game: GameDetail }> = ({ game }) => {
                         {(['away', 'home'] as const).map((side) => (
                             <Row key={side} gap={6}>
                                 <View style={{ width: 16, height: 8, borderRadius: 4, backgroundColor: game[side].color }} />
-                                <Txt size={12} weight="bold">
+                                <Txt size={12} weight="bold" {...teamTextLink(game[side].id)}>
                                     {game[side].abbrev} {game[side].runs}
                                 </Txt>
                             </Row>
@@ -416,12 +419,14 @@ export const PitcherCard: React.FC<{ game: GameDetail }> = ({ game }) => {
     return (
         <Card style={{ gap: 12 }}>
             <Row gap={12}>
-                <PlayerPhoto personId={pitcher.id} name={pitcher.name} size={56} background={alpha(team.color, 0.2)} team={team} />
+                <PlayerLink player={{ ...pitcher, teamId: team.id }}>
+                    <PlayerPhoto personId={pitcher.id} name={pitcher.name} size={56} background={alpha(team.color, 0.2)} team={team} />
+                </PlayerLink>
                 <View style={{ flex: 1, minWidth: 0 }}>
                     <Txt eyebrow accessibilityRole="header">
-                        {t('pitcherNow.title')} · {team.abbrev}
+                        {t('pitcherNow.title')} · <Text {...teamTextLink(team.id)}>{team.abbrev}</Text>
                     </Txt>
-                    <Txt size={18} weight="extrabold" numberOfLines={1}>
+                    <Txt size={18} weight="extrabold" numberOfLines={1} {...playerTextLink({ ...pitcher, teamId: team.id })}>
                         {pitcher.name}
                     </Txt>
                     <Txt size={12} tone="muted" numberOfLines={1}>
@@ -548,10 +553,10 @@ export const NoHitterBanner: React.FC<{ game: GameDetail }> = ({ game }) => {
                     <View key={item.pitching.id} accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: radius.tile, backgroundColor: item.pitching.color, paddingHorizontal: 16, paddingVertical: 12 }}>
                         <Txt size={24}>{item.perfect ? '💎' : '🔥'}</Txt>
                         <View style={{ flex: 1 }}>
-                            <Txt size={16} weight="extrabold" color={ink}>
+                            <Txt size={16} weight="extrabold" color={ink} {...teamTextLink(item.pitching.id)}>
                                 {t(item.final ? (item.perfect ? 'noHitter.perfectDone' : 'noHitter.done') : item.perfect ? 'noHitter.perfect' : 'noHitter.live', { team: item.pitching.abbrev })}
                             </Txt>
-                            <Txt size={14} color={ink}>
+                            <Txt size={14} color={ink} {...teamTextLink(item.batting.id)}>
                                 {t('noHitter.detail', { team: item.batting.abbrev, count: item.innings })}
                             </Txt>
                         </View>
@@ -570,14 +575,14 @@ export const RunnerChips: React.FC<{ game: GameDetail }> = ({ game }) => {
     return (
         <View accessibilityLabel={t('runners.title')} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 20, paddingTop: 10 }}>
             {runners.map(({ base, person }) => (
-                <Row key={base} gap={4} style={{ borderRadius: radius.pill, backgroundColor: colors.surface, paddingHorizontal: 10, paddingVertical: 4 }}>
+                <PlayerLink key={base} player={{ ...person, teamId: (game.inning?.isTop ? game.away : game.home).id }} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: radius.pill, backgroundColor: colors.surface, paddingHorizontal: 10, paddingVertical: 4 }}>
                     <Txt size={12} weight="extrabold" tone="muted">
                         {t(`runners.${base}`)}
                     </Txt>
                     <Txt size={12} weight="semibold">
                         {lastName(person.name)}
                     </Txt>
-                </Row>
+                </PlayerLink>
             ))}
         </View>
     );

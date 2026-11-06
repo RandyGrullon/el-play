@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, SectionList, View } from 'react-native';
+import { Pressable, SectionList, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react-native';
@@ -12,6 +12,8 @@ import { StrikeZone } from './StrikeZone';
 import { uniformColors } from './BatterFigure';
 import { PitchList } from './PitchList';
 import { toneColors } from './colors';
+import { gamePeople } from '../../lib/links';
+import { LinkedNames, teamTextLink } from '../stats/common';
 
 interface PlayByPlayProps {
     game: GameDetail;
@@ -40,6 +42,9 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = f
         return limit ? list.slice(0, limit) : list;
     }, [game.atBats, filter, limit]);
 
+    // Los nombres que salen en las jugadas abren la ficha de cada uno
+    const people = useMemo(() => gamePeople(game), [game]);
+
     const groups = useMemo(() => {
         const result: { key: string; label: string; plays: AtBat[] }[] = [];
         for (const atBat of plays) {
@@ -54,6 +59,8 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = f
     const row = (atBat: AtBat, position: number) => {
         const expanded = open === atBat.i;
         const team = atBat.top ? game.away : game.home;
+        const fielding = atBat.top ? game.home : game.away;
+        const named = [{ ...atBat.batter, teamId: team.id }, { ...atBat.pitcher, teamId: fielding.id }, ...atBat.actions.flatMap((action) => (action.sub ? [action.sub.in, action.sub.out] : [])), ...people];
         const tone = atBat.complete ? toneColors(colors, eventTone(atBat.event)) : { bg: alpha(colors.live, 0.1), ink: colors.live };
         return (
             <View key={atBat.i} style={{ borderTopWidth: position ? 1 : 0, borderTopColor: colors.line }}>
@@ -73,7 +80,7 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = f
                             </View>
                             {atBat.scoring && atBat.away !== null && (
                                 <Txt size={12} weight="semibold" tabular>
-                                    {game.away.abbrev} {atBat.away} · {game.home.abbrev} {atBat.home}
+                                    <Text {...teamTextLink(game.away.id)}>{game.away.abbrev}</Text> {atBat.away} · <Text {...teamTextLink(game.home.id)}>{game.home.abbrev}</Text> {atBat.home}
                                 </Txt>
                             )}
                             {compact && (
@@ -83,11 +90,11 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = f
                             )}
                         </Row>
                         <Txt size={14} style={{ marginTop: 4, lineHeight: 19 }}>
-                            {atBat.complete ? describePlay(atBat.desc, i18n.language) : t('plays.atBatNow', { batter: atBat.batter.name, pitcher: atBat.pitcher.name })}
+                            <LinkedNames text={atBat.complete ? describePlay(atBat.desc, i18n.language) : t('plays.atBatNow', { batter: atBat.batter.name, pitcher: atBat.pitcher.name })} people={named} />
                         </Txt>
                         {atBat.actions.length > 0 && (
                             <Txt size={12} tone="muted" style={{ marginTop: 4 }}>
-                                {atBat.actions.map((action) => describePlay(action.desc, i18n.language)).join(' ')}
+                                <LinkedNames text={atBat.actions.map((action) => describePlay(action.desc, i18n.language)).join(' ')} people={named} />
                             </Txt>
                         )}
                     </View>

@@ -1,7 +1,7 @@
 // Previa del juego (lo mismo de la web): la probabilidad de victoria antes de empezar, cómo llegan los dos equipos,
 // entre ellos en la temporada, los que vienen calientes (7 días) y las alineaciones cuando se anuncian.
 import React, { useEffect, useState } from 'react';
-import { Pressable, View, useWindowDimensions } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,7 @@ import { recordOf, useTeamStats, type TeamRow } from '../../lib/teamStats';
 import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Card, PlayerPhoto, Row, Segmented, Skeleton, TeamLogo, Txt, useReduceMotion } from '../ui';
+import { TeamLink, teamTextLink } from '../stats/common';
 
 const Heading: React.FC<{ icon: React.ReactNode; children: React.ReactNode }> = ({ icon, children }) => (
     <Row gap={6} style={{ marginBottom: 10 }}>
@@ -106,12 +107,12 @@ export const WinProbabilityCard: React.FC<{ game: GameDetail }> = ({ game }) => 
                     {t('winProb.title')}
                 </Txt>
                 {favorite ? (
-                    <Row gap={4} style={{ flexShrink: 0, borderRadius: radius.pill, backgroundColor: favorite.color, paddingHorizontal: 10, paddingVertical: 4 }}>
+                    <TeamLink id={favorite.id} name={favorite.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0, borderRadius: radius.pill, backgroundColor: favorite.color, paddingHorizontal: 10, paddingVertical: 4 }}>
                         <Sparkles size={12} color={inkOn(favorite.color)} />
                         <Txt size={11} weight="extrabold" color={inkOn(favorite.color)}>
                             {t('winProb.favorite', { team: favorite.abbrev })}
                         </Txt>
-                    </Row>
+                    </TeamLink>
                 ) : (
                     <View style={{ borderRadius: radius.pill, backgroundColor: colors.raised, paddingHorizontal: 10, paddingVertical: 4 }}>
                         <Txt size={11} weight="extrabold" tone="muted">
@@ -136,7 +137,7 @@ export const WinProbabilityCard: React.FC<{ game: GameDetail }> = ({ game }) => 
                             </Txt>
                         )}
                         <View style={{ flex: 1, minWidth: 0, flexDirection: side === 'home' ? 'row-reverse' : 'row', alignItems: 'center', gap: 10 }}>
-                            <View style={{ width: ring, height: ring, borderRadius: ring / 2, borderWidth: 3, borderColor: team.color, backgroundColor: alpha(team.color, 0.1), alignItems: 'center', justifyContent: 'center' }}>
+                            <TeamLink id={team.id} name={team.name} style={{ width: ring, height: ring, borderRadius: ring / 2, borderWidth: 3, borderColor: team.color, backgroundColor: alpha(team.color, 0.1), alignItems: 'center', justifyContent: 'center' }}>
                                 <TeamLogo team={team} size={36} />
                                 {side === 'home' && (
                                     <View
@@ -146,7 +147,7 @@ export const WinProbabilityCard: React.FC<{ game: GameDetail }> = ({ game }) => 
                                         <Home size={12} color={colors.muted} />
                                     </View>
                                 )}
-                            </View>
+                            </TeamLink>
                             <View style={{ minWidth: 0, flexShrink: 1, alignItems: side === 'home' ? 'flex-end' : 'flex-start' }}>
                                 <Txt size={roomy ? 34 : 28} weight="extrabold" tabular style={{ lineHeight: roomy ? 36 : 30 }}>
                                     {value}
@@ -154,7 +155,7 @@ export const WinProbabilityCard: React.FC<{ game: GameDetail }> = ({ game }) => 
                                         %
                                     </Txt>
                                 </Txt>
-                                <Txt size={12} weight="bold" tone="muted" numberOfLines={1}>
+                                <Txt size={12} weight="bold" tone="muted" numberOfLines={1} {...teamTextLink(team.id)}>
                                     {team.abbrev}
                                 </Txt>
                             </View>
@@ -229,12 +230,12 @@ export const TeamFormCard: React.FC<{ game: GameDetail }> = ({ game }) => {
             <Row style={{ paddingBottom: 6 }}>
                 <View style={{ flex: 1 }} />
                 {(['away', 'home'] as const).map((side) => (
-                    <Row key={side} gap={6} justify="center" style={{ width: '28%' }}>
+                    <TeamLink key={side} id={game[side].id} name={game[side].name} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', width: '28%' }}>
                         <TeamLogo team={game[side]} size={20} />
                         <Txt size={14} weight="extrabold">
                             {game[side].abbrev}
                         </Txt>
-                    </Row>
+                    </TeamLink>
                 ))}
             </Row>
             {lines.map((line) => (
@@ -274,7 +275,9 @@ export const HeadToHeadCard: React.FC<{ game: GameDetail }> = ({ game }) => {
                 <>
                     <Row gap={16} justify="center">
                         <Row gap={8}>
-                            <TeamLogo team={game.away} size={32} />
+                            <TeamLink id={game.away.id} name={game.away.name}>
+                                <TeamLogo team={game.away} size={32} />
+                            </TeamLink>
                             <Txt size={34} weight="extrabold" tabular>
                                 {h2h.wins[game.away.id] ?? 0}
                             </Txt>
@@ -286,7 +289,9 @@ export const HeadToHeadCard: React.FC<{ game: GameDetail }> = ({ game }) => {
                             <Txt size={34} weight="extrabold" tabular>
                                 {h2h.wins[game.home.id] ?? 0}
                             </Txt>
-                            <TeamLogo team={game.home} size={32} />
+                            <TeamLink id={game.home.id} name={game.home.name}>
+                                <TeamLogo team={game.home} size={32} />
+                            </TeamLink>
                         </Row>
                     </Row>
                     <Txt size={12} weight="semibold" tone="muted" center style={{ marginTop: 4 }}>
@@ -303,13 +308,13 @@ export const HeadToHeadCard: React.FC<{ game: GameDetail }> = ({ game }) => {
                                     </Txt>
                                     <Txt size={14} tabular style={{ flex: 1 }}>
                                         <Txt size={14} weight={meeting.winnerId === away.id ? 'extrabold' : 'regular'} tone={meeting.winnerId === away.id ? 'ink' : 'muted'}>
-                                            {away.abbrev} {meeting.away.runs}
+                                            <Text {...teamTextLink(away.id)}>{away.abbrev}</Text> {meeting.away.runs}
                                         </Txt>
                                         <Txt size={14} tone="faint">
                                             {'  ·  '}
                                         </Txt>
                                         <Txt size={14} weight={meeting.winnerId === home.id ? 'extrabold' : 'regular'} tone={meeting.winnerId === home.id ? 'ink' : 'muted'}>
-                                            {home.abbrev} {meeting.home.runs}
+                                            <Text {...teamTextLink(home.id)}>{home.abbrev}</Text> {meeting.home.runs}
                                         </Txt>
                                     </Txt>
                                     {meeting.winnerId && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: teamOf(meeting.winnerId).color }} />}
@@ -337,12 +342,12 @@ export const HotPlayersCard: React.FC<{ game: GameDetail }> = ({ game }) => {
             <Heading icon={<Flame size={14} color={colors.muted} />}>{t('previewMore.hot')}</Heading>
             {sides.map(({ side, team, players }) => (
                 <View key={side} style={{ gap: 8 }}>
-                    <Row gap={6}>
+                    <TeamLink id={team.id} name={team.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
                         <TeamLogo team={team} size={18} />
                         <Txt size={12} weight="extrabold">
                             {team.abbrev}
                         </Txt>
-                    </Row>
+                    </TeamLink>
                     {players.map((player) => (
                         <Pressable key={player.id} onPress={() => router.push(`/jugador/${player.id}`)} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                             <PlayerPhoto personId={player.id} name={player.name} size={40} background={alpha(team.color, 0.13)} team={team} />
@@ -397,7 +402,7 @@ export const LineupsCard: React.FC<{ game: GameDetail }> = ({ game }) => {
                     {t('previewMore.lineupsLater')}
                 </Txt>
             ) : list.length === 0 ? (
-                <Txt size={14} tone="muted">
+                <Txt size={14} tone="muted" {...teamTextLink(game[side].id)}>
                     {t('previewMore.lineupPending', { team: game[side].abbrev })}
                 </Txt>
             ) : (

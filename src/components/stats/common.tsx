@@ -1,12 +1,14 @@
 // Piezas que comparten Posiciones, Líderes, Estadísticas y la ficha del pelotero.
 import React from 'react';
-import { Platform, Pressable, ScrollView, Share, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, Pressable, ScrollView, Share, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Info } from 'lucide-react-native';
 import { useColors } from '../../theme/theme';
 import { alpha, radius, shadow } from '../../theme/tokens';
-import { ProBadge, Row, Title, Txt } from '../ui';
+import { ProBadge, Row, Title, Txt, leaveSheets } from '../ui';
 import { WEB_URL } from '../../lib/config';
+import { linkId, nameSegments, playerParams, type LinkPerson } from '../../lib/links';
 
 /** Esta pantalla no se había abierto y no hay internet (en vez de cargar para siempre) */
 export const waitingForNetwork = (query: { isPending: boolean; fetchStatus: string }) => query.isPending && query.fetchStatus === 'paused';
@@ -90,14 +92,77 @@ export const HeaderButton: React.FC<{ label: string; onPress: () => void; childr
 };
 
 /** Abre la ficha del pelotero (modal); nombre y equipo pintan la cabecera mientras carga */
-export const openPlayer = (player: { id: number; name: string; teamId?: number | null }, season?: number) =>
-    router.push({
-        pathname: '/jugador/[id]',
-        params: { id: player.id, name: player.name, ...(player.teamId ? { teamId: player.teamId } : {}), ...(season ? { season } : {}) }
-    });
+// Desde dentro de una hoja (la jugada a jugada, el box, comparar) primero se cierra la hoja: si no, taparía la página
+export const openPlayer = (player: { id: number; name?: string | null; teamId?: number | null }, season?: number) => leaveSheets(() => router.push({ pathname: '/jugador/[id]', params: playerParams(player, season) }));
 
 /** Abre la página del equipo (pantalla completa, encima de la que se está viendo) */
-export const openTeam = (id: number) => router.push({ pathname: '/equipo/[id]', params: { id } });
+export const openTeam = (id: number) => leaveSheets(() => router.push({ pathname: '/equipo/[id]', params: { id } }));
+
+type LinkProps = { style?: StyleProp<ViewStyle>; hitSlop?: number; disabled?: boolean; children: React.ReactNode };
+
+/**
+ * Lo que muestra un equipo (logo, siglas, nombre) lleva a su página. Se pinta igual que antes: el estilo de la caja va en
+ * `style`. Sin id (o `disabled`) queda una caja con el mismo estilo que no se toca. Dentro de otra pieza que se toca (la
+ * tarjeta de un juego) gana esta: en el teléfono el toque es del Pressable más adentro y en la web corta el clic.
+ */
+export const TeamLink: React.FC<LinkProps & { id: number | null | undefined; name: string }> = ({ id, name, style, hitSlop, disabled, children }) => {
+    const { t } = useTranslation();
+    const target = linkId(id);
+    if (!target || disabled) return <View style={style}>{children}</View>;
+    return (
+        <Pressable onPress={() => openTeam(target)} accessibilityRole="link" accessibilityLabel={t('team.open', { team: name })} hitSlop={hitSlop} style={({ pressed }) => [style, pressed && { opacity: 0.7 }]}>
+            {children}
+        </Pressable>
+    );
+};
+
+/** Lo que muestra un pelotero (foto, nombre) lleva a su ficha (/jugador/[id], con el botón de comparar); igual que TeamLink */
+export const PlayerLink: React.FC<LinkProps & { player: { id: number | null | undefined; name: string; teamId?: number | null } | null | undefined; season?: number }> = ({ player, season, style, hitSlop, disabled, children }) => {
+    const { t } = useTranslation();
+    const target = linkId(player?.id);
+    if (!player || !target || disabled) return <View style={style}>{children}</View>;
+    return (
+        <Pressable
+            onPress={() => openPlayer({ id: target, name: player.name, teamId: player.teamId }, season)}
+            accessibilityRole="link"
+            accessibilityLabel={t('statsPage.viewPlayer', { name: player.name })}
+            hitSlop={hitSlop}
+            style={({ pressed }) => [style, pressed && { opacity: 0.7 }]}
+        >
+            {children}
+        </Pressable>
+    );
+};
+
+/** Un nombre dentro de una línea de texto (Txt anidado): se toca solo ese pedazo y la línea se ve igual */
+export const playerTextLink = (player: { id: number | null | undefined; name: string; teamId?: number | null } | null | undefined, season?: number) => {
+    const target = linkId(player?.id);
+    return player && target ? { onPress: () => openPlayer({ id: target, name: player.name, teamId: player.teamId }, season), accessibilityRole: 'link' as const } : {};
+};
+
+/**
+ * Un texto con nombres de peloteros dentro (la descripción de una jugada): cada nombre de la lista abre su ficha. Va dentro
+ * de un Txt y hereda su letra: se ve igual.
+ */
+export const LinkedNames: React.FC<{ text: string; people: readonly (LinkPerson | null | undefined)[] }> = ({ text, people }) => (
+    <>
+        {nameSegments(text, people).map((part, index) =>
+            part.person ? (
+                <Text key={index} {...playerTextLink(part.person)}>
+                    {part.text}
+                </Text>
+            ) : (
+                part.text
+            )
+        )}
+    </>
+);
+
+/** Las siglas o el nombre de un equipo dentro de una línea de texto */
+export const teamTextLink = (id: number | null | undefined) => {
+    const target = linkId(id);
+    return target ? { onPress: () => openTeam(target), accessibilityRole: 'link' as const } : {};
+};
 
 /** Compartir el enlace de una página de la web (`/equipo/672`, `/jugador/123`) con un texto corto */
 export const shareLink = (path: string, title: string, message: string) => {

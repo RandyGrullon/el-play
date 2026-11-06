@@ -658,6 +658,71 @@ it('total de la carrera: sumas de todas las temporadas (EFE, AVG y OPS de las su
     assert.strictEqual(careerTotal({ role: 'B', career: [bateo(1, 3, 1, 0, 0, 0, 0, 0, 0, 0)] }), null);
 });
 
+console.log('enlaces a equipos y peloteros');
+
+const links = require(compileTo('lib/links.ts'));
+
+it('id para abrir una página: solo enteros positivos (0, null, NaN o texto vacío no abren nada)', () => {
+    const { linkId } = links;
+    assert.strictEqual(linkId(12345678), 12345678);
+    assert.strictEqual(linkId('9001'), 9001);
+    [0, -3, 1.5, null, undefined, NaN, '', 'abc'].forEach((value) => assert.strictEqual(linkId(value), null, String(value)));
+});
+
+it('parámetros de la ficha: nombre y equipo si se tienen, temporada solo si no es la actual', () => {
+    const { playerParams } = links;
+    assert.deepStrictEqual(playerParams({ id: 12345678, name: 'Pelotero Uno', teamId: 9001 }, 2099), { id: 12345678, name: 'Pelotero Uno', teamId: 9001, season: 2099 });
+    assert.deepStrictEqual(playerParams({ id: 12345678 }), { id: 12345678 });
+    assert.deepStrictEqual(playerParams({ id: 12345678, name: '', teamId: 0 }, null), { id: 12345678 });
+});
+
+it('línea de decisiones: ganador y salvado; sin salvamento, el perdedor; sin ganador, nada', () => {
+    const { decisionParts } = links;
+    const uno = { id: 12345678, name: 'Pelotero Uno' };
+    const dos = { id: 87654321, name: 'Pelotero Dos' };
+    const tres = { id: 11223344, name: 'Pelotero Tres' };
+    assert.deepStrictEqual(decisionParts({ winner: uno, loser: dos, save: tres }).map((part) => [part.key, part.person.id]), [['win', 12345678], ['save', 11223344]]);
+    assert.deepStrictEqual(decisionParts({ winner: uno, loser: dos, save: null }).map((part) => part.key), ['win', 'loss']);
+    assert.deepStrictEqual(decisionParts({ winner: uno, loser: null, save: null }).map((part) => part.key), ['win']);
+    assert.deepStrictEqual(decisionParts({ winner: null, loser: dos, save: null }), []);
+    assert.deepStrictEqual(decisionParts(null), []);
+});
+
+it('equipo por sigla entre los que hay (sin importar mayúsculas); sin coincidencia, null', () => {
+    const { teamByAbbrev } = links;
+    const equipos = [{ id: 9001, abbrev: 'AAA' }, null, { id: 9002, abbrev: 'BBB' }];
+    assert.strictEqual(teamByAbbrev(equipos, 'bbb').id, 9002);
+    assert.strictEqual(teamByAbbrev(equipos, ' AAA ').id, 9001);
+    assert.strictEqual(teamByAbbrev(equipos, 'CCC'), null);
+    assert.strictEqual(teamByAbbrev(equipos, null), null);
+});
+
+it('nombres dentro de una jugada: cada nombre entero de la lista es un pedazo con su pelotero', () => {
+    const { nameSegments } = links;
+    const uno = { id: 12345678, name: 'Pelotero Uno', teamId: 9001 };
+    const dos = { id: 87654321, name: 'Pelotero Dos' };
+    const texto = 'Pelotero Uno batea sencillo. Pelotero Dos anota.';
+    const partes = nameSegments(texto, [uno, dos]);
+    assert.strictEqual(partes.map((part) => part.text).join(''), texto);
+    assert.deepStrictEqual(partes.map((part) => part.person && part.person.id), [12345678, null, 87654321, null]);
+    // El punto final pegado al nombre vale; dentro de otra palabra, no
+    assert.deepStrictEqual(nameSegments('Ponche a Pelotero Uno.', [uno]).map((part) => part.text), ['Ponche a ', 'Pelotero Uno', '.']);
+    assert.deepStrictEqual(nameSegments('Pelotero Unotres sale out', [uno]).map((part) => part.person), [null]);
+    // Si dos se pisan, el más largo; repetidos e ids malos no cuentan
+    const largo = { id: 11223344, name: 'Pelotero Uno Jr.' };
+    assert.deepStrictEqual(nameSegments('Pelotero Uno Jr. se embasa', [uno, largo, { id: 0, name: 'se embasa' }, uno]).map((part) => part.person && part.person.id), [11223344, null]);
+    assert.deepStrictEqual(nameSegments('', [uno]), []);
+    assert.deepStrictEqual(nameSegments('Sin nombres aquí', []).map((part) => part.text), ['Sin nombres aquí']);
+});
+
+it('los del juego para enlazar: los cuatro grupos del box de cada lado con su equipo', () => {
+    const { gamePeople } = links;
+    const lado = (base) => ({ batters: [{ id: base + 1, name: 'Bateador' }], pitchers: [{ id: base + 2, name: 'Lanzador' }], bench: [{ id: base + 3, name: 'Banca' }] });
+    const gente = gamePeople({ away: { id: 9001 }, home: { id: 9002 }, box: { away: lado(100), home: lado(200) } });
+    assert.deepStrictEqual(gente.map((person) => [person.id, person.teamId]), [[101, 9001], [102, 9001], [103, 9001], [201, 9002], [202, 9002], [203, 9002]]);
+    assert.deepStrictEqual(gamePeople({ away: { id: 9001 }, home: { id: 9002 }, box: null }), []);
+});
+
 fs.rmSync(OUT, { recursive: true, force: true });
 if (failed) {
     console.log(`\n${failed} caso(s) fallaron`);

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
-import { Animated, Platform, Pressable, ScrollView, View, type GestureResponderEvent } from 'react-native';
+import { Animated, Platform, Pressable, ScrollView, Text, View, type GestureResponderEvent } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, Share2 } from 'lucide-react-native';
@@ -9,6 +9,7 @@ import { inkOn, radius, shadow } from '../../theme/tokens';
 import { PlayerPhoto, Txt } from '../ui';
 import { StrikeZone } from '../game/StrikeZone';
 import { uniformColors } from '../game/BatterFigure';
+import { LinkedNames, teamTextLink } from '../stats/common';
 
 type Slide = 'key' | 'stars' | 'score' | 'decisions';
 
@@ -113,8 +114,9 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
                 {slide === 'key' && key && (
                     <FadeUp key="key">
                         {tag(t('share.keyPlay'))}
+                        {/* El nombre del bateador abre su ficha; el resto de la historia avanza con el toque */}
                         <Txt size={40} weight="extrabold" color={ink} style={{ marginTop: 12, lineHeight: 42 }}>
-                            {key.headline}
+                            <LinkedNames text={key.headline} people={[{ ...key.atBat.batter, teamId: (key.atBat.top ? game.away : game.home).id }]} />
                         </Txt>
                         <Txt weight="semibold" color={ink} style={{ marginTop: 8, opacity: 0.85 }}>
                             {key.detail}
@@ -171,6 +173,7 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
                                         <LineRow
                                             key={side}
                                             label={game[side].abbrev}
+                                            teamId={game[side].id}
                                             cells={[
                                                 ...game.linescore.map((inning, position) => String(inning[side] ?? (side === 'home' && position === game.linescore.length - 1 ? 'x' : ''))),
                                                 String(game[side].runs),
@@ -184,7 +187,7 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
                             </ScrollView>
                         </View>
                         <Txt size={44} weight="extrabold" color={ink} style={{ marginTop: 16, lineHeight: 46 }}>
-                            {game.away.abbrev} {game.away.runs} · {game.home.abbrev} {game.home.runs}
+                            <Text {...teamTextLink(game.away.id)}>{game.away.abbrev}</Text> {game.away.runs} · <Text {...teamTextLink(game.home.id)}>{game.home.abbrev}</Text> {game.home.runs}
                         </Txt>
                     </FadeUp>
                 )}
@@ -213,9 +216,9 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
 };
 
 // Fila del marcador por entradas (siempre en tinta oscura sobre el fondo blanco)
-const LineRow: React.FC<{ label: string; cells: string[]; head?: boolean; runsAt?: number }> = ({ label, cells, head, runsAt }) => (
+const LineRow: React.FC<{ label: string; cells: string[]; head?: boolean; runsAt?: number; teamId?: number }> = ({ label, cells, head, runsAt, teamId }) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: head ? 4 : 8, borderTopWidth: head ? 0 : 1, borderTopColor: 'rgba(0,0,0,0.05)' }}>
-        <Txt size={14} weight="extrabold" color={DARK} style={{ width: 44 }}>
+        <Txt size={14} weight="extrabold" color={DARK} style={{ width: 44 }} {...teamTextLink(teamId)}>
             {label}
         </Txt>
         {cells.map((cell, index) => {

@@ -1,10 +1,10 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import type { GameDetail } from '../../types';
 import { useColors } from '../../theme/theme';
 import { Card, Txt } from '../ui';
+import { openPlayer, playerTextLink } from '../stats/common';
 
 const Stat: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => {
     const colors = useColors();
@@ -34,7 +34,7 @@ export const Matchup: React.FC<{ game: GameDetail }> = ({ game }) => {
             <View style={{ flex: 1, padding: 16, borderRightWidth: 1, borderRightColor: colors.line }} accessibilityLabel={t('game.pitcher')}>
                 <Txt eyebrow>{t('game.pitcher')}</Txt>
                 {/* El nombre abre su página */}
-                <Pressable onPress={() => pitcher.id && router.push(`/jugador/${pitcher.id}`)} disabled={!pitcher.id} accessibilityRole="link" hitSlop={6}>
+                <Pressable onPress={() => pitcher.id && openPlayer({ id: pitcher.id, name: pitcher.name, teamId: (game.inning?.isTop ? game.home : game.away).id })} disabled={!pitcher.id} accessibilityRole="link" accessibilityLabel={t('statsPage.viewPlayer', { name: pitcher.name })} hitSlop={6}>
                     <Txt weight="semibold" numberOfLines={1} style={{ marginTop: 4 }}>
                         {pitcher.name}
                     </Txt>
@@ -55,7 +55,7 @@ export const Matchup: React.FC<{ game: GameDetail }> = ({ game }) => {
             </View>
             <View style={{ flex: 1, padding: 16 }} accessibilityLabel={t('game.batter')}>
                 <Txt eyebrow>{t('game.batter')}</Txt>
-                <Pressable onPress={() => batter.id && router.push(`/jugador/${batter.id}`)} disabled={!batter.id} accessibilityRole="link" hitSlop={6}>
+                <Pressable onPress={() => batter.id && openPlayer({ id: batter.id, name: batter.name, teamId: (game.inning?.isTop ? game.away : game.home).id })} disabled={!batter.id} accessibilityRole="link" accessibilityLabel={t('statsPage.viewPlayer', { name: batter.name })} hitSlop={6}>
                     <Txt weight="semibold" numberOfLines={1} style={{ marginTop: 4 }}>
                         {batter.name}
                     </Txt>
@@ -68,7 +68,7 @@ export const Matchup: React.FC<{ game: GameDetail }> = ({ game }) => {
                     <Stat label={t('stats.avg')} value={batter.avg} />
                 </View>
                 {matchup.onDeck ? (
-                    <Txt size={11} tone="faint" numberOfLines={1} style={{ marginTop: 8 }}>
+                    <Txt size={11} tone="faint" numberOfLines={1} style={{ marginTop: 8 }} {...playerTextLink({ ...matchup.onDeck, teamId: (game.inning?.isTop ? game.away : game.home).id })}>
                         {t('game.onDeck', { name: matchup.onDeck.name })}
                     </Txt>
                 ) : null}

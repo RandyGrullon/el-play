@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
-import { router } from 'expo-router';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight } from 'lucide-react-native';
 import type { GameDetail } from '../../types';
@@ -8,6 +7,7 @@ import { useTextScale } from '../../state/preferences';
 import { useColors } from '../../theme/theme';
 import { alpha, radius, shadow } from '../../theme/tokens';
 import { Card, TeamLogo, Txt } from '../ui';
+import { openPlayer, teamTextLink } from '../stats/common';
 
 const NAME_W = 150;
 const COL_W = 44;
@@ -95,7 +95,7 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
         </Txt>
     );
     const link = (id: number, children: React.ReactNode, indent = 16) => (
-        <Pressable onPress={() => router.push(`/jugador/${id}`)} accessibilityRole="link" style={{ height: '100%', paddingLeft: indent, paddingRight: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Pressable onPress={() => openPlayer({ id, teamId: team.id })} accessibilityRole="link" style={{ height: '100%', paddingLeft: indent, paddingRight: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             {children}
         </Pressable>
     );
@@ -201,7 +201,7 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
             <Card padded={false} style={{ overflow: 'hidden' }}>
                 <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.line }}>
                     <Txt eyebrow accessibilityRole="header">
-                        {t('box.batting')} · {team.name}
+                        {t('box.batting')} · <Text {...teamTextLink(team.id)}>{team.name}</Text>
                     </Txt>
                 </View>
                 {box.batters.length === 0 ? (
@@ -221,7 +221,7 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
             <Card padded={false} style={{ overflow: 'hidden' }}>
                 <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.line }}>
                     <Txt eyebrow accessibilityRole="header">
-                        {t('box.pitching')} · {team.name}
+                        {t('box.pitching')} · <Text {...teamTextLink(team.id)}>{team.name}</Text>
                     </Txt>
                 </View>
                 {box.pitchers.length === 0 ? (
@@ -242,14 +242,14 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                 <Card padded={false} style={{ overflow: 'hidden' }}>
                     <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.line }}>
                         <Txt eyebrow accessibilityRole="header">
-                            {t('box.benchTitle')} · {team.name}
+                            {t('box.benchTitle')} · <Text {...teamTextLink(team.id)}>{team.name}</Text>
                         </Txt>
                     </View>
                     <View style={{ gap: 16, padding: 16 }}>
                         {bench.length > 0 && (
                             <Collapsible title={`${t('box.bench')} · ${bench.length}`}>
                                 {bench.map((player, index) => (
-                                    <Pressable key={player.id} onPress={() => router.push(`/jugador/${player.id}`)} accessibilityRole="link" style={[listRow, index > 0 && { borderTopWidth: 1, borderTopColor: colors.line }]}>
+                                    <Pressable key={player.id} onPress={() => openPlayer({ id: player.id, name: player.name, teamId: team.id })} accessibilityRole="link" style={[listRow, index > 0 && { borderTopWidth: 1, borderTopColor: colors.line }]}>
                                         <Txt size={14} weight="medium" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
                                             {player.name}
                                         </Txt>
@@ -266,7 +266,7 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                         {bullpen.length > 0 && (
                             <Collapsible title={`${t('box.bullpen')} · ${bullpen.length}`}>
                                 {bullpen.map((arm, index) => (
-                                    <Pressable key={arm.id} onPress={() => router.push(`/jugador/${arm.id}`)} accessibilityRole="link" style={[listRow, index > 0 && { borderTopWidth: 1, borderTopColor: colors.line }]}>
+                                    <Pressable key={arm.id} onPress={() => openPlayer({ id: arm.id, name: arm.name, teamId: team.id })} accessibilityRole="link" style={[listRow, index > 0 && { borderTopWidth: 1, borderTopColor: colors.line }]}>
                                         <Txt size={14} weight="medium" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
                                             {arm.name}
                                         </Txt>

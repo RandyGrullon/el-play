@@ -1,7 +1,6 @@
 // Ayudas del Fantasy compartidas por sus pestañas: textos cortos del pelotero, estado del juego, créditos, días y la ficha.
 import React, { useCallback } from 'react';
 import { Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Info } from 'lucide-react-native';
@@ -10,6 +9,7 @@ import { formatTime } from '../../lib/format';
 import type { FantasyDay, FantasyPlayer } from '../../lib/fantasy';
 import { useColors } from '../../theme/theme';
 import { Txt, type LogoTeam } from '../ui';
+import { openPlayer } from '../stats/common';
 
 const DAY_MS = 86400000;
 
@@ -59,11 +59,8 @@ export const teamOf = (day: FantasyDay | undefined, player: FantasyPlayer): Logo
     return team ? { id: team.id, abbrev: team.abbrev, logo: team.logo, color: team.color } : null;
 };
 
-/** Abre la ficha del pelotero (la pantalla /jugador/[id]) */
-export const useOpenPlayer = () => {
-    const router = useRouter();
-    return useCallback((id: number) => router.push(`/jugador/${id}`), [router]);
-};
+/** Abre la ficha del pelotero (la pantalla /jugador/[id]); desde una hoja, la cierra primero */
+export const useOpenPlayer = () => useCallback((id: number) => openPlayer({ id }), []);
 
 /** «Cómo se cuentan los puntos» (abre o cierra la tabla de puntos) */
 export const RulesToggle: React.FC<{ open: boolean; onToggle: () => void }> = ({ open, onToggle }) => {

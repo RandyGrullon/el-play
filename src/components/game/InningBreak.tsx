@@ -9,6 +9,7 @@ import type { InningBreak as Pause } from '../../lib/baseball';
 import { useColors } from '../../theme/theme';
 import { alpha, radius, shadow } from '../../theme/tokens';
 import { PlayerPhoto, Row, TeamLogo, Txt, useReduceMotion } from '../ui';
+import { PlayerLink, TeamLink, teamTextLink } from '../stats/common';
 
 const native = Platform.OS !== 'web';
 
@@ -134,7 +135,7 @@ export const InningBreak: React.FC<{ pause: Pause }> = ({ pause }) => {
                     </View>
                 </Stage>
             </View>
-            <Row gap={12}>
+            <TeamLink id={next.id} name={next.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <TeamLogo team={next} size={40} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                     <Txt eyebrow>{t('zone.breakNext')}</Txt>
@@ -142,9 +143,9 @@ export const InningBreak: React.FC<{ pause: Pause }> = ({ pause }) => {
                         {next.name}
                     </Txt>
                 </View>
-            </Row>
+            </TeamLink>
             {runs !== null && (
-                <Txt size={14} tone="muted">
+                <Txt size={14} tone="muted" {...teamTextLink(ended.id)}>
                     {t('zone.breakRuns', { team: ended.abbrev, count: runs })}
                 </Txt>
             )}
@@ -152,7 +153,7 @@ export const InningBreak: React.FC<{ pause: Pause }> = ({ pause }) => {
                 <View style={{ gap: 6 }}>
                     <Txt eyebrow>{t('zone.breakDueUp')}</Txt>
                     {dueUp.map((batter, index) => (
-                        <Row key={batter.id} gap={12} style={{ borderRadius: radius.tile, backgroundColor: colors.raised, paddingHorizontal: 10, paddingVertical: 6 }}>
+                        <PlayerLink key={batter.id} player={{ ...batter, teamId: next.id }} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: radius.tile, backgroundColor: colors.raised, paddingHorizontal: 10, paddingVertical: 6 }}>
                             <Txt size={12} weight="extrabold" tone="faint" style={{ width: 14, textAlign: 'center' }}>
                                 {index + 1}
                             </Txt>
@@ -160,7 +161,7 @@ export const InningBreak: React.FC<{ pause: Pause }> = ({ pause }) => {
                             <Txt size={14} weight="semibold" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
                                 {batter.name}
                             </Txt>
-                        </Row>
+                        </PlayerLink>
                     ))}
                 </View>
             )}

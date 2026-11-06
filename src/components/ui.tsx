@@ -1,5 +1,5 @@
 // Piezas básicas con el estilo de El Play (las equivalentes de las clases de Tailwind de la web).
-import React, { useEffect, useId, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Animated, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type TextProps, type TextStyle, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FullWindowOverlay } from 'react-native-screens';
@@ -359,6 +359,23 @@ const raiseOverlay = () => {
     overlayTurn += 1;
     sheetListeners.forEach((listener) => listener());
 };
+// Cómo se cierra cada hoja abierta, para salir de ellas al tocar un enlace de adentro
+const sheetClosers = new Map<string, () => void>();
+
+/**
+ * Ir a otra pantalla (la página de un equipo o la ficha de un pelotero) desde dentro de una hoja: el Modal de la hoja la
+ * taparía. Se cierran las hojas abiertas y se navega cuando se fueron (en iOS hay que esperar que termine de bajar la hoja,
+ * como el selector del Fantasy). Sin hojas abiertas, se navega de una vez.
+ */
+export const leaveSheets = (go: () => void) => {
+    if (!openSheets.length) {
+        go();
+        return;
+    }
+    openSheets.forEach((id) => sheetClosers.get(id)?.());
+    setTimeout(go, Platform.OS === 'ios' ? 450 : 0);
+};
+
 const useTopSheet = () => useSyncExternalStore(subscribeSheets, () => openSheets[openSheets.length - 1] ?? null, () => null);
 const useOverlayTurn = () => useSyncExternalStore(subscribeSheets, () => overlayTurn, () => 0);
 
@@ -427,10 +444,18 @@ export const Sheet: React.FC<{ open: boolean; onClose: () => void; title: string
     const { t } = useTranslation();
     const id = useId();
     const topSheet = useTopSheet();
+    const close = useRef(onClose);
+    useEffect(() => {
+        close.current = onClose;
+    }, [onClose]);
     useEffect(() => {
         if (!open) return;
+        sheetClosers.set(id, () => close.current());
         setOpenSheets([...openSheets, id]);
-        return () => setOpenSheets(openSheets.filter((sheet) => sheet !== id));
+        return () => {
+            sheetClosers.delete(id);
+            setOpenSheets(openSheets.filter((sheet) => sheet !== id));
+        };
     }, [open, id]);
     return (
         <Modal

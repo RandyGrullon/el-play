@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Bell, BellRing, Share2, Star } from 'lucide-react-native';
@@ -8,11 +8,13 @@ import { finalLabel, inningName, isOnHold, isSuspended, stateName } from '../../
 import { formatCountdown, formatTime } from '../../lib/format';
 import { usePrefetchGame } from '../../lib/queries';
 import { teamDisplayName } from '../../lib/teams';
+import { decisionParts } from '../../lib/links';
 import { usePreferences } from '../../state/preferences';
 import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Card, Row, Skeleton, TeamLogo, Txt } from '../ui';
 import { Bases, OutsDots } from '../game/Bases';
+import { TeamLink, playerTextLink } from '../stats/common';
 import { PulseDot } from './PulseDot';
 import { alertsAvailable, useAlertToggle } from './alerts';
 import { useNow } from './useNow';
@@ -39,9 +41,11 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
         const ink = inkOn(team.color);
         return (
             <View style={{ flex: 1, minWidth: 0, justifyContent: 'center', alignItems: align === 'end' ? 'flex-end' : 'flex-start', paddingHorizontal: 16, paddingVertical: 16, backgroundColor: team.color }}>
-                <Txt size={15} weight="bold" color={ink} numberOfLines={1} style={{ maxWidth: '100%' }}>
-                    {teamDisplayName(team, i18n.language)}
-                </Txt>
+                <TeamLink id={team.id} name={teamDisplayName(team, i18n.language)} style={{ maxWidth: '100%' }}>
+                    <Txt size={15} weight="bold" color={ink} numberOfLines={1}>
+                        {teamDisplayName(team, i18n.language)}
+                    </Txt>
+                </TeamLink>
                 <Txt size={54} weight="extrabold" color={ink} tabular style={{ lineHeight: 56 }}>
                     {team.score ?? 0}
                 </Txt>
@@ -69,7 +73,7 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                             {live.balls}-{live.strikes}
                         </Txt>
                         {live.batter && (
-                            <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} style={{ flex: 1, textAlign: 'right' }}>
+                            <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} style={{ flex: 1, textAlign: 'right' }} {...playerTextLink(live.batter)}>
                                 {t('card.batting', { name: live.batter.name })}
                             </Txt>
                         )}
@@ -90,11 +94,14 @@ const TeamRow: React.FC<{ team: ScheduleTeam; dim: boolean; showScore: boolean }
     const { favoriteTeamId } = usePreferences();
     return (
         <Row gap={12}>
-            <TeamLogo team={team} size={30} />
             <Row gap={6} style={{ flex: 1, minWidth: 0 }}>
-                <Txt size={16} weight="bold" tone={dim ? 'muted' : 'ink'} numberOfLines={1} style={{ flexShrink: 1 }}>
-                    {teamDisplayName(team, i18n.language)}
-                </Txt>
+                {/* Logo y nombre van a la página del equipo; el resto de la tarjeta abre el juego */}
+                <TeamLink id={team.id} name={teamDisplayName(team, i18n.language)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexShrink: 1, minWidth: 0 }}>
+                    <TeamLogo team={team} size={30} />
+                    <Txt size={16} weight="bold" tone={dim ? 'muted' : 'ink'} numberOfLines={1} style={{ flexShrink: 1 }}>
+                        {teamDisplayName(team, i18n.language)}
+                    </Txt>
+                </TeamLink>
                 {favoriteTeamId === team.id && <Star size={14} color={colors.gold} fill={colors.gold} />}
                 {team.record && (
                     <Txt size={12} weight="semibold" tone="muted" tabular style={{ flexShrink: 0 }}>
@@ -139,12 +146,23 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame; onShare?: (game: Sched
     }
 
     const pill = (text: React.ReactNode, background: string) => <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, backgroundColor: background, paddingHorizontal: 12, paddingVertical: 4 }}>{text}</View>;
-    const footer =
-        final && game.decisions?.winner
-            ? [t('card.win', { name: game.decisions.winner.name }), game.decisions.save ? t('card.save', { name: game.decisions.save.name }) : game.decisions.loser ? t('card.loss', { name: game.decisions.loser.name }) : ''].filter(Boolean).join(' · ')
-            : game.state === 'preview' && (game.away.probable || game.home.probable)
-              ? `${game.away.probable?.name ?? t('preview.tbd')} vs ${game.home.probable?.name ?? t('preview.tbd')} · ${game.venue}`
-              : null;
+    // Cada pitcher de la línea de abajo abre su ficha (Text anidado: la línea se ve igual)
+    const decisions = final ? decisionParts(game.decisions) : [];
+    const winnerTeam = game.away.isWinner ? game.away : game.home;
+    const loserTeam = winnerTeam === game.away ? game.home : game.away;
+    const probable = (team: ScheduleTeam) => (team.probable ? <Text {...playerTextLink({ ...team.probable, teamId: team.id })}>{team.probable.name}</Text> : t('preview.tbd'));
+    const footer = decisions.length ? (
+        decisions.map(({ key, person }, index) => (
+            <React.Fragment key={key}>
+                {index ? ' · ' : ''}
+                <Text {...playerTextLink({ ...person, teamId: (key === 'loss' ? loserTeam : winnerTeam).id })}>{t(`card.${key}`, { name: person.name })}</Text>
+            </React.Fragment>
+        ))
+    ) : game.state === 'preview' && (game.away.probable || game.home.probable) ? (
+        <>
+            {probable(game.away)} vs {probable(game.home)} · {game.venue}
+        </>
+    ) : null;
 
     return (
         <Pressable onPress={open} onPressIn={warm} onHoverIn={warm} accessibilityRole="link" accessibilityLabel={label} style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}>

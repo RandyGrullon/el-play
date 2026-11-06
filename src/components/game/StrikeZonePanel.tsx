@@ -11,6 +11,7 @@ import { StrikeZone } from './StrikeZone';
 import { uniformColors } from './BatterFigure';
 import { PitchList } from './PitchList';
 import { InningBreak } from './InningBreak';
+import { playerTextLink } from '../stats/common';
 
 type Mode = 'atBat' | 'pitcher';
 
@@ -118,14 +119,14 @@ export const StrikeZonePanel: React.FC<{ game: GameDetail; atBat?: AtBat | null 
                 ) : mode === 'atBat' ? (
                     <Row gap={8} wrap>
                         <Txt size={14}>
-                            <Txt size={14} weight="semibold">
+                            <Txt size={14} weight="semibold" {...playerTextLink({ ...atBat.batter, teamId: (atBat.top ? game.away : game.home).id })}>
                                 {atBat.batter.name}
                             </Txt>
                             <Txt size={14} tone="muted">
                                 {' '}
                                 {t('zone.facing')}{' '}
                             </Txt>
-                            <Txt size={14} weight="semibold">
+                            <Txt size={14} weight="semibold" {...playerTextLink({ ...atBat.pitcher, teamId: (atBat.top ? game.home : game.away).id })}>
                                 {atBat.pitcher.name}
                             </Txt>
                         </Txt>
@@ -138,7 +139,7 @@ export const StrikeZonePanel: React.FC<{ game: GameDetail; atBat?: AtBat | null 
                 ) : (
                     <>
                         <Txt size={14}>
-                            <Txt size={14} weight="semibold">
+                            <Txt size={14} weight="semibold" {...playerTextLink(pitcher && { ...pitcher, teamId: (atBat.top ? game.home : game.away).id })}>
                                 {pitcher?.name}
                             </Txt>
                             <Txt size={14} tone="muted">

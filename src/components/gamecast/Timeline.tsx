@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { AtBat, GameDetail, Pitch } from '../../types';
 import { describePlay, eventName, eventTone, inningName, pitchCallName, pitchTypeName } from '../../lib/baseball';
@@ -8,6 +8,8 @@ import { useColors } from '../../theme/theme';
 import { alpha, radius, shadow, type Palette } from '../../theme/tokens';
 import { Row, Txt } from '../ui';
 import { toneColors } from '../game/colors';
+import { gamePeople, type LinkPerson } from '../../lib/links';
+import { LinkedNames, playerTextLink, teamTextLink } from '../stats/common';
 
 const PitchBubble: React.FC<{ pitch: Pitch; last: boolean }> = ({ pitch, last }) => {
     const { t, i18n } = useTranslation();
@@ -25,7 +27,7 @@ const PitchBubble: React.FC<{ pitch: Pitch; last: boolean }> = ({ pitch, last })
     );
 };
 
-const PlayBubble: React.FC<{ atBat: AtBat; game: GameDetail }> = ({ atBat, game }) => {
+const PlayBubble: React.FC<{ atBat: AtBat; game: GameDetail; people: LinkPerson[] }> = ({ atBat, game, people }) => {
     const { i18n } = useTranslation();
     const colors = useColors();
     const team = atBat.top ? game.away : game.home;
@@ -40,13 +42,13 @@ const PlayBubble: React.FC<{ atBat: AtBat; game: GameDetail }> = ({ atBat, game 
                 </View>
                 {atBat.scoring && atBat.away !== null && (
                     <Txt size={12} weight="bold" tabular>
-                        {game.away.abbrev} {atBat.away} · {game.home.abbrev} {atBat.home}
+                        <Text {...teamTextLink(game.away.id)}>{game.away.abbrev}</Text> {atBat.away} · <Text {...teamTextLink(game.home.id)}>{game.home.abbrev}</Text> {atBat.home}
                     </Txt>
                 )}
                 <View style={{ marginLeft: 'auto', width: 8, height: 8, borderRadius: 4, backgroundColor: team.color }} />
             </Row>
             <Txt size={14} style={{ lineHeight: 19 }}>
-                {describePlay(atBat.desc, i18n.language)}
+                <LinkedNames text={describePlay(atBat.desc, i18n.language)} people={[{ ...atBat.batter, teamId: team.id }, atBat.pitcher, ...people]} />
             </Txt>
         </View>
     );
@@ -65,7 +67,7 @@ const ACTION_TONE: Partial<Record<ActionKind, keyof Palette>> = {
 };
 
 /** Una acción del juego (robo, cambio de lanzador, visita al montículo…) como aviso pequeño en medio de la charla */
-const ActionLine: React.FC<{ kind: ActionKind; desc: string }> = ({ kind, desc }) => {
+const ActionLine: React.FC<{ kind: ActionKind; desc: string; people: LinkPerson[] }> = ({ kind, desc, people }) => {
     const { t, i18n } = useTranslation();
     const colors = useColors();
     const label = t(`timeline.actions.${kind}`);
@@ -78,7 +80,12 @@ const ActionLine: React.FC<{ kind: ActionKind; desc: string }> = ({ kind, desc }
                 <Txt size={12} weight="extrabold" color={colors[ACTION_TONE[kind] ?? 'ink']} style={{ textTransform: 'uppercase', letterSpacing: 0.3 }}>
                     {label}
                 </Txt>
-                {same ? null : ` · ${text}`}
+                {same ? null : (
+                    <>
+                        {' · '}
+                        <LinkedNames text={text} people={people} />
+                    </>
+                )}
             </Txt>
         </View>
     );
@@ -92,6 +99,8 @@ export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () 
     const current = game.state === 'live' ? game.atBats.find((atBat) => atBat.i === game.currentAtBat && !atBat.complete) : undefined;
     const currentActions = current ? timelineActions(current) : [];
     const past = game.atBats.filter((atBat) => atBat.complete).reverse();
+    // Los nombres de las jugadas abren la ficha de cada uno
+    const people = useMemo(() => gamePeople(game), [game]);
     // Cada jugada con el separador de su media entrada (solo la primera de cada una)
     const shown = past.slice(0, limit).map((atBat, index, list) => {
         const half = inningName({ n: atBat.inning, isTop: atBat.top }, i18n.language);
@@ -106,13 +115,13 @@ export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () 
                     <View style={[{ maxWidth: '88%', alignSelf: 'flex-start', borderRadius: 22, borderBottomLeftRadius: 6, backgroundColor: colors.surface, paddingHorizontal: 16, paddingVertical: 12 }, shadow('card')]}>
                         <Txt size={14}>
                             {t('timeline.atBat')}{' '}
-                            <Txt size={14} weight="bold">
+                            <Txt size={14} weight="bold" {...playerTextLink({ ...current.batter, teamId: (current.top ? game.away : game.home).id })}>
                                 {current.batter.name}
                             </Txt>{' '}
                             <Txt size={14} tone="muted">
                                 {t('zone.facing')}
                             </Txt>{' '}
-                            <Txt size={14} weight="bold">
+                            <Txt size={14} weight="bold" {...playerTextLink({ ...current.pitcher, teamId: (current.top ? game.home : game.away).id })}>
                                 {current.pitcher.name}
                             </Txt>
                         </Txt>
@@ -135,7 +144,7 @@ export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () 
                                     item.pitch ? (
                                         <PitchBubble key={`p${index}`} pitch={item.pitch} last={item.at === current.pitches.length - 1} />
                                     ) : (
-                                        <ActionLine key={`a${index}`} kind={item.action!.kind!} desc={item.action!.desc} />
+                                        <ActionLine key={`a${index}`} kind={item.action!.kind!} desc={item.action!.desc} people={people} />
                                     )
                                 )
                         )}
@@ -149,12 +158,12 @@ export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () 
                             {separator}
                         </Txt>
                     )}
-                    <PlayBubble atBat={atBat} game={game} />
+                    <PlayBubble atBat={atBat} game={game} people={people} />
                     {/* De la más nueva a la más vieja: lo que pasó durante el turno va debajo de su resultado */}
                     {timelineActions(atBat)
                         .reverse()
                         .map((action, index) => (
-                            <ActionLine key={index} kind={action.kind!} desc={action.desc} />
+                            <ActionLine key={index} kind={action.kind!} desc={action.desc} people={people} />
                         ))}
                 </React.Fragment>
             ))}

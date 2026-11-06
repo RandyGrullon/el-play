@@ -13,6 +13,7 @@ import { useIsPro } from '../../lib/pro';
 import { useColors } from '../../theme/theme';
 import { fonts, inkOn, radius, shadow } from '../../theme/tokens';
 import { ProBadge, Txt } from '../ui';
+import { teamTextLink } from '../stats/common';
 import { Odometer, PlusOne } from '../pro/kit';
 import { PulseDot } from '../feed/PulseDot';
 import { useNow } from '../feed/useNow';
@@ -166,7 +167,7 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
                         {team.score ?? 0}
                     </Txt>
                 ) : (
-                    <Txt size={30} weight="extrabold" color={ink} style={{ lineHeight: 32 }}>
+                    <Txt size={30} weight="extrabold" color={ink} style={{ lineHeight: 32 }} {...teamTextLink(team.id)}>
                         {team.abbrev}
                     </Txt>
                 )}

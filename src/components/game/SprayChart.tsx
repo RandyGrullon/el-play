@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import type { GameDetail } from '../../types';
@@ -8,6 +8,7 @@ import { useColors } from '../../theme/theme';
 import { radius } from '../../theme/tokens';
 import { Card, Row, Segmented, Txt } from '../ui';
 import { Legend } from './StrikeZone';
+import { playerTextLink } from '../stats/common';
 
 // Mapa de batazos: dónde cayó cada bola puesta en juego. Coordenadas del cuadro de Gameday (250×250, home en
 // ≈125,198, ~2,5 pies por unidad); el anotador las marca en todos los estadios, también en los que no tienen rastreo.
@@ -126,7 +127,7 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                 {current ? (
                     <View style={{ borderRadius: radius.tile, backgroundColor: colors.raised, padding: 12 }}>
                         <Txt size={14} weight="extrabold">
-                            {current.atBat.batter.name} ·{' '}
+                            <Text {...playerTextLink({ ...current.atBat.batter, teamId: (current.atBat.top ? game.away : game.home).id })}>{current.atBat.batter.name}</Text> ·{' '}
                             <Txt size={14} weight="extrabold" color={tint[current.kind]}>
                                 {eventName(current.atBat, i18n.language)}
                             </Txt>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Linking, Platform, Pressable, View, useWindowDimensions } from 'react-native';
+import { AppState, Linking, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
@@ -44,6 +44,7 @@ import { capitalize, waitingForNetwork } from '../../components/feed/DayChips';
 import { useNow } from '../../components/feed/useNow';
 import { useShare } from '../../components/share/ShareSheet';
 import { playerFromPerformer, resultFromGame } from '../../components/share/subjects';
+import { openPlayer, openTeam, playerTextLink, teamTextLink } from '../../components/stats/common';
 
 type SheetName = 'zone' | 'plays' | 'box' | null;
 
@@ -177,20 +178,20 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: SheetName) => void; o
                     </View>
                     {pause ? (
                         <View style={{ minWidth: 0, flexShrink: 1, alignItems: 'center' }}>
-                            <Txt size={14} weight="bold" numberOfLines={1}>
+                            <Txt size={14} weight="bold" numberOfLines={1} {...(leadoff ? playerTextLink({ ...leadoff, teamId: pause.next.id }) : teamTextLink(pause.next.id))}>
                                 {leadoff ? lastName(leadoff.name) : pause.next.abbrev}
                             </Txt>
-                            <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} center>
+                            <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} center {...(leadoff ? teamTextLink(pause.next.id) : {})}>
                                 {leadoff ? t('zone.breakLeadsOff', { team: pause.next.abbrev }) : t('zone.breakStatus')}
                             </Txt>
                         </View>
                     ) : game.matchup && (
                         <View style={{ minWidth: 0, flexShrink: 1, alignItems: 'center' }}>
-                            <Txt size={14} weight="bold" numberOfLines={1}>
+                            <Txt size={14} weight="bold" numberOfLines={1} {...playerTextLink({ ...game.matchup.batter, teamId: batting.id })}>
                                 {lastName(game.matchup.batter.name)}
                             </Txt>
                             <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} center>
-                                {t('zone.facing')} {lastName(game.matchup.pitcher.name)}
+                                {t('zone.facing')} <Text {...playerTextLink({ ...game.matchup.pitcher, teamId: (batting === game.away ? game.home : game.away).id })}>{lastName(game.matchup.pitcher.name)}</Text>
                             </Txt>
                         </View>
                     )}
@@ -276,7 +277,14 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                     {(['away', 'home'] as const).map((side) => {
                         const pitcher = game.probables[side];
                         return (
-                            <Pressable key={side} disabled={!pitcher} onPress={() => pitcher && router.push(`/jugador/${pitcher.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                            // Sin abridor anunciado, la fila (logo y nombre) lleva a la página del equipo
+                            <Pressable
+                                key={side}
+                                onPress={() => (pitcher ? openPlayer({ id: pitcher.id, name: pitcher.name, teamId: game[side].id }) : openTeam(game[side].id))}
+                                accessibilityRole="link"
+                                accessibilityLabel={pitcher ? t('statsPage.viewPlayer', { name: pitcher.name }) : t('team.open', { team: teamDisplayName(game[side], i18n.language) })}
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+                            >
                                 {pitcher ? (
                                     <PlayerPhoto personId={pitcher.id} name={pitcher.name} size={56} background={alpha(game[side].color, 0.2)} team={game[side]} />
                                 ) : (
@@ -288,7 +296,7 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                                     <Txt weight="extrabold" numberOfLines={1}>
                                         {pitcher?.name ?? t('preview.tbd')}
                                     </Txt>
-                                    <Txt size={14} tone="muted" numberOfLines={1}>
+                                    <Txt size={14} tone="muted" numberOfLines={1} {...(pitcher ? teamTextLink(game[side].id) : {})}>
                                         {teamDisplayName(game[side], i18n.language)}
                                     </Txt>
                                 </View>

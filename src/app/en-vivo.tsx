@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +16,8 @@ import { Bases } from '../components/game/Bases';
 import { PulseDot } from '../components/feed/PulseDot';
 import { waitingForNetwork } from '../components/feed/DayChips';
 import { useNow } from '../components/feed/useNow';
+import { TeamLink, playerTextLink, teamTextLink } from '../components/stats/common';
+import { teamDisplayName } from '../lib/teams';
 
 const close = () => {
     if (router.canGoBack()) router.back();
@@ -53,17 +55,20 @@ export default function LiveGamesScreen() {
                 accessibilityRole="link"
                 style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: radius.tile, backgroundColor: colors.surface, padding: 12, opacity: pressed ? 0.85 : 1 }, shadow('card')]}
             >
-                <TeamLogo team={game.away} size={36} />
+                {/* Logos y siglas van a la página del equipo; el resto de la fila abre el juego */}
+                <TeamLink id={game.away.id} name={teamDisplayName(game.away, i18n.language)}>
+                    <TeamLogo team={game.away} size={36} />
+                </TeamLink>
                 <View style={{ flex: 1, minWidth: 0 }}>
                     <Txt weight="bold" numberOfLines={1}>
-                        {game.away.abbrev} {game.away.score ?? ''}{' '}
+                        <Text {...teamTextLink(game.away.id)}>{game.away.abbrev}</Text> {game.away.score ?? ''}{' '}
                         <Txt weight="bold" tone="muted">
                             ·
                         </Txt>{' '}
-                        {game.home.abbrev} {game.home.score ?? ''}
+                        <Text {...teamTextLink(game.home.id)}>{game.home.abbrev}</Text> {game.home.score ?? ''}
                     </Txt>
                     {isLive && game.live?.batter ? (
-                        <Txt size={12} tone="muted" numberOfLines={1}>
+                        <Txt size={12} tone="muted" numberOfLines={1} {...playerTextLink(game.live.batter)}>
                             {t('card.batting', { name: game.live.batter.name })}
                         </Txt>
                     ) : !isLive ? (
@@ -79,7 +84,9 @@ export default function LiveGamesScreen() {
                         {isLive && game.live ? inningName({ n: game.live.inning, isTop: game.live.isTop, state: game.live.inningState }, i18n.language, true) : formatTime(game.date, i18n.language)}
                     </Txt>
                 </View>
-                <TeamLogo team={game.home} size={36} />
+                <TeamLink id={game.home.id} name={teamDisplayName(game.home, i18n.language)}>
+                    <TeamLogo team={game.home} size={36} />
+                </TeamLink>
             </Pressable>
         );
     };
