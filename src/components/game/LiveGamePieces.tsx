@@ -7,7 +7,7 @@ import Svg, { Circle, ClipPath, Defs, G, Line, Path, Rect, Text as SvgText } fro
 import { useTranslation } from 'react-i18next';
 import { Clock, Flame, Info } from 'lucide-react-native';
 import type { GameDetail } from '../../types';
-import { eventName, inningName, stateName } from '../../lib/baseball';
+import { eventName, inningName, stateName, weatherName, weatherTemp } from '../../lib/baseball';
 import { formatTime, lastName } from '../../lib/format';
 import { biggestSwings, winNow, winSeries, type WinPoint } from '../../lib/liveWinProbability';
 import { fatigueOf, hoursMinutes, noHitterOf, staleMinutes, umpireRole, velocityTrend, windText, type Fatigue } from '../../lib/liveGame';
@@ -387,7 +387,7 @@ export const PitcherCard: React.FC<{ game: GameDetail }> = ({ game }) => {
                         {pitcher.name}
                     </Txt>
                     <Txt size={12} tone="muted" numberOfLines={1}>
-                        {[t(starter ? 'pitcherNow.starter' : 'pitcherNow.reliever'), pitcher.era ? t('game.seasonEra', { era: pitcher.era }) : null].filter(Boolean).join(' · ')}
+                        {[pitcher.hand ? t(`game.throws${pitcher.hand}`, { defaultValue: pitcher.hand }) : null, t(starter ? 'pitcherNow.starter' : 'pitcherNow.reliever'), pitcher.era ? t('game.seasonEra', { era: pitcher.era }) : null].filter(Boolean).join(' · ')}
                     </Txt>
                 </View>
             </Row>
@@ -443,6 +443,10 @@ export const GameDetails: React.FC<{ game: GameDetail }> = ({ game }) => {
     const info = game.info;
     const rows: { label: string; value: string }[] = [];
     if (game.venue) rows.push({ label: t('details.venue'), value: game.venue });
+    if (game.weather) {
+        const temp = weatherTemp(game.weather.temp, i18n.language);
+        rows.push({ label: t('details.weather'), value: `${weatherName(game.weather.condition, i18n.language)}${temp ? ` · ${temp}` : ''}` });
+    }
     const wind = windText(info?.wind, i18n.language);
     if (wind) rows.push({ label: t('details.wind'), value: wind });
     if (info?.firstPitch) rows.push({ label: t('details.firstPitch'), value: formatTime(info.firstPitch, i18n.language) });
