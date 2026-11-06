@@ -344,7 +344,7 @@ it('suspendido: con fecha nueva se espera como programado; sin ella, en espera c
 const SCREENS = path.join(OUT, 'pantallas');
 const compileTo = (rel) => {
     const source = fs.readFileSync(path.join(ROOT, 'src', rel), 'utf8');
-    const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.React } });
+    const { outputText } = ts.transpileModule(source, { fileName: rel, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.React } });
     const target = path.join(SCREENS, rel.replace(/\.tsx?$/, '.js'));
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, outputText);
@@ -356,7 +356,8 @@ const stub = (rel, code) => {
     fs.writeFileSync(target, code);
 };
 stub('node_modules/@tanstack/react-query/index.js', 'exports.useQuery = () => ({});\n');
-stub('lib/api.js', 'exports.ApiError = class ApiError extends Error {};\nexports.getApiJson = async () => ({});\n');
+stub('lib/api.js', "exports.ApiError = class ApiError extends Error {};\nexports.getApiJson = async () => ({});\nexports.networkErrorCode = async () => 'network';\n");
+stub('lib/config.js', "exports.API_BASE = '';\n");
 compileTo('lib/advanced.ts');
 const teamStats = require(compileTo('lib/teamStats.ts'));
 
@@ -423,6 +424,23 @@ it('el líder para la imagen: la categoría en singular si es 1, su puesto y la 
     const varios = subjects.playerFromLeader(lider(12, { ip: '46.1', k: 34 }), 'strikeouts', '2099-00', 'Liga de Prueba', tKeys);
     partial(varios, { value: '12', label: 'leaders.strikeouts', detail: 'share.innings{"ip":"46.1","k":34}' });
     assert.strictEqual(subjects.playerFromLeader(lider(null, {}), 'wins', '2099-00', 'Liga', tKeys).value, '—');
+});
+
+console.log('ficha del pelotero');
+
+const { careerTotal } = require(compileTo('lib/stats.ts'));
+
+it('total de la carrera: sumas de todas las temporadas (EFE, AVG y OPS de las sumas); con una sola, no hay', () => {
+    const bateo = (g, ab, h, d, t, hr, rbi, bb, hbp, sf) => ({ hitting: { g, ab, h, d, t, hr, rbi, bb, hbp, sf } });
+    const bateador = { role: 'B', career: [bateo(40, 150, 45, 8, 1, 5, 20, 15, 2, 1), bateo(30, 100, 25, 4, 0, 2, 10, 10, 1, 0)] };
+    // 70 J, 70 H en 250 VB (.280), 7 HR, 30 CI; OBP 98/279, SLG 105/250
+    assert.deepStrictEqual(careerTotal(bateador), [70, '.280', 7, 30, ((98 / 279 + 105 / 250).toFixed(3)).replace(/^0/, '')]);
+    const pitcheo = (g, w, l, outs, er, k) => ({ pitching: { g, w, l, outs, er, k } });
+    const lanzador = { role: 'P', career: [pitcheo(10, 3, 2, 100, 12, 40), pitcheo(8, 1, 1, 44, 6, 20)] };
+    // 144 outs = 48.0 IP; 18 CL → 3.38
+    assert.deepStrictEqual(careerTotal(lanzador), [18, '4-3', '3.38', '48.0', 60]);
+    assert.deepStrictEqual(careerTotal({ role: 'P', career: [pitcheo(5, 1, 0, 31, 0, 9), pitcheo(2, 0, 0, 0, 0, 0)] }).slice(2, 4), ['0.00', '10.1']);
+    assert.strictEqual(careerTotal({ role: 'B', career: [bateo(1, 3, 1, 0, 0, 0, 0, 0, 0, 0)] }), null);
 });
 
 fs.rmSync(OUT, { recursive: true, force: true });

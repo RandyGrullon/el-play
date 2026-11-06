@@ -1035,7 +1035,10 @@
     "abs_one": "{{count}} turno",
     "abs_other": "{{count}} turnos",
     "chase": "le tira a {{pct}} % de los de afuera",
-    "whiffPct": "Abanica"
+    "whiffPct": "Abanica",
+    "total": "Total",
+    "seasons_one": "{{count}} temporada",
+    "seasons_other": "{{count}} temporadas"
   },
   "account": {
     "title": "Tu cuenta",

@@ -434,6 +434,28 @@ export const seasonSummary = (row: Pick<PlayerRow, 'role' | 'hitting' | 'pitchin
     return t('statsPage.batSummary', { avg: h.avg, hr: h.hr, rbi: h.rbi, h: h.h, ab: h.ab });
 };
 
+const careerRate = (value: number) => (Number.isFinite(value) ? value.toFixed(3).replace(/^0/, '') : '—');
+
+/**
+ * Lo de todas sus temporadas en la liga (con más de una fila), como la web (PlayerSheet): lanzador [J, G-P, EFE, IP, K];
+ * bateador [J, AVG, HR, CI, OPS]. La EFE y el OPS salen de las sumas, no del promedio de cada temporada.
+ */
+export const careerTotal = (player: Pick<PlayerDetail, 'role' | 'career'>): (string | number)[] | null => {
+    if (player.career.length < 2) return null;
+    if (player.role === 'P') {
+        const sum = (key: 'g' | 'w' | 'l' | 'outs' | 'er' | 'k') => player.career.reduce((total, row) => total + (row.pitching?.[key] ?? 0), 0);
+        const outs = sum('outs');
+        return [sum('g'), `${sum('w')}-${sum('l')}`, outs ? ((sum('er') * 27) / outs).toFixed(2) : '—', `${Math.floor(outs / 3)}.${outs % 3}`, sum('k')];
+    }
+    const sum = (key: 'g' | 'ab' | 'h' | 'd' | 't' | 'hr' | 'rbi' | 'bb' | 'hbp') => player.career.reduce((total, row) => total + (row.hitting?.[key] ?? 0), 0);
+    const sf = player.career.reduce((total, row) => total + (row.hitting?.sf ?? 0), 0);
+    const ab = sum('ab');
+    const h = sum('h');
+    const tb = h + sum('d') + 2 * sum('t') + 3 * sum('hr');
+    const obp = (h + sum('bb') + sum('hbp')) / (ab + sum('bb') + sum('hbp') + sf);
+    return [sum('g'), careerRate(h / ab), sum('hr'), sum('rbi'), careerRate(obp + tb / ab)];
+};
+
 /** Línea de un juego: «2-4, HR, 3 CI» o «6.0 IP, 7 K, 1 CL» */
 export const gameLine = (game: Pick<GameLogRow, 'hitting' | 'pitching'>, role: 'B' | 'P', t: (key: string, options?: Record<string, unknown>) => string) => {
     if (role === 'P' && game.pitching) {

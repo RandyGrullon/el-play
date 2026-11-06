@@ -9,14 +9,14 @@ import { useTranslation } from 'react-i18next';
 import { ChevronRight, Sparkles } from 'lucide-react-native';
 import { useLeague } from '../../state/league';
 import { localeFor, seasonLabel } from '../../lib/format';
-import { gameLine, usePlayer, type CareerRow, type GameLogRow, type PlayerDetail, type PlayersData } from '../../lib/stats';
+import { careerTotal, gameLine, usePlayer, type CareerRow, type GameLogRow, type PlayerDetail, type PlayersData } from '../../lib/stats';
 import { useIsPro } from '../../lib/pro';
 import type { Leaders, Schedule, Standings, StandingRow } from '../../types';
 import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Card, ErrorState, Gradient, PlayerPhoto, Row, Segmented, Skeleton, TeamLogo, Txt, useErrorText, type LogoTeam } from '../ui';
 import { CellText, FrozenTable, HeadText, type FrozenColumn } from './FrozenTable';
-import { MoreButton } from './common';
+import { MoreButton, openTeam } from './common';
 import { Percentiles, Postseason, RecentPitches, Situations } from './PlayerExtras';
 import { PlayerProfilePro } from '../pro/ficha/PlayerProfilePro';
 
@@ -97,9 +97,25 @@ const PlayerProfileLite: React.FC<PlayerProfileProps> = ({ id, name, team, seaso
                         <Txt size={26} weight="extrabold" color={ink} style={{ lineHeight: 28, letterSpacing: -0.3 }}>
                             {player?.name || name || ' '}
                         </Txt>
-                        <Txt size={14} weight="semibold" color={ink} numberOfLines={1} style={{ marginTop: 2, opacity: 0.85 }}>
-                            {player?.team?.name || ' '}
-                        </Txt>
+                        {player?.team ? (
+                            // Su equipo lleva a la página del equipo
+                            <Pressable
+                                onPress={() => openTeam(player.team!.id)}
+                                accessibilityRole="link"
+                                accessibilityLabel={t('team.open', { team: player.team.name })}
+                                hitSlop={6}
+                                style={({ pressed }) => ({ marginTop: 2, flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', maxWidth: '100%', opacity: pressed ? 0.6 : 0.9 })}
+                            >
+                                <Txt size={14} weight="semibold" color={ink} numberOfLines={1} style={{ flexShrink: 1 }}>
+                                    {player.team.name}
+                                </Txt>
+                                <ChevronRight size={14} color={ink} />
+                            </Pressable>
+                        ) : (
+                            <Txt size={14} weight="semibold" color={ink} numberOfLines={1} style={{ marginTop: 2, opacity: 0.85 }}>
+                                {' '}
+                            </Txt>
+                        )}
                     </View>
                 </Row>
                 {player && <Bio player={player} ink={ink} />}
@@ -357,6 +373,9 @@ const GameLog: React.FC<{ player: PlayerDetail; onOpenGame: (gamePk: number) => 
     );
 };
 
+/** Una fila de la tabla de carrera: una temporada, o la de «Total» arriba (con sus cifras ya calculadas) */
+type CareerLine = CareerRow & { total?: (string | number)[]; seasons?: number };
+
 const Career: React.FC<{ player: PlayerDetail }> = ({ player }) => {
     const { t } = useTranslation();
     const colors = useColors();
@@ -365,55 +384,74 @@ const Career: React.FC<{ player: PlayerDetail }> = ({ player }) => {
     const l = (key: string) => t(`statsPage.labels.${key}`);
     const pitcher = player.role === 'P';
     const title = t('statsPage.career', { league: t(`leagues.${activeLeague}.name`) });
-    const current = (row: CareerRow) => row.season === player.season;
+    const current = (row: CareerLine) => !row.total && row.season === player.season;
+    // Con más de una temporada, arriba va la fila «Total» (como la web)
+    const totals = careerTotal(player);
+    const totalLine: CareerLine | null = totals
+        ? { season: 0, team: null, pts: Math.round(player.career.reduce((sum, row) => sum + row.pts, 0) * 10) / 10, total: totals, seasons: new Set(player.career.map((row) => row.season)).size }
+        : null;
+    const lines: CareerLine[] = totalLine ? [totalLine, ...player.career] : player.career;
     // PTS crece con el valor más largo (111.5 no cabe en 48 px)
-    const ptsWidth = Math.max(48, 20 + 8 * Math.max(...player.career.map((row) => String(row.pts).length)));
-    const stat =(key: string, width: number, value: (row: CareerRow) => React.ReactNode): FrozenColumn<CareerRow> => ({
+    const ptsWidth = Math.max(48, 20 + 8 * Math.max(...lines.map((row) => String(row.pts).length)));
+    const stat = (key: string, width: number, index: number, value: (row: CareerLine) => React.ReactNode): FrozenColumn<CareerLine> => ({
         key,
         width,
         header: <HeadText>{l(key)}</HeadText>,
-        cell: (row) => <CellText bold={current(row)}>{value(row) ?? '—'}</CellText>
+        cell: (row) => (row.total ? <CellText strong>{row.total[index]}</CellText> : <CellText bold={current(row)}>{value(row) ?? '—'}</CellText>)
     });
-    const columns: FrozenColumn<CareerRow>[] = [
+    const columns: FrozenColumn<CareerLine>[] = [
         {
             key: 'team',
             width: 72,
             align: 'left',
             header: <HeadText>{l('team')}</HeadText>,
-            cell: (row) => (
-                <Row gap={6}>
-                    {row.team && <TeamLogo team={row.team} size={18} />}
-                    <CellText bold={current(row)}>{row.team?.abbrev ?? '—'}</CellText>
-                </Row>
-            )
+            cell: (row) =>
+                row.total ? (
+                    <CellText strong tone="muted">
+                        {t('playerMore.seasons', { count: row.seasons })}
+                    </CellText>
+                ) : (
+                    <Row gap={6}>
+                        {row.team && <TeamLogo team={row.team} size={18} />}
+                        <CellText bold={current(row)}>{row.team?.abbrev ?? '—'}</CellText>
+                    </Row>
+                )
         },
         { key: 'pts', width: ptsWidth, header: <HeadText>{l('pts')}</HeadText>, cell: (row) => <CellText strong color={colors.accentInk}>{row.pts}</CellText> },
         ...(pitcher
             ? [
-                  stat('g', 40, (row) => row.pitching?.g),
-                  stat('wl', 52, (row) => `${row.pitching?.w ?? 0}-${row.pitching?.l ?? 0}`),
-                  stat('era', 56, (row) => row.pitching?.era),
-                  stat('ip', 52, (row) => row.pitching?.ip),
-                  stat('k', 44, (row) => row.pitching?.k)
+                  stat('g', 40, 0, (row) => row.pitching?.g),
+                  stat('wl', 52, 1, (row) => `${row.pitching?.w ?? 0}-${row.pitching?.l ?? 0}`),
+                  stat('era', 56, 2, (row) => row.pitching?.era),
+                  stat('ip', 52, 3, (row) => row.pitching?.ip),
+                  stat('k', 44, 4, (row) => row.pitching?.k)
               ]
             : [
-                  stat('g', 40, (row) => row.hitting?.g),
-                  stat('avg', 56, (row) => row.hitting?.avg),
-                  stat('hr', 44, (row) => row.hitting?.hr),
-                  stat('rbi', 44, (row) => row.hitting?.rbi),
-                  stat('ops', 60, (row) => row.hitting?.ops)
+                  stat('g', 40, 0, (row) => row.hitting?.g),
+                  stat('avg', 56, 1, (row) => row.hitting?.avg),
+                  stat('hr', 44, 2, (row) => row.hitting?.hr),
+                  stat('rbi', 44, 3, (row) => row.hitting?.rbi),
+                  stat('ops', 60, 4, (row) => row.hitting?.ops)
               ])
     ];
     return (
         <View style={{ gap: 8 }} accessibilityLabel={title}>
             <Txt eyebrow>{title}</Txt>
             <FrozenTable
-                rows={player.career}
-                rowKey={(row) => `${row.season}-${row.team?.id}`}
+                rows={lines}
+                rowKey={(row) => (row.total ? 'total' : `${row.season}-${row.team?.id}`)}
                 rowHeight={40}
-                first={{ width: 84, header: <HeadText>{l('season')}</HeadText>, cell: (row) => <Txt size={14} weight={current(row) ? 'bold' : 'semibold'} tabular>{seasonLabel(row.season, activeLeague)}</Txt> }}
+                first={{
+                    width: 84,
+                    header: <HeadText>{l('season')}</HeadText>,
+                    cell: (row) => (
+                        <Txt size={14} weight={row.total ? 'extrabold' : current(row) ? 'bold' : 'semibold'} tabular>
+                            {row.total ? t('playerMore.total') : seasonLabel(row.season, activeLeague)}
+                        </Txt>
+                    )
+                }}
                 columns={columns}
-                rowStyle={(row) => (current(row) ? { backgroundColor: alpha(colors.accent, 0.05) } : undefined)}
+                rowStyle={(row) => (row.total ? { borderBottomWidth: 2, borderBottomColor: colors.line } : current(row) ? { backgroundColor: alpha(colors.accent, 0.05) } : undefined)}
             />
         </View>
     );

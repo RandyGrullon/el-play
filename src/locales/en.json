@@ -1035,7 +1035,10 @@
     "abs_one": "{{count}} AB",
     "abs_other": "{{count}} AB",
     "chase": "chases {{pct}}% outside",
-    "whiffPct": "Whiff"
+    "whiffPct": "Whiff",
+    "total": "Total",
+    "seasons_one": "{{count}} season",
+    "seasons_other": "{{count}} seasons"
   },
   "account": {
     "title": "Your account",
