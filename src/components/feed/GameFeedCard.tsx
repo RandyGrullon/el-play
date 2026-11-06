@@ -45,6 +45,11 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                 <Txt size={54} weight="extrabold" color={ink} tabular style={{ lineHeight: 56 }}>
                     {team.score ?? 0}
                 </Txt>
+                {team.record && (
+                    <Txt size={12} weight="semibold" color={ink} tabular style={{ opacity: 0.75 }}>
+                        {team.record.wins}-{team.record.losses}
+                    </Txt>
+                )}
             </View>
         );
     };
@@ -91,6 +96,11 @@ const TeamRow: React.FC<{ team: ScheduleTeam; dim: boolean; showScore: boolean }
                     {teamDisplayName(team, i18n.language)}
                 </Txt>
                 {favoriteTeamId === team.id && <Star size={14} color={colors.gold} fill={colors.gold} />}
+                {team.record && (
+                    <Txt size={12} weight="semibold" tone="muted" tabular style={{ flexShrink: 0 }}>
+                        {team.record.wins}-{team.record.losses}
+                    </Txt>
+                )}
             </Row>
             {showScore && (
                 <Txt size={24} weight="extrabold" tone={dim ? 'muted' : 'ink'} tabular>
@@ -175,6 +185,14 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame; onShare?: (game: Sched
                               alpha(colors.accent, 0.1)
                           )
                         : null}
+                    {/* Doble cartelera: qué juego del día es (si no cabe, se recorta antes que los botones) */}
+                    {game.doubleheader?.game ? (
+                        <View style={{ flexShrink: 1, borderRadius: radius.pill, backgroundColor: alpha(colors.accent, 0.1), paddingHorizontal: 12, paddingVertical: 4 }}>
+                            <Txt size={12} weight="bold" color={colors.accentInk} numberOfLines={1}>
+                                {t('card.doubleheader', { n: game.doubleheader.game })}
+                            </Txt>
+                        </View>
+                    ) : null}
                     {game.description && game.gameType !== 'R' ? (
                         <Txt size={12} tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
                             {game.description}
