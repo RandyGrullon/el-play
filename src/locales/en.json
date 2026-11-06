@@ -658,7 +658,10 @@
     "hint": "Pick where to share: on your phone, your app list opens with the image ready.",
     "more": "More options",
     "pick": "In the list that opens, tap {{app}}.",
-    "instagramSaved": "Image saved: post it from Instagram on your phone."
+    "instagramSaved": "Image saved: post it from Instagram on your phone.",
+    "linkOnly": "Just the link",
+    "linkCopied": "Link copied.",
+    "failed": "Could not share."
   },
   "spray": {
     "title": "Spray chart",

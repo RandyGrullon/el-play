@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showToast } from '../lib/toast';
-import { Download, Facebook, ImagePlus, Instagram, MessageCircle, Share2, X } from 'lucide-react';
+import { Download, Facebook, ImagePlus, Instagram, Link2, MessageCircle, Share2, X } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { Segmented } from '../components/ui/Segmented';
@@ -134,6 +134,23 @@ const ShareSheet: React.FC<{ request: ShareRequest; onClose: () => void }> = ({ 
         }
     };
 
+    // Solo el texto y el enlace, sin la imagen (con la lista de apps del teléfono; si no hay, se copia)
+    const shareLinkOnly = async () => {
+        // Se cierra la hoja para que se vea el aviso de «enlace copiado»
+        onClose();
+        track('share', { kind: request.data.kind, to: 'link' });
+        try {
+            if (navigator.share) {
+                await navigator.share({ title: 'El Play', text: request.text, url: link });
+                return;
+            }
+            await navigator.clipboard.writeText(`${request.text} ${link}`);
+            showToast(t('share.linkCopied'), undefined, 3000);
+        } catch (shareError) {
+            if ((shareError as Error)?.name !== 'AbortError') showToast(t('share.failed'), undefined, 3000);
+        }
+    };
+
     const pickPhoto = (event: React.ChangeEvent<HTMLInputElement>) => {
         const chosen = event.target.files?.[0];
         if (chosen) setPhoto(URL.createObjectURL(chosen));
@@ -217,6 +234,10 @@ const ShareSheet: React.FC<{ request: ShareRequest; onClose: () => void }> = ({ 
                         {t('share.more')}
                     </button>
                 </div>
+                <button type="button" onClick={shareLinkOnly} className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-surface font-bold shadow-card">
+                    <Link2 className="h-5 w-5" />
+                    {t('share.linkOnly')}
+                </button>
                 <p className="text-center text-xs text-muted" aria-live="polite">
                     {picked && picked !== 'more' ? t('share.pick', { app: DESTINATIONS.find((d) => d.id === picked)?.label }) : t('share.hint')}
                 </p>
