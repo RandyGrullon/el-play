@@ -7,6 +7,7 @@ import { AndroidImportance } from 'expo-notifications';
 import * as Notifications from 'expo-notifications';
 import type { GameDetail } from '../types';
 import i18n from '../i18n';
+import { finalKey, noHitterKey } from '../lib/gameAlerts';
 
 export type AlertKind = 'homer' | 'lead' | 'noHitter' | 'final';
 export type AlertPrefs = Record<AlertKind, boolean>;
@@ -31,6 +32,8 @@ export interface GameAlert {
     kind: AlertKind;
     title: string;
     body: string;
+    /** Final y juego sin hit: la misma clave que los avisos de Más (lib/notify.ts), para no avisar dos veces */
+    key?: string;
 }
 
 const leaderOf = (game: GameDetail) => ((game.away.runs ?? 0) > (game.home.runs ?? 0) ? 'away' : (game.home.runs ?? 0) > (game.away.runs ?? 0) ? 'home' : null);
@@ -94,7 +97,7 @@ export const detectAlerts = (memory: AlertMemory, game: GameDetail, prefs: Alert
         if (!prefs.noHitter) return;
         const pitching = side === 'away' ? game.away : game.home;
         const batting = side === 'away' ? game.home : game.away;
-        alerts.push({ kind: 'noHitter', title: t('noHitterTitle', { team: pitching.abbrev }), body: t('noHitterBody', { team: batting.abbrev, inning: game.inning?.n ?? 6 }) + ' · ' + score(game) });
+        alerts.push({ kind: 'noHitter', key: noHitterKey(game.gamePk ?? 0, batting.id), title: t('noHitterTitle', { team: pitching.abbrev }), body: t('noHitterBody', { team: batting.abbrev, inning: game.inning?.n ?? 6 }) + ' · ' + score(game) });
     });
 
     // Final
@@ -102,7 +105,7 @@ export const detectAlerts = (memory: AlertMemory, game: GameDetail, prefs: Alert
         next.final = true;
         if (prefs.final) {
             const winner = leader === 'away' ? game.away : leader === 'home' ? game.home : null;
-            alerts.push({ kind: 'final', title: t('finalTitle', { score: score(game) }), body: winner ? t('finalBody', { team: winner.name }) : score(game) });
+            alerts.push({ kind: 'final', key: finalKey(game.gamePk ?? 0), title: t('finalTitle', { score: score(game) }), body: winner ? t('finalBody', { team: winner.name }) : score(game) });
         }
     }
     return { alerts, memory: next };
@@ -124,12 +127,12 @@ export const ensureAlertPermission = async (ask: boolean) => {
     }
 };
 
-/** Manda el aviso ya (sin esperar): con sonido, en su propio canal de Android */
+/** Manda el aviso ya (sin esperar): con sonido, en su propio canal de Android. Devuelve si salió */
 export const postAlert = async (alert: GameAlert, gamePk: number) => {
     if (Platform.OS === 'web') {
         // Web de desarrollo (superficie de prueba): solo queda en la consola
         console.info('[segundo-plano] alerta', alert.kind, alert.title, alert.body);
-        return;
+        return true;
     }
     try {
         if (Platform.OS === 'android' && !channelReady) {
@@ -140,7 +143,9 @@ export const postAlert = async (alert: GameAlert, gamePk: number) => {
             content: { title: alert.title, body: alert.body, data: { gamePk } },
             trigger: Platform.OS === 'android' ? { channelId: CHANNEL } : null
         });
+        return true;
     } catch {
         /* sin permiso o sin avisos: no pasa nada */
+        return false;
     }
 };
