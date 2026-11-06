@@ -286,7 +286,8 @@
     "save": "S: {{name}}",
     "notifying": "Te avisaremos",
     "doubleheader": "Doble cartelera · juego {{n}}",
-    "rescheduled": "Reprogramado"
+    "rescheduled": "Reprogramado",
+    "openGame": "Abrir el juego {{away}} contra {{home}}"
   },
   "teams": {
     "favorite": "Tu equipo",

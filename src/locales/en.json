@@ -286,7 +286,8 @@
     "save": "S: {{name}}",
     "notifying": "We'll notify you",
     "doubleheader": "Doubleheader · game {{n}}",
-    "rescheduled": "Rescheduled"
+    "rescheduled": "Rescheduled",
+    "openGame": "Open {{away}} vs {{home}}"
   },
   "teams": {
     "favorite": "Your team",
