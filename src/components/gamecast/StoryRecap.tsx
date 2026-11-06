@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
 import type { Decision, GameDetail, TopPerformer } from '../../types';
 import { keyPlayOf } from '../../lib/baseball';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
+import { PlayerLink } from '../ui/PlayerLink';
 import { StrikeZone } from '../game/StrikeZone';
 import { uniformColors } from '../game/BatterFigure';
 import { inkOn } from './GameHero';
@@ -40,7 +41,7 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
                 <PlayerPhoto personId={person.id} name={person.name} size={48} background="rgba(255,255,255,0.85)" team={team} />
                 <span className="flex-1">
                     <span className="block text-xs font-bold opacity-80">{tag}</span>
-                    <span className="block font-extrabold">{person.name}</span>
+                    <PlayerLink id={person.id} className="block font-extrabold">{person.name}</PlayerLink>
                 </span>
                 <span className="text-sm font-bold tabular-nums opacity-90">{extra}</span>
             </li>
@@ -83,7 +84,7 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
                                 <li key={`${player.kind}-${player.id}`} className="flex items-center gap-3 rounded-3xl px-3 py-3" style={{ background: soft }}>
                                     <PlayerPhoto personId={player.id} name={player.name} size={64} background="rgba(255,255,255,0.85)" team={player.teamId === game.home.id ? game.home : game.away} />
                                     <span className="min-w-0 flex-1">
-                                        <span className="block truncate text-lg font-extrabold">{shortName(player.name)}</span>
+                                        <PlayerLink id={player.id} className="block truncate text-lg font-extrabold">{shortName(player.name)}</PlayerLink>
                                         <span className="block text-sm font-semibold opacity-85">
                                             {player.kind === 'pitcher'
                                                 ? `${player.ip} IP · ${player.k} K · ${player.er} ${t('stats.er')}`

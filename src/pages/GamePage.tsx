@@ -37,6 +37,7 @@ import { BoxScore } from '../components/game/BoxScore';
 import { Bases, OutsDots } from '../components/game/Bases';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
+import { PlayerLink } from '../components/ui/PlayerLink';
 import { TeamLogo } from '../components/ui/TeamLogo';
 import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
@@ -231,7 +232,11 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                                     </span>
                                 )}
                                 <span className="min-w-0 flex-1">
-                                    <span className="block truncate font-extrabold">{pitcher?.name ?? t('preview.tbd')}</span>
+                                    {pitcher ? (
+                                        <PlayerLink id={pitcher.id} className="block truncate font-extrabold">{pitcher.name}</PlayerLink>
+                                    ) : (
+                                        <span className="block truncate font-extrabold">{t('preview.tbd')}</span>
+                                    )}
                                     <span className="block truncate text-sm text-muted">{teamDisplayName(game[side], i18n.language)}</span>
                                 </span>
                                 {pitcher && (
