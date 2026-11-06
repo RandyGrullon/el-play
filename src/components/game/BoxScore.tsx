@@ -4,6 +4,7 @@ import type { GameDetail } from '../../types';
 import { Segmented } from '../ui/Segmented';
 import { TeamLogo } from '../ui/TeamLogo';
 import { PlayerLink } from '../ui/PlayerLink';
+import { TeamLink } from '../ui/TeamLink';
 
 export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
     const { t } = useTranslation();
@@ -30,7 +31,9 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
             />
 
             <section className="card overflow-hidden" aria-label={t('box.batting')}>
-                <h2 className="eyebrow border-b border-line/10 px-4 py-3">{t('box.batting')} · {team.name}</h2>
+                <h2 className="eyebrow border-b border-line/10 px-4 py-3">
+                    {t('box.batting')} · <TeamLink id={team.id}>{team.name}</TeamLink>
+                </h2>
                 {box.batters.length === 0 ? (
                     <p className="px-4 py-8 text-center text-sm text-muted">{t('box.noData')}</p>
                 ) : (
@@ -78,7 +81,9 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
             </section>
 
             <section className="card overflow-hidden" aria-label={t('box.pitching')}>
-                <h2 className="eyebrow border-b border-line/10 px-4 py-3">{t('box.pitching')} · {team.name}</h2>
+                <h2 className="eyebrow border-b border-line/10 px-4 py-3">
+                    {t('box.pitching')} · <TeamLink id={team.id}>{team.name}</TeamLink>
+                </h2>
                 {box.pitchers.length === 0 ? (
                     <p className="px-4 py-8 text-center text-sm text-muted">{t('box.noData')}</p>
                 ) : (
@@ -117,7 +122,9 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
 
             {(box.bench?.length ?? 0) + (box.bullpen?.length ?? 0) > 0 && (
                 <section className="card overflow-hidden" aria-label={t('box.benchTitle')}>
-                    <h2 className="eyebrow border-b border-line/10 px-4 py-3">{t('box.benchTitle')} · {team.name}</h2>
+                    <h2 className="eyebrow border-b border-line/10 px-4 py-3">
+                        {t('box.benchTitle')} · <TeamLink id={team.id}>{team.name}</TeamLink>
+                    </h2>
                     <div className="grid gap-4 p-4 sm:grid-cols-2">
                         {!!box.bench?.length && (
                             <details>

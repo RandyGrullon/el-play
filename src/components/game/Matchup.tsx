@@ -2,6 +2,8 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { GameDetail } from '../../types';
 import { PlayerLink } from '../ui/PlayerLink';
+import { withNodes } from '../ui/TextLinks';
+import { slot } from '../../lib/links';
 
 // Lanzador contra bateador con su línea del día
 export const Matchup: React.FC<{ game: GameDetail }> = ({ game }) => {
@@ -32,7 +34,11 @@ export const Matchup: React.FC<{ game: GameDetail }> = ({ game }) => {
                     <Stat label={t('game.today')} value={batter.ab !== null ? `${batter.h ?? 0}-${batter.ab}` : null} />
                     <Stat label={t('stats.avg')} value={batter.avg} />
                 </dl>
-                {matchup.onDeck && <p className="mt-2 truncate text-[11px] text-faint">{t('game.onDeck', { name: matchup.onDeck.name })}</p>}
+                {matchup.onDeck && (
+                    <p className="mt-2 truncate text-[11px] text-faint">
+                        {withNodes(t('game.onDeck', { name: slot('name') }), { name: <PlayerLink id={matchup.onDeck.id}>{matchup.onDeck.name}</PlayerLink> })}
+                    </p>
+                )}
             </div>
         </section>
     );

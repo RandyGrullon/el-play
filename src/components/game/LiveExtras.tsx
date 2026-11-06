@@ -6,6 +6,10 @@ import { Clock, Flame, Info } from 'lucide-react';
 import type { GameDetail } from '../../types';
 import { inkOn } from '../gamecast/GameHero';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
+import { PlayerLink } from '../ui/PlayerLink';
+import { TeamLink } from '../ui/TeamLink';
+import { withNodes } from '../ui/TextLinks';
+import { slot } from '../../lib/links';
 import { fatigueOf, hoursMinutes, noHitterOf, staleMinutes, umpireRole, velocityTrend, windText, type Fatigue } from '../../lib/liveGame';
 import { stateName, weatherName, weatherTemp } from '../../lib/baseball';
 import { formatTime } from '../../lib/format';
@@ -35,12 +39,16 @@ export const PitcherCard: React.FC<{ game: GameDetail }> = ({ game }) => {
     return (
         <section className="card p-4" aria-labelledby="pitcher-now">
             <div className="flex items-center gap-3">
-                <PlayerPhoto personId={pitcher.id} name={pitcher.name} size={56} background={`${team.color}33`} team={team} />
+                <PlayerLink id={pitcher.id} decorative className="flex shrink-0">
+                    <PlayerPhoto personId={pitcher.id} name={pitcher.name} size={56} background={`${team.color}33`} team={team} />
+                </PlayerLink>
                 <div className="min-w-0 flex-1">
                     <h2 id="pitcher-now" className="eyebrow">
-                        {t('pitcherNow.title')} · {team.abbrev}
+                        {t('pitcherNow.title')} · <TeamLink id={team.id}>{team.abbrev}</TeamLink>
                     </h2>
-                    <p className="truncate text-lg font-extrabold leading-tight">{pitcher.name}</p>
+                    <p className="truncate text-lg font-extrabold leading-tight">
+                        <PlayerLink id={pitcher.id}>{pitcher.name}</PlayerLink>
+                    </p>
                     <p className="text-xs text-muted">
                         {[pitcher.hand ? t(`game.throws${pitcher.hand}`, { defaultValue: pitcher.hand }) : null, t(starter ? 'pitcherNow.starter' : 'pitcherNow.reliever'), pitcher.era ? t('game.seasonEra', { era: pitcher.era }) : null].filter(Boolean).join(' · ')}
                     </p>
@@ -172,8 +180,12 @@ export const NoHitterBanner: React.FC<{ game: GameDetail }> = ({ game }) => {
                         {item.perfect ? '💎' : '🔥'}
                     </span>
                     <p className="text-sm">
-                        <b className="block text-base font-extrabold">{t(item.final ? (item.perfect ? 'noHitter.perfectDone' : 'noHitter.done') : item.perfect ? 'noHitter.perfect' : 'noHitter.live', { team: item.pitching.abbrev })}</b>
-                        {t('noHitter.detail', { team: item.batting.abbrev, count: item.innings })}
+                        <b className="block text-base font-extrabold">
+                            {withNodes(t(item.final ? (item.perfect ? 'noHitter.perfectDone' : 'noHitter.done') : item.perfect ? 'noHitter.perfect' : 'noHitter.live', { team: slot('team') }), {
+                                team: <TeamLink id={item.pitching.id}>{item.pitching.abbrev}</TeamLink>
+                            })}
+                        </b>
+                        {withNodes(t('noHitter.detail', { team: slot('team'), count: item.innings }), { team: <TeamLink id={item.batting.id}>{item.batting.abbrev}</TeamLink> })}
                     </p>
                 </div>
             ))}

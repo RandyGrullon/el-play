@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { AtBat, GameDetail, Pitch } from '../../types';
+import type { AtBat, GameDetail, Pitch, PersonRef } from '../../types';
 import { describePlay, eventName, eventTone, inningName, pitchCallName, pitchTypeName, type EventTone } from '../../lib/baseball';
 import { timelineActions, type ActionKind } from '../../lib/liveGame';
+import { peopleOf } from '../../lib/links';
+import { PlayerLink } from '../ui/PlayerLink';
+import { TeamLink } from '../ui/TeamLink';
+import { LinkedNames } from '../ui/TextLinks';
 
 const TONES: Record<EventTone, string> = {
     hr: 'bg-gold/15 text-gold',
@@ -29,7 +33,7 @@ const PitchBubble: React.FC<{ pitch: Pitch; last: boolean }> = ({ pitch, last })
     return <span className={`max-w-[85%] rounded-[18px] px-3.5 py-2 text-[13px] font-semibold ${last ? `${solid} rounded-br-md text-white` : BUBBLE[pitch.r]}`}>{text}</span>;
 };
 
-const PlayBubble: React.FC<{ atBat: AtBat; game: GameDetail }> = ({ atBat, game }) => {
+const PlayBubble: React.FC<{ atBat: AtBat; game: GameDetail; people: PersonRef[] }> = ({ atBat, game, people }) => {
     const { i18n } = useTranslation();
     const team = atBat.top ? game.away : game.home;
     return (
@@ -38,12 +42,14 @@ const PlayBubble: React.FC<{ atBat: AtBat; game: GameDetail }> = ({ atBat, game 
                 <span className={`pill px-2 py-0.5 text-[11px] uppercase ${TONES[eventTone(atBat.event)]}`}>{eventName(atBat, i18n.language)}</span>
                 {atBat.scoring && atBat.away !== null && (
                     <span className="text-xs font-bold tabular-nums">
-                        {game.away.abbrev} {atBat.away} · {game.home.abbrev} {atBat.home}
+                        <TeamLink id={game.away.id}>{game.away.abbrev}</TeamLink> {atBat.away} · <TeamLink id={game.home.id}>{game.home.abbrev}</TeamLink> {atBat.home}
                     </span>
                 )}
                 <span className="ml-auto h-2 w-2 rounded-full" style={{ backgroundColor: team.color }} aria-hidden="true" />
             </div>
-            <p className="text-sm leading-snug">{describePlay(atBat.desc, i18n.language)}</p>
+            <p className="text-sm leading-snug">
+                <LinkedNames text={describePlay(atBat.desc, i18n.language)} people={people} />
+            </p>
         </div>
     );
 };
@@ -61,7 +67,7 @@ const ACTION_TONE: Partial<Record<ActionKind, string>> = {
 };
 
 /** Una acción del juego (robo, cambio de lanzador, visita al montículo…) como aviso pequeño en medio de la charla */
-const ActionLine: React.FC<{ kind: ActionKind; desc: string }> = ({ kind, desc }) => {
+const ActionLine: React.FC<{ kind: ActionKind; desc: string; people: PersonRef[] }> = ({ kind, desc, people }) => {
     const { t, i18n } = useTranslation();
     const label = t(`timeline.actions.${kind}`);
     const text = describePlay(desc, i18n.language);
@@ -70,7 +76,12 @@ const ActionLine: React.FC<{ kind: ActionKind; desc: string }> = ({ kind, desc }
     return (
         <p className="max-w-[92%] self-center rounded-full bg-raised px-3 py-1.5 text-center text-xs text-muted">
             <b className={`font-extrabold uppercase tracking-wide ${ACTION_TONE[kind] ?? 'text-ink'}`}>{label}</b>
-            {same ? null : ` · ${text}`}
+            {same ? null : (
+                <>
+                    {' · '}
+                    <LinkedNames text={text} people={people} />
+                </>
+            )}
         </p>
     );
 };
@@ -82,6 +93,8 @@ export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () 
     const current = game.state === 'live' ? game.atBats.find((atBat) => atBat.i === game.currentAtBat && !atBat.complete) : undefined;
     const past = game.atBats.filter((atBat) => atBat.complete).reverse();
     const shown = past.slice(0, limit);
+    // Los nombres de las jugadas abren la página de cada pelotero
+    const people = useMemo(() => peopleOf(game.atBats), [game.atBats]);
 
     let lastHalf = '';
     return (
@@ -90,7 +103,14 @@ export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () 
                 <>
                     <div className="max-w-[88%] rounded-[22px] rounded-bl-md bg-surface px-4 py-3 shadow-card">
                         <p className="text-sm">
-                            {t('timeline.atBat')} <b>{current.batter.name}</b> <span className="text-muted">{t('zone.facing')}</span> <b>{current.pitcher.name}</b>
+                            {t('timeline.atBat')}{' '}
+                            <b>
+                                <PlayerLink id={current.batter.id}>{current.batter.name}</PlayerLink>
+                            </b>{' '}
+                            <span className="text-muted">{t('zone.facing')}</span>{' '}
+                            <b>
+                                <PlayerLink id={current.pitcher.id}>{current.pitcher.name}</PlayerLink>
+                            </b>
                         </p>
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
@@ -104,7 +124,7 @@ export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () 
                                     item.pitch ? (
                                         <PitchBubble key={`p${index}`} pitch={item.pitch} last={item.at === current.pitches.length - 1} />
                                     ) : (
-                                        <ActionLine key={`a${index}`} kind={item.action!.kind!} desc={item.action!.desc} />
+                                        <ActionLine key={`a${index}`} kind={item.action!.kind!} desc={item.action!.desc} people={people} />
                                     )
                                 )
                         )}
@@ -118,12 +138,12 @@ export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () 
                 return (
                     <React.Fragment key={atBat.i}>
                         {separator && <p className="mt-2 self-center text-xs font-bold text-muted">{half}</p>}
-                        <PlayBubble atBat={atBat} game={game} />
+                        <PlayBubble atBat={atBat} game={game} people={people} />
                         {/* De la más nueva a la más vieja: lo que pasó durante el turno va debajo de su resultado */}
                         {timelineActions(atBat)
                             .reverse()
                             .map((action, index) => (
-                                <ActionLine key={index} kind={action.kind!} desc={action.desc} />
+                                <ActionLine key={index} kind={action.kind!} desc={action.desc} people={people} />
                             ))}
                     </React.Fragment>
                 );

@@ -4,6 +4,7 @@ import type { StandingRow } from '../../types';
 import { pythagorean } from '../../lib/advanced';
 import { teamDisplayName } from '../../lib/teams';
 import { TeamLogo } from '../ui/TeamLogo';
+import { TeamLink } from '../ui/TeamLink';
 
 // Posiciones del modo PRO: carreras anotadas y permitidas, diferencia, récord esperado (Pitágoras),
 // casa/visita, juegos de una carrera, extra innings, últimos 10 y racha.
@@ -41,8 +42,10 @@ export const StandingsTable: React.FC<{ rows: StandingRow[]; cutoff?: number }> 
                                 <th scope="row" className="sticky left-0 z-10 bg-surface px-3 py-2 text-left font-normal">
                                     <span className="flex items-center gap-2">
                                         <span className="w-4 text-center text-xs font-extrabold text-muted">{row.rank}</span>
-                                        <TeamLogo team={row.team} size={22} />
-                                        <span className="max-w-[110px] truncate font-extrabold">{teamDisplayName(row.team, i18n.language)}</span>
+                                        <TeamLink id={row.team.id} className="flex min-w-0 items-center gap-2">
+                                            <TeamLogo team={row.team} size={22} />
+                                            <span className="max-w-[110px] truncate font-extrabold">{teamDisplayName(row.team, i18n.language)}</span>
+                                        </TeamLink>
                                     </span>
                                 </th>
                                 <td className="px-2 py-2 text-right font-bold">{row.wins}</td>

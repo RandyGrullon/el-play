@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Bell, BellRing, Share2, Star } from 'lucide-react';
 import type { ScheduleGame, ScheduleTeam } from '../../types';
@@ -13,6 +12,11 @@ import { useLeague } from '../../store/LeagueContext';
 import { useShare } from '../../share/ShareSheet';
 import { resultFromSchedule } from '../../share/subjects';
 import { TeamLogo } from '../ui/TeamLogo';
+import { TeamLink } from '../ui/TeamLink';
+import { PlayerLink } from '../ui/PlayerLink';
+import { CardLink, OVER_CARD } from '../ui/CardLink';
+import { withNodes } from '../ui/TextLinks';
+import { slot } from '../../lib/links';
 import { Bases, OutsDots } from '../game/Bases';
 import { useNow } from '../../hooks/useNow';
 
@@ -29,7 +33,9 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
     const between = live.inningState === 'Middle' || live.inningState === 'End';
     const half = (team: ScheduleTeam, align: 'start' | 'end') => (
         <div className={`flex min-w-0 flex-1 flex-col justify-center px-4 py-4 ${align === 'end' ? 'items-end text-right' : ''}`} style={{ backgroundColor: team.color, color: inkOn(team.color) }}>
-            <span className="max-w-full truncate text-[15px] font-bold">{teamDisplayName(team, i18n.language)}</span>
+            <TeamLink id={team.id} className={`${OVER_CARD} max-w-full truncate text-[15px] font-bold`}>
+                {teamDisplayName(team, i18n.language)}
+            </TeamLink>
             <span className="text-[54px] font-extrabold leading-none tabular-nums">{team.score ?? 0}</span>
             {team.record && <span className="text-xs font-semibold tabular-nums opacity-75">{team.record.wins}-{team.record.losses}</span>}
         </div>
@@ -47,7 +53,17 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                         <Bases runners={live.runners} size={26} color={(live.isTop ? game.away : game.home).color} />
                         <OutsDots outs={live.outs} />
                         <span className="text-sm font-semibold text-muted tabular-nums">{live.balls}-{live.strikes}</span>
-                        {live.batter && <span className="ml-auto min-w-0 truncate text-xs font-semibold text-muted">{t('card.batting', { name: live.batter.name })}</span>}
+                        {live.batter && (
+                            <span className="ml-auto min-w-0 truncate text-xs font-semibold text-muted">
+                                {withNodes(t('card.batting', { name: slot('name') }), {
+                                    name: (
+                                        <PlayerLink id={live.batter.id} className={OVER_CARD}>
+                                            {live.batter.name}
+                                        </PlayerLink>
+                                    )
+                                })}
+                            </span>
+                        )}
                     </>
                 ) : (
                     <span className="text-sm font-semibold text-muted">{t('game.betweenInnings')}</span>
@@ -62,9 +78,13 @@ const TeamRow: React.FC<{ team: ScheduleTeam; dim: boolean; showScore: boolean }
     const { favoriteTeamId } = usePreferences();
     return (
         <div className={`flex items-center gap-3 ${dim ? 'text-muted' : ''}`}>
-            <TeamLogo team={team} size={30} />
+            <TeamLink id={team.id} decorative className={`${OVER_CARD} flex shrink-0`}>
+                <TeamLogo team={team} size={30} />
+            </TeamLink>
             <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-base font-bold">
-                <span className="truncate">{teamDisplayName(team, i18n.language)}</span>
+                <TeamLink id={team.id} className={`${OVER_CARD} truncate`}>
+                    {teamDisplayName(team, i18n.language)}
+                </TeamLink>
                 {favoriteTeamId === team.id && <Star className="h-3.5 w-3.5 shrink-0 fill-gold text-gold" />}
                 {team.record && <span className="shrink-0 text-xs font-semibold text-muted tabular-nums">{team.record.wins}-{team.record.losses}</span>}
             </span>
@@ -87,15 +107,28 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
     // 6 horas con la página abierta (antes solo corría si ya faltaban menos de 6 horas al pintar la tarjeta)
     const now = useNow(30000, game.state === 'preview' && !notPlayed);
     const startsIn = new Date(game.date).getTime() - now;
-    const handlers = { onMouseEnter: () => prefetch(game.gamePk), onTouchStart: () => prefetch(game.gamePk), onFocus: () => prefetch(game.gamePk) };
+    const warm = () => prefetch(game.gamePk);
+    const handlers = { onMouseEnter: warm, onTouchStart: warm };
+    // Toda la tarjeta abre el juego (un enlace por encima del contenido); los equipos, los peloteros y los botones van
+    // encima de ese enlace y abren lo suyo
+    const cardLink = <CardLink to={`/juego/${game.gamePk}`} label={t('card.openGame', { away: teamDisplayName(game.away, i18n.language), home: teamDisplayName(game.home, i18n.language) })} onFocus={warm} />;
 
     if (game.state === 'live' && game.live) {
         return (
-            <Link to={`/juego/${game.gamePk}`} {...handlers} className="block animate-fade-up overflow-hidden rounded-card shadow-float">
+            <div {...handlers} className="relative isolate block animate-fade-up overflow-hidden rounded-card shadow-float">
+                {cardLink}
                 <LiveCard game={game} />
-            </Link>
+            </div>
         );
     }
+
+    const person = (who: { id: number; name: string }) => (
+        <PlayerLink id={who.id} className={OVER_CARD}>
+            {who.name}
+        </PlayerLink>
+    );
+    const decision = (key: string, who: { id: number; name: string }) => withNodes(t(key, { name: slot('name') }), { name: person(who) });
+    const probable = (who: { id: number; name: string } | null) => (who ? person(who) : t('preview.tbd'));
 
     const shareResult = (event: React.MouseEvent) => {
         event.preventDefault();
@@ -108,7 +141,8 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
     };
 
     return (
-        <Link to={`/juego/${game.gamePk}`} {...handlers} className="card block animate-fade-up p-4">
+        <div {...handlers} className="card relative isolate block animate-fade-up p-4">
+            {cardLink}
             <div className="mb-3 flex items-center gap-2">
                 {notPlayed ? (
                     <span className="pill bg-live/10 text-live">{stateName(game.detailedState, i18n.language)}</span>
@@ -125,7 +159,7 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                 {game.description && game.gameType !== 'R' && <span className="truncate text-xs text-muted">{game.description}</span>}
                 <span className="ml-auto flex items-center gap-1">
                     {final && (
-                        <button type="button" onClick={shareResult} className="flex h-9 w-9 items-center justify-center rounded-full bg-raised text-ink" aria-label={t('share.shareResult')}>
+                        <button type="button" onClick={shareResult} className={`${OVER_CARD} flex h-9 w-9 items-center justify-center rounded-full bg-raised text-ink`} aria-label={t('share.shareResult')}>
                             <Share2 className="h-4 w-4" />
                         </button>
                     )}
@@ -136,7 +170,7 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                                 event.preventDefault();
                                 toggleAlert(game.gamePk);
                             }}
-                            className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-xs font-bold ${subscribed ? 'bg-raised text-ink' : 'bg-ink text-bg'}`}
+                            className={`${OVER_CARD} inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-xs font-bold ${subscribed ? 'bg-raised text-ink' : 'bg-ink text-bg'}`}
                             aria-pressed={subscribed}
                         >
                             {subscribed ? <BellRing className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
@@ -151,12 +185,19 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
             </div>
             {(final && game.decisions?.winner) || (game.state === 'preview' && (game.away.probable || game.home.probable)) ? (
                 <p className="mt-3 truncate border-t border-line/10 pt-2.5 text-xs font-semibold text-muted">
-                    {final && game.decisions?.winner
-                        ? [t('card.win', { name: game.decisions.winner.name }), game.decisions.save ? t('card.save', { name: game.decisions.save.name }) : game.decisions.loser ? t('card.loss', { name: game.decisions.loser.name }) : ''].filter(Boolean).join(' · ')
-                        : `${game.away.probable?.name ?? t('preview.tbd')} vs ${game.home.probable?.name ?? t('preview.tbd')} · ${game.venue}`}
+                    {final && game.decisions?.winner ? (
+                        <>
+                            {decision('card.win', game.decisions.winner)}
+                            {game.decisions.save ? <> · {decision('card.save', game.decisions.save)}</> : game.decisions.loser ? <> · {decision('card.loss', game.decisions.loser)}</> : null}
+                        </>
+                    ) : (
+                        <>
+                            {probable(game.away.probable)} vs {probable(game.home.probable)} · {game.venue}
+                        </>
+                    )}
                 </p>
             ) : null}
-        </Link>
+        </div>
     );
 };
 

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { GameDetail } from '../../types';
 import { battedBalls, eventName, inningName, type BattedKind } from '../../lib/baseball';
 import { Segmented } from '../ui/Segmented';
+import { PlayerLink } from '../ui/PlayerLink';
 
 // Mapa de batazos: dónde cayó cada bola puesta en juego. Las coordenadas son las del cuadro de Gameday (250×250,
 // home en ≈125,198, ~2,5 pies por unidad); el anotador las marca en todos los estadios, también en los que no
@@ -109,7 +110,7 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                 {current ? (
                     <div className="rounded-2xl bg-raised p-3 text-sm">
                         <p className="font-extrabold">
-                            {current.atBat.batter.name} · <span style={{ color: COLORS[current.kind] }}>{eventName(current.atBat, i18n.language)}</span>
+                            <PlayerLink id={current.atBat.batter.id}>{current.atBat.batter.name}</PlayerLink> · <span style={{ color: COLORS[current.kind] }}>{eventName(current.atBat, i18n.language)}</span>
                         </p>
                         <p className="mt-0.5 text-muted">
                             {[

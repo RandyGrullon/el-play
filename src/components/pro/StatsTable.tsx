@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { battingAdvanced, eraPlus, fmtDec, fmtPct, fmtRate, opsPlus, pitchingAdvanced } from '../../lib/advanced';
 import { sortPlayers, type PlayerRow, type SortOption, type StatsTeam } from '../../lib/stats';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
+import { TeamLink } from '../ui/TeamLink';
+import { OVER_CARD } from '../ui/CardLink';
 
 // Estadísticas del modo PRO: la tabla completa con métricas avanzadas; se ordena tocando la columna.
 
@@ -121,7 +123,8 @@ export const StatsTable: React.FC<{
                     <tbody className="divide-y divide-line/10">
                         {sorted.slice(0, limit).map(({ row, ranked }, index) => {
                             const team = row.teamId ? teams[row.teamId] : undefined;
-                            // Toda la fila abre la ficha; el botón (teclado y lector) no deja subir su toque a la fila: una sola entrada en el historial
+                            // Toda la fila abre la ficha; el botón (teclado y lector, cubre la celda del nombre) no deja subir su toque a la fila:
+                            // una sola entrada en el historial. La sigla del equipo va encima del botón y abre la página del equipo
                             return (
                                 <tr key={row.id} className="cursor-pointer hover:bg-raised/60" onClick={() => onOpen(row)}>
                                     <th scope="row" className="sticky left-0 z-10 bg-surface px-3 py-2 text-left font-normal">
@@ -131,16 +134,26 @@ export const StatsTable: React.FC<{
                                                 event.stopPropagation();
                                                 onOpen(row);
                                             }}
-                                            className="flex max-w-[150px] items-center gap-2 text-left"
+                                            className="absolute inset-0 z-[1]"
                                             aria-label={t('statsPage.viewPlayer', { name: row.name })}
-                                        >
+                                        />
+                                        <span className="flex max-w-[150px] items-center gap-2 text-left">
                                             <span className="w-5 shrink-0 text-center text-xs font-extrabold text-muted">{ranked ? index + 1 : '·'}</span>
                                             <PlayerPhoto personId={row.id} name={row.name} size={28} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
                                             <span className="min-w-0">
                                                 <span className="block truncate text-[13px] font-extrabold">{row.name}</span>
-                                                <span className="block truncate text-[11px] text-muted">{[team?.abbrev, row.pos].filter(Boolean).join(' · ')}</span>
+                                                <span className="block truncate text-[11px] text-muted">
+                                                    {team ? (
+                                                        <>
+                                                            <TeamLink id={team.id} className={OVER_CARD}>{team.abbrev}</TeamLink>
+                                                            {row.pos ? ` · ${row.pos}` : ''}
+                                                        </>
+                                                    ) : (
+                                                        row.pos
+                                                    )}
+                                                </span>
                                             </span>
-                                        </button>
+                                        </span>
                                     </th>
                                     {columns.map((item) => (
                                         <td key={item.key} className={`px-2 py-2 text-right ${item.key === column.key ? 'bg-accent/5 font-extrabold' : ''} ${item.key === 'pts' ? 'font-bold' : ''}`}>

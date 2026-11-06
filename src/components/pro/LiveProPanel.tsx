@@ -4,6 +4,9 @@ import { Gauge } from 'lucide-react';
 import type { GameDetail } from '../../types';
 import { arsenal, atBatForZone, battedBalls, eventName, pitchCallName, pitchTypeName, pitchesByPitcher } from '../../lib/baseball';
 import { ProBadge } from './ProBadge';
+import { PlayerLink } from '../ui/PlayerLink';
+import { withNodes } from '../ui/TextLinks';
+import { slot } from '../../lib/links';
 
 // Panel del modo PRO en el juego: último pitcheo (tipo, velocidad, efecto, zona), el turno pitcheo a pitcheo,
 // el repertorio de cada lanzador y los batazos más duros. En estadios sin rastreo MLB no manda velocidad ni efecto.
@@ -70,7 +73,7 @@ export const LiveProPanel: React.FC<{ game: GameDetail }> = ({ game }) => {
 
             {live && pitches.length > 0 && (
                 <div>
-                    <p className="eyebrow mb-2">{t('pro.live.thisAtBat', { batter: atBat?.batter.name ?? '' })}</p>
+                    <p className="eyebrow mb-2">{withNodes(t('pro.live.thisAtBat', { batter: slot('batter') }), { batter: <PlayerLink id={atBat?.batter.id}>{atBat?.batter.name ?? ''}</PlayerLink> })}</p>
                     <div className="overflow-x-auto rounded-2xl bg-raised">
                         <table className="w-full text-[13px] tabular-nums">
                             <thead>
@@ -112,7 +115,7 @@ export const LiveProPanel: React.FC<{ game: GameDetail }> = ({ game }) => {
                                 <p className="flex items-center justify-between px-3 py-2 text-sm font-extrabold">
                                     <span className="flex items-center gap-2">
                                         <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: team.color }} />
-                                        {pitcher.name}
+                                        <PlayerLink id={pitcher.id}>{pitcher.name}</PlayerLink>
                                     </span>
                                     <span className="text-xs font-semibold text-muted">{t('pro.live.pitches', { count: list.length })}</span>
                                 </p>
@@ -161,7 +164,7 @@ export const LiveProPanel: React.FC<{ game: GameDetail }> = ({ game }) => {
                             <li key={`${ball.atBat.i}`} className="flex items-center gap-3 px-3 py-2 text-[13px]">
                                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: (ball.side === 'away' ? game.away : game.home).color }} />
                                 <span className="min-w-0 flex-1">
-                                    <span className="block truncate font-extrabold">{ball.atBat.batter.name}</span>
+                                    <PlayerLink id={ball.atBat.batter.id} className="block truncate font-extrabold">{ball.atBat.batter.name}</PlayerLink>
                                     <span className="block truncate text-xs text-muted">{eventName(ball.atBat, lang)}</span>
                                 </span>
                                 <span className="text-right tabular-nums">
