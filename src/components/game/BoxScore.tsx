@@ -2,15 +2,81 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { ChevronDown, ChevronRight } from 'lucide-react-native';
 import type { GameDetail } from '../../types';
+import { useTextScale } from '../../state/preferences';
 import { useColors } from '../../theme/theme';
 import { alpha, radius, shadow } from '../../theme/tokens';
 import { Card, TeamLogo, Txt } from '../ui';
 
-const NAME_W = 170;
+const NAME_W = 150;
 const COL_W = 44;
+const ROW_H = 38;
+const HEAD_H = 30;
 
-// Box score de un equipo: bateo y pitcheo; se cambia de equipo arriba y el nombre abre la ficha del pelotero
+/** Una fila de la tabla: el nombre (columna fija) y sus números (de lado a lado) */
+interface BoxRow {
+    key: string;
+    name: React.ReactNode;
+    cells: React.ReactNode[];
+    /** Fila de totales: raya más marcada arriba */
+    total?: boolean;
+}
+
+/** Tabla del box con la columna del nombre fija al moverla de lado a lado (como `sticky left-0` de la web) */
+const FrozenBox: React.FC<{ nameHead: string; heads: React.ReactNode[]; rows: BoxRow[] }> = ({ nameHead, heads, rows }) => {
+    const colors = useColors();
+    const scale = useTextScale();
+    const rowH = Math.round(ROW_H * scale);
+    const line = (row: BoxRow) => ({ height: rowH, borderTopWidth: 1, borderTopColor: row.total ? alpha(colors.ink, 0.15) : colors.line });
+    return (
+        <View style={{ flexDirection: 'row' }}>
+            <View style={{ width: NAME_W, backgroundColor: colors.surface, zIndex: 1 }}>
+                <View style={{ height: HEAD_H, justifyContent: 'center', paddingLeft: 16, paddingRight: 8 }}>
+                    <Txt size={11} weight="semibold" tone="faint" style={{ textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                        {nameHead}
+                    </Txt>
+                </View>
+                {rows.map((row) => (
+                    <View key={row.key} style={[line(row), { justifyContent: 'center' }]}>
+                        {row.name}
+                    </View>
+                ))}
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}>
+                <View style={{ paddingRight: 16 }}>
+                    <View style={{ height: HEAD_H, flexDirection: 'row', alignItems: 'center' }}>{heads}</View>
+                    {rows.map((row) => (
+                        <View key={row.key} style={[line(row), { flexDirection: 'row', alignItems: 'center' }]}>
+                            {row.cells}
+                        </View>
+                    ))}
+                </View>
+            </ScrollView>
+        </View>
+    );
+};
+
+/** Lista que se abre y se cierra (el <details> de la web): banca o bullpen */
+const Collapsible: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
+    const colors = useColors();
+    const [open, setOpen] = useState(false);
+    const Icon = open ? ChevronDown : ChevronRight;
+    return (
+        <View>
+            <Pressable onPress={() => setOpen((value) => !value)} accessibilityRole="button" accessibilityState={{ expanded: open }} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 2 }}>
+                <Icon size={14} color={colors.muted} />
+                <Txt size={11} weight="bold" tone="muted" style={{ textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                    {title}
+                </Txt>
+            </Pressable>
+            {open && <View style={{ marginTop: 6 }}>{children}</View>}
+        </View>
+    );
+};
+
+// Box score de un equipo: bateo, pitcheo y la banca y el bullpen; se cambia de equipo arriba y el nombre abre la ficha
+// del pelotero
 export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
     const { t } = useTranslation();
     const colors = useColors();
@@ -28,7 +94,86 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
             {value}
         </Txt>
     );
-    const rowStyle = { flexDirection: 'row' as const, alignItems: 'center' as const, paddingVertical: 8, paddingRight: 16, borderTopWidth: 1, borderTopColor: colors.line };
+    const link = (id: number, children: React.ReactNode, indent = 16) => (
+        <Pressable onPress={() => router.push(`/jugador/${id}`)} accessibilityRole="link" style={{ height: '100%', paddingLeft: indent, paddingRight: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {children}
+        </Pressable>
+    );
+
+    const batting: BoxRow[] = [
+        ...box.batters.map((batter) => ({
+            key: String(batter.id),
+            name: link(
+                batter.id,
+                <>
+                    <Txt size={14} weight="medium" numberOfLines={1} style={{ flexShrink: 1 }}>
+                        {batter.name}
+                    </Txt>
+                    <Txt size={12} tone="faint">
+                        {batter.pos}
+                    </Txt>
+                    {batter.hr > 0 && (
+                        <View style={{ borderRadius: 4, backgroundColor: alpha(colors.gold, 0.15), paddingHorizontal: 4 }}>
+                            <Txt size={10} weight="bold" color={colors.gold}>
+                                HR{batter.hr > 1 ? ` ${batter.hr}` : ''}
+                            </Txt>
+                        </View>
+                    )}
+                </>,
+                batter.sub ? 32 : 16
+            ),
+            cells: [
+                cell(batter.ab, 'ab'),
+                cell(batter.r, 'r'),
+                cell(batter.h, 'h', { bold: batter.h > 0 }),
+                cell(batter.rbi, 'rbi'),
+                cell(batter.bb, 'bb'),
+                cell(batter.k, 'k'),
+                cell(batter.avg ?? '—', 'avg', { muted: true, wide: true })
+            ]
+        })),
+        {
+            key: 'totals',
+            total: true,
+            name: (
+                <Txt size={14} weight="semibold" style={{ paddingLeft: 16 }}>
+                    {t('box.totals')}
+                </Txt>
+            ),
+            cells: [...(['ab', 'r', 'h', 'rbi', 'bb', 'k'] as const).map((key) => cell(box.totals[key] ?? '—', key, { bold: true })), cell(box.totals.avg ?? '', 'avg', { muted: true, wide: true })]
+        }
+    ];
+
+    const pitching: BoxRow[] = box.pitchers.map((pitcher) => ({
+        key: String(pitcher.id),
+        name: link(
+            pitcher.id,
+            <>
+                <Txt size={14} weight="medium" numberOfLines={1} style={{ flexShrink: 1 }}>
+                    {pitcher.name}
+                </Txt>
+                {pitcher.note ? (
+                    <Txt size={12} weight="semibold" tone="accentInk">
+                        {pitcher.note}
+                    </Txt>
+                ) : null}
+            </>
+        ),
+        cells: [
+            cell(pitcher.ip, 'ip'),
+            cell(pitcher.h, 'h'),
+            cell(pitcher.r, 'r'),
+            cell(pitcher.er, 'er'),
+            cell(pitcher.bb, 'bb'),
+            cell(pitcher.k, 'k'),
+            cell(pitcher.np !== null ? `${pitcher.np}${pitcher.st !== null ? `-${pitcher.st}` : ''}` : '—', 'np', { wide: true }),
+            cell(pitcher.era ?? '—', 'era', { muted: true, wide: true })
+        ]
+    }));
+
+    const bench = box.bench ?? [];
+    const bullpen = box.bullpen ?? [];
+    const listRow = { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, paddingVertical: 6 };
 
     return (
         <View style={{ gap: 16 }}>
@@ -54,58 +199,17 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
             </View>
 
             <Card padded={false} style={{ overflow: 'hidden' }}>
-                <Txt eyebrow style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-                    {t('box.batting')} · {team.name}
-                </Txt>
+                <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.line }}>
+                    <Txt eyebrow accessibilityRole="header">
+                        {t('box.batting')} · {team.name}
+                    </Txt>
+                </View>
                 {box.batters.length === 0 ? (
                     <Txt size={14} tone="muted" center style={{ paddingVertical: 32 }}>
                         {t('box.noData')}
                     </Txt>
                 ) : (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        <View style={{ minWidth: '100%' }}>
-                            <View style={[rowStyle, { paddingVertical: 6 }]}>
-                                <Txt size={11} weight="semibold" tone="faint" style={{ width: NAME_W, paddingLeft: 16, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                                    {t('box.player')}
-                                </Txt>
-                                {['ab', 'r', 'h', 'rbi', 'bb', 'k'].map((key) => head(t(`stats.${key}`), key))}
-                                {head(t('stats.avg'), 'avg', true)}
-                            </View>
-                            {box.batters.map((batter) => (
-                                <View key={batter.id} style={rowStyle}>
-                                    <Pressable onPress={() => router.push(`/jugador/${batter.id}`)} accessibilityRole="link" style={{ width: NAME_W, paddingLeft: batter.sub ? 32 : 16, paddingRight: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                        <Txt size={14} weight="medium" numberOfLines={1} style={{ flexShrink: 1 }}>
-                                            {batter.name}
-                                        </Txt>
-                                        <Txt size={12} tone="faint">
-                                            {batter.pos}
-                                        </Txt>
-                                        {batter.hr > 0 && (
-                                            <View style={{ borderRadius: 4, backgroundColor: alpha(colors.gold, 0.15), paddingHorizontal: 4 }}>
-                                                <Txt size={10} weight="bold" color={colors.gold}>
-                                                    HR{batter.hr > 1 ? ` ${batter.hr}` : ''}
-                                                </Txt>
-                                            </View>
-                                        )}
-                                    </Pressable>
-                                    {cell(batter.ab, 'ab')}
-                                    {cell(batter.r, 'r')}
-                                    {cell(batter.h, 'h', { bold: batter.h > 0 })}
-                                    {cell(batter.rbi, 'rbi')}
-                                    {cell(batter.bb, 'bb')}
-                                    {cell(batter.k, 'k')}
-                                    {cell(batter.avg ?? '—', 'avg', { muted: true, wide: true })}
-                                </View>
-                            ))}
-                            <View style={[rowStyle, { borderTopColor: alpha(colors.ink, 0.15) }]}>
-                                <Txt size={14} weight="semibold" style={{ width: NAME_W, paddingLeft: 16 }}>
-                                    {t('box.totals')}
-                                </Txt>
-                                {(['ab', 'r', 'h', 'rbi', 'bb', 'k'] as const).map((key) => cell(box.totals[key] ?? '—', key, { bold: true }))}
-                                {cell(box.totals.avg ?? '', 'avg', { muted: true, wide: true })}
-                            </View>
-                        </View>
-                    </ScrollView>
+                    <FrozenBox nameHead={t('box.player')} heads={[...['ab', 'r', 'h', 'rbi', 'bb', 'k'].map((key) => head(t(`stats.${key}`), key)), head(t('stats.avg'), 'avg', true)]} rows={batting} />
                 )}
                 {box.totals.lob !== null && (
                     <Txt size={12} tone="muted" style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
@@ -115,50 +219,72 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
             </Card>
 
             <Card padded={false} style={{ overflow: 'hidden' }}>
-                <Txt eyebrow style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-                    {t('box.pitching')} · {team.name}
-                </Txt>
+                <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.line }}>
+                    <Txt eyebrow accessibilityRole="header">
+                        {t('box.pitching')} · {team.name}
+                    </Txt>
+                </View>
                 {box.pitchers.length === 0 ? (
                     <Txt size={14} tone="muted" center style={{ paddingVertical: 32 }}>
                         {t('box.noData')}
                     </Txt>
                 ) : (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        <View style={{ minWidth: '100%' }}>
-                            <View style={[rowStyle, { paddingVertical: 6 }]}>
-                                <Txt size={11} weight="semibold" tone="faint" style={{ width: NAME_W, paddingLeft: 16, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                                    {t('box.pitcher')}
-                                </Txt>
-                                {['ip', 'h', 'r', 'er', 'bb', 'k'].map((key) => head(t(`stats.${key}`), key))}
-                                {head(t('stats.pitches'), 'np', true)}
-                                {head(t('stats.era'), 'era', true)}
-                            </View>
-                            {box.pitchers.map((pitcher) => (
-                                <View key={pitcher.id} style={rowStyle}>
-                                    <Pressable onPress={() => router.push(`/jugador/${pitcher.id}`)} accessibilityRole="link" style={{ width: NAME_W, paddingLeft: 16, paddingRight: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                        <Txt size={14} weight="medium" numberOfLines={1} style={{ flexShrink: 1 }}>
-                                            {pitcher.name}
-                                        </Txt>
-                                        {pitcher.note ? (
-                                            <Txt size={12} weight="semibold" tone="accentInk">
-                                                {pitcher.note}
-                                            </Txt>
-                                        ) : null}
-                                    </Pressable>
-                                    {cell(pitcher.ip, 'ip')}
-                                    {cell(pitcher.h, 'h')}
-                                    {cell(pitcher.r, 'r')}
-                                    {cell(pitcher.er, 'er')}
-                                    {cell(pitcher.bb, 'bb')}
-                                    {cell(pitcher.k, 'k')}
-                                    {cell(pitcher.np !== null ? `${pitcher.np}${pitcher.st !== null ? `-${pitcher.st}` : ''}` : '—', 'np', { wide: true })}
-                                    {cell(pitcher.era ?? '—', 'era', { muted: true, wide: true })}
-                                </View>
-                            ))}
-                        </View>
-                    </ScrollView>
+                    <FrozenBox
+                        nameHead={t('box.pitcher')}
+                        heads={[...['ip', 'h', 'r', 'er', 'bb', 'k'].map((key) => head(t(`stats.${key}`), key)), head(t('stats.pitches'), 'np', true), head(t('stats.era'), 'era', true)]}
+                        rows={pitching}
+                    />
                 )}
             </Card>
+
+            {/* Los que no han jugado y los relevistas que quedan (si vienen en el feed) */}
+            {bench.length + bullpen.length > 0 && (
+                <Card padded={false} style={{ overflow: 'hidden' }}>
+                    <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.line }}>
+                        <Txt eyebrow accessibilityRole="header">
+                            {t('box.benchTitle')} · {team.name}
+                        </Txt>
+                    </View>
+                    <View style={{ gap: 16, padding: 16 }}>
+                        {bench.length > 0 && (
+                            <Collapsible title={`${t('box.bench')} · ${bench.length}`}>
+                                {bench.map((player, index) => (
+                                    <Pressable key={player.id} onPress={() => router.push(`/jugador/${player.id}`)} accessibilityRole="link" style={[listRow, index > 0 && { borderTopWidth: 1, borderTopColor: colors.line }]}>
+                                        <Txt size={14} weight="medium" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
+                                            {player.name}
+                                        </Txt>
+                                        <Txt size={12} tone="faint">
+                                            {player.pos}
+                                        </Txt>
+                                        <Txt size={14} tabular tone="muted" style={{ width: 48, textAlign: 'right' }}>
+                                            {player.avg ?? '—'}
+                                        </Txt>
+                                    </Pressable>
+                                ))}
+                            </Collapsible>
+                        )}
+                        {bullpen.length > 0 && (
+                            <Collapsible title={`${t('box.bullpen')} · ${bullpen.length}`}>
+                                {bullpen.map((arm, index) => (
+                                    <Pressable key={arm.id} onPress={() => router.push(`/jugador/${arm.id}`)} accessibilityRole="link" style={[listRow, index > 0 && { borderTopWidth: 1, borderTopColor: colors.line }]}>
+                                        <Txt size={14} weight="medium" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
+                                            {arm.name}
+                                        </Txt>
+                                        {arm.throws ? (
+                                            <Txt size={12} tone="faint">
+                                                {t(`box.hand${arm.throws}`, { defaultValue: arm.throws })}
+                                            </Txt>
+                                        ) : null}
+                                        <Txt size={14} tabular tone="muted" style={{ width: 72, textAlign: 'right' }}>
+                                            {arm.era ? t('box.era', { era: arm.era }) : '—'}
+                                        </Txt>
+                                    </Pressable>
+                                ))}
+                            </Collapsible>
+                        )}
+                    </View>
+                </Card>
+            )}
         </View>
     );
 };
