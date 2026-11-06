@@ -655,7 +655,10 @@
     "hint": "Elige dónde compartir: en el teléfono se abre tu lista de apps con la imagen lista.",
     "more": "Más opciones",
     "pick": "En la lista que se abre, toca {{app}}.",
-    "instagramSaved": "Se guardó la imagen: súbela desde Instagram en tu teléfono."
+    "instagramSaved": "Se guardó la imagen: súbela desde Instagram en tu teléfono.",
+    "linkOnly": "Solo el enlace",
+    "linkCopied": "Enlace copiado.",
+    "failed": "No se pudo compartir."
   },
   "spray": {
     "title": "Mapa de batazos",

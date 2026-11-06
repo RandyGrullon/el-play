@@ -1,6 +1,8 @@
 import React from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { fonts, inkOn } from '../../theme/tokens';
 import { PlayerPhoto, TeamLogo, Txt } from '../ui';
 import { LogoMark } from '../feed/LogoMark';
@@ -8,7 +10,8 @@ import type { PlayerPost, PostData, PostTeam, ResultPost, StandingsPost } from '
 
 // La imagen para compartir (lo que dibuja el <canvas> de la web), hecha con vistas para capturarla con captureRef.
 // Historia 9:16 y post 4:5; tres estilos: color del equipo, noche y papel. Se diseña a 360 de ancho y se escala.
-// Resultado de un juego, un pelotero o la tabla de posiciones (en el color del líder).
+// Resultado de un juego, un pelotero o la tabla de posiciones (en el color del líder). Con una foto de fondo (la que
+// escoja el usuario) va la foto con un velo oscuro y todo en blanco, como en la web.
 
 export type ShareFormat = 'story' | 'post';
 export type ShareStyle = 'color' | 'noche' | 'papel';
@@ -56,14 +59,17 @@ interface CardProps {
     format: ShareFormat;
     style: ShareStyle;
     width: number;
+    /** Foto de fondo (uri local) */
+    photo?: string | null;
 }
 
-export const ShareCard: React.FC<CardProps> = ({ ref, data, format, style, width }) => {
+export const ShareCard: React.FC<CardProps> = ({ ref, data, format, style, width, photo }) => {
     const story = format === 'story';
     const height = width * (story ? 16 / 9 : 5 / 4);
     const s = (value: number) => (value * width) / 360;
     const color = data.kind === 'result' ? winnerOf(data).color : data.kind === 'player' ? data.color : data.rows[0]?.color || '#2563eb';
-    const pal = palette(style, color);
+    const base = palette(style, color);
+    const pal = photo ? { ...base, ink: '#ffffff', muted: 'rgba(255,255,255,0.8)', panel: 'rgba(0,0,0,0.35)' } : base;
 
     const header = (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8) }}>
@@ -79,7 +85,7 @@ export const ShareCard: React.FC<CardProps> = ({ ref, data, format, style, width
     );
     const pill = (text: string) => (
         <View style={{ alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: s(12), paddingVertical: s(5), backgroundColor: pal.ink }}>
-            <Txt size={s(11)} weight="extrabold" color={style === 'color' ? pal.bg : style === 'papel' ? '#f2ead8' : '#0b0c10'} style={{ letterSpacing: 0.6 }}>
+            <Txt size={s(11)} weight="extrabold" color={style === 'color' && !photo ? pal.bg : style === 'papel' ? '#f2ead8' : '#0b0c10'} style={{ letterSpacing: 0.6 }}>
                 {text}
             </Txt>
         </View>
@@ -87,7 +93,14 @@ export const ShareCard: React.FC<CardProps> = ({ ref, data, format, style, width
 
     return (
         <View ref={ref} collapsable={false} style={{ width, height, backgroundColor: pal.bg, overflow: 'hidden', paddingHorizontal: s(28), paddingTop: s(story ? 64 : 36), paddingBottom: s(story ? 56 : 22) }}>
-            <Seams size={s(story ? 300 : 240)} color={pal.seam} left={s(story ? 170 : 190)} top={s(story ? 330 : 200)} />
+            {photo ? (
+                <>
+                    <Image source={{ uri: photo }} contentFit="cover" style={StyleSheet.absoluteFill} />
+                    <LinearGradient colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.85)']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />
+                </>
+            ) : (
+                <Seams size={s(story ? 300 : 240)} color={pal.seam} left={s(story ? 170 : 190)} top={s(story ? 330 : 200)} />
+            )}
             {header}
             <View style={{ flex: 1, justifyContent: story ? 'center' : 'flex-start', paddingTop: s(story ? 0 : 18), gap: s(story ? 22 : 12), overflow: 'hidden' }}>
                 {data.kind === 'result' ? (
@@ -95,7 +108,7 @@ export const ShareCard: React.FC<CardProps> = ({ ref, data, format, style, width
                 ) : data.kind === 'player' ? (
                     <Player data={data} pal={pal} s={s} story={story} pill={pill} />
                 ) : (
-                    <Standings data={data} pal={pal} s={s} story={story} pill={pill} onColor={style === 'color'} />
+                    <Standings data={data} pal={pal} s={s} story={story} pill={pill} onColor={style === 'color' && !photo} />
                 )}
             </View>
             <Txt size={s(10)} weight="semibold" color={pal.muted} center>
