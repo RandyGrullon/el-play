@@ -44,14 +44,15 @@ const LETTER = /[A-Za-zÀ-ÖØ-öø-ÿ'’.-]/;
 
 /**
  * Parte un texto (la descripción de una jugada, «Pelotero Uno batea sencillo…») en pedazos: los que son el nombre completo
- * de alguien de la lista llevan a esa persona (para abrir su ficha), lo demás va tal cual. Solo nombres enteros (no
+ * de alguien de la lista llevan a esa persona (para abrir su ficha), lo demás va tal cual. Sirve igual con equipos (la
+ * sigla como nombre: «de AAA a BBB»). Solo nombres enteros (no
  * «Ana» dentro de «Banana»); si dos se pisan gana el que empieza antes y, a la par, el más largo.
  */
 export const nameSegments = (text: string, people: readonly (LinkPerson | null | undefined)[]): { text: string; person: LinkPerson | null }[] => {
     if (!text) return [];
     const seen = new Set<number>();
     const list = people.filter((person): person is LinkPerson => {
-        if (!person || !linkId(person.id) || !person.name || person.name.trim().length < 3 || seen.has(person.id)) return false;
+        if (!person || !linkId(person.id) || !person.name || person.name.trim().length < 2 || seen.has(person.id)) return false;
         seen.add(person.id);
         return true;
     });

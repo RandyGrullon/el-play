@@ -1,7 +1,7 @@
 // Perfil de un fanático (como FanProfile de la web): su temporada, sus últimos días, sus logros, el equipo de hoy (a
 // los demás se les esconde lo que no ha empezado) y los días anteriores, que al tocarlos muestran ese equipo.
 import React, { useMemo, useState } from 'react';
-import { Pressable, View, useWindowDimensions } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Crown, Lock, Sparkles, User } from 'lucide-react-native';
 import type { LeagueId } from '../../types';
@@ -12,6 +12,7 @@ import { formatTime, localeFor, seasonLabel, todayKey } from '../../lib/format';
 import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Card, ErrorState, Gradient, OfflineState, PlayerPhoto, Row, Skeleton, TeamLogo, Txt, useErrorText } from '../ui';
+import { TeamLink, teamTextLink } from '../stats/common';
 import { useFanEntry, useFanProfile, useSeasonRanking, withRanks, type FanDay, type FanProfileData } from './fans';
 import { gameStatus, lineText, teamOf, useOpenPlayer } from './shared';
 import { useLocalText } from './texts';
@@ -391,7 +392,7 @@ const DayDetail: React.FC<DayDetailProps> = ({ userId, league, own, fanDay, date
                                         </Txt>
                                     </Row>
                                     <Txt size={12} tone="muted" numberOfLines={1}>
-                                        {club?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')} · {gameStatus(day, player.gamePk, i18n.language, t)}
+                                        <Text {...teamTextLink(club?.id)}>{club?.abbrev}</Text> · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')} · {gameStatus(day, player.gamePk, i18n.language, t)}
                                         {line ? ` · ${line}` : ''}
                                     </Txt>
                                 </View>
@@ -438,7 +439,7 @@ const DayDetail: React.FC<DayDetailProps> = ({ userId, league, own, fanDay, date
                                     <Row gap={8} style={{ borderRadius: 12, backgroundColor: colors.raised, paddingHorizontal: 10, paddingVertical: 8 }}>
                                         <Lock size={14} color={colors.muted} />
                                         <Txt size={12} weight="semibold" tone="muted" style={{ flex: 1 }}>
-                                            {game.away.abbrev} @ {game.home.abbrev} · {L('fans.hidden')}
+                                            <Text {...teamTextLink(game.away.id)}>{game.away.abbrev}</Text> @ <Text {...teamTextLink(game.home.id)}>{game.home.abbrev}</Text> · {L('fans.hidden')}
                                         </Txt>
                                     </Row>
                                 ) : (
@@ -447,10 +448,11 @@ const DayDetail: React.FC<DayDetailProps> = ({ userId, league, own, fanDay, date
                                             const chosen = pick === side.id;
                                             const ink = chosen ? inkOn(side.color) : colors.ink;
                                             return (
-                                                <Row
+                                                <TeamLink
                                                     key={side.id}
-                                                    gap={8}
-                                                    style={{ flex: 1, minWidth: 0, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: chosen ? side.color : colors.raised, opacity: pick && !chosen ? 0.6 : 1 }}
+                                                    id={side.id}
+                                                    name={side.name}
+                                                    style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: chosen ? side.color : colors.raised, opacity: pick && !chosen ? 0.6 : 1 }}
                                                 >
                                                     <TeamLogo team={side} size={24} />
                                                     <Txt size={14} weight="extrabold" color={ink} numberOfLines={1} style={{ flex: 1 }}>
@@ -461,7 +463,7 @@ const DayDetail: React.FC<DayDetailProps> = ({ userId, league, own, fanDay, date
                                                             {side.score ?? 0}
                                                         </Txt>
                                                     )}
-                                                </Row>
+                                                </TeamLink>
                                             );
                                         })}
                                     </Row>

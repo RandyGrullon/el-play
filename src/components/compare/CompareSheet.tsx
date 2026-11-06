@@ -2,7 +2,7 @@
 // elige el rival y salen lado a lado, cada número con una barra partida en el color de cada uno (el mejor se lleva más
 // barra y va en negrita).
 import React, { useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeftRight, Search, X } from 'lucide-react-native';
@@ -16,6 +16,7 @@ import { teamDisplayName } from '../../lib/teams';
 import { useColors } from '../../theme/theme';
 import { fonts, inkOn, radius, shadow } from '../../theme/tokens';
 import { Card, PlayerPhoto, Row, Sheet, TeamLogo, Txt, useReduceMotion } from '../ui';
+import { LinkedTeams, PlayerLink, TeamLink, teamTextLink } from '../stats/common';
 import { leagueFromPlayers } from '../pro/estadisticas/logic';
 
 interface Side {
@@ -229,12 +230,15 @@ export const TeamCompareSheet: React.FC<TeamCompareProps> = ({ open, team, teams
     const lastTen = (id: number) => standingOf(standings, id)?.row.lastTen?.wins ?? null;
     const h2h = results ? headToHead(results, other.id) : null;
     const next = games.filter((game) => game.state !== 'final' && [game.away.id, game.home.id].includes(other.id)).sort((x, y) => x.date.localeCompare(y.date))[0];
-    const side = (row: TeamRow, record: { w: number; l: number }) => (
+    // El rival (logo y nombre) lleva a su página; el de la izquierda es el de la página de atrás (se vuelve cerrando)
+    const side = (row: TeamRow, record: { w: number; l: number }, linked = false) => (
         <>
-            <LogoDisc team={row} size={56} />
-            <Txt size={14} weight="extrabold" color={inkOn(row.color)} numberOfLines={1} style={{ maxWidth: '100%' }}>
-                {name(row)}
-            </Txt>
+            <TeamLink id={row.id} name={name(row)} disabled={!linked} style={{ alignItems: 'center', gap: 6, maxWidth: '100%' }}>
+                <LogoDisc team={row} size={56} />
+                <Txt size={14} weight="extrabold" color={inkOn(row.color)} numberOfLines={1} style={{ maxWidth: '100%' }}>
+                    {name(row)}
+                </Txt>
+            </TeamLink>
             <Txt size={24} weight="extrabold" color={inkOn(row.color)} tabular>
                 {t('team.record', { w: record.w, l: record.l })}
             </Txt>
@@ -249,7 +253,7 @@ export const TeamCompareSheet: React.FC<TeamCompareProps> = ({ open, team, teams
 
     return (
         <Sheet open={open} onClose={onClose} title={title}>
-            <Faceoff leftColor={team.color} rightColor={other.color} onSwap={() => setOtherId(null)} left={side(team, a)} right={side(other, b)} />
+            <Faceoff leftColor={team.color} rightColor={other.color} onSwap={() => setOtherId(null)} left={side(team, a)} right={side(other, b, true)} />
 
             {/* Entre ellos esta temporada y cuándo se vuelven a ver (sin los juegos del equipo no se sabe) */}
             {results && (
@@ -258,7 +262,7 @@ export const TeamCompareSheet: React.FC<TeamCompareProps> = ({ open, team, teams
                     {h2h ? (
                         <Row gap={8} align="baseline" wrap>
                             <Txt size={20} weight="extrabold" tabular>
-                                {t('compare.h2hLine', { a: team.abbrev, w: h2h.w, l: h2h.l, b: other.abbrev })}
+                                <LinkedTeams text={t('compare.h2hLine', { a: team.abbrev, w: h2h.w, l: h2h.l, b: other.abbrev })} teams={[team, other]} />
                             </Txt>
                             <Txt size={14} weight="semibold" tone="muted" tabular>
                                 {t('compare.h2hRuns', { rs: h2h.rs, ra: h2h.ra })}
@@ -454,21 +458,26 @@ export const PlayerCompareSheet: React.FC<{ open: boolean; player: PlayerDetail;
                 first={index === 0}
             />
         ));
-    const side = (row: PlayerRow, team: { id: number; logo: string; color: string; abbrev: string } | null | undefined, color: string) => (
+    // El otro (foto y nombre) lleva a su ficha; las siglas de los dos, a su equipo. El de la izquierda es el de la ficha de atrás
+    const side = (row: PlayerRow, team: { id: number; logo: string; color: string; abbrev: string } | null | undefined, color: string, linked = false) => (
         <>
-            <PlayerPhoto personId={row.id} name={row.name} size={64} background="rgba(255,255,255,0.3)" team={team ?? null} />
-            <Txt size={14} weight="extrabold" color={inkOn(color)} numberOfLines={1} style={{ maxWidth: '100%' }}>
-                {row.name}
-            </Txt>
+            <PlayerLink player={{ id: row.id, name: row.name, teamId: team?.id }} disabled={!linked} style={{ alignItems: 'center', gap: 6, maxWidth: '100%' }}>
+                <PlayerPhoto personId={row.id} name={row.name} size={64} background="rgba(255,255,255,0.3)" team={team ?? null} />
+                <Txt size={14} weight="extrabold" color={inkOn(color)} numberOfLines={1} style={{ maxWidth: '100%' }}>
+                    {row.name}
+                </Txt>
+            </PlayerLink>
             <Txt size={12} weight="bold" color={inkOn(color)} numberOfLines={1} style={{ opacity: 0.8 }}>
-                {[team?.abbrev, row.pos].filter(Boolean).join(' · ')}
+                {team?.abbrev ? <Text {...teamTextLink(team.id)}>{team.abbrev}</Text> : null}
+                {team?.abbrev && row.pos ? ' · ' : ''}
+                {row.pos}
             </Txt>
         </>
     );
 
     return body(
         <>
-            <Faceoff leftColor={myColor} rightColor={otherColor} onSwap={() => setOtherId(null)} left={side(mine, player.team, myColor)} right={side(other, otherTeam, otherColor)} />
+            <Faceoff leftColor={myColor} rightColor={otherColor} onSwap={() => setOtherId(null)} left={side(mine, player.team, myColor)} right={side(other, otherTeam, otherColor, true)} />
             <Group title={t('compare.fantasy')}>{rowsOf(columns(['pts', 'ppg']), (column) => (column.key === 'pts' ? t('compare.points') : t('compare.perGame')))}</Group>
             <Group title={role === 'P' ? t('statsPage.pitchers') : t('statsPage.batters')}>{rowsOf(columns(PLAYER_METRICS[role]), (column) => t(`pro.short.${column.key}`))}</Group>
         </>

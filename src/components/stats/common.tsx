@@ -158,6 +158,24 @@ export const LinkedNames: React.FC<{ text: string; people: readonly (LinkPerson 
     </>
 );
 
+/** Lo mismo con equipos: las siglas (o el nombre) de cada uno dentro del texto abren su página */
+export const LinkedTeams: React.FC<{ text: string; teams: readonly ({ id: number; abbrev?: string; name?: string } | null | undefined)[]; by?: 'abbrev' | 'name' }> = ({ text, teams, by = 'abbrev' }) => (
+    <>
+        {nameSegments(
+            text,
+            teams.map((team) => (team ? { id: team.id, name: (by === 'abbrev' ? team.abbrev : team.name) ?? '' } : null))
+        ).map((part, index) =>
+            part.person ? (
+                <Text key={index} {...teamTextLink(part.person.id)}>
+                    {part.text}
+                </Text>
+            ) : (
+                part.text
+            )
+        )}
+    </>
+);
+
 /** Las siglas o el nombre de un equipo dentro de una línea de texto */
 export const teamTextLink = (id: number | null | undefined) => {
     const target = linkId(id);

@@ -2,7 +2,7 @@
 // Con las ayudas de la web: aviso del próximo cierre, proyección, equipo sugerido, equipo ideal y % elegido al cerrar.
 // Tocar los puntos de un pelotero abre de dónde salen (el desglose, como en la web).
 import React, { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Crown, Lock, Plus, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -10,6 +10,7 @@ import { RULES, isLocked, perTeamLimit, playerScore, removePlayer, setCaptain, t
 import { useColors } from '../../theme/theme';
 import { radius, shadow } from '../../theme/tokens';
 import { PlayerPhoto, Row, Txt } from '../ui';
+import { teamTextLink } from '../stats/common';
 import { RulesToggle, formatCredits, gameStatus, lineText, teamOf, useOpenPlayer } from './shared';
 import { ScoringTable } from './ScoringTable';
 import { CreditsMeter } from './CreditsMeter';
@@ -114,7 +115,7 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
                         </Row>
                         <Row gap={0}>
                             <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} style={{ flexShrink: 0, maxWidth: '100%' }}>
-                                {team?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')} · {gameStatus(day, player.gamePk, i18n.language, t)}
+                                <Text {...teamTextLink(team?.id)}>{team?.abbrev}</Text> · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')} · {gameStatus(day, player.gamePk, i18n.language, t)}
                             </Txt>
                             {price !== null && (
                                 // Espacio duro al empezar: en un texto de una línea aparte el espacio normal se pierde (en la web)

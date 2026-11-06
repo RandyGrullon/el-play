@@ -1,7 +1,7 @@
 // Ayudas del Fantasy (igual que la web, src/pages/FantasyPage.tsx): aviso del próximo cierre, proyección del equipo,
 // «Completar con los mejores», equipo sugerido, equipo ideal del día y % elegido después del cierre.
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Clock, Crown, Sparkles, Trophy, Wand2 } from 'lucide-react-native';
@@ -14,6 +14,7 @@ import { showToast } from '../../lib/toast';
 import { useColors } from '../../theme/theme';
 import { alpha, radius } from '../../theme/tokens';
 import { Button, Card, PlayerPhoto, Row, Sheet, Txt } from '../ui';
+import { PlayerLink, playerTextLink, teamTextLink } from '../stats/common';
 import { useFantasyOwners, type FantasyOwners } from './fans';
 import { formatCredits, teamOf } from './shared';
 
@@ -71,7 +72,9 @@ export const LockNotice: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day
                     </Txt>
                     {game && (
                         <Txt size={14} tone="muted">
-                            {` · ${game.away.abbrev}–${game.home.abbrev}, ${formatTime(game.date, i18n.language).replace(/ /g, ' ')}`}
+                            {' · '}
+                            <Text {...teamTextLink(game.away.id)}>{game.away.abbrev}</Text>–<Text {...teamTextLink(game.home.id)}>{game.home.abbrev}</Text>
+                            {`, ${formatTime(game.date, i18n.language).replace(/ /g, ' ')}`}
                         </Txt>
                     )}
                 </Txt>
@@ -191,16 +194,18 @@ const LineupList: React.FC<{ day: FantasyDay; lineup: number[]; captain: number 
                 const shown = captain === player.id ? Math.round(points * RULES.captain * 10) / 10 : points;
                 return (
                     <Row key={player.id} gap={12} style={{ paddingVertical: 8, borderTopWidth: index ? 1 : 0, borderTopColor: colors.line }}>
-                        <PlayerPhoto personId={player.id} name={player.name} size={40} team={teamOf(day, player)} />
+                        <PlayerLink player={player}>
+                            <PlayerPhoto personId={player.id} name={player.name} size={40} team={teamOf(day, player)} />
+                        </PlayerLink>
                         <View style={{ flex: 1, minWidth: 0 }}>
                             <Row gap={6}>
                                 {captain === player.id && <Crown size={14} color={colors.gold} accessibilityLabel={t('fantasy.captain')} />}
-                                <Txt size={14} weight="extrabold" numberOfLines={1} style={{ flexShrink: 1 }}>
+                                <Txt size={14} weight="extrabold" numberOfLines={1} style={{ flexShrink: 1 }} {...playerTextLink(player)}>
                                     {player.name}
                                 </Txt>
                             </Row>
                             <Txt size={12} tone="muted" numberOfLines={1}>
-                                {team?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')}
+                                <Text {...teamTextLink(team?.id)}>{team?.abbrev}</Text> · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')}
                                 {player.price !== undefined ? ` · ${t('fantasy.credits.price', { price: formatCredits(player.price, i18n.language) })}` : ''}
                             </Txt>
                         </View>

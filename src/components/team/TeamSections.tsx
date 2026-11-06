@@ -2,7 +2,7 @@
 // su color, la forma, la temporada día a día, en casa y de visita, contra cada rival, bateo y pitcheo con su puesto en
 // la liga, sus líderes, la plantilla, los resultados, el calendario y sus movimientos.
 import React, { useId, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Svg, { Circle, Defs, Line, Path, RadialGradient, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
@@ -17,7 +17,7 @@ import { teamDisplayName } from '../../lib/teams';
 import { useColors } from '../../theme/theme';
 import { alpha, radius, shadow } from '../../theme/tokens';
 import { Card, PlayerPhoto, Row, Segmented, TeamLogo, Txt } from '../ui';
-import { MoreButton, openPlayer, openTeam } from '../stats/common';
+import { LinkedTeams, MoreButton, TeamLink, openPlayer, openTeam, teamTextLink } from '../stats/common';
 
 /** Lo que hace falta para pintar al equipo (sale de las estadísticas, de las posiciones o de sus juegos) */
 export interface TeamLook {
@@ -491,9 +491,12 @@ export const Results: React.FC<{ results: TeamResult[] }> = ({ results }) => {
                             <Txt size={11} weight="bold" tone="muted" style={{ width: 22 }}>
                                 {result.home ? t('statsPage.vs') : t('statsPage.at')}
                             </Txt>
-                            <TeamLogo team={result.opponent} size={26} />
+                            {/* El rival (logo y nombre) va a su página; el resto de la fila, al juego */}
+                            <TeamLink id={result.opponent.id} name={rival}>
+                                <TeamLogo team={result.opponent} size={26} />
+                            </TeamLink>
                             <Txt size={14} weight="bold" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
-                                {rival}
+                                <Text {...teamTextLink(result.opponent.id)}>{rival}</Text>
                                 {result.game.gameType && result.game.gameType !== 'R' && result.game.description ? (
                                     <Txt size={12} weight="semibold" tone="muted">
                                         {`  ${result.game.description}`}
@@ -550,9 +553,11 @@ export const Upcoming: React.FC<{ games: ScheduleGame[]; teamId: number; skip: n
                             <Txt size={11} weight="bold" tone="muted" style={{ width: 22 }}>
                                 {home ? t('statsPage.vs') : t('statsPage.at')}
                             </Txt>
-                            <TeamLogo team={rival} size={26} />
+                            <TeamLink id={rival.id} name={teamDisplayName(rival, i18n.language)}>
+                                <TeamLogo team={rival} size={26} />
+                            </TeamLink>
                             <Txt size={14} weight="bold" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
-                                {teamDisplayName(rival, i18n.language)}
+                                <Text {...teamTextLink(rival.id)}>{teamDisplayName(rival, i18n.language)}</Text>
                             </Txt>
                             <Txt size={12} weight="bold" tone="muted" tabular>
                                 {time}
@@ -594,7 +599,9 @@ export const TeamMoves: React.FC<{ league: LeagueId; teamId?: number; season?: n
                 const known = !!item.type && KNOWN_MOVES.has(item.type);
                 return (
                     <Row key={item.id} align="flex-start" gap={12} style={{ paddingVertical: 10, borderTopWidth: index ? 1 : 0, borderTopColor: colors.line }}>
-                        <TeamLogo team={item.team} size={26} />
+                        <TeamLink id={item.team.id} name={teamDisplayName(item.team, i18n.language)}>
+                            <TeamLogo team={item.team} size={26} />
+                        </TeamLink>
                         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                             <Row gap={6} wrap>
                                 <View style={{ borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, backgroundColor: colors.raised }}>
@@ -614,7 +621,11 @@ export const TeamMoves: React.FC<{ league: LeagueId; teamId?: number; season?: n
                                 </Txt>
                             </Row>
                             <Txt size={12} tone="muted" numberOfLines={1}>
-                                {item.other ? t('team.moves.between', { from: item.other.abbrev, to: item.team.abbrev }) : teamDisplayName(item.team, i18n.language)}
+                                {item.other ? (
+                                    <LinkedTeams text={t('team.moves.between', { from: item.other.abbrev, to: item.team.abbrev })} teams={[item.other, item.team]} />
+                                ) : (
+                                    <Text {...teamTextLink(item.team.id)}>{teamDisplayName(item.team, i18n.language)}</Text>
+                                )}
                                 {item.date ? ` · ${formatShortDate(`${item.date}T16:00:00Z`, i18n.language)}` : ''}
                             </Txt>
                             {/* El detalle viene en inglés: en español solo se muestra si no hay un tipo conocido */}

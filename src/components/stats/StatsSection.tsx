@@ -3,7 +3,7 @@
 // lista con «Ver más». «Equipos»: las colectivas de cada equipo (TeamStats.tsx) y los movimientos de la liga.
 // En PRO, la pantalla de pro/estadisticas (vistas por percentil, dispersión, cara a cara y la pestaña Equipos).
 import React, { useMemo, useState } from 'react';
-import { Platform, Pressable, TextInput, View } from 'react-native';
+import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Search, X } from 'lucide-react-native';
@@ -19,7 +19,7 @@ import { Card, ErrorState, OfflineState, Pill, PlayerPhoto, Row, Segmented, Skel
 import { StatsPro } from '../pro/estadisticas/StatsPro';
 import { TeamsScreen } from '../pro/estadisticas/TeamsPanel';
 import { TeamMoves } from '../team/TeamSections';
-import { ChipRow, MoreButton, Notice, SectionHeader, openPlayer, openTeam, waitingForNetwork } from './common';
+import { ChipRow, MoreButton, Notice, SectionHeader, openPlayer, openTeam, teamTextLink, waitingForNetwork } from './common';
 import { TeamStatsView } from './TeamStats';
 
 const PAGE = 40;
@@ -306,6 +306,7 @@ const PlayerItem: React.FC<{ row: PlayerRow; rank: number | null; team?: StatsTe
     const { t } = useTranslation();
     const colors = useColors();
     const summary = seasonSummary(row, t);
+    const extra = [row.pos, row.number ? `#${row.number}` : null].filter(Boolean).join(' · ');
     return (
         <Pressable
             onPress={onOpen}
@@ -322,7 +323,10 @@ const PlayerItem: React.FC<{ row: PlayerRow; rank: number | null; team?: StatsTe
                     {row.name}
                 </Txt>
                 <Txt size={12} tone="muted" numberOfLines={1}>
-                    {[team?.abbrev, row.pos, row.number ? `#${row.number}` : null].filter(Boolean).join(' · ')}
+                    {/* Las siglas van a la página del equipo; el resto de la fila, a la ficha */}
+                    {team?.abbrev ? <Text {...teamTextLink(team.id)}>{team.abbrev}</Text> : null}
+                    {team?.abbrev && extra ? ' · ' : ''}
+                    {extra}
                     {' · '}
                     {summary ?? t('statsPage.noGamesShort')}
                 </Txt>

@@ -3,7 +3,7 @@
 // liga. La usa la pantalla /jugador/[id]; `PlayerProfile` es solo el contenido, por si otra pantalla la quiere dentro
 // de su propia hoja (con `action`). En PRO es la ficha de pro/ficha.
 import React, { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Sparkles } from 'lucide-react-native';
@@ -16,7 +16,7 @@ import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Card, ErrorState, Gradient, PlayerPhoto, Row, Segmented, Skeleton, TeamLogo, Txt, useErrorText, type LogoTeam } from '../ui';
 import { CellText, FrozenTable, HeadText, type FrozenColumn } from './FrozenTable';
-import { MoreButton, openTeam } from './common';
+import { MoreButton, TeamLink, openTeam, teamTextLink } from './common';
 import { Percentiles, Postseason, RecentPitches, Situations } from './PlayerExtras';
 import { PlayerProfilePro } from '../pro/ficha/PlayerProfilePro';
 
@@ -83,6 +83,9 @@ const PlayerProfileLite: React.FC<PlayerProfileProps> = ({ id, name, team, seaso
     const color = player?.team?.color || team?.color || '#2563eb';
     const ink = inkOn(color);
     const headerTeam = player?.team ? { id: player.team.id, logo: player.team.logo, color: player.team.color } : team;
+    // «#7 · SS · AAA»: las siglas van a la página del equipo
+    const headLine = [player?.number ? `#${player.number}` : null, player?.pos].filter(Boolean).join(' · ');
+    const headAbbrev = player?.team?.abbrev ?? team?.abbrev;
 
     return (
         <View style={{ gap: 16 }}>
@@ -92,7 +95,10 @@ const PlayerProfileLite: React.FC<PlayerProfileProps> = ({ id, name, team, seaso
                     <PlayerPhoto personId={id} name={player?.name || name} size={96} background="rgba(255,255,255,0.25)" team={headerTeam} />
                     <View style={{ flex: 1, minWidth: 0 }}>
                         <Txt size={13} weight="bold" color={ink} style={{ opacity: 0.85 }}>
-                            {[player?.number ? `#${player.number}` : null, player?.pos, player?.team?.abbrev ?? team?.abbrev].filter(Boolean).join(' · ') || ' '}
+                            {headLine}
+                            {headLine && headAbbrev ? ' · ' : ''}
+                            {headAbbrev ? <Text {...teamTextLink(player?.team?.id ?? team?.id)}>{headAbbrev}</Text> : null}
+                            {headLine || headAbbrev ? '' : ' '}
                         </Txt>
                         <Txt size={26} weight="extrabold" color={ink} style={{ lineHeight: 28, letterSpacing: -0.3 }}>
                             {player?.name || name || ' '}
@@ -333,7 +339,8 @@ const GameRow: React.FC<{ game: GameLogRow; role: 'B' | 'P'; first: boolean; onO
             <Txt size={12} weight="bold" tone="muted" style={{ width: 44 }}>
                 {day}
             </Txt>
-            <Row gap={6} style={{ width: 72 }}>
+            {/* El rival va a su página; el resto de la fila, al juego */}
+            <TeamLink id={game.opponent?.id} name={game.opponent?.name ?? game.opponent?.abbrev ?? ''} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, width: 72 }}>
                 <Txt size={11} weight="bold" tone="muted">
                     {game.isHome ? t('statsPage.vs') : t('statsPage.at')}
                 </Txt>
@@ -341,7 +348,7 @@ const GameRow: React.FC<{ game: GameLogRow; role: 'B' | 'P'; first: boolean; onO
                 <Txt size={12} weight="extrabold">
                     {game.opponent?.abbrev}
                 </Txt>
-            </Row>
+            </TeamLink>
             <Txt size={14} weight="semibold" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
                 {gameLine(game, role, t)}
             </Txt>
@@ -411,10 +418,10 @@ const Career: React.FC<{ player: PlayerDetail }> = ({ player }) => {
                         {t('playerMore.seasons', { count: row.seasons })}
                     </CellText>
                 ) : (
-                    <Row gap={6}>
+                    <TeamLink id={row.team?.id} name={row.team?.name ?? row.team?.abbrev ?? ''} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         {row.team && <TeamLogo team={row.team} size={18} />}
                         <CellText bold={current(row)}>{row.team?.abbrev ?? '—'}</CellText>
-                    </Row>
+                    </TeamLink>
                 )
         },
         { key: 'pts', width: ptsWidth, header: <HeadText>{l('pts')}</HeadText>, cell: (row) => <CellText strong color={colors.accentInk}>{row.pts}</CellText> },

@@ -14,7 +14,7 @@ import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Screen } from '../layout';
 import { Card, ErrorState, OfflineState, Pill, PlayerPhoto, Row, Skeleton, Txt, useErrorText } from '../ui';
-import { ChipRow, Notice, SectionHeader, openPlayer, openTeam, waitingForNetwork } from './common';
+import { ChipRow, Notice, SectionHeader, openPlayer, openTeam, teamTextLink, waitingForNetwork } from './common';
 import { useShare, type ShareRequest } from '../share/ShareSheet';
 import { playerFromLeader } from '../share/subjects';
 
@@ -96,7 +96,7 @@ const LeaderCard: React.FC<{ leader: Leader; first: boolean; width: number; cate
                     {leader.name}
                 </Txt>
             </Pressable>
-            <Txt size={14} weight="semibold" color={soft} numberOfLines={1} style={first && { opacity: 0.8 }}>
+            <Txt size={14} weight="semibold" color={soft} numberOfLines={1} style={first && { opacity: 0.8 }} {...(detailOf(leader, t) ? {} : teamTextLink(leader.teamId))}>
                 {detailOf(leader, t) || leader.teamName}
             </Txt>
             <Pressable

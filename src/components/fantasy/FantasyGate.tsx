@@ -1,6 +1,6 @@
 // Portada del Fantasy sin cuenta: los 3 pasos, la tarjeta para entrar, los que más suman hoy (o quién juega) y las reglas
 import React, { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Crown, Sparkles, Trophy, Users } from 'lucide-react-native';
 import { RULES, type FantasyDay } from '../../lib/fantasy';
@@ -8,6 +8,7 @@ import { formatTime } from '../../lib/format';
 import { useColors } from '../../theme/theme';
 import { radius, shadow } from '../../theme/tokens';
 import { Card, Gradient, PlayerPhoto, Row, Skeleton, TeamLogo, Txt } from '../ui';
+import { TeamLink, teamTextLink } from '../stats/common';
 import { AccountCard } from '../account/AccountCard';
 import { ScoringTable } from './ScoringTable';
 import { RulesToggle, lineText, teamOf, useOpenPlayer } from './shared';
@@ -86,7 +87,7 @@ export const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ 
                                             {player.name}
                                         </Txt>
                                         <Txt size={12} tone="muted" numberOfLines={1}>
-                                            {team?.abbrev} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')}
+                                            <Text {...teamTextLink(team?.id)}>{team?.abbrev}</Text> · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')}
                                             {line ? ` · ${line}` : ''}
                                         </Txt>
                                     </View>
@@ -106,17 +107,21 @@ export const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ 
                     {day.games.map((game) => (
                         <Card key={game.gamePk} style={{ padding: 12 }}>
                             <Row gap={8}>
-                                <TeamLogo team={game.away} size={30} />
-                                <Txt size={14} weight="extrabold">
-                                    {game.away.abbrev}
-                                </Txt>
+                                <TeamLink id={game.away.id} name={game.away.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <TeamLogo team={game.away} size={30} />
+                                    <Txt size={14} weight="extrabold">
+                                        {game.away.abbrev}
+                                    </Txt>
+                                </TeamLink>
                                 <Txt size={12} weight="semibold" tone="muted" center style={{ flex: 1 }}>
                                     {formatTime(game.date, i18n.language)}
                                 </Txt>
-                                <Txt size={14} weight="extrabold">
-                                    {game.home.abbrev}
-                                </Txt>
-                                <TeamLogo team={game.home} size={30} />
+                                <TeamLink id={game.home.id} name={game.home.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <Txt size={14} weight="extrabold">
+                                        {game.home.abbrev}
+                                    </Txt>
+                                    <TeamLogo team={game.home} size={30} />
+                                </TeamLink>
                             </Row>
                         </Card>
                     ))}
