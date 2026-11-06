@@ -8,6 +8,8 @@ import { SORTS, normalize, seasonSummary, sortPlayers, usePlayers, type PlayerRo
 import { inkOn } from '../components/gamecast/GameHero';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
 import { TeamLogo } from '../components/ui/TeamLogo';
+import { TeamLink } from '../components/ui/TeamLink';
+import { CardLink, OVER_CARD } from '../components/ui/CardLink';
 import { Segmented } from '../components/ui/Segmented';
 import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
@@ -200,7 +202,7 @@ export const StatsPage: React.FC = () => {
                         <>
                             <TeamStatsView teams={teamQuery.data.teams} onOpenTeam={(id) => navigate(`/equipo/${id}`)} />
                             <div className="px-4 pt-4">
-                                <TransactionsCard league={activeLeague} onOpenPlayer={(id) => navigate(playerPath(id))} />
+                                <TransactionsCard league={activeLeague} season={data && data.season !== data.currentSeason ? data.season : null} />
                             </div>
                         </>
                     ) : (
@@ -231,7 +233,7 @@ export const StatsPage: React.FC = () => {
                         ) : (
                             <ol className="card mx-4 divide-y divide-line/10 overflow-hidden" aria-label={t('statsPage.list')}>
                                 {rest.slice(0, limit).map(({ row, ranked }, index) => (
-                                    <PlayerItem key={row.id} row={row} rank={ranked ? index + 1 + top.length : null} team={row.teamId ? data.teams[row.teamId] : undefined} value={ranked ? sort.show(row) : '—'} unit={t(`statsPage.unit.${sort.key}`)} onOpen={() => open(row)} />
+                                    <PlayerItem key={row.id} row={row} rank={ranked ? index + 1 + top.length : null} team={row.teamId ? data.teams[row.teamId] : undefined} value={ranked ? sort.show(row) : '—'} unit={t(`statsPage.unit.${sort.key}`)} to={playerPath(row.id)} />
                                 ))}
                             </ol>
                         )}
@@ -287,27 +289,35 @@ const Podium: React.FC<{ rows: PlayerRow[]; teams: Record<string, StatsTeam>; sh
     );
 };
 
-const PlayerItem: React.FC<{ row: PlayerRow; rank: number | null; team?: StatsTeam; value: string; unit: string; onOpen: () => void }> = ({ row, rank, team, value, unit, onOpen }) => {
+const PlayerItem: React.FC<{ row: PlayerRow; rank: number | null; team?: StatsTeam; value: string; unit: string; to: string }> = ({ row, rank, team, value, unit, to }) => {
     const { t } = useTranslation();
     const summary = seasonSummary(row, t);
+    const rest = [row.pos, row.number ? `#${row.number}` : null].filter(Boolean).join(' · ');
+    // Toda la fila abre su página; la sigla del equipo, la del equipo
     return (
-        <li>
-            <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-3 py-2.5 text-left" aria-label={t('statsPage.viewPlayer', { name: row.name })}>
-                <span className="w-6 shrink-0 text-center font-display text-base font-extrabold text-muted">{rank ?? '·'}</span>
-                <PlayerPhoto personId={row.id} name={row.name} size={44} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
-                <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-extrabold">{row.name}</span>
-                    <span className="block truncate text-xs text-muted">
-                        {[team?.abbrev, row.pos, row.number ? `#${row.number}` : null].filter(Boolean).join(' · ')}
-                        {' · '}
-                        {summary ?? t('statsPage.noGamesShort')}
-                    </span>
+        <li className="relative isolate flex w-full items-center gap-3 px-3 py-2.5 text-left">
+            <CardLink to={to} label={t('statsPage.viewPlayer', { name: row.name })} />
+            <span className="w-6 shrink-0 text-center font-display text-base font-extrabold text-muted">{rank ?? '·'}</span>
+            <PlayerPhoto personId={row.id} name={row.name} size={44} team={team ? { id: team.id, logo: team.logo, color: team.color } : null} />
+            <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-extrabold">{row.name}</span>
+                <span className="block truncate text-xs text-muted">
+                    {team ? (
+                        <>
+                            <TeamLink id={team.id} className={OVER_CARD}>{team.abbrev}</TeamLink>
+                            {rest ? ` · ${rest}` : ''}
+                        </>
+                    ) : (
+                        rest
+                    )}
+                    {' · '}
+                    {summary ?? t('statsPage.noGamesShort')}
                 </span>
-                <span className="flex shrink-0 flex-col items-end">
-                    <span className="font-display text-xl font-extrabold leading-none tabular-nums">{value}</span>
-                    <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">{unit}</span>
-                </span>
-            </button>
+            </span>
+            <span className="flex shrink-0 flex-col items-end">
+                <span className="font-display text-xl font-extrabold leading-none tabular-nums">{value}</span>
+                <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">{unit}</span>
+            </span>
         </li>
     );
 };

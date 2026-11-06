@@ -5,12 +5,17 @@ import { ArrowLeftRight } from 'lucide-react';
 import type { LeagueId } from '../../types';
 import { useTransactions } from '../../lib/stats';
 import { formatShortDate } from '../../lib/format';
+import { slot } from '../../lib/links';
 import { TeamLogo } from '../ui/TeamLogo';
+import { TeamLink } from '../ui/TeamLink';
+import { PlayerLink } from '../ui/PlayerLink';
+import { withNodes } from '../ui/TextLinks';
 
 const KNOWN = new Set(['SFA', 'SGN', 'REL', 'TR', 'ASG', 'OPT', 'CU', 'SC', 'DES', 'OUT', 'CLW', 'RET', 'SU', 'NUM', 'LON']);
 const PAGE = 8;
 
-export const TransactionsCard: React.FC<{ league: LeagueId; teamId?: number; onOpenPlayer?: (id: number, name: string) => void }> = ({ league, teamId, onOpenPlayer }) => {
+/** Cada pelotero abre su página (en `season` si es otra temporada) y cada equipo, la suya */
+export const TransactionsCard: React.FC<{ league: LeagueId; teamId?: number; season?: number | null }> = ({ league, teamId, season }) => {
     const { t, i18n } = useTranslation();
     const query = useTransactions(league);
     const [limit, setLimit] = useState(PAGE);
@@ -28,20 +33,23 @@ export const TransactionsCard: React.FC<{ league: LeagueId; teamId?: number; onO
             <ul className="divide-y divide-line/10">
                 {list.slice(0, limit).map((item) => (
                     <li key={item.id} className="flex items-start gap-3 py-2.5">
-                        <TeamLogo team={item.team} size={26} />
+                        <TeamLink id={item.team.id} decorative className="flex shrink-0">
+                            <TeamLogo team={item.team} size={26} />
+                        </TeamLink>
                         <div className="min-w-0 flex-1 text-sm">
                             <p className="font-semibold">
                                 <span className="mr-1.5 rounded-md bg-raised px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-muted">{t(`moves.type.${item.type && KNOWN.has(item.type) ? item.type : 'other'}`)}</span>
-                                {onOpenPlayer ? (
-                                    <button type="button" onClick={() => onOpenPlayer(item.person.id, item.person.name)} className="font-bold underline-offset-2 hover:underline">
-                                        {item.person.name}
-                                    </button>
-                                ) : (
-                                    <b>{item.person.name}</b>
-                                )}
+                                <PlayerLink id={item.person.id} season={season} className="font-bold">
+                                    {item.person.name}
+                                </PlayerLink>
                             </p>
                             <p className="truncate text-xs text-muted">
-                                {item.other ? t('moves.between', { from: item.other.abbrev, to: item.team.abbrev }) : item.team.name}
+                                {item.other
+                                    ? withNodes(t('moves.between', { from: slot('from'), to: slot('to') }), {
+                                          from: <TeamLink id={item.other.id}>{item.other.abbrev}</TeamLink>,
+                                          to: <TeamLink id={item.team.id}>{item.team.abbrev}</TeamLink>
+                                      })
+                                    : <TeamLink id={item.team.id}>{item.team.name}</TeamLink>}
                                 {item.date ? ` · ${formatShortDate(`${item.date}T16:00:00Z`, i18n.language)}` : ''}
                             </p>
                             {/* El detalle viene en inglés: en español solo se muestra en inglés si no hay tipo conocido */}

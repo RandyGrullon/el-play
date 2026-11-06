@@ -6,6 +6,8 @@ import { useLeague } from '../../store/LeagueContext';
 import { BottomSheet } from '../ui/BottomSheet';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
 import { TeamLogo } from '../ui/TeamLogo';
+import { TeamLink } from '../ui/TeamLink';
+import { CardLink, OVER_CARD } from '../ui/CardLink';
 import { Segmented } from '../ui/Segmented';
 import { ErrorState, Skeleton } from '../ui/States';
 import { inkOn } from '../gamecast/GameHero';
@@ -147,7 +149,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ id, name, team, se
                         )
                     )}
                     <GameLog player={player} onOpen={leave} />
-                    <Career player={player} />
+                    <Career player={player} onLeave={leave} />
                 </>
             ) : null}
         </div>
@@ -324,18 +326,24 @@ const AdvancedGrid: React.FC<{ player: PlayerDetail }> = ({ player }) => {
 const GameRow: React.FC<{ game: GameLogRow; role: 'B' | 'P'; onOpen: () => void }> = ({ game, role, onOpen }) => {
     const { t, i18n } = useTranslation();
     return (
-        <li>
-            <Link to={`/juego/${game.gamePk}`} onClick={onOpen} className="flex items-center gap-3 px-3 py-2.5" aria-label={t('statsPage.openGame', { date: shortDay(game.date, i18n.language) })}>
-                <span className="w-12 shrink-0 text-xs font-bold text-muted">{shortDay(game.date, i18n.language)}</span>
-                <span className="flex w-[72px] shrink-0 items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-muted">{game.isHome ? t('statsPage.vs') : t('statsPage.at')}</span>
-                    {game.opponent && <TeamLogo team={{ ...game.opponent, name: game.opponent.abbrev }} size={22} />}
-                    <span className="text-xs font-extrabold">{game.opponent?.abbrev}</span>
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold">{gameLine(game, role, t)}</span>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-extrabold tabular-nums ${game.pts > 0 ? 'bg-ball/15 text-ball' : game.pts < 0 ? 'bg-live/10 text-live' : 'bg-raised text-muted'}`}>{game.pts > 0 ? `+${game.pts}` : game.pts}</span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
-            </Link>
+        // Toda la fila abre el juego; el rival, su página
+        <li className="relative isolate flex items-center gap-3 px-3 py-2.5">
+            <CardLink to={`/juego/${game.gamePk}`} onClick={onOpen} label={t('statsPage.openGame', { date: shortDay(game.date, i18n.language) })} />
+            <span className="w-12 shrink-0 text-xs font-bold text-muted">{shortDay(game.date, i18n.language)}</span>
+            <span className="flex w-[72px] shrink-0 items-center gap-1.5">
+                <span className="text-[11px] font-bold text-muted">{game.isHome ? t('statsPage.vs') : t('statsPage.at')}</span>
+                {game.opponent && (
+                    <TeamLink id={game.opponent.id} decorative onClick={onOpen} className={`${OVER_CARD} flex shrink-0`}>
+                        <TeamLogo team={{ ...game.opponent, name: game.opponent.abbrev }} size={22} />
+                    </TeamLink>
+                )}
+                <TeamLink id={game.opponent?.id} onClick={onOpen} className={`${OVER_CARD} text-xs font-extrabold`}>
+                    {game.opponent?.abbrev}
+                </TeamLink>
+            </span>
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold">{gameLine(game, role, t)}</span>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-extrabold tabular-nums ${game.pts > 0 ? 'bg-ball/15 text-ball' : game.pts < 0 ? 'bg-live/10 text-live' : 'bg-raised text-muted'}`}>{game.pts > 0 ? `+${game.pts}` : game.pts}</span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
         </li>
     );
 };
@@ -381,7 +389,7 @@ const careerTotal = (player: PlayerDetail) => {
     return [sum('g'), rate3(h / ab), sum('hr'), sum('rbi'), rate3(obp + tb / ab)];
 };
 
-const Career: React.FC<{ player: PlayerDetail }> = ({ player }) => {
+const Career: React.FC<{ player: PlayerDetail; onLeave: () => void }> = ({ player, onLeave }) => {
     const { t } = useTranslation();
     const { activeLeague } = useLeague();
     if (!player.career.length) return null;
@@ -423,10 +431,10 @@ const Career: React.FC<{ player: PlayerDetail }> = ({ player }) => {
                             <tr key={`${row.season}-${row.team?.id}`} className={row.season === player.season ? 'bg-accent/5 font-bold' : ''}>
                                 <td className="px-2.5 py-2 font-semibold">{seasonLabel(row.season, activeLeague)}</td>
                                 <td className="px-2.5 py-2">
-                                    <span className="flex items-center gap-1.5">
+                                    <TeamLink id={row.team?.id} onClick={onLeave} className="flex items-center gap-1.5">
                                         {row.team && <TeamLogo team={{ ...row.team, name: row.team.abbrev }} size={18} />}
                                         {row.team?.abbrev}
-                                    </span>
+                                    </TeamLink>
                                 </td>
                                 <td className="px-2.5 py-2 text-right font-extrabold text-accent-ink">{row.pts}</td>
                                 {cells(row).map((value, index) => (

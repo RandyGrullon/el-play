@@ -7,6 +7,10 @@ import type { LeagueId, ScheduleGame, Standings } from '../../types';
 import { BottomSheet } from '../ui/BottomSheet';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
 import { TeamLogo } from '../ui/TeamLogo';
+import { TeamLink } from '../ui/TeamLink';
+import { PlayerLink } from '../ui/PlayerLink';
+import { withNodes } from '../ui/TextLinks';
+import { slot } from '../../lib/links';
 import { inkOn } from '../gamecast/GameHero';
 import { formatShortDate } from '../../lib/format';
 import { normalize, usePlayers, type HittingLine, type PitchingLine, type PlayerDetail } from '../../lib/stats';
@@ -133,6 +137,18 @@ export const TeamCompareSheet: React.FC<TeamCompareProps> = ({ team, teams, stan
     const rate3 = (value: number) => value.toFixed(3).replace(/^0(?=\.)/, '');
     const whole = (value: number) => String(Math.round(value));
     const label = (group: 'bat' | 'pitch', key: string) => t(`statsPage.teamSort.${group}.${key}`);
+    // Los dos abren su página (y la hoja se cierra: la página del equipo sigue abierta debajo)
+    const side = (row: TeamRow, record: { w: number; l: number }) => (
+        <>
+            <TeamLink id={row.id} decorative onClick={onClose} className="grid h-14 w-14 place-items-center rounded-full bg-white/90">
+                <TeamLogo team={row} size={42} />
+            </TeamLink>
+            <TeamLink id={row.id} onClick={onClose} className="max-w-full truncate text-sm font-extrabold">
+                {row.name}
+            </TeamLink>
+            <span className="font-display text-2xl font-extrabold tabular-nums">{record.w}-{record.l}</span>
+        </>
+    );
 
     return (
         <BottomSheet open onClose={onClose} title={t('compare.teamTitle', { team: team.abbrev })} tall>
@@ -141,20 +157,8 @@ export const TeamCompareSheet: React.FC<TeamCompareProps> = ({ team, teams, stan
                     leftColor={team.color}
                     rightColor={other.color}
                     onSwap={() => setOtherId(null)}
-                    left={
-                        <>
-                            <span className="grid h-14 w-14 place-items-center rounded-full bg-white/90"><TeamLogo team={team} size={42} /></span>
-                            <span className="max-w-full truncate text-sm font-extrabold">{team.name}</span>
-                            <span className="font-display text-2xl font-extrabold tabular-nums">{a.w}-{a.l}</span>
-                        </>
-                    }
-                    right={
-                        <>
-                            <span className="grid h-14 w-14 place-items-center rounded-full bg-white/90"><TeamLogo team={other} size={42} /></span>
-                            <span className="max-w-full truncate text-sm font-extrabold">{other.name}</span>
-                            <span className="font-display text-2xl font-extrabold tabular-nums">{b.w}-{b.l}</span>
-                        </>
-                    }
+                    left={side(team, a)}
+                    right={side(other, b)}
                 />
 
                 {/* Entre ellos esta temporada y cuándo se vuelven a ver */}
@@ -162,7 +166,12 @@ export const TeamCompareSheet: React.FC<TeamCompareProps> = ({ team, teams, stan
                     <p className="eyebrow">{t('compare.headToHead')}</p>
                     {h2h ? (
                         <p className="mt-1 font-semibold">
-                            <b className="font-display text-xl tabular-nums">{t('compare.h2hLine', { a: team.abbrev, w: h2h.w, l: h2h.l, b: other.abbrev })}</b>
+                            <b className="font-display text-xl tabular-nums">
+                                {withNodes(t('compare.h2hLine', { a: slot('a'), w: h2h.w, l: h2h.l, b: slot('b') }), {
+                                    a: <TeamLink id={team.id} onClick={onClose}>{team.abbrev}</TeamLink>,
+                                    b: <TeamLink id={other.id} onClick={onClose}>{other.abbrev}</TeamLink>
+                                })}
+                            </b>
                             <span className="ml-2 text-muted tabular-nums">{t('compare.h2hRuns', { rs: h2h.rs, ra: h2h.ra })}</span>
                         </p>
                     ) : (
@@ -249,8 +258,26 @@ export const PlayerCompareSheet: React.FC<{ player: PlayerDetail; league: League
     const theirs = pitcher ? other.pitching : other.hitting;
     const metrics = pitcher ? COMPARE_PITCHING : COMPARE_HITTING;
     const valueOf = (metric: (typeof metrics)[number], line: HittingLine | PitchingLine | null) => (line ? (metric.value as (l: HittingLine & PitchingLine) => number | null)(line as HittingLine & PitchingLine) : null);
-    const photo = (id: number, name: string, team: { id: number; logo: string; color: string } | null | undefined) => (
-        <PlayerPhoto personId={id} name={name} size={64} background="rgba(255,255,255,0.3)" team={team ?? null} />
+    // Los dos abren su página y su equipo, la del equipo (la hoja se cierra al irse)
+    const face = (id: number, name: string, team: { id: number; logo: string; color: string; abbrev: string } | null | undefined, pos: string | null | undefined) => (
+        <>
+            <PlayerLink id={id} decorative onClick={onClose} className="flex shrink-0">
+                <PlayerPhoto personId={id} name={name} size={64} background="rgba(255,255,255,0.3)" team={team ?? null} />
+            </PlayerLink>
+            <PlayerLink id={id} onClick={onClose} className="max-w-full truncate text-sm font-extrabold">
+                {name}
+            </PlayerLink>
+            <span className="text-xs font-bold opacity-80">
+                {team ? (
+                    <>
+                        <TeamLink id={team.id} onClick={onClose}>{team.abbrev}</TeamLink>
+                        {pos ? ` · ${pos}` : ''}
+                    </>
+                ) : (
+                    pos
+                )}
+            </span>
+        </>
     );
 
     return (
@@ -260,20 +287,8 @@ export const PlayerCompareSheet: React.FC<{ player: PlayerDetail; league: League
                     leftColor={myColor}
                     rightColor={otherColor}
                     onSwap={() => setOtherId(null)}
-                    left={
-                        <>
-                            {photo(player.id, player.name, player.team)}
-                            <span className="max-w-full truncate text-sm font-extrabold">{player.name}</span>
-                            <span className="text-xs font-bold opacity-80">{[player.team?.abbrev, player.pos].filter(Boolean).join(' · ')}</span>
-                        </>
-                    }
-                    right={
-                        <>
-                            {photo(other.id, other.name, otherTeam)}
-                            <span className="max-w-full truncate text-sm font-extrabold">{other.name}</span>
-                            <span className="text-xs font-bold opacity-80">{[otherTeam?.abbrev, other.pos].filter(Boolean).join(' · ')}</span>
-                        </>
-                    }
+                    left={face(player.id, player.name, player.team, player.pos)}
+                    right={face(other.id, other.name, otherTeam, other.pos)}
                 />
                 <Group title={t('compare.fantasy')}>
                     <CompareRow label={t('compare.points')} a={player.pts} b={other.pts} show={(value) => String(Math.round(value * 10) / 10)} higher left={left} right={right} />

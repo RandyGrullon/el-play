@@ -19,6 +19,8 @@ import { useNow } from '../hooks/useNow';
 import { useBack } from '../hooks/useBack';
 import { inkOn } from '../components/gamecast/GameHero';
 import { TeamLogo } from '../components/ui/TeamLogo';
+import { TeamLink } from '../components/ui/TeamLink';
+import { CardLink, OVER_CARD } from '../components/ui/CardLink';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
 import { Segmented } from '../components/ui/Segmented';
 import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
@@ -194,7 +196,7 @@ export const TeamPage: React.FC = () => {
             <Upcoming games={games} teamId={team.id} now={now} />
 
             <div className="px-4">
-                <TransactionsCard league={activeLeague} teamId={team.id} onOpenPlayer={(id) => navigate(`/jugador/${id}`)} />
+                <TransactionsCard league={activeLeague} teamId={team.id} />
             </div>
 
             <ActionDial
@@ -465,20 +467,25 @@ const Results: React.FC<{ results: TeamResult[] }> = ({ results }) => {
             </h2>
             <ol className="card divide-y divide-line/10 overflow-hidden">
                 {shown.map((result) => (
-                    <li key={result.game.gamePk}>
-                        <Link to={`/juego/${result.game.gamePk}`} className="flex items-center gap-3 px-3 py-2.5">
-                            <span className="w-12 shrink-0 whitespace-nowrap text-xs font-bold text-muted">{dayMonth(result.game.date, i18n.language)}</span>
-                            <span className="w-6 shrink-0 text-[11px] font-bold text-muted">{result.home ? t('statsPage.vs') : t('statsPage.at')}</span>
+                    // Toda la fila abre el juego; el rival, su página
+                    <li key={result.game.gamePk} className="relative isolate flex items-center gap-3 px-3 py-2.5">
+                        <CardLink
+                            to={`/juego/${result.game.gamePk}`}
+                            label={t('team.resultLabel', { date: formatShortDate(result.game.date, i18n.language), result: result.won ? t('team.won') : t('team.lost'), score: `${result.runs}-${result.allowed}`, rival: result.opponent.name })}
+                        />
+                        <span className="w-12 shrink-0 whitespace-nowrap text-xs font-bold text-muted">{dayMonth(result.game.date, i18n.language)}</span>
+                        <span className="w-6 shrink-0 text-[11px] font-bold text-muted">{result.home ? t('statsPage.vs') : t('statsPage.at')}</span>
+                        <TeamLink id={result.opponent.id} decorative className={`${OVER_CARD} flex shrink-0`}>
                             <TeamLogo team={result.opponent} size={26} />
-                            <span className="min-w-0 flex-1 truncate text-sm font-bold">
-                                {result.opponent.name}
-                                {result.game.gameType && result.game.gameType !== 'R' && result.game.description ? <span className="ml-1.5 text-xs font-semibold text-muted">{result.game.description}</span> : null}
-                            </span>
-                            <span className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${result.won ? 'bg-ball/15 text-ball' : 'bg-live/10 text-live'}`}>{result.won ? t('team.w') : t('team.l')}</span>
-                            <span className="whitespace-nowrap text-right font-display text-base font-extrabold tabular-nums">
-                                {result.runs}-{result.allowed}
-                            </span>
-                        </Link>
+                        </TeamLink>
+                        <span className="min-w-0 flex-1 truncate text-sm font-bold">
+                            <TeamLink id={result.opponent.id} className={OVER_CARD}>{result.opponent.name}</TeamLink>
+                            {result.game.gameType && result.game.gameType !== 'R' && result.game.description ? <span className="ml-1.5 text-xs font-semibold text-muted">{result.game.description}</span> : null}
+                        </span>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${result.won ? 'bg-ball/15 text-ball' : 'bg-live/10 text-live'}`}>{result.won ? t('team.w') : t('team.l')}</span>
+                        <span className="whitespace-nowrap text-right font-display text-base font-extrabold tabular-nums">
+                            {result.runs}-{result.allowed}
+                        </span>
                     </li>
                 ))}
             </ol>
@@ -507,14 +514,18 @@ const Upcoming: React.FC<{ games: ScheduleGame[]; teamId: number; now: number }>
                     const home = game.home.id === teamId;
                     const rival = home ? game.away : game.home;
                     return (
-                        <li key={game.gamePk}>
-                            <Link to={`/juego/${game.gamePk}`} className="flex items-center gap-3 px-3 py-2.5">
-                                <span className="w-[5.25rem] shrink-0 whitespace-nowrap text-xs font-bold capitalize text-muted">{weekday(game.date)}</span>
-                                <span className="w-6 shrink-0 text-[11px] font-bold text-muted">{home ? t('statsPage.vs') : t('statsPage.at')}</span>
+                        // Toda la fila abre el juego; el rival, su página
+                        <li key={game.gamePk} className="relative isolate flex items-center gap-3 px-3 py-2.5">
+                            <CardLink to={`/juego/${game.gamePk}`} label={t('card.openGame', { away: game.away.name, home: game.home.name })} />
+                            <span className="w-[5.25rem] shrink-0 whitespace-nowrap text-xs font-bold capitalize text-muted">{weekday(game.date)}</span>
+                            <span className="w-6 shrink-0 text-[11px] font-bold text-muted">{home ? t('statsPage.vs') : t('statsPage.at')}</span>
+                            <TeamLink id={rival.id} decorative className={`${OVER_CARD} flex shrink-0`}>
                                 <TeamLogo team={rival} size={26} />
-                                <span className="min-w-0 flex-1 truncate text-sm font-bold">{rival.name}</span>
-                                <span className="text-xs font-bold tabular-nums text-muted">{game.startTimeTBD ? t('team.tbd') : formatTime(game.date, i18n.language)}</span>
-                            </Link>
+                            </TeamLink>
+                            <span className="min-w-0 flex-1 truncate text-sm font-bold">
+                                <TeamLink id={rival.id} className={OVER_CARD}>{rival.name}</TeamLink>
+                            </span>
+                            <span className="text-xs font-bold tabular-nums text-muted">{game.startTimeTBD ? t('team.tbd') : formatTime(game.date, i18n.language)}</span>
                         </li>
                     );
                 })}

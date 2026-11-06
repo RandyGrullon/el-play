@@ -10,6 +10,7 @@ import { useShare } from '../share/ShareSheet';
 import { playerFromLeader } from '../share/subjects';
 import { inkOn } from '../components/gamecast/GameHero';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
+import { TeamLink } from '../components/ui/TeamLink';
 import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { StatsTabs } from '../components/layout/StatsTabs';
@@ -99,7 +100,7 @@ const CategoryCarousel: React.FC<{ data: Leaders; group: 'hitting' | 'pitching';
                                 <button type="button" onClick={() => openLeader(leader)} className={`mt-3 block w-full truncate text-left font-extrabold ${first ? 'text-2xl' : 'text-lg'}`}>
                                     {leader.name}
                                 </button>
-                                <p className={`truncate text-sm font-semibold ${first ? 'opacity-80' : 'text-muted'}`}>{detailOf(leader, t) || leader.teamName}</p>
+                                <p className={`truncate text-sm font-semibold ${first ? 'opacity-80' : 'text-muted'}`}>{detailOf(leader, t) || <TeamLink id={leader.teamId}>{leader.teamName}</TeamLink>}</p>
                                 <button
                                     type="button"
                                     onClick={() => sharePlayer(leader)}
