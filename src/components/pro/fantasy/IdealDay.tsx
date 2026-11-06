@@ -14,6 +14,8 @@ import { CountUp, Enter, ModuleHeader, shortName, useGrow, useInView, useProColo
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Num, PartChip, PartChips, fmtPts } from './bits';
 import { idealTeam, pointParts, round1, surname } from './logic';
+import { nameForms } from '../../../lib/links';
+import { LinkedNames } from '../../stats/common';
 
 interface IdealDayProps {
     day: FantasyDay;
@@ -115,6 +117,8 @@ export const IdealDay: React.FC<IdealDayProps> = ({ day, entry, title, dateName,
     const bestBatter = mine.filter((player) => player.role === 'B').sort((a, b) => b.points - a.points)[0];
     const best = [...mine].sort((a, b) => b.points - a.points)[0];
     const captain = mine.find((player) => player.id === entry.captain) ?? null;
+    // Los apellidos de los textos abren la ficha de cada uno
+    const named = nameForms(mine, (player) => [surname(player.name)]);
     const lost = best && (!captain || best.points > captain.points) ? round1((best.points - (captain?.points ?? 0)) * (RULES.captain - 1)) : 0;
     const parts = bestBatter ? pointParts(bestBatter, day.scoring) : [];
     const how = day.credits
@@ -157,7 +161,7 @@ export const IdealDay: React.FC<IdealDayProps> = ({ day, entry, title, dateName,
                 {bestBatter && parts.length > 0 && (
                     <View style={{ gap: 8, borderRadius: radius.tile, backgroundColor: colors.raised, padding: 12 }}>
                         <Txt size={13} weight="bold">
-                            {t('pro.fantasy.ideal.bestBatter', { name: surname(bestBatter.name) })}
+                            <LinkedNames text={t('pro.fantasy.ideal.bestBatter', { name: surname(bestBatter.name) })} people={named} />
                         </Txt>
                         <PartChips parts={parts} surface={colors.surface} extra={<PartChip text={`= ${fmtPts(bestBatter.points)}`} tone="up" />} />
                     </View>
@@ -165,14 +169,16 @@ export const IdealDay: React.FC<IdealDayProps> = ({ day, entry, title, dateName,
                 <Txt size={13} tone="muted" style={{ lineHeight: 18 }}>
                     {best && lost > 0 ? (
                         <>
-                            {captain ? t('pro.fantasy.ideal.captainSwap', { best: surname(best.name), captain: surname(captain.name) }) : t('pro.fantasy.ideal.noCaptain', { best: surname(best.name) })}{' '}
+                            <LinkedNames text={captain ? t('pro.fantasy.ideal.captainSwap', { best: surname(best.name), captain: surname(captain.name) }) : t('pro.fantasy.ideal.noCaptain', { best: surname(best.name) })} people={named} />{' '}
                             <Txt size={13} weight="bold" color={pro.warn}>
                                 {t('pro.fantasy.ideal.more', { pts: fmtPts(lost) })}
                             </Txt>
                             {'. '}
                         </>
                     ) : captain ? (
-                        `${t('pro.fantasy.ideal.captainBest', { captain: surname(captain.name) })} `
+                        <>
+                            <LinkedNames text={t('pro.fantasy.ideal.captainBest', { captain: surname(captain.name) })} people={named} />{' '}
+                        </>
                     ) : null}
                     {`${t('pro.fantasy.ideal.picks', { pts: fmtPts(picks) })} ${t('pro.fantasy.ideal.day')} `}
                     <Txt size={13} weight="bold">

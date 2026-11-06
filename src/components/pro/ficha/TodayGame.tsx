@@ -9,6 +9,7 @@ import { useColors } from '../../../theme/theme';
 import { alpha, radius, shadow } from '../../../theme/tokens';
 import { TeamLogo, Txt } from '../../ui';
 import { teamInk, useProColors } from '../kit';
+import { TeamLink } from '../../stats/common';
 
 // «Hoy juega»: el juego de hoy del equipo del pelotero (el calendario que ya tiene la app). Si no juega hoy, no sale.
 export const TodayGame: React.FC<{ league: LeagueId; teamId: number | null; onOpen: (gamePk: number) => void }> = ({ league, teamId, onOpen }) => {
@@ -36,7 +37,8 @@ export const TodayGame: React.FC<{ league: LeagueId; teamId: number | null; onOp
     const where = home ? t('pro.ficha.today.vs') : t('pro.ficha.today.at');
     const wide = width >= 360;
     const half = (team: ScheduleTeam, logo: 'start' | 'end') => (
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: logo === 'end' ? 'flex-end' : 'flex-start', gap: 6, backgroundColor: team.color, paddingLeft: logo === 'end' ? 16 : 8, paddingRight: logo === 'end' ? 8 : 16 }}>
+        // Cada mitad lleva a la página de su equipo; el resto de la tarjeta, al juego
+        <TeamLink id={team.id} name={team.name} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: logo === 'end' ? 'flex-end' : 'flex-start', gap: 6, backgroundColor: team.color, paddingLeft: logo === 'end' ? 16 : 8, paddingRight: logo === 'end' ? 8 : 16 }}>
             {logo === 'start' && <TeamLogo team={team} size={24} />}
             {wide && (
                 <Txt size={14} weight="black" color={teamInk(team.color)}>
@@ -44,7 +46,7 @@ export const TodayGame: React.FC<{ league: LeagueId; teamId: number | null; onOp
                 </Txt>
             )}
             {logo === 'end' && <TeamLogo team={team} size={24} />}
-        </View>
+        </TeamLink>
     );
     return (
         <Pressable

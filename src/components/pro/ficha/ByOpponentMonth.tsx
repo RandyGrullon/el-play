@@ -10,6 +10,7 @@ import { TeamLogo, Txt } from '../../ui';
 import { HBarChart, ModuleHeader, ProSegmented, type HBarRow } from '../kit';
 import { eraOf, slashOf, vsTeamsOf } from '../estadisticas/logic';
 import { era, monthName, rate } from './format';
+import { openTeam } from '../../stats/common';
 
 // Por rival (del juego a juego de la temporada) y mes a mes (MLB byMonth): su OPS (o EFE) contra cada equipo y en
 // cada mes, en barras que salen de su cifra de la temporada: a la derecha, mejor que su promedio. No está en el
@@ -49,7 +50,9 @@ export const ByOpponentMonth: React.FC<{ player: PlayerDetail; pro?: PlayerPro }
                     ),
                     value,
                     display: write(value),
-                    color: team.color
+                    color: team.color,
+                    // Cada rival abre la página de ese equipo
+                    onPress: () => openTeam(row.opponentId)
                 };
             })
             .filter((row) => row.value !== null)

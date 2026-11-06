@@ -2,7 +2,7 @@
 // «AL BATE» o «LANZANDO» en vivo con el mini diamante), proyección o puntos reales con su desglose, capitán, «Cambiar»
 // y, los días con créditos, el precio de cada uno y la barra de créditos.
 import React, { useEffect, useMemo } from 'react';
-import { AccessibilityInfo, Pressable, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeftRight, Crown, Plus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -17,6 +17,7 @@ import { formatCredits, lineText } from '../../fantasy/shared';
 import { Chip, Enter, Flash, GrowBar, ModuleHeader, teamInk, useChipInk, useProColors } from '../kit';
 import { FloatChip, LockMark, MiniDiamond, Num, PartChip, PartChips, PulseFrame, diamondLabel, fmtPts, fmtSignedPts, useScoreChange, type T } from './bits';
 import { partsTotal, pointParts, surname, type Projection } from './logic';
+import { teamTextLink } from '../../stats/common';
 
 export interface FormItem {
     date: string;
@@ -278,7 +279,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ day, entry, player, prev
                         {player.name}
                     </Txt>
                     <Txt size={11} weight="semibold" tone="muted" numberOfLines={1}>
-                        {player.role === 'P' ? t('pro.fantasy.card.posP') : player.pos || t('fantasy.batter')} · {team?.abbrev}
+                        {player.role === 'P' ? t('pro.fantasy.card.posP') : player.pos || t('fantasy.batter')} · <Text {...teamTextLink(team?.id)}>{team?.abbrev}</Text>
                         {price !== null ? ` · ${t('fantasy.credits.price', { price })}` : ''}
                     </Txt>
                 </View>

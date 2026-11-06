@@ -10,6 +10,7 @@ import { TeamLogo, Txt } from '../../ui';
 import { ModuleHeader, ProButton } from '../kit';
 import { FichaTile, TileRows } from './SeasonTiles';
 import { shortDate } from './format';
+import { TeamLink } from '../../stats/common';
 
 type Tile = { key: string; value: string };
 
@@ -93,7 +94,13 @@ export const MoreFromMlb: React.FC<{ player: PlayerDetail; pro: PlayerPro }> = (
                             const date = move.date ? `${shortDate(move.date, i18n.language)} ${move.date.slice(0, 4)}` : '';
                             return (
                                 <View key={move.id} accessible accessibilityLabel={`${moveText(move)}, ${date}`} style={[{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 }, index > 0 && { borderTopWidth: 1, borderTopColor: alpha(colors.line, 0.08) }]}>
-                                    {team ? <TeamLogo team={team} size={24} /> : <View style={{ width: 24, height: 24 }} />}
+                                    {team ? (
+                                        <TeamLink id={team.id} name={team.name}>
+                                            <TeamLogo team={team} size={24} />
+                                        </TeamLink>
+                                    ) : (
+                                        <View style={{ width: 24, height: 24 }} />
+                                    )}
                                     <Txt size={13} weight="semibold" style={{ flex: 1, minWidth: 0 }}>
                                         {moveText(move)}
                                     </Txt>

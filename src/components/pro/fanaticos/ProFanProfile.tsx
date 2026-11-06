@@ -3,7 +3,7 @@
 // capitán más usados y sus días. Lo de otro nunca se ve antes de que empiece su juego: con la ruta PRO lo filtra el
 // servidor; sin ella, el equipo de Supabase se puntúa con effectiveEntry y se esconde lo que no ha empezado.
 import React, { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
-import { Pressable, ScrollView, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { Pressable, ScrollView, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,6 +30,7 @@ import { Num, PartChip, PartChips, fmtPts, fmtSignedPts, ordinal } from '../fant
 import { seriesOf, useFanProfilePro, useSeasonTable } from '../fantasy/data';
 import { alignSeries, compareLineups, idealTeam, pointParts, rankIn, round1, shortDayName, surname, topPercent, type LineupItem } from '../fantasy/logic';
 import { PlayerCard } from '../fantasy/TeamGrid';
+import { LinkedTeams, PlayerLink, TeamLink, playerTextLink, teamTextLink } from '../../stats/common';
 
 /** «Viernes 16 de octubre» (sin la coma del formato largo) */
 const longDay = (date: string, lang: string) => {
@@ -796,16 +797,16 @@ const TodayTeam: React.FC<TodayTeamProps> = ({ league, userId, own, detail, deta
                                 <View key={game.gamePk} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderTopWidth: gameIndex ? 1 : 0, borderTopColor: alpha(colors.line, 0.1) }}>
                                     <View style={{ height: 32, width: 84, flexDirection: 'row', overflow: 'hidden', borderRadius: 8 }}>
                                         {[game.away, game.home].map((side) => (
-                                            <View key={side.id} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: side.color }}>
+                                            <TeamLink key={side.id} id={side.id} name={side.name} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: side.color }}>
                                                 <Txt size={11} weight="extrabold" color={teamInk(side.color)}>
                                                     {side.abbrev}
                                                 </Txt>
-                                            </View>
+                                            </TeamLink>
                                         ))}
                                     </View>
                                     <View style={{ flex: 1, minWidth: 0 }}>
                                         <Txt size={14} weight="bold" numberOfLines={1}>
-                                            {t('pro.fanaticos.today.match', { away: game.away.abbrev, home: game.home.abbrev })}
+                                            <LinkedTeams text={t('pro.fanaticos.today.match', { away: game.away.abbrev, home: game.home.abbrev })} teams={[game.away, game.home]} />
                                         </Txt>
                                         <Txt size={12} tone="muted" numberOfLines={1}>
                                             {game.venue}
@@ -868,9 +869,10 @@ const Side: React.FC<{ item: LineupItem | null; team?: { id: number; logo: strin
     if (!item) return <View style={{ flex: 1, flexBasis: 0 }} />;
     const right = align === 'right';
     return (
-        <View
-            accessible
-            accessibilityLabel={`${item.name}${item.captain ? `, ${t('fantasy.captain')}` : ''}: ${fmtPts(item.score)} ${t('pro.fantasy.pts')}`}
+        // El pelotero abre su ficha
+        <PlayerLink
+            player={{ id: item.id, name: item.name, teamId: team?.id }}
+            label={`${item.name}${item.captain ? `, ${t('fantasy.captain')}` : ''}: ${fmtPts(item.score)} ${t('pro.fantasy.pts')}`}
             style={{ flex: 1, flexBasis: 0, minWidth: 0, flexDirection: right ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}
         >
             <View>
@@ -896,7 +898,7 @@ const Side: React.FC<{ item: LineupItem | null; team?: { id: number; logo: strin
                     )}
                 </View>
             </View>
-        </View>
+        </PlayerLink>
     );
 };
 
@@ -1123,7 +1125,7 @@ const UsageBlock: React.FC<{ detail?: FanDetail; pending: boolean; seasonPoints:
                 </View>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 12, rowGap: 4 }}>
                     {parts.map((item) => (
-                        <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TeamLink key={item.id} id={item.teamId ? teams[item.teamId]?.id : null} name={item.teamId ? (teams[item.teamId]?.abbrev ?? '') : ''} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                             {item.teamId && teams[item.teamId] ? <TeamLogo team={teams[item.teamId]} size={16} /> : <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: alpha(colors.muted, 0.45) }} />}
                             <Txt size={12} weight="semibold">
                                 {item.teamId ? teams[item.teamId]?.abbrev : t('fantasy.picks')}
@@ -1131,7 +1133,7 @@ const UsageBlock: React.FC<{ detail?: FanDetail; pending: boolean; seasonPoints:
                             <Txt size={12} weight="semibold" tone="muted" tabular>
                                 {fmtPts(item.points)}
                             </Txt>
-                        </View>
+                        </TeamLink>
                     ))}
                 </View>
             </View>
@@ -1380,12 +1382,12 @@ const DayCard: React.FC<{ league: LeagueId; day: FanDetailDay; teams: FanDetail[
                                                 const color = team?.color ?? '#64748b';
                                                 const ink = teamInk(color);
                                                 return (
-                                                    <View key={side} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: color, opacity: picked ? 1 : 0.6 }}>
+                                                    <TeamLink key={side} id={team?.id} name={team?.abbrev ?? ''} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: color, opacity: picked ? 1 : 0.6 }}>
                                                         {picked && (pick.result === 'win' ? <Check size={12} color={ink} /> : pick.result === 'loss' ? <X size={12} color={ink} /> : null)}
                                                         <Txt size={10} weight="extrabold" color={ink} numberOfLines={1}>
                                                             {team?.abbrev}
                                                         </Txt>
-                                                    </View>
+                                                    </TeamLink>
                                                 );
                                             })}
                                         </View>
@@ -1407,15 +1409,17 @@ const DayCard: React.FC<{ league: LeagueId; day: FanDetailDay; teams: FanDetail[
                             const line = item.line ? (item.role === 'P' ? `${item.line.ip} IP` : `${item.line.h}-${item.line.ab}`) : '';
                             return (
                                 <View key={item.id} style={{ flexDirection: 'row', gap: 10, paddingVertical: 10, borderTopWidth: itemIndex ? 1 : 0, borderTopColor: alpha(colors.line, 0.1) }}>
-                                    <PlayerPhoto personId={item.id} name={item.name} size={36} team={team ?? null} />
+                                    <PlayerLink player={{ id: item.id, name: item.name, teamId: item.teamId }}>
+                                        <PlayerPhoto personId={item.id} name={item.name} size={36} team={team ?? null} />
+                                    </PlayerLink>
                                     <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                            <Txt size={13} weight="bold" numberOfLines={1} style={{ flexShrink: 1 }}>
+                                            <Txt size={13} weight="bold" numberOfLines={1} style={{ flexShrink: 1 }} {...playerTextLink({ id: item.id, name: item.name, teamId: item.teamId })}>
                                                 {surname(item.name)}
                                             </Txt>
                                             {item.captain && <Crown size={14} color={colors.gold} accessibilityLabel={t('fantasy.captain')} />}
                                             <Txt size={12} tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
-                                                {team?.abbrev}
+                                                <Text {...teamTextLink(team?.id)}>{team?.abbrev}</Text>
                                                 {line ? ` · ${line}` : ''}
                                             </Txt>
                                         </View>

@@ -15,6 +15,7 @@ import { LiveDot, ModuleHeader, Odometer, teamInk, useReorder } from '../kit';
 import { MoveMark, Num, fmtPts, ordinal } from './bits';
 import { useDayRivals } from './data';
 import { dayRanking } from './logic';
+import { TeamLink } from '../../stats/common';
 
 /** Puestos ganados o perdidos de cada fanático desde la lectura anterior (no al montar). Estado derivado del render */
 export const useRankMoves = (rows: { userId: string; rank: number }[]) => {
@@ -39,7 +40,7 @@ export const ScoreStrip: React.FC<{ game: FantasyGame; away: number; home: numbe
                 const team = game[side];
                 const ink = teamInk(team.color);
                 return (
-                    <View key={side} style={{ flex: 1, flexDirection: side === 'home' ? 'row-reverse' : 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, backgroundColor: team.color }}>
+                    <TeamLink key={side} id={team.id} name={team.name} style={{ flex: 1, flexDirection: side === 'home' ? 'row-reverse' : 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, backgroundColor: team.color }}>
                         <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
                             <TeamLogo team={team} size={22} />
                         </View>
@@ -49,7 +50,7 @@ export const ScoreStrip: React.FC<{ game: FantasyGame; away: number; home: numbe
                         <View style={{ flex: 1, alignItems: side === 'home' ? 'flex-start' : 'flex-end' }}>
                             <Odometer value={side === 'away' ? away : home} size={28} color={ink} />
                         </View>
-                    </View>
+                    </TeamLink>
                 );
             })}
         </View>

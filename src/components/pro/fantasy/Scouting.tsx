@@ -2,7 +2,7 @@
 // fanáticos de los juegos ya cerrados), los que ya están jugando aparte y plegados, el chip «Titular» solo si llegó la
 // alineación y, los días con créditos, el precio de cada uno y lo que te queda.
 import React, { useMemo, useState } from 'react';
-import { Pressable, View, useWindowDimensions } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
 import Svg, { Line, Rect } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +20,7 @@ import { Num, fmtPts, type T } from './bits';
 import type { ScoutSeason } from './data';
 import { round1 } from './logic';
 import type { FormItem } from './TeamGrid';
+import { teamTextLink } from '../../stats/common';
 
 export type ScoutSort = 'ppg' | 'last5' | 'ops' | 'era' | 'fans';
 export const MIN_GAMES = 10;
@@ -209,7 +210,7 @@ export const Scouting: React.FC<ScoutingProps> = ({ day, entry, role, onRole, re
                             {shortName(player.name)}
                         </Txt>
                         <Txt size={11} tone="muted" numberOfLines={1}>
-                            {player.role === 'P' ? t('pro.fantasy.card.posP') : player.pos || '—'} · {team?.abbrev}
+                            {player.role === 'P' ? t('pro.fantasy.card.posP') : player.pos || '—'} · <Text {...teamTextLink(team?.id)}>{team?.abbrev}</Text>
                             {price !== null ? ` · ${t('fantasy.credits.price', { price })}` : ''}
                             {extra ? ` · ${extra}` : ''}
                         </Txt>

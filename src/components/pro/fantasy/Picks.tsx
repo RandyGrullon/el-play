@@ -14,6 +14,7 @@ import { TeamLogo, Txt } from '../../ui';
 import { GrowBar, ModuleHeader, ProNote, useInView, useProColors } from '../kit';
 import { Confetti, Num, fmtSignedPts, type T } from './bits';
 import { formCompare, type TeamForm } from './logic';
+import { TeamLink } from '../../stats/common';
 
 interface PicksProps {
     day: FantasyDay;
@@ -99,10 +100,12 @@ const PastPick: React.FC<{ game: FantasyGame; pick: number; result: ReturnType<t
                 win ? { backgroundColor: alpha(side.color, 0.16), borderWidth: 1.5, borderColor: side.color } : { backgroundColor: colors.raised }
             ]}
         >
-            <TeamLogo team={side} size={30} />
-            <Txt size={13} weight="extrabold">
-                {side.abbrev}
-            </Txt>
+            <TeamLink id={side.id} name={side.name} style={{ alignItems: 'center', gap: 4 }}>
+                <TeamLogo team={side} size={30} />
+                <Txt size={13} weight="extrabold">
+                    {side.abbrev}
+                </Txt>
+            </TeamLink>
             <Txt size={11} tone="muted" numberOfLines={1}>
                 {result === 'pending' ? t('pro.fantasy.picks.pending') : win ? t('pro.fantasy.picks.won') : t('pro.fantasy.picks.lost')}
                 {result !== 'pending' ? (

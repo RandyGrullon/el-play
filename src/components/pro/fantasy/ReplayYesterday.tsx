@@ -2,7 +2,7 @@
 // del juego (los puntos de cada paso salen con la misma regla del box y terminan igual). Así se verá en vivo. Necesita
 // /api/v2/game/:pk/pro: si la ruta no existe (producción todavía), el bloque no sale.
 import React, { useState } from 'react';
-import { AccessibilityInfo, Pressable, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { History, RotateCcw, SkipForward } from 'lucide-react-native';
 import { describePlay, inningName } from '../../../lib/baseball';
@@ -17,6 +17,7 @@ import { ChipButton, ChipRow, Flash, teamInk } from '../kit';
 import { FloatChip, Num, PartChip, PartChips, PulseFrame, fmtPts, fmtSignedPts } from './bits';
 import { ScoreStrip } from './LiveNow';
 import { replayParts, replaySteps, round1, shortDayName, surname, type ReplayStep } from './logic';
+import { PlayerLink, playerTextLink, teamTextLink } from '../../stats/common';
 
 interface ReplayYesterdayProps {
     /** El día anterior, ya terminado */
@@ -199,13 +200,15 @@ const ReplayGame: React.FC<ReplayGameProps> = ({ day, game, entry, players, step
                                         </View>
                                     </View>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, paddingTop: 10 }}>
-                                        <PlayerPhoto personId={player.id} name={player.name} size={narrow ? 36 : 44} team={!narrow && team ? { id: team.id, logo: team.logo, color: team.color } : null} />
+                                        <PlayerLink player={player}>
+                                            <PlayerPhoto personId={player.id} name={player.name} size={narrow ? 36 : 44} team={!narrow && team ? { id: team.id, logo: team.logo, color: team.color } : null} />
+                                        </PlayerLink>
                                         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                                            <Txt size={narrow ? 12 : 13} weight="bold" style={{ lineHeight: narrow ? 14 : 15 }}>
+                                            <Txt size={narrow ? 12 : 13} weight="bold" style={{ lineHeight: narrow ? 14 : 15 }} {...playerTextLink(player)}>
                                                 {player.name}
                                             </Txt>
                                             <Txt size={11} weight="semibold" tone="muted" numberOfLines={1}>
-                                                {player.role === 'P' ? t('pro.fantasy.card.posP') : player.pos} · {team?.abbrev}
+                                                {player.role === 'P' ? t('pro.fantasy.card.posP') : player.pos} · <Text {...teamTextLink(team?.id)}>{team?.abbrev}</Text>
                                             </Txt>
                                         </View>
                                     </View>

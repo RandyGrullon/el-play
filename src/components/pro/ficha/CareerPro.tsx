@@ -12,6 +12,7 @@ import { TeamLogo, Txt } from '../../ui';
 import { ChipButton, ChipRow, ModuleHeader, useElementWidth, useGrow, useInView, useProColors } from '../kit';
 import { eraOf, ipOf, slashOf, sumHitting, sumPitching, whipOf } from '../estadisticas/logic';
 import { era, rate } from './format';
+import { TeamLink } from '../../stats/common';
 
 interface CareerLine {
     season: number;
@@ -181,7 +182,15 @@ export const CareerPro: React.FC<{ player: PlayerDetail; pro?: PlayerPro }> = ({
                                         accessibilityLabel={[seasonCell(row.season), row.team?.name, ...head.map((key, index) => `${label(key)} ${cells(row)[index]}`), `${label('pts')} ${ptsText(row.pts)}`].filter(Boolean).join(', ')}
                                         style={[{ height: ROW, flexDirection: 'row', alignItems: 'center', backgroundColor: viewing ? alpha(colors.accent, 0.06) : undefined }, line]}
                                     >
-                                        <View style={{ width: grow(teamWidth) }}>{row.team ? <TeamLogo team={row.team} size={18} /> : <Txt size={13}>—</Txt>}</View>
+                                        <View style={{ width: grow(teamWidth) }}>
+                                            {row.team ? (
+                                                <TeamLink id={row.team.id} name={row.team.name} hitSlop={8} style={{ alignSelf: 'flex-start' }}>
+                                                    <TeamLogo team={row.team} size={18} />
+                                                </TeamLink>
+                                            ) : (
+                                                <Txt size={13}>—</Txt>
+                                            )}
+                                        </View>
                                         {cells(row).map((value, index) => (
                                             <Txt key={index} size={13} weight={viewing ? 'extrabold' : 'semibold'} tabular numberOfLines={1} style={{ width: grow(widths[index]), textAlign: 'right' }}>
                                                 {value}

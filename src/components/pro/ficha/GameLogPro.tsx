@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { ArrowDown } from 'lucide-react-native';
 import type { HittingLine, PitchingLine, PlayerDetail, StatsTeam } from '../../../lib/stats';
@@ -11,6 +11,7 @@ import { ModuleHeader, ProButton, useElementWidth, useProColors } from '../kit';
 import { doubleHeaderTags } from '../estadisticas/logic';
 import { MovingRow, StickyHeader, useRowWindow } from '../estadisticas/scroll';
 import { shortDate } from './format';
+import { TeamLink, teamTextLink } from '../../stats/common';
 
 interface LogRow {
     gamePk: number;
@@ -120,11 +121,16 @@ export const GameLogPro: React.FC<{ player: PlayerDetail; pro?: PlayerPro; onOpe
                 accessibilityLabel={label}
                 style={({ pressed }) => [{ height: ROW, flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 10, borderTopWidth: 1, borderTopColor: alpha(colors.line, 0.08), backgroundColor: colors.surface }, pressed && { backgroundColor: colors.raised }]}
             >
-                {row.opponent && <TeamLogo team={row.opponent} size={18} />}
+                {/* El rival va a su página; el resto de la fila, al juego */}
+                {row.opponent && (
+                    <TeamLink id={row.opponent.id} name={row.opponent.name}>
+                        <TeamLogo team={row.opponent} size={18} />
+                    </TeamLink>
+                )}
                 <View style={{ flex: 1, minWidth: 0 }}>
                     <Txt size={12} weight="extrabold" numberOfLines={1} style={{ lineHeight: 16 }}>
                         <Txt size={12} weight="semibold" tone="muted">{`${where(row)} `}</Txt>
-                        {row.opponent?.abbrev ?? '—'}
+                        <Text {...teamTextLink(row.opponent?.id)}>{row.opponent?.abbrev ?? '—'}</Text>
                     </Txt>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                         <Txt size={10} tone="muted" numberOfLines={1} style={{ lineHeight: 15 }}>

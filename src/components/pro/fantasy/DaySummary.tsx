@@ -13,6 +13,8 @@ import { CountUp, Gauge, GradientCard, useNow, useProColors } from '../kit';
 import { Num, fmtPts, ordinal, type T } from './bits';
 import type { SaveStatus } from './data';
 import { lockGroups, nextGame, surname, topPercent, type Projection } from './logic';
+import { nameForms } from '../../../lib/links';
+import { LinkedNames } from '../../stats/common';
 
 export interface RankInfo {
     rank: number;
@@ -78,6 +80,11 @@ export const DaySummary: React.FC<DaySummaryProps> = ({ day, entry, dayName, tea
     const top = rank ? topPercent(rank.rank, rank.total) : null;
     const real = Math.round((team + picks) * 10) / 10;
     const locks = next ? lockText(day, entry, Date.parse(next.date), lang, t, now) : null;
+    // Los apellidos del texto de cierres abren la ficha de cada uno
+    const lineupPeople = nameForms(
+        day.players.filter((player) => entry.lineup.includes(player.id)),
+        (player) => [surname(player.name)]
+    );
     const save =
         saveStatus === 'saved'
             ? { Icon: CheckCheck, color: pro.up }
@@ -244,7 +251,7 @@ export const DaySummary: React.FC<DaySummaryProps> = ({ day, entry, dayName, tea
                     </View>
                     {locks ? (
                         <Txt size={11} tone="muted" style={{ lineHeight: 16 }}>
-                            {locks}
+                            <LinkedNames text={locks} people={lineupPeople} />
                         </Txt>
                     ) : null}
                 </View>

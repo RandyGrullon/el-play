@@ -22,6 +22,7 @@ import { ChipButton, ChipRow, ModuleHeader, ProButton, ProNote, shortName, usePr
 import { Num, fmtPts } from './bits';
 import { leaguesKey, leaveLeague, useDayRivals, useSeasonTable, type LeagueInfo } from './data';
 import { ranked } from './logic';
+import { PlayerLink } from '../../stats/common';
 
 interface LeaguesSheetProps {
     open: boolean;
@@ -341,13 +342,13 @@ const CompareTeams: React.FC<{ league: LeagueId; userId: string; day: FantasyDay
                                         <Lock size={16} color={colors.muted} />
                                     </View>
                                 ) : (
-                                    <View key={player.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, backgroundColor: colors.surface, paddingVertical: 2, paddingLeft: 2, paddingRight: 10 }}>
+                                    <PlayerLink key={player.id} player={player} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, backgroundColor: colors.surface, paddingVertical: 2, paddingLeft: 2, paddingRight: 10 }}>
                                         <PlayerPhoto personId={player.id} name={player.name} size={36} team={club ? { id: club.id, logo: club.logo, color: club.color } : null} />
                                         <Txt size={11} weight="bold">
                                             {shortName(player.name)}
                                             {team.entry.captain === player.id ? ' ×1.5' : ''} · {fmtPts(playerScore(team.entry, player))}
                                         </Txt>
-                                    </View>
+                                    </PlayerLink>
                                 );
                             })}
                         </View>
