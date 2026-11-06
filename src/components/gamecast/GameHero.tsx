@@ -7,6 +7,7 @@ import { finalLabel, inningName, isOnHold, isSuspended, stateName } from '../../
 import { formatCountdown, formatShortDate, formatTime } from '../../lib/format';
 import { teamDisplayName } from '../../lib/teams';
 import { usePreferences } from '../../store/preferences';
+import { useNow } from '../../hooks/useNow';
 
 export interface HeroModel {
     state: GameState;
@@ -56,7 +57,9 @@ const InningBadge: React.FC<{ inning: { n: number | null; isTop: boolean; state?
 export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({ model, onShare }) => {
     const { t, i18n } = useTranslation();
     const { favoriteTeamId, toggleFavoriteTeam } = usePreferences();
-    const notPlayed = isOnHold(model);
+    // La hora de ahora avanza sola: la cuenta regresiva y el suspendido que pasa a «en espera»
+    const now = useNow();
+    const notPlayed = isOnHold(model, now);
     const showScores = model.state !== 'preview' && !notPlayed;
 
     let status: string;
@@ -101,7 +104,7 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
         );
     };
 
-    const startsIn = model.date ? new Date(model.date).getTime() - Date.now() : 0;
+    const startsIn = model.date ? new Date(model.date).getTime() - now : 0;
 
     return (
         <section className="relative flex overflow-hidden sm:mx-4 sm:mt-4 sm:rounded-card" aria-label={t('game.scoreboard')}>

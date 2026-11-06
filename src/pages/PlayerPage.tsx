@@ -9,7 +9,10 @@ import { usePlayer } from '../lib/stats';
 import { PlayerProfile } from '../components/stats/PlayerSheet';
 import { ActionDial } from '../components/ui/ActionDial';
 import { PlayerCompareSheet } from '../components/compare/CompareSheet';
-import { shareLink, useBack } from './TeamPage';
+import { NotFoundCard } from '../components/ui/States';
+import { ApiError } from '../lib/api';
+import { useBack } from '../hooks/useBack';
+import { shareLink } from './TeamPage';
 
 export const PlayerPage: React.FC = () => {
     const { t } = useTranslation();
@@ -18,17 +21,26 @@ export const PlayerPage: React.FC = () => {
     const [params] = useSearchParams();
     const [season, setSeason] = useState<number | undefined>(() => Number(params.get('temporada')) || undefined);
     const { activeLeague } = useLeague();
-    const player = usePlayer(id, activeLeague, season).data;
+    const query = usePlayer(id, activeLeague, season);
+    const player = query.data;
     const navigate = useNavigate();
     const back = useBack('/estadisticas');
     const [comparing, setComparing] = useState(false);
-    if (!id) return null;
+    // Enlace roto o pelotero que no existe: se dice claro y se ofrece volver (antes salía la página en blanco o una ficha vacía)
+    const notFound = !id || (!player && query.error instanceof ApiError && query.error.code === 'player_not_found');
+    if (notFound) {
+        return (
+            <div className="px-4 pb-6 pt-[calc(14px+env(safe-area-inset-top))]">
+                <NotFoundCard title={t('errors.player_not_found')} onBack={back} />
+            </div>
+        );
+    }
     const color = player?.team?.color || '#2563eb';
     const lastGame = player?.log[0];
 
     return (
         <div className="space-y-3 px-4 pb-6 pt-[calc(14px+env(safe-area-inset-top))]">
-            <button type="button" onClick={back} aria-label={t('game.back')} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface shadow-card">
+            <button type="button" onClick={back} aria-label={t('team.back')} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface shadow-card">
                 <ArrowLeft className="h-5 w-5" />
             </button>
             <PlayerProfile key={id} id={id} name="" season={season} onSeasonChange={setSeason} />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Info, Share2 } from 'lucide-react';
 import type { Leader, Leaders } from '../types';
@@ -78,7 +78,18 @@ const CategoryCarousel: React.FC<{ data: Leaders; group: 'hitting' | 'pitching';
                             >
                                 <div className="flex items-center justify-between text-[13px] font-bold">
                                     <span className={first ? 'opacity-85' : 'text-muted'}>{t('leaders.rank', { rank: leader.rank })}</span>
-                                    <span className={first ? 'opacity-85' : 'text-muted'}>{leader.teamAbbrev}</span>
+                                    {/* La sigla lleva a la página del equipo */}
+                                    {leader.teamId ? (
+                                        <Link
+                                            to={`/equipo/${leader.teamId}`}
+                                            aria-label={t('team.open', { team: leader.teamName || leader.teamAbbrev })}
+                                            className={`-m-2 p-2 underline-offset-2 hover:underline ${first ? 'opacity-85' : 'text-muted'}`}
+                                        >
+                                            {leader.teamAbbrev}
+                                        </Link>
+                                    ) : (
+                                        <span className={first ? 'opacity-85' : 'text-muted'}>{leader.teamAbbrev}</span>
+                                    )}
                                 </div>
                                 <div className="mt-3 flex items-end justify-between gap-2">
                                     <span className={`font-extrabold leading-none tracking-tight tabular-nums ${first ? 'text-[64px]' : 'text-[48px]'}`}>{leader.value ?? '—'}</span>

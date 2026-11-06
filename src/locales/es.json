@@ -210,6 +210,17 @@
       "ios": "un iPhone",
       "android": "un Android",
       "desktop": "una computadora"
+    },
+    "invite": {
+      "row": "Pásale El Play a alguien",
+      "rowHint": "Cómo instalar la versión web en otro teléfono, según su navegador",
+      "title": "Pásale El Play a alguien",
+      "body": "¿No tiene la app? Puede instalar la versión web desde su navegador: gratis, sin tienda y en segundos. Escoge su teléfono y su navegador:",
+      "open": "Abre {{url}} en {{browser}}.",
+      "copy": "Copiar el enlace",
+      "copied": "Enlace copiado",
+      "share": "Compartir",
+      "shareText": "Sigue los juegos de LIDOM en vivo con El Play:"
     }
   },
   "offline": {
@@ -583,7 +594,8 @@
       "off": "Sin animaciones: solo el marcador."
     },
     "largeText": "Texto grande",
-    "largeTextHint": "Letras, botones y tablas un poco más grandes"
+    "largeTextHint": "Letras, botones y tablas un poco más grandes",
+    "version": "Versión {{v}}"
   },
   "stories": {
     "label": "Equipos",
@@ -658,7 +670,10 @@
     "hint": "Elige dónde compartir: en el teléfono se abre tu lista de apps con la imagen lista.",
     "more": "Más opciones",
     "pick": "En la lista que se abre, toca {{app}}.",
-    "instagramSaved": "Se guardó la imagen: súbela desde Instagram en tu teléfono."
+    "instagramSaved": "Se guardó la imagen: súbela desde Instagram en tu teléfono.",
+    "linkOnly": "Solo el enlace",
+    "linkCopied": "Enlace copiado.",
+    "failed": "No se pudo compartir."
   },
   "spray": {
     "title": "Mapa de batazos",
@@ -1714,7 +1729,9 @@
     "results": "Resultados",
     "upcoming": "Próximos juegos",
     "tbd": "Por definir",
-    "shareText": "{{team}} en El Play: récord, forma, plantilla y resultados"
+    "shareText": "{{team}} en El Play: récord, forma, plantilla y resultados",
+    "back": "Volver",
+    "open": "Abrir la página de {{team}}"
   },
   "dial": {
     "close": "Cerrar las opciones",

@@ -210,6 +210,17 @@
       "ios": "an iPhone",
       "android": "an Android",
       "desktop": "a computer"
+    },
+    "invite": {
+      "row": "Share El Play with someone",
+      "rowHint": "How to install the web version on another phone, by browser",
+      "title": "Share El Play with someone",
+      "body": "Don't have the app? They can install the web version from their browser: free, no app store, in seconds. Pick their phone and browser:",
+      "open": "Open {{url}} in {{browser}}.",
+      "copy": "Copy link",
+      "copied": "Link copied",
+      "share": "Share",
+      "shareText": "Follow LIDOM games live with El Play:"
     }
   },
   "offline": {
@@ -583,7 +594,8 @@
       "off": "No animations: just the score."
     },
     "largeText": "Large text",
-    "largeTextHint": "Slightly bigger text, buttons and tables"
+    "largeTextHint": "Slightly bigger text, buttons and tables",
+    "version": "Version {{v}}"
   },
   "stories": {
     "label": "Teams",
@@ -658,7 +670,10 @@
     "hint": "Pick where to share: on your phone, your app list opens with the image ready.",
     "more": "More options",
     "pick": "In the list that opens, tap {{app}}.",
-    "instagramSaved": "Image saved: post it from Instagram on your phone."
+    "instagramSaved": "Image saved: post it from Instagram on your phone.",
+    "linkOnly": "Just the link",
+    "linkCopied": "Link copied.",
+    "failed": "Could not share."
   },
   "spray": {
     "title": "Spray chart",
@@ -1714,7 +1729,9 @@
     "results": "Results",
     "upcoming": "Upcoming games",
     "tbd": "TBD",
-    "shareText": "{{team}} on El Play: record, form, roster and results"
+    "shareText": "{{team}} on El Play: record, form, roster and results",
+    "back": "Back",
+    "open": "Open the {{team}} page"
   },
   "dial": {
     "close": "Close options",

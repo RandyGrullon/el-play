@@ -1,10 +1,24 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ScheduleGame, ScheduleTeam } from '../../types';
+import { isNotPlayed } from '../../lib/baseball';
 import { teamDisplayName } from '../../lib/teams';
 import { TeamLogo } from '../ui/TeamLogo';
 
-type Status = 'live' | 'final' | 'later' | 'none';
+export type StoryStatus = 'live' | 'final' | 'later' | 'none';
+type Status = StoryStatus;
+
+const RANK: Record<Status, number> = { live: 0, later: 1, final: 2, none: 3 };
+
+/**
+ * El anillo de un equipo en el día: en doble cartelera manda el juego que más importa ahora (en vivo, luego el que falta,
+ * luego el terminado); pospuestos y cancelados no cuentan (el servidor los da como «final»).
+ */
+export const storyStatus = (dayGames: ScheduleGame[], teamId: number): StoryStatus =>
+    dayGames
+        .filter((item) => (item.away.id === teamId || item.home.id === teamId) && !isNotPlayed(item.detailedState))
+        .map((item): Status => (item.state === 'live' ? 'live' : item.state === 'final' ? 'final' : 'later'))
+        .reduce<Status>((best, item) => (RANK[item] < RANK[best] ? item : best), 'none');
 
 const RING: Record<Status, string> = {
     live: 'rgb(var(--live))',
@@ -31,15 +45,8 @@ export const TeamStories: React.FC<TeamStoriesProps> = ({ allGames, dayGames, se
         teams.set(game.away.id, game.away);
         teams.set(game.home.id, game.home);
     }
-    const status = (teamId: number): Status => {
-        const game = dayGames.find((item) => item.away.id === teamId || item.home.id === teamId);
-        if (!game) return 'none';
-        return game.state === 'live' ? 'live' : game.state === 'final' ? 'final' : 'later';
-    };
-    const ordered = [...teams.values()].sort((a, b) => {
-        const rank = { live: 0, later: 1, final: 2, none: 3 };
-        return rank[status(a.id)] - rank[status(b.id)] || a.name.localeCompare(b.name);
-    });
+    const status = (teamId: number) => storyStatus(dayGames, teamId);
+    const ordered = [...teams.values()].sort((a, b) => RANK[status(a.id)] - RANK[status(b.id)] || a.name.localeCompare(b.name));
     if (!ordered.length) return null;
 
     return (

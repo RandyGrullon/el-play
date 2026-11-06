@@ -5,6 +5,9 @@ export const APP_VERSION: string = typeof __APP_VERSION__ === 'string' ? __APP_V
 
 const known = (version: string | null | undefined) => !!version && version !== 'dev' && version !== 'unknown';
 
+/** Para «Más»: el commit de este build en corto (7 caracteres); sin commit conocido (desarrollo), «dev» */
+export const shortVersion = (version: string = APP_VERSION) => (known(version) ? version.slice(0, 7) : 'dev');
+
 export const fetchServerVersion = async (): Promise<string | null> => {
     try {
         // `app=2` distingue esta versión de la primera, que el service worker recarga (public/sw-legacy.js)

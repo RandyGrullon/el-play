@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Bell, BellRing, CloudSun, ListOrdered, MapPin, SearchX, Share2, Table2, Target } from 'lucide-react';
+import { Bell, BellRing, CloudSun, ListOrdered, MapPin, Share2, Table2, Target } from 'lucide-react';
 import type { GameDetail, ScheduleGame, TopPerformer } from '../types';
 import { findScheduledGame, useGame } from '../lib/queries';
 import { ApiError } from '../lib/api';
@@ -11,6 +11,8 @@ import { atBatForZone, inningBreak, isNotPlayed, weatherName, weatherTemp } from
 import { formatCountdown, formatShortDate, formatTime, surname } from '../lib/format';
 import { teamDisplayName } from '../lib/teams';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { useNow } from '../hooks/useNow';
+import { useBack } from '../hooks/useBack';
 import { useLeague } from '../store/LeagueContext';
 import { usePreferences } from '../store/preferences';
 import { useShare } from '../share/ShareSheet';
@@ -36,8 +38,9 @@ import { BoxScore } from '../components/game/BoxScore';
 import { Bases, OutsDots } from '../components/game/Bases';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
+import { PlayerLink } from '../components/ui/PlayerLink';
 import { TeamLogo } from '../components/ui/TeamLogo';
-import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
+import { ErrorState, NotFoundCard, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { LiveProPanel } from '../components/pro/LiveProPanel';
 import { useIsPro } from '../lib/pro';
@@ -207,7 +210,9 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
     const gamePk = game.gamePk ?? 0;
     const subscribed = subscribedGames.includes(gamePk);
     const notPlayed = isNotPlayed(game.detailedState);
-    const startsIn = game.date ? new Date(game.date).getTime() - Date.now() : 0;
+    // La cuenta regresiva avanza sola
+    const now = useNow();
+    const startsIn = game.date ? new Date(game.date).getTime() - now : 0;
 
     return (
         <div className="space-y-3 px-4 pt-4">
@@ -228,7 +233,11 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                                     </span>
                                 )}
                                 <span className="min-w-0 flex-1">
-                                    <span className="block truncate font-extrabold">{pitcher?.name ?? t('preview.tbd')}</span>
+                                    {pitcher ? (
+                                        <PlayerLink id={pitcher.id} className="block truncate font-extrabold">{pitcher.name}</PlayerLink>
+                                    ) : (
+                                        <span className="block truncate font-extrabold">{t('preview.tbd')}</span>
+                                    )}
                                     <span className="block truncate text-sm text-muted">{teamDisplayName(game[side], i18n.language)}</span>
                                 </span>
                                 {pitcher && (
@@ -241,8 +250,8 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                         );
                     })}
                 </ul>
-                {/* MLB no recibe los abridores de LIDOM (0 de 185 juegos en 2025-26): se dice en vez de dejar el hueco */}
-                {!game.probables.away && !game.probables.home && <p className="mt-3 text-sm text-muted">{t('preview.probablesLater')}</p>}
+                {/* MLB no recibe los abridores de LIDOM (0 de 185 juegos en 2025-26): se dice en vez de dejar el hueco (no en pospuestos ni cancelados) */}
+                {!notPlayed && !game.probables.away && !game.probables.home && <p className="mt-3 text-sm text-muted">{t('preview.probablesLater')}</p>}
             </section>
 
             {!notPlayed && (
@@ -270,16 +279,19 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                 )}
             </section>
 
-            <div className="flex gap-2">
-                {!notPlayed && alertsAvailable() && (
-                    <ActionButton
-                        icon={subscribed ? <BellRing className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-                        label={subscribed ? t('preview.notifyOff') : t('preview.notifyOn')}
-                        onClick={() => toggleAlert(gamePk)}
-                    />
-                )}
-                <ActionButton icon={<Share2 className="h-4 w-4" />} label={t('share.short')} onClick={onShare} primary />
-            </div>
+            {/* Pospuesto o cancelado: ni aviso ni Compartir (saldría «0 - 0») */}
+            {!notPlayed && (
+                <div className="flex gap-2">
+                    {alertsAvailable() && (
+                        <ActionButton
+                            icon={subscribed ? <BellRing className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                            label={subscribed ? t('preview.notifyOff') : t('preview.notifyOn')}
+                            onClick={() => toggleAlert(gamePk)}
+                        />
+                    )}
+                    <ActionButton icon={<Share2 className="h-4 w-4" />} label={t('share.short')} onClick={onShare} primary />
+                </div>
+            )}
         </div>
     );
 };
@@ -296,6 +308,7 @@ export const GamePage: React.FC = () => {
     const scheduled = useMemo(() => findScheduledGame(client, gamePk), [client, gamePk]);
     const { leagueConfig } = useLeague();
     const share = useShare();
+    const back = useBack('/');
     const [sheet, setSheet] = useState<Sheet>(null);
     const { trackGameView } = useAnalytics();
     const tracked = useRef<string | null>(null);
@@ -368,23 +381,15 @@ export const GamePage: React.FC = () => {
     const model = game ? fromDetail(game) : scheduled ? fromSchedule(scheduled) : null;
     // Juego que no existe o enlace roto: se dice claro y se ofrece volver (antes salía una previa vacía)
     const notFoundCode = !game && query.error instanceof ApiError && ['game_not_found', 'invalid_game'].includes(query.error.code) ? query.error.code : null;
+    const notPlayed = !!game && isNotPlayed(game.detailedState);
 
     return (
         <PullToRefresh onRefresh={async () => { await query.refetch(); }}>
-            {model ? <GameHero model={model} onShare={game ? shareGame : undefined} /> : notFoundCode ? null : <Skeleton className="h-[230px] rounded-none sm:mx-4 sm:mt-4 sm:rounded-card" />}
+            {model ? <GameHero model={model} onShare={game && !notPlayed ? shareGame : undefined} /> : notFoundCode ? null : <Skeleton className="h-[230px] rounded-none sm:mx-4 sm:mt-4 sm:rounded-card" />}
 
             {notFoundCode ? (
                 <div className="px-4 pt-6">
-                    <div className="card flex flex-col items-center gap-3 px-6 py-10 text-center" role="alert">
-                        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-raised">
-                            <SearchX className="h-6 w-6 text-muted" aria-hidden="true" />
-                        </span>
-                        <p className="text-lg font-extrabold">{t(`errors.${notFoundCode}`)}</p>
-                        <p className="max-w-xs text-sm text-muted">{t('game.notFoundHint')}</p>
-                        <Link to="/" className="mt-1 inline-flex h-11 items-center rounded-full bg-accent px-5 text-sm font-bold text-white">
-                            {t('game.backToGames')}
-                        </Link>
-                    </div>
+                    <NotFoundCard title={t(`errors.${notFoundCode}`)} hint={t('game.notFoundHint')} action={{ to: '/', label: t('game.backToGames') }} onBack={back} />
                 </div>
             ) : waitingForNetwork(query) && !game ? (
                 <div className="px-4 pt-4">
@@ -401,7 +406,8 @@ export const GamePage: React.FC = () => {
                 </div>
             ) : game.state === 'live' ? (
                 <LiveView game={game} open={setSheet} onShare={shareGame} />
-            ) : game.state === 'final' ? (
+            ) : game.state === 'final' && !notPlayed ? (
+                // MLB da los pospuestos y cancelados como «final»: van con la previa (sin resumen ni marcador 0 - 0)
                 <FinalView game={game} open={setSheet} onShare={shareGame} onSharePerformer={sharePerformer} />
             ) : (
                 <PreviewView game={game} onShare={shareGame} />

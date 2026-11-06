@@ -2,7 +2,7 @@
 // rival, bateo y pitcheo con su puesto en la liga, sus líderes, la plantilla, los resultados, el calendario y sus
 // movimientos. El botón flotante: comparar con otro equipo, compartir, hacerlo «mi equipo» y su próximo juego.
 import React, { useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, CalendarClock, ChevronRight, GitCompare, Share2, Star } from 'lucide-react';
 import type { ScheduleGame } from '../types';
@@ -15,6 +15,8 @@ import { nextGame, standingOf, summarize, teamResults, useTeamGames, versusAll, 
 import { pythagorean } from '../lib/advanced';
 import { formatShortDate, formatTime, localeFor, seasonLabel } from '../lib/format';
 import { showToast } from '../lib/toast';
+import { useNow } from '../hooks/useNow';
+import { useBack } from '../hooks/useBack';
 import { inkOn } from '../components/gamecast/GameHero';
 import { TeamLogo } from '../components/ui/TeamLogo';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
@@ -30,13 +32,6 @@ const dayMonth = (date: string, lang: string) => new Date(date).toLocaleDateStri
 const ordinal = (n: number, language: string) => (language.startsWith('en') ? `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}` : `${n}.º`);
 /** «8-4»: de nuestros juegos ({ w, l }) o de las posiciones de MLB ({ wins, losses }) */
 const splitText = (split: Split | { wins: number; losses: number } | null | undefined) => (!split ? '—' : 'w' in split ? `${split.w}-${split.l}` : `${split.wins}-${split.losses}`);
-
-/** Volver a donde se estaba (o a Posiciones si se llegó por un enlace) */
-export const useBack = (fallback: string) => {
-    const navigate = useNavigate();
-    const location = useLocation();
-    return () => (location.key !== 'default' ? navigate(-1) : navigate(fallback, { replace: true }));
-};
 
 /** Compartir el enlace de la página (o copiarlo si el teléfono no comparte) */
 export const shareLink = async (title: string, text: string, copied: string) => {
@@ -66,6 +61,8 @@ export const TeamPage: React.FC = () => {
     const gamesQuery = useTeamGames(activeLeague, teamId);
     const players = usePlayers(activeLeague);
     const [comparing, setComparing] = useState(false);
+    // La hora de ahora (cada minuto): cuál es el próximo juego y cuáles faltan
+    const now = useNow(60000);
 
     const games = gamesQuery.data?.games ?? [];
     const results = useMemo(() => (teamId ? teamResults(games, teamId) : []), [games, teamId]);
@@ -76,7 +73,7 @@ export const TeamPage: React.FC = () => {
     // Quién es: de las estadísticas, de las posiciones o de sus juegos (lo que llegue primero)
     const fromGames = games.map((game) => (game.home.id === teamId ? game.home : game.away)).find(Boolean);
     const team = row ?? (standing ? { ...standing.row.team } : null) ?? fromGames ?? null;
-    const upcoming = nextGame(games);
+    const upcoming = nextGame(games, now);
 
     if (!teamId) return null;
     if (!team) {
@@ -115,7 +112,7 @@ export const TeamPage: React.FC = () => {
             <section className="relative overflow-hidden rounded-b-[32px] px-4 pb-6 pt-[calc(14px+env(safe-area-inset-top))]" style={{ backgroundColor: color, color: ink }}>
                 <div className="pointer-events-none absolute -right-16 -top-10 h-64 w-64 rounded-full opacity-15" style={{ background: `radial-gradient(circle, ${ink} 0%, transparent 70%)` }} aria-hidden="true" />
                 <div className="relative flex items-center justify-between">
-                    <button type="button" onClick={back} aria-label={t('game.back')} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/85 text-[#14151a] backdrop-blur">
+                    <button type="button" onClick={back} aria-label={t('team.back')} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/85 text-[#14151a] backdrop-blur">
                         <ArrowLeft className="h-5 w-5" />
                     </button>
                     {season && <span className="pill bg-black/15 text-xs font-bold">{t('common.season', { season: seasonLabel(season, activeLeague) })}</span>}
@@ -194,7 +191,7 @@ export const TeamPage: React.FC = () => {
             {players.data && <Leaders teamId={team.id} players={players.data} team={team} />}
             {players.data && <Roster teamId={team.id} players={players.data} team={team} />}
             {results.length > 0 && <Results results={results} />}
-            <Upcoming games={games} teamId={team.id} />
+            <Upcoming games={games} teamId={team.id} now={now} />
 
             <div className="px-4">
                 <TransactionsCard league={activeLeague} teamId={team.id} onOpenPlayer={(id) => navigate(`/jugador/${id}`)} />
@@ -495,9 +492,8 @@ const Results: React.FC<{ results: TeamResult[] }> = ({ results }) => {
 };
 
 /** Los próximos juegos (después del de hoy) */
-const Upcoming: React.FC<{ games: ScheduleGame[]; teamId: number }> = ({ games, teamId }) => {
+const Upcoming: React.FC<{ games: ScheduleGame[]; teamId: number; now: number }> = ({ games, teamId, now }) => {
     const { t, i18n } = useTranslation();
-    const now = Date.now();
     const list = games.filter((game) => game.state === 'preview' && Date.parse(game.date) > now).slice(1, 7);
     if (!list.length) return null;
     const weekday = (date: string) => new Date(date).toLocaleDateString(localeFor(i18n.language), { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Santo_Domingo' });
