@@ -13,6 +13,7 @@ import { Txt } from '../../ui';
 import { CountUp, MOTION_MS, ModuleHeader, countdownParts, pad2, useElementWidth, useGrow, useInView, useNow, useProColors } from '../kit';
 import { dayIn, type DaySummary, type SeasonProgress } from './logic';
 import { shortDate, useInk, weekdayShort } from './shared';
+import { LinkedTeams } from '../../stats/common';
 
 // Peso de cada tile en la fila (1 · 1 · 1.15 · 1.45, como el diseño)
 const WEIGHTS = [1, 1, 1.15, 1.45];
@@ -111,7 +112,9 @@ const NextTile: React.FC<{ next: ScheduleGame | null; today: string; timeZone: s
             aria={t('pro.portada.tiles.nextAria', { away: next.away.name, home: next.home.name, time: day !== today ? `${weekdayShort(day, i18n.language)}, ${when}` : when })}
             sub={
                 <>
-                    <Sub>{matchup}</Sub>
+                    <Sub>
+                        <LinkedTeams text={matchup} teams={[next.away, next.home]} />
+                    </Sub>
                     <Sub>{day !== today ? `${weekdayShort(day, i18n.language)} · ${when}` : when}</Sub>
                 </>
             }

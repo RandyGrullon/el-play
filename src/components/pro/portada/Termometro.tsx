@@ -16,6 +16,7 @@ import { TeamLogo, Txt } from '../../ui';
 import { DrawPath, Enter, MOTION_MS, ModuleHeader, arcLength, arcPath, useInView, useMotion, useProColors } from '../kit';
 import { dayIn, runDiffOf, winFraction, type ThermoRow } from './logic';
 import { StreakChip, ordinal, signed, useDiffColor, weekdayShort } from './shared';
+import { LinkedTeams, TeamLink, teamTextLink } from '../../stats/common';
 
 /** Equipo del calendario (logo y sigla de los rivales) */
 export interface ThermoTeam {
@@ -201,9 +202,11 @@ const TeamPanel: React.FC<{
         >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                 <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <TeamLogo team={row.team} size={36} />
+                    <TeamLink id={row.team.id} name={name}>
+                        <TeamLogo team={row.team} size={36} />
+                    </TeamLink>
                     <View style={{ flex: 1, minWidth: 0 }}>
-                        <Txt size={16} weight="extrabold" numberOfLines={1} style={{ letterSpacing: -0.3 }}>
+                        <Txt size={16} weight="extrabold" numberOfLines={1} style={{ letterSpacing: -0.3 }} {...teamTextLink(row.team.id)}>
                             {name}
                         </Txt>
                         <Txt size={12} weight="semibold" tone="muted">
@@ -238,7 +241,7 @@ const TeamPanel: React.FC<{
                         </View>
                         {latest ? (
                             <Txt size={12} weight="semibold" tone="muted" style={{ marginLeft: 6, flexShrink: 1 }}>
-                                {`${latest.isWin ? win : loss} ${latest.runs}-${latest.runsAllowed} ${t(latest.isHome ? 'pro.portada.vs' : 'pro.portada.at', { team: teamOf(latest.opponentId)?.abbrev ?? '' })}`}
+                                <LinkedTeams text={`${latest.isWin ? win : loss} ${latest.runs}-${latest.runsAllowed} ${t(latest.isHome ? 'pro.portada.vs' : 'pro.portada.at', { team: teamOf(latest.opponentId)?.abbrev ?? '' })}`} teams={[teamOf(latest.opponentId)]} />
                                 {last.length < 5 && form.complete ? ` · ${t('pro.portada.thermo.played', { count: last.length })}` : ''}
                             </Txt>
                         ) : (
@@ -262,10 +265,12 @@ const TeamPanel: React.FC<{
                                 const vs = t(home ? 'pro.portada.vs' : 'pro.portada.at', { team: rival?.abbrev ?? '' });
                                 const dayText = day === today ? t('games.today') : weekdayShort(day, lang);
                                 return (
-                                    <View
+                                    // El rival que viene: su página
+                                    <TeamLink
                                         key={game.gamePk}
-                                        accessible
-                                        accessibilityLabel={`${dayText}, ${vs}, ${when}`}
+                                        id={rival?.id}
+                                        name={rival?.abbrev ?? ''}
+                                        label={`${dayText}, ${vs}, ${when}`}
                                         style={{ flex: 1, flexBasis: 0, minWidth: 0, alignItems: 'center', gap: 4, borderRadius: radius.tile, backgroundColor: colors.raised, paddingHorizontal: 6, paddingVertical: 10 }}
                                     >
                                         <Txt size={11} weight="extrabold" color={colors.accentInk} numberOfLines={1} style={{ textTransform: 'uppercase', letterSpacing: 0.6 }}>
@@ -278,7 +283,7 @@ const TeamPanel: React.FC<{
                                         <Txt size={11} weight="semibold" tone="muted" numberOfLines={1}>
                                             {when}
                                         </Txt>
-                                    </View>
+                                    </TeamLink>
                                 );
                             })}
                         </View>

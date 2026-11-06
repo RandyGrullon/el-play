@@ -10,6 +10,7 @@ import { alpha } from '../../../theme/tokens';
 import { TeamLogo, Txt } from '../../ui';
 import { teamText } from './logic';
 import { useInk } from './shared';
+import { TeamLink } from '../../stats/common';
 
 interface LinescoreProps {
     game: ScheduleGamePro;
@@ -62,17 +63,20 @@ export const Linescore: React.FC<LinescoreProps> = ({ game, variant, label }) =>
     };
 
     const teamCell = (team: ScheduleTeam) =>
+        // Las siglas (y el logo) van a la página del equipo
         live ? (
-            <Txt size={12} weight="extrabold" numberOfLines={1} color={teamText(team.color, colors.ink)}>
-                {team.abbrev}
-            </Txt>
+            <TeamLink id={team.id} name={team.name} style={{ alignSelf: 'flex-start' }}>
+                <Txt size={12} weight="extrabold" numberOfLines={1} color={teamText(team.color, colors.ink)}>
+                    {team.abbrev}
+                </Txt>
+            </TeamLink>
         ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <TeamLink id={team.id} name={team.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <TeamLogo team={team} size={22} />
                 <Txt size={12} weight="extrabold" numberOfLines={1} tone={team.isWinner ? 'ink' : 'muted'}>
                     {team.abbrev}
                 </Txt>
-            </View>
+            </TeamLink>
         );
 
     const head = (children: React.ReactNode, strong = false) => (

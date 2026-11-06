@@ -10,6 +10,7 @@ import { Share2, Zap } from 'lucide-react-native';
 import type { ScheduleGame, ScheduleTeam } from '../../../types';
 import type { ScheduleGamePro } from '../../../types/pro-juego';
 import type { PortadaDecision, PortadaGame } from '../../../lib/pro/pantallas';
+import type { LinkPerson } from '../../../lib/links';
 import { eventName, finalLabel, isNotPlayed, stateName } from '../../../lib/baseball';
 import { formatTime } from '../../../lib/format';
 import { usePrefetchGame } from '../../../lib/queries';
@@ -22,6 +23,7 @@ import { Linescore } from './Linescore';
 import { ProbSpark, ProbSwing } from './ProbCharts';
 import { gameInfoParts, joinNames, keyPlayEffect, seriesBadges, teamFill, type SeriesBadge } from './logic';
 import { MoreLink, PhotoWithLogo, useInk } from './shared';
+import { LinkedNames, LinkedTeams, TeamLink, playerTextLink } from '../../stats/common';
 
 interface FinalProps {
     game: ScheduleGamePro;
@@ -32,8 +34,8 @@ interface FinalProps {
 }
 
 const sideOf = (game: ScheduleGame, lang: string) => ({
-    away: { abbrev: game.away.abbrev, color: game.away.color, name: teamDisplayName(game.away, lang) },
-    home: { abbrev: game.home.abbrev, color: game.home.color, name: teamDisplayName(game.home, lang) }
+    away: { id: game.away.id, abbrev: game.away.abbrev, color: game.away.color, name: teamDisplayName(game.away, lang) },
+    home: { id: game.home.id, abbrev: game.home.abbrev, color: game.home.color, name: teamDisplayName(game.home, lang) }
 });
 
 const useOpen = (game: ScheduleGame) => {
@@ -163,7 +165,7 @@ export const FinalCardFull: React.FC<FinalProps & { onShare: (game: ScheduleGame
         });
     }
 
-    let play: { title: string; headline: string; scored: string | null; wpa: string; pressure: string | null; color: string } | null = null;
+    let play: { title: string; headline: string; scored: string | null; wpa: string; pressure: string | null; color: string; batter: LinkPerson | null; helped: ScheduleTeam } | null = null;
     if (keyPlay) {
         const { effect, batting, score, helped } = keyPlayEffect(keyPlay);
         const event = eventName({ eventLabel: keyPlay.label, event: keyPlay.event }, lang) || t('pro.portada.final.play');
@@ -175,7 +177,10 @@ export const FinalCardFull: React.FC<FinalProps & { onShare: (game: ScheduleGame
             scored: keyPlay.scored.length ? t('pro.portada.final.scored', { count: keyPlay.scored.length, names: joinNames(keyPlay.scored, lang) }) : null,
             wpa: `+${Math.abs(keyPlay.wpa).toFixed(1)}${lang.startsWith('en') ? '%' : ' %'} ${helpedTeam.abbrev}`,
             pressure: keyPlay.li !== null ? t('pro.portada.final.pressure', { li: keyPlay.li.toFixed(2) }) : null,
-            color: helpedTeam.color
+            color: helpedTeam.color,
+            // El bateador de la titular abre su ficha y las siglas del que ganó con la jugada, su página
+            batter: keyPlay.batter ? { ...keyPlay.batter, teamId: battingTeam.id } : null,
+            helped: helpedTeam
         };
     }
 
@@ -238,12 +243,12 @@ export const FinalCardFull: React.FC<FinalProps & { onShare: (game: ScheduleGame
                             {play.title}
                         </Txt>
                         <Txt size={14} weight="bold" style={{ lineHeight: 19 }}>
-                            {play.headline}
+                            <LinkedNames text={play.headline} people={[play.batter]} />
                         </Txt>
                         <Txt size={12} weight="semibold" color={ink.mutedStrong}>
                             {play.scored ? `${play.scored} · ` : ''}
                             <Txt size={12} weight="extrabold" color={ink.tone('up')}>
-                                {play.wpa}
+                                <LinkedTeams text={play.wpa} teams={[play.helped]} />
                             </Txt>
                             {play.pressure ? ` · ${play.pressure}` : ''}
                         </Txt>
@@ -303,11 +308,13 @@ const CompactScore: React.FC<{ game: ScheduleGamePro }> = ({ game }) => {
         const dim = game.state === 'final' && !team.isWinner && !notPlayed;
         return (
             <View key={team.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <TeamLogo team={team} size={28} />
-                    <Txt size={15} weight="extrabold" tone={dim ? 'muted' : 'ink'} numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
-                        {teamDisplayName(team, i18n.language)}
-                    </Txt>
+                <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' }}>
+                    <TeamLink id={team.id} name={teamDisplayName(team, i18n.language)} style={{ flexShrink: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <TeamLogo team={team} size={28} />
+                        <Txt size={15} weight="extrabold" tone={dim ? 'muted' : 'ink'} numberOfLines={1} style={{ flexShrink: 1, minWidth: 0 }}>
+                            {teamDisplayName(team, i18n.language)}
+                        </Txt>
+                    </TeamLink>
                 </View>
                 {!notPlayed && (
                     <>
@@ -369,7 +376,7 @@ export const FinalCardCompact: React.FC<FinalProps> = ({ game, summary, timeZone
         return (
             <Txt key={kind} size={12} weight="semibold" tone="muted" numberOfLines={1}>
                 {`${t(`pro.portada.final.${kind}`)}: `}
-                <Txt size={12} weight="semibold">{`${shortName(decision.name)}${stats ? ` (${stats})` : ''}`}</Txt>
+                <Txt size={12} weight="semibold" {...playerTextLink(decision)}>{`${shortName(decision.name)}${stats ? ` (${stats})` : ''}`}</Txt>
             </Txt>
         );
     };

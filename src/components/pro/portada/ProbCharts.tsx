@@ -12,8 +12,11 @@ import { alpha, fonts, radius } from '../../../theme/tokens';
 import { Txt } from '../../ui';
 import { DrawPath, FadeG, MOTION_EASE, MOTION_MS, areaPath, clamp, fmtPercent, linePath, linearScale, middle, polylineLength, useChartBox, useGrow, useInView, useMotion, useSvgId, type Domain, type Point } from '../kit';
 import { inningPoints, inningSpans, inningsShown, playPoints, teamText, type ProbPoint } from './logic';
+import { teamTextLink } from '../../stats/common';
 
 interface Side {
+    /** Con el id, las siglas de la barra llevan a la página del equipo */
+    id?: number;
     abbrev: string;
     name: string;
     color: string;
@@ -105,11 +108,11 @@ export const ProbBar: React.FC<ProbProps> = ({ winProb, away, home, style }) => 
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', columnGap: 8, rowGap: 2 }}>
                 <Txt eyebrow>{t('pro.portada.live.winProb')}</Txt>
                 <Txt size={13} weight="extrabold" tabular numberOfLines={1}>
-                    <Txt size={13} weight="extrabold" color={teamText(away.color, colors.ink)}>{`${away.abbrev} ${pct(last.away, lang)}`}</Txt>
+                    <Txt size={13} weight="extrabold" color={teamText(away.color, colors.ink)} {...teamTextLink(away.id)}>{`${away.abbrev} ${pct(last.away, lang)}`}</Txt>
                     <Txt size={13} weight="extrabold" tone="muted">
                         {' · '}
                     </Txt>
-                    <Txt size={13} weight="extrabold" color={teamText(home.color, colors.ink)}>{`${home.abbrev} ${pct(last.home, lang)}`}</Txt>
+                    <Txt size={13} weight="extrabold" color={teamText(home.color, colors.ink)} {...teamTextLink(home.id)}>{`${home.abbrev} ${pct(last.home, lang)}`}</Txt>
                 </Txt>
             </View>
             <View

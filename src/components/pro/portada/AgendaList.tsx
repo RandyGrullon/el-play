@@ -1,6 +1,6 @@
 // Agenda de un día que viene: hora, los dos logos, «Toros en Estrellas» y el estadio. Cada fila abre la previa.
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import type { ScheduleGame } from '../../../types';
@@ -13,6 +13,7 @@ import { alpha, radius, shadow } from '../../../theme/tokens';
 import { TeamLogo, Txt } from '../../ui';
 import { useProColors } from '../kit';
 import { teamShort } from './shared';
+import { TeamLink, teamTextLink } from '../../stats/common';
 
 export const AgendaList: React.FC<{ games: ScheduleGame[]; timeZone: string }> = ({ games, timeZone }) => {
     const { t, i18n } = useTranslation();
@@ -50,20 +51,21 @@ export const AgendaList: React.FC<{ games: ScheduleGame[]; timeZone: string }> =
                             {time}
                         </Txt>
                         <View style={{ flexDirection: 'row', flexShrink: 0 }}>
-                            <View style={{ borderRadius: 15, backgroundColor: colors.surface, padding: 1 }}>
+                            {/* Logos y nombres van a la página de cada equipo; el resto de la fila abre el juego */}
+                            <TeamLink id={game.away.id} name={teamDisplayName(game.away, lang)} style={{ borderRadius: 15, backgroundColor: colors.surface, padding: 1 }}>
                                 <TeamLogo team={game.away} size={28} />
-                            </View>
-                            <View style={{ marginLeft: -6, borderRadius: 15, backgroundColor: colors.surface, padding: 1 }}>
+                            </TeamLink>
+                            <TeamLink id={game.home.id} name={teamDisplayName(game.home, lang)} style={{ marginLeft: -6, borderRadius: 15, backgroundColor: colors.surface, padding: 1 }}>
                                 <TeamLogo team={game.home} size={28} />
-                            </View>
+                            </TeamLink>
                         </View>
                         <View style={{ flex: 1, minWidth: 0 }}>
                             <Txt size={14} weight="extrabold" numberOfLines={1}>
-                                {`${teamShort(game.away, game.league, lang)} `}
+                                <Text {...teamTextLink(game.away.id)}>{teamShort(game.away, game.league, lang)}</Text>{' '}
                                 <Txt size={14} weight="semibold" tone="muted">
                                     {t('pro.portada.agenda.at')}
-                                </Txt>
-                                {` ${teamShort(game.home, game.league, lang)}`}
+                                </Txt>{' '}
+                                <Text {...teamTextLink(game.home.id)}>{teamShort(game.home, game.league, lang)}</Text>
                             </Txt>
                             <Txt size={12} weight="semibold" tone="muted" numberOfLines={1}>
                                 {game.venue}

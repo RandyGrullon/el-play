@@ -16,11 +16,13 @@ interface ProNoteProps {
     icon?: React.ReactNode | null;
     /** Primera frase en negrita: «Abridores: por anunciar.» */
     title?: string;
+    /** Los hijos son texto con pedazos que se tocan (nombres con enlace): van en la misma línea del título, como un texto */
+    inline?: boolean;
     style?: StyleProp<ViewStyle>;
 }
 
 // Nota honesta: lo que MLB no manda, de dónde sale un dato o por qué se ve otra temporada.
-export const ProNote: React.FC<ProNoteProps> = ({ children, tone = 'info', icon, title, style }) => {
+export const ProNote: React.FC<ProNoteProps> = ({ children, tone = 'info', icon, title, inline = false, style }) => {
     const colors = useColors();
     const pro = useProColors();
     const look = {
@@ -34,13 +36,13 @@ export const ProNote: React.FC<ProNoteProps> = ({ children, tone = 'info', icon,
         <View style={[{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: radius.tile, paddingHorizontal: 12, paddingVertical: 10 }, look.box, style]}>
             {icon !== null && <View style={{ marginTop: 1 }}>{icon ?? <Icon size={18} color={look.ink} />}</View>}
             <View style={{ flex: 1, minWidth: 0 }}>
-                {typeof children === 'string' || title ? (
+                {typeof children === 'string' || inline || title ? (
                     <Txt size={13} style={{ lineHeight: 18 }}>
                         {title ? <Txt size={13} weight="bold">{`${title} `}</Txt> : null}
-                        {typeof children === 'string' ? children : null}
+                        {typeof children === 'string' || inline ? children : null}
                     </Txt>
                 ) : null}
-                {typeof children === 'string' ? null : children}
+                {typeof children === 'string' || inline ? null : children}
             </View>
         </View>
     );

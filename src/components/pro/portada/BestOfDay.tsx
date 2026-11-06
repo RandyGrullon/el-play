@@ -11,6 +11,7 @@ import { PlayerPhoto, TeamLogo, Txt } from '../../ui';
 import { Enter, MOTION_STAGGER, ModuleHeader, mix } from '../kit';
 import { teamFill, type BestItem } from './logic';
 import { useLineText } from './shared';
+import { LinkedTeams, TeamLink } from '../../stats/common';
 
 interface BestOfDayProps {
     items: BestItem[];
@@ -55,9 +56,9 @@ export const BestOfDay: React.FC<BestOfDayProps> = ({ items, games, aside }) => 
                                             <PlayerPhoto personId={performer.id} name={performer.name} size={58} team={team ? { id: team.id, color: team.color } : null} background="#ffffff" />
                                         </View>
                                         {team && (
-                                            <View style={{ position: 'absolute', right: -4, bottom: -4, width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: bg, backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center' }}>
+                                            <TeamLink id={team.id} name={team.name} hitSlop={4} style={{ position: 'absolute', right: -4, bottom: -4, width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: bg, backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center' }}>
                                                 <TeamLogo team={team} size={18} />
-                                            </View>
+                                            </TeamLink>
                                         )}
                                     </View>
                                     <Txt size={16} weight="extrabold" color={ink} style={{ marginTop: 6, lineHeight: 18, letterSpacing: -0.2 }}>
@@ -71,7 +72,7 @@ export const BestOfDay: React.FC<BestOfDayProps> = ({ items, games, aside }) => 
                                     <View style={{ marginTop: 'auto', gap: 4 }}>
                                         {result && (
                                             <Txt size={12} weight="bold" color={ink} numberOfLines={1}>
-                                                {result}
+                                                <LinkedTeams text={result} teams={[opponent]} />
                                             </Txt>
                                         )}
                                         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>

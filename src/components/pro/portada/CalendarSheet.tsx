@@ -17,15 +17,21 @@ import { ErrorState, Sheet, Skeleton, TeamLogo, Txt, useErrorText } from '../../
 import { ProNote, useProColors } from '../kit';
 import { toCalendarGame } from './logic';
 import { upperFirst } from './shared';
+import { TeamLink } from '../../stats/common';
 
 // Una línea del juego: logo, nombre y carreras (si ya se jugó o se está jugando)
 const TeamLine: React.FC<{ team?: StatsTeam; side: CalendarGame['away']; showScore: boolean; dim: boolean }> = ({ team, side, showScore, dim }) =>
     team ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TeamLogo team={team} size={20} />
-            <Txt size={13} weight="bold" tone={dim ? 'muted' : 'ink'} numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
-                {team.name}
-            </Txt>
+            {/* Logo y nombre van a la página del equipo (se cierra el calendario); el resto, al juego */}
+            <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' }}>
+                <TeamLink id={team.id} name={team.name} style={{ flexShrink: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <TeamLogo team={team} size={20} />
+                    <Txt size={13} weight="bold" tone={dim ? 'muted' : 'ink'} numberOfLines={1} style={{ flexShrink: 1, minWidth: 0 }}>
+                        {team.name}
+                    </Txt>
+                </TeamLink>
+            </View>
             {showScore && (
                 <Txt condensed size={16} tabular>
                     {String(side.score ?? 0)}

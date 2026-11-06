@@ -22,6 +22,7 @@ import { Linescore } from './Linescore';
 import { ProbBar, ProbStrip } from './ProbCharts';
 import { teamFill } from './logic';
 import { MoreLink, PhotoWithLogo, useInk, useLineText } from './shared';
+import { PlayerLink, TeamLink, playerTextLink } from '../../stats/common';
 
 interface LiveCardProps {
     game: ScheduleGamePro;
@@ -52,9 +53,12 @@ const Half: React.FC<{ team: ScheduleTeam; align: 'start' | 'end'; big: number }
     return (
         <View style={{ flex: 1, flexBasis: 0, minWidth: 0, overflow: 'hidden', backgroundColor: bg, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, gap: 4, alignItems: end ? 'flex-end' : 'flex-start' }}>
             <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#ffffff' }, flash]} />
-            <Txt size={15} weight="extrabold" color={ink} numberOfLines={1} style={{ maxWidth: '100%', letterSpacing: -0.2, textAlign: end ? 'right' : 'left' }}>
-                {name}
-            </Txt>
+            {/* El nombre va a la página del equipo; el resto de la mitad abre el juego */}
+            <TeamLink id={team.id} name={name} style={{ maxWidth: '100%' }}>
+                <Txt size={15} weight="extrabold" color={ink} numberOfLines={1} style={{ letterSpacing: -0.2, textAlign: end ? 'right' : 'left' }}>
+                    {name}
+                </Txt>
+            </TeamLink>
             <Odometer value={score} size={big} color={ink} label={`${name} ${score}`} />
             <PlusOne trigger={jump.count} style={[{ top: 48, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 8 }, end ? { left: 16 } : { right: 16 }]}>
                 <Txt condensed size={20} color={ink}>
@@ -164,8 +168,8 @@ export const LiveCardPro: React.FC<LiveCardProps> = ({ game, summary, loading = 
     const lang = i18n.language;
     const winProb = summary?.winProb ?? null;
     const duel = summary?.duel ?? null;
-    const away = { abbrev: game.away.abbrev, name: teamDisplayName(game.away, lang), color: game.away.color };
-    const home = { abbrev: game.home.abbrev, name: teamDisplayName(game.home, lang), color: game.home.color };
+    const away = { id: game.away.id, abbrev: game.away.abbrev, name: teamDisplayName(game.away, lang), color: game.away.color };
+    const home = { id: game.home.id, abbrev: game.home.abbrev, name: teamDisplayName(game.home, lang), color: game.home.color };
     const teamOf = (id: number | null | undefined) => (id === game.away.id ? game.away : id === game.home.id ? game.home : null);
     const li = winProb?.last?.li ?? null;
     const delayed = /delay/i.test(game.detailedState);
@@ -238,7 +242,7 @@ export const LiveCardPro: React.FC<LiveCardProps> = ({ game, summary, loading = 
                             <Txt condensed size={20} tabular>{`${live.balls}-${live.strikes}`}</Txt>
                         </View>
                         {batter && (
-                            <Txt size={13} weight="semibold" tone="muted" numberOfLines={1} style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
+                            <Txt size={13} weight="semibold" tone="muted" numberOfLines={1} style={{ flex: 1, minWidth: 0, textAlign: 'right' }} {...playerTextLink(batter)}>
                                 {t('pro.portada.live.batting', { name: shortName(batter.name) })}
                             </Txt>
                         )}
@@ -274,7 +278,11 @@ export const LiveCardPro: React.FC<LiveCardProps> = ({ game, summary, loading = 
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.tile, backgroundColor: colors.raised, paddingHorizontal: 12, paddingVertical: 10 }}>
                         <View style={{ flex: 1.1, flexBasis: 0, minWidth: 0 }}>
                             {pitcher && (
-                                <View accessible accessibilityLabel={[t('pro.portada.live.pitcher'), pitcher.name, pitcher.line?.np != null ? t('pro.portada.live.pitchesAria', { count: pitcher.line.np }) : null, pitcher.line ? t('pro.portada.line.ip', { value: pitcher.line.ip }) : null].filter(Boolean).join(', ')} style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                                <PlayerLink
+                                    player={pitcher}
+                                    label={[t('pro.portada.live.pitcher'), pitcher.name, pitcher.line?.np != null ? t('pro.portada.live.pitchesAria', { count: pitcher.line.np }) : null, pitcher.line ? t('pro.portada.line.ip', { value: pitcher.line.ip }) : null].filter(Boolean).join(', ')}
+                                    style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}
+                                >
                                     <Gauge value={pitcher.line?.np ?? 0} max={100} size={42} thickness={3} color={colors.hbp} label={pitcher.line?.np != null ? t('pro.portada.live.pitchesAria', { count: pitcher.line.np }) : t('pro.portada.live.pitcher')}>
                                         <PhotoWithLogo id={pitcher.id} name={pitcher.name} team={teamOf(pitcher.teamId)} size={32} logo={12} />
                                     </Gauge>
@@ -299,7 +307,7 @@ export const LiveCardPro: React.FC<LiveCardProps> = ({ game, summary, loading = 
                                             </Txt>
                                         )}
                                     </View>
-                                </View>
+                                </PlayerLink>
                             )}
                         </View>
                         <Txt size={11} weight="extrabold" color={ink.mutedStrong} importantForAccessibility="no">
@@ -307,9 +315,9 @@ export const LiveCardPro: React.FC<LiveCardProps> = ({ game, summary, loading = 
                         </Txt>
                         <View style={{ flex: 1, flexBasis: 0, minWidth: 0 }}>
                             {batter && (
-                                <View
-                                    accessible
-                                    accessibilityLabel={[t('pro.portada.live.batterShort'), batter.name, batter.line && batter.line.ab + batter.line.bb > 0 ? t('pro.portada.live.today', { line: lineText({ hitting: batter.line, pitching: null }) }) : null].filter(Boolean).join(', ')}
+                                <PlayerLink
+                                    player={batter}
+                                    label={[t('pro.portada.live.batterShort'), batter.name, batter.line && batter.line.ab + batter.line.bb > 0 ? t('pro.portada.live.today', { line: lineText({ hitting: batter.line, pitching: null }) }) : null].filter(Boolean).join(', ')}
                                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 7 }}
                                 >
                                     <View style={{ flex: 1, minWidth: 0, alignItems: 'flex-end' }}>
@@ -324,7 +332,7 @@ export const LiveCardPro: React.FC<LiveCardProps> = ({ game, summary, loading = 
                                         </Txt>
                                     </View>
                                     <PhotoWithLogo id={batter.id} name={batter.name} team={teamOf(batter.teamId)} size={36} />
-                                </View>
+                                </PlayerLink>
                             )}
                         </View>
                     </View>
@@ -337,7 +345,7 @@ export const LiveCardPro: React.FC<LiveCardProps> = ({ game, summary, loading = 
                             .map((person, index) => (
                                 <React.Fragment key={person.id}>
                                     {index > 0 && ', '}
-                                    <Txt size={13} weight="bold">
+                                    <Txt size={13} weight="bold" {...playerTextLink(person)}>
                                         {shortName(person.name)}
                                     </Txt>
                                 </React.Fragment>

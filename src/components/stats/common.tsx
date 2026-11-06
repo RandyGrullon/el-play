@@ -98,34 +98,35 @@ export const openPlayer = (player: { id: number; name?: string | null; teamId?: 
 /** Abre la página del equipo (pantalla completa, encima de la que se está viendo) */
 export const openTeam = (id: number) => leaveSheets(() => router.push({ pathname: '/equipo/[id]', params: { id } }));
 
-type LinkProps = { style?: StyleProp<ViewStyle>; hitSlop?: number; disabled?: boolean; children: React.ReactNode };
+/** `label`: lo que oye el lector de pantalla, si la pieza ya decía más que «Abrir la página de…» */
+type LinkProps = { style?: StyleProp<ViewStyle>; hitSlop?: number; disabled?: boolean; label?: string; children: React.ReactNode };
 
 /**
  * Lo que muestra un equipo (logo, siglas, nombre) lleva a su página. Se pinta igual que antes: el estilo de la caja va en
  * `style`. Sin id (o `disabled`) queda una caja con el mismo estilo que no se toca. Dentro de otra pieza que se toca (la
  * tarjeta de un juego) gana esta: en el teléfono el toque es del Pressable más adentro y en la web corta el clic.
  */
-export const TeamLink: React.FC<LinkProps & { id: number | null | undefined; name: string }> = ({ id, name, style, hitSlop, disabled, children }) => {
+export const TeamLink: React.FC<LinkProps & { id: number | null | undefined; name: string }> = ({ id, name, style, hitSlop, disabled, label, children }) => {
     const { t } = useTranslation();
     const target = linkId(id);
-    if (!target || disabled) return <View style={style}>{children}</View>;
+    if (!target || disabled) return <View style={style} accessible={label ? true : undefined} accessibilityLabel={label}>{children}</View>;
     return (
-        <Pressable onPress={() => openTeam(target)} accessibilityRole="link" accessibilityLabel={t('team.open', { team: name })} hitSlop={hitSlop} style={({ pressed }) => [style, pressed && { opacity: 0.7 }]}>
+        <Pressable onPress={() => openTeam(target)} accessibilityRole="link" accessibilityLabel={label ?? t('team.open', { team: name })} hitSlop={hitSlop} style={({ pressed }) => [style, pressed && { opacity: 0.7 }]}>
             {children}
         </Pressable>
     );
 };
 
 /** Lo que muestra un pelotero (foto, nombre) lleva a su ficha (/jugador/[id], con el botón de comparar); igual que TeamLink */
-export const PlayerLink: React.FC<LinkProps & { player: { id: number | null | undefined; name: string; teamId?: number | null } | null | undefined; season?: number }> = ({ player, season, style, hitSlop, disabled, children }) => {
+export const PlayerLink: React.FC<LinkProps & { player: { id: number | null | undefined; name: string; teamId?: number | null } | null | undefined; season?: number }> = ({ player, season, style, hitSlop, disabled, label, children }) => {
     const { t } = useTranslation();
     const target = linkId(player?.id);
-    if (!player || !target || disabled) return <View style={style}>{children}</View>;
+    if (!player || !target || disabled) return <View style={style} accessible={label ? true : undefined} accessibilityLabel={label}>{children}</View>;
     return (
         <Pressable
             onPress={() => openPlayer({ id: target, name: player.name, teamId: player.teamId }, season)}
             accessibilityRole="link"
-            accessibilityLabel={t('statsPage.viewPlayer', { name: player.name })}
+            accessibilityLabel={label ?? t('statsPage.viewPlayer', { name: player.name })}
             hitSlop={hitSlop}
             style={({ pressed }) => [style, pressed && { opacity: 0.7 }]}
         >

@@ -2,7 +2,7 @@
 // gira y casa, carreras por juego, pitagórico, último juego, abridores, serie particular y cuenta regresiva) y la
 // compacta (récord, diferencia y racha de los dos). Datos: posiciones (PRO o las del Lite) y la forma de cada equipo.
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Bell, BellRing } from 'lucide-react-native';
@@ -21,6 +21,7 @@ import { useAlertToggle } from '../../feed/alerts';
 import { GrowBar, ProNote, countdownParts, fmtAvg, pad2, useInView, useNow, useProColors } from '../kit';
 import { runDiffOf, shiftDay, teamFill, type ThermoRow } from './logic';
 import { MoreLink, StreakChip, ordinal, signed, streakText, teamShort, useDiffColor, useInk } from './shared';
+import { TeamLink, playerTextLink, teamTextLink } from '../../stats/common';
 
 export type RowsById = Map<number, ThermoRow>;
 
@@ -316,12 +317,18 @@ export const PreviewCardFull: React.FC<PreviewFullProps> = ({ game, rows, timeZo
     // Abridores: MLB los publica en el Clásico y la Serie del Caribe (en LIDOM, 0 de 374); con G-P y EFE del detalle del juego
     const probable = game.away.probable || game.home.probable;
     const detail = useGame(probable ? String(game.gamePk) : undefined);
+    // Cada abridor abre su ficha (el nombre dentro de la nota)
     const starter = (side: 'away' | 'home') => {
         const person = detail.data?.probables[side] ?? null;
-        const who = person?.name ?? game[side].probable?.name;
-        if (!who) return t('pro.portada.preview.tbdShort');
+        const who = person ?? game[side].probable;
+        if (!who?.name) return t('pro.portada.preview.tbdShort');
         const stats = [person && person.wins !== null && person.losses !== null ? `${person.wins}-${person.losses}` : null, person?.era ? t('pro.portada.final.era', { era: person.era }) : null].filter(Boolean).join(', ');
-        return stats ? `${who} (${stats})` : who;
+        return (
+            <>
+                <Text {...playerTextLink({ ...who, teamId: game[side].id })}>{who.name}</Text>
+                {stats ? ` (${stats})` : ''}
+            </>
+        );
     };
     const notPlayed = isNotPlayed(game.detailedState);
     const open = () => router.push(`/juego/${game.gamePk}`);
@@ -353,7 +360,7 @@ export const PreviewCardFull: React.FC<PreviewFullProps> = ({ game, rows, timeZo
                     const fill = teamFill(team.color);
                     const end = side === 'home';
                     return (
-                        <View key={side} style={{ flex: 1, flexBasis: 0, minWidth: 0, flexDirection: end ? 'row-reverse' : 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: fill.bg }}>
+                        <TeamLink key={side} id={team.id} name={name(team)} style={{ flex: 1, flexBasis: 0, minWidth: 0, flexDirection: end ? 'row-reverse' : 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: fill.bg }}>
                             <View style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 20, backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.9)' }}>
                                 <TeamLogo team={team} size={30} />
                             </View>
@@ -365,7 +372,7 @@ export const PreviewCardFull: React.FC<PreviewFullProps> = ({ game, rows, timeZo
                                     {name(team)}
                                 </Txt>
                             </View>
-                        </View>
+                        </TeamLink>
                     );
                 })}
             </View>
@@ -378,8 +385,8 @@ export const PreviewCardFull: React.FC<PreviewFullProps> = ({ game, rows, timeZo
             )}
             <View style={{ gap: 12, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
                 {probable ? (
-                    <ProNote tone="neutral" title={t('pro.portada.preview.probables')}>
-                        {`${starter('away')} vs ${starter('home')}`}
+                    <ProNote tone="neutral" title={t('pro.portada.preview.probables')} inline>
+                        {starter('away')} vs {starter('home')}
                     </ProNote>
                 ) : (
                     <ProNote tone="neutral" title={t('pro.portada.preview.noProbables')}>
@@ -394,7 +401,8 @@ export const PreviewCardFull: React.FC<PreviewFullProps> = ({ game, rows, timeZo
                     >
                         <Txt eyebrow>{t('pro.portada.preview.h2h', { season })}</Txt>
                         <Txt size={13} weight="bold" numberOfLines={1}>
-                            {`${h2h.played === 0 ? t('pro.portada.preview.h2hFirst') : h2h.aWins === h2h.bWins ? t('pro.portada.preview.h2hTied') : h2h.aWins > h2h.bWins ? game.away.abbrev : game.home.abbrev} · `}
+                            {h2h.played === 0 ? t('pro.portada.preview.h2hFirst') : h2h.aWins === h2h.bWins ? t('pro.portada.preview.h2hTied') : <Text {...teamTextLink((h2h.aWins > h2h.bWins ? game.away : game.home).id)}>{(h2h.aWins > h2h.bWins ? game.away : game.home).abbrev}</Text>}
+                            {' · '}
                             <Txt condensed size={16} tabular>{`${Math.max(h2h.aWins, h2h.bWins)}-${Math.min(h2h.aWins, h2h.bWins)}`}</Txt>
                         </Txt>
                     </View>
@@ -436,11 +444,13 @@ export const PreviewCardCompact: React.FC<PreviewProps> = ({ game, rows, timeZon
         const diff = row ? runDiffOf(row) : null;
         return (
             <View key={team.id} style={{ minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <TeamLogo team={team} size={28} />
-                    <Txt size={15} weight="extrabold" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
-                        {teamDisplayName(team, lang)}
-                    </Txt>
+                <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' }}>
+                    <TeamLink id={team.id} name={teamDisplayName(team, lang)} style={{ flexShrink: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <TeamLogo team={team} size={28} />
+                        <Txt size={15} weight="extrabold" numberOfLines={1} style={{ flexShrink: 1, minWidth: 0 }}>
+                            {teamDisplayName(team, lang)}
+                        </Txt>
+                    </TeamLink>
                 </View>
                 <Txt condensed size={17} tabular style={{ width: 40, textAlign: 'right' }}>
                     {record(row, team)}
