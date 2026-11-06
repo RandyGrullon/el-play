@@ -3,17 +3,19 @@ import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { AtBat, GameDetail, Pitch } from '../../types';
 import { describePlay, eventName, eventTone, inningName, pitchCallName, pitchTypeName } from '../../lib/baseball';
+import { timelineActions, type ActionKind } from '../../lib/liveGame';
 import { useColors } from '../../theme/theme';
-import { alpha, radius, shadow } from '../../theme/tokens';
+import { alpha, radius, shadow, type Palette } from '../../theme/tokens';
 import { Row, Txt } from '../ui';
 import { toneColors } from '../game/colors';
 
 const PitchBubble: React.FC<{ pitch: Pitch; last: boolean }> = ({ pitch, last }) => {
-    const { i18n } = useTranslation();
+    const { t, i18n } = useTranslation();
     const colors = useColors();
     const color = colors[pitch.r];
     const kind = pitch.type || pitch.typeDesc ? ` · ${pitchTypeName(pitch, i18n.language)}` : '';
-    const text = `${pitch.n ?? ''} · ${pitchCallName(pitch, i18n.language)}${kind}${pitch.mph ? ` ${pitch.mph.toFixed(1)}` : ''}`;
+    const abs = pitch.abs ? ` · ${t(pitch.abs.inProgress ? 'zone.absChecking' : pitch.abs.overturned ? 'zone.absOverturned' : 'zone.absConfirmed')}` : '';
+    const text = `${pitch.n ?? ''} · ${pitchCallName(pitch, i18n.language)}${kind}${pitch.mph ? ` ${pitch.mph.toFixed(1)}` : ''}${abs}`;
     return (
         <View style={{ maxWidth: '85%', borderRadius: 18, borderBottomRightRadius: last ? 6 : 18, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: last ? color : alpha(color, 0.15) }}>
             <Txt size={13} weight="semibold" color={last ? '#fff' : color}>
@@ -50,12 +52,45 @@ const PlayBubble: React.FC<{ atBat: AtBat; game: GameDetail }> = ({ atBat, game 
     );
 };
 
+const ACTION_TONE: Partial<Record<ActionKind, keyof Palette>> = {
+    steal: 'ball',
+    caught: 'strike',
+    pickoff: 'strike',
+    wildPitch: 'gold',
+    passedBall: 'gold',
+    balk: 'gold',
+    pitchingChange: 'accentInk',
+    injury: 'live',
+    ejection: 'live'
+};
+
+/** Una acción del juego (robo, cambio de lanzador, visita al montículo…) como aviso pequeño en medio de la charla */
+const ActionLine: React.FC<{ kind: ActionKind; desc: string }> = ({ kind, desc }) => {
+    const { t, i18n } = useTranslation();
+    const colors = useColors();
+    const label = t(`timeline.actions.${kind}`);
+    const text = describePlay(desc, i18n.language);
+    // «Visita al montículo. · Visita al montículo»: si la descripción no dice más que la etiqueta, va sola
+    const same = text.replace(/[.\s]+$/, '').toLowerCase() === label.toLowerCase();
+    return (
+        <View style={{ maxWidth: '92%', alignSelf: 'center', borderRadius: radius.pill, backgroundColor: colors.raised, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <Txt size={12} tone="muted" center>
+                <Txt size={12} weight="extrabold" color={colors[ACTION_TONE[kind] ?? 'ink']} style={{ textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                    {label}
+                </Txt>
+                {same ? null : ` · ${text}`}
+            </Txt>
+        </View>
+    );
+};
+
 // Cronología tipo chat: el turno de ahora con sus lanzamientos (el último resaltado) y debajo las jugadas
 // anteriores, de la más reciente a la más vieja, con separadores por entrada.
 export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () => void }> = ({ game, limit = 12, onMore }) => {
     const { t, i18n } = useTranslation();
     const colors = useColors();
     const current = game.state === 'live' ? game.atBats.find((atBat) => atBat.i === game.currentAtBat && !atBat.complete) : undefined;
+    const currentActions = current ? timelineActions(current) : [];
     const past = game.atBats.filter((atBat) => atBat.complete).reverse();
     // Cada jugada con el separador de su media entrada (solo la primera de cada una)
     const shown = past.slice(0, limit).map((atBat, index, list) => {
@@ -83,14 +118,26 @@ export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () 
                         </Txt>
                     </View>
                     <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                        {current.pitches.length === 0 ? (
+                        {current.pitches.length === 0 && !currentActions.length ? (
                             <View style={{ borderRadius: 18, backgroundColor: colors.raised, paddingHorizontal: 14, paddingVertical: 8 }}>
                                 <Txt size={13} weight="semibold" tone="muted">
                                     {t('zone.waiting')}
                                 </Txt>
                             </View>
                         ) : (
-                            current.pitches.map((pitch, index) => <PitchBubble key={index} pitch={pitch} last={index === current.pitches.length - 1} />)
+                            // Los pitcheos con las acciones donde pasaron (un robo entre el 2.º y el 3.º, por ejemplo)
+                            [
+                                ...current.pitches.map((pitch, index) => ({ at: index, pitch, action: null })),
+                                ...currentActions.map((action) => ({ at: (action.at ?? current.pitches.length) - 0.5, pitch: null, action }))
+                            ]
+                                .sort((a, b) => a.at - b.at)
+                                .map((item, index) =>
+                                    item.pitch ? (
+                                        <PitchBubble key={`p${index}`} pitch={item.pitch} last={item.at === current.pitches.length - 1} />
+                                    ) : (
+                                        <ActionLine key={`a${index}`} kind={item.action!.kind!} desc={item.action!.desc} />
+                                    )
+                                )
                         )}
                     </View>
                 </>
@@ -103,6 +150,12 @@ export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () 
                         </Txt>
                     )}
                     <PlayBubble atBat={atBat} game={game} />
+                    {/* De la más nueva a la más vieja: lo que pasó durante el turno va debajo de su resultado */}
+                    {timelineActions(atBat)
+                        .reverse()
+                        .map((action, index) => (
+                            <ActionLine key={index} kind={action.kind!} desc={action.desc} />
+                        ))}
                 </React.Fragment>
             ))}
             {past.length === 0 && !current && (

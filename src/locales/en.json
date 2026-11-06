@@ -280,6 +280,7 @@
     "loss": "L: {{name}}",
     "save": "S: {{name}}",
     "notifying": "We'll notify you",
+    "doubleheader": "Doubleheader · game {{n}}",
     "rescheduled": "Rescheduled"
   },
   "teams": {
@@ -379,7 +380,10 @@
     "breakRuns_other": "{{team}} scored {{count}} runs in the inning",
     "breakDueUp": "Due up",
     "breakAria": "Inning break: waiting for the first {{team}} batter",
-    "breakLeadsOff": "leads off for {{team}}"
+    "breakLeadsOff": "leads off for {{team}}",
+    "absChecking": "ABS · reviewing",
+    "absOverturned": "ABS · overturned",
+    "absConfirmed": "ABS · confirmed"
   },
   "plays": {
     "title": "Play by play",
@@ -403,7 +407,13 @@
     "totals": "Totals",
     "lob_one": "{{count}} runner left on base",
     "lob_other": "{{count}} runners left on base",
-    "noData": "No data yet."
+    "noData": "No data yet.",
+    "benchTitle": "Bench and bullpen",
+    "bench": "Bench",
+    "bullpen": "Bullpen",
+    "handR": "R",
+    "handL": "L",
+    "era": "ERA {{era}}"
   },
   "stats": {
     "ab": "AB",
@@ -729,6 +739,23 @@
     "drivesIn_one": "Drives in {{count}} run",
     "drivesIn_other": "Drives in {{count}} runs",
     "drivesInChip": "RBI",
+    "absKicker": "ABS challenge · {{team}}",
+    "absBy_batter": "Challenged by batter {{name}}",
+    "absBy_pitcher": "Challenged by pitcher {{name}}",
+    "absBy_catcher": "Challenged by catcher {{name}}",
+    "absByTeam": "Challenged by {{team}}",
+    "absChecking": "REVIEWING",
+    "absCalled": "Called on the field: {{call}}",
+    "absBall": "Ball",
+    "absStrike": "Strike",
+    "absOverturned": "Overturned!",
+    "absConfirmed": "Confirmed",
+    "absChange": "{{from}} → {{to}}",
+    "absStays": "{{call}} stands",
+    "absWon_one": "{{team}} wins the challenge · {{count}} left",
+    "absWon_other": "{{team}} wins the challenge · {{count}} left",
+    "absLost_one": "{{team}} loses the challenge · {{count}} left",
+    "absLost_other": "{{team}} loses the challenge · {{count}} left",
     "walk_bb": "WALK",
     "walk_ibb": "INTENTIONAL|WALK",
     "walk_hbp": "HIT BY|PITCH",

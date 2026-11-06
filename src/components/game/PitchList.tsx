@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { Pitch } from '../../types';
 import { pitchCallName, pitchTypeName } from '../../lib/baseball';
 import { useColors } from '../../theme/theme';
+import { alpha } from '../../theme/tokens';
 import { Txt } from '../ui';
 import { resultColor } from './colors';
 
@@ -58,9 +59,25 @@ export const PitchList: React.FC<PitchListProps> = ({ pitches, selected = null, 
                             </Txt>
                         </View>
                         <View style={{ flex: 1, minWidth: 0 }}>
-                            <Txt size={14} weight="semibold" numberOfLines={1}>
-                                {pitchCallName(pitch, i18n.language)}
-                            </Txt>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Txt size={14} weight="semibold" numberOfLines={1} style={{ flexShrink: 1 }}>
+                                    {pitchCallName(pitch, i18n.language)}
+                                </Txt>
+                                {pitch.abs && (
+                                    <View
+                                        style={{
+                                            flexShrink: 0,
+                                            borderRadius: 999,
+                                            paddingHorizontal: 6,
+                                            backgroundColor: pitch.abs.inProgress ? alpha(colors.accent, 0.15) : pitch.abs.overturned ? alpha(colors.ball, 0.15) : colors.raised
+                                        }}
+                                    >
+                                        <Txt size={10} weight="extrabold" color={pitch.abs.inProgress ? colors.accentInk : pitch.abs.overturned ? colors.ball : colors.muted}>
+                                            {t(pitch.abs.inProgress ? 'zone.absChecking' : pitch.abs.overturned ? 'zone.absOverturned' : 'zone.absConfirmed')}
+                                        </Txt>
+                                    </View>
+                                )}
+                            </View>
                             {/* Sin rastreo no hay tipo ni velocidad: no se pintan guiones */}
                             {detail ? (
                                 <Txt size={12} tone="muted" numberOfLines={1}>

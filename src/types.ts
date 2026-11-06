@@ -41,6 +41,8 @@ export interface ScheduleGame {
     date: string;
     /** Hora por definir (p. ej. el segundo de un doble juego): `date` trae una hora de relleno */
     startTimeTBD?: boolean;
+    /** Doble cartelera: qué juego del día es */
+    doubleheader?: { game: number | null } | null;
     state: GameState;
     detailedState: string;
     gameType: string | null;
@@ -93,6 +95,16 @@ export interface Pitch {
     est?: boolean;
     /** x/y: dónde cayó, en el cuadro de Gameday (250×250, home ≈ 125,198); traj/hard: trayectoria y fuerza */
     hit?: { ev: number | null; la: number | null; dist: number | null; x?: number | null; y?: number | null; traj?: string | null; hard?: string | null };
+    /** Reto del ABS (árbitro robot): revisándose o resuelto (overturned = se cambió la decisión del umpire) */
+    abs?: AbsReview;
+}
+
+export interface AbsReview {
+    inProgress: boolean;
+    overturned: boolean;
+    teamId: number | null;
+    /** Quién retó (bateador, lanzador o receptor), si lo dice la fuente */
+    by: PersonRef | null;
 }
 
 export interface AtBat {
