@@ -226,7 +226,9 @@
   "offline": {
     "banner": "Sin conexión: estás viendo lo último que cargó",
     "title": "Sin conexión",
-    "notLoaded": "Esta pantalla todavía no se había cargado. Cuando vuelva el internet se carga sola."
+    "notLoaded": "Esta pantalla todavía no se había cargado. Cuando vuelva el internet se carga sola.",
+    "bannerAge_one": "Sin conexión: lo que ves es de hace {{count}} min. Se pone al día solo al volver la señal.",
+    "bannerAge_other": "Sin conexión: lo que ves es de hace {{count}} min. Se pone al día solo al volver la señal."
   },
   "update": {
     "available": "Hay una versión nueva de El Play",

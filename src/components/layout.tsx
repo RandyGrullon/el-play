@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState, useSyncExternalStore } from 'react';
 import { Pressable, RefreshControl, ScrollView, View, type StyleProp, type ViewStyle } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import type { BottomTabBarProps } from 'expo-router/tabs';
+import { StatusBar } from 'expo-status-bar';
+import { onlineManager, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { BarChart3, Home, Menu, Radio, Sparkles } from 'lucide-react-native';
+import { BarChart3, Home, Menu, Radio, Sparkles, WifiOff } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { useColors } from '../theme/theme';
+import { useColors, useTheme } from '../theme/theme';
 import { shadow } from '../theme/tokens';
 import { Txt } from './ui';
+import { useNow } from './feed/useNow';
 import { useSchedule } from '../lib/queries';
+import { offlineAge } from '../lib/format';
 import { useLeague } from '../state/league';
 
 /** Pantalla con scroll, «desliza para recargar» y espacio para la barra de abajo */
@@ -115,6 +119,49 @@ export const ElPlayTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, 
                 {tab('fantasy')}
                 {tab('mas')}
             </View>
+        </View>
+    );
+};
+
+// ---------------------------------------------------------------- sin conexión
+
+// Hay internet según React Query (que lo sabe por NetInfo, ver app/_layout.tsx)
+const subscribeOnline = (listener: () => void) => onlineManager.subscribe(listener);
+const useOnline = () => useSyncExternalStore(subscribeOnline, () => onlineManager.isOnline());
+
+/** Igual que la web: sin conexión no se bloquea la app; se avisa arriba y se siguen viendo los últimos datos */
+const OfflineBanner: React.FC<{ top: number }> = ({ top }) => {
+    const { t } = useTranslation();
+    const { colors, isDark } = useTheme();
+    const client = useQueryClient();
+    const now = useNow(30000);
+    // Lo más nuevo que hay en pantalla: los datos de la última vez que hubo señal
+    const updated = Math.max(0, ...client.getQueryCache().getAll().map((query) => query.state.dataUpdatedAt || 0));
+    const minutes = offlineAge(updated, now);
+    return (
+        <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.ink, paddingHorizontal: 16, paddingTop: top + 8, paddingBottom: 8 }}>
+            {/* La barra de estado va sobre el aviso (fondo del color del texto): sus íconos del color contrario */}
+            <StatusBar style={isDark ? 'dark' : 'light'} />
+            <WifiOff size={14} color={colors.bg} />
+            <Txt size={12} weight="semibold" color={colors.bg} center style={{ flexShrink: 1 }}>
+                {minutes === null ? t('offline.banner') : t('offline.bannerAge', { count: minutes })}
+            </Txt>
+        </View>
+    );
+};
+
+/**
+ * Marco de toda la app (el AppShell de la web): el aviso de «sin conexión» arriba, encima de cualquier pantalla. Con el
+ * aviso puesto, el aviso ya cubre la barra de estado y las pantallas quedan debajo: para ellas el margen de arriba es 0.
+ */
+export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const insets = useSafeAreaInsets();
+    const online = useOnline();
+    const inner = useMemo(() => (online ? insets : { ...insets, top: 0 }), [online, insets]);
+    return (
+        <View style={{ flex: 1 }}>
+            {!online && <OfflineBanner top={insets.top} />}
+            <SafeAreaInsetsContext.Provider value={inner}>{children}</SafeAreaInsetsContext.Provider>
         </View>
     );
 };

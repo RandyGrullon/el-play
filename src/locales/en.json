@@ -226,7 +226,9 @@
   "offline": {
     "banner": "Offline: showing the last data loaded",
     "title": "You're offline",
-    "notLoaded": "This screen hadn't loaded yet. It will load by itself when you're back online."
+    "notLoaded": "This screen hadn't loaded yet. It will load by itself when you're back online.",
+    "bannerAge_one": "Offline: what you see is from {{count}} min ago. It updates on its own when you're back online.",
+    "bannerAge_other": "Offline: what you see is from {{count}} min ago. It updates on its own when you're back online."
   },
   "update": {
     "available": "A new version of El Play is available",

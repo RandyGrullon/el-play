@@ -426,6 +426,20 @@ it('el líder para la imagen: la categoría en singular si es 1, su puesto y la 
     assert.strictEqual(subjects.playerFromLeader(lider(null, {}), 'wins', '2099-00', 'Liga', tKeys).value, '—');
 });
 
+console.log('aviso de sin conexión');
+
+it('la edad de lo que se ve: minutos enteros desde el último dato; sin datos o de hace menos de un minuto, sin edad', () => {
+    const { offlineAge } = require(path.join(SCREENS, 'lib', 'format.js'));
+    const ahora = Date.UTC(2099, 0, 15, 20, 0, 0);
+    assert.strictEqual(offlineAge(0, ahora), null);
+    assert.strictEqual(offlineAge(ahora - 59999, ahora), null);
+    assert.strictEqual(offlineAge(ahora - 60000, ahora), 1);
+    assert.strictEqual(offlineAge(ahora - 7.5 * 60000, ahora), 7);
+    assert.strictEqual(offlineAge(ahora - 3 * 3600000, ahora), 180);
+    // Reloj del teléfono atrasado respecto al dato: no hay edades negativas
+    assert.strictEqual(offlineAge(ahora + 5000, ahora), null);
+});
+
 console.log('ficha del pelotero');
 
 const { careerTotal } = require(compileTo('lib/stats.ts'));
