@@ -21,7 +21,7 @@ import { PreferencesProvider, useAlertTaps } from '../state/preferences';
 import { useAlerts } from '../hooks/useAlerts';
 import { ThemeProvider, useColors, useTheme } from '../theme/theme';
 import { dark, light } from '../theme/tokens';
-import { Toast } from '../components/layout';
+import { AppShell, Toast } from '../components/layout';
 import { ErrorScreen } from '../components/ErrorScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -115,7 +115,9 @@ export default function RootLayout() {
                     <LeagueProvider>
                         <ThemeProvider>
                             <PreferencesProvider>
-                                <Navigator />
+                                <AppShell>
+                                    <Navigator />
+                                </AppShell>
                             </PreferencesProvider>
                         </ThemeProvider>
                     </LeagueProvider>

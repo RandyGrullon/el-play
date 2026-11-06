@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { router } from 'expo-router';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import i18n from '../i18n';
-import { consumeAuthUrl, type AuthRedirect } from '../lib/account';
+import { consumeAuthUrl, type AuthRedirect, type ConfirmSwitch } from '../lib/account';
 import { showToast } from '../lib/toast';
 import { localText } from '../components/fantasy/texts';
 
@@ -15,6 +15,7 @@ const popup = Platform.OS === 'web' && WebBrowser.maybeCompleteAuthSession().typ
 // Lo mismo que dice la web al volver (el-play/src/main.tsx)
 const authMessage = (auth: AuthRedirect) => {
     if (auth.result === 'signed-in') return i18n.t('account.linkSignedIn', { email: auth.email });
+    if (auth.result === 'kept') return i18n.t('account.keptSession', { email: auth.email });
     if (auth.result === 'linked' || auth.code === 'identity_already_linked') return localText('methods.linked');
     if (auth.code === 'link_other_account') return localText('methods.errors.link_other_account');
     if (auth.code === 'identity_already_exists') return localText('methods.errors.identity_taken');
@@ -22,6 +23,23 @@ const authMessage = (auth: AuthRedirect) => {
     if (auth.via === 'link') return localText('methods.linkFailed');
     if (auth.via === 'google') return localText('googleFailed');
     return i18n.t('account.linkExpired');
+};
+
+// Ya había otra cuenta abierta: se pregunta antes de cambiarla por la del enlace (la web usa window.confirm)
+const confirmSwitch: ConfirmSwitch = (current, next) => {
+    const question = i18n.t('account.switchConfirm', { current, next });
+    if (Platform.OS === 'web') return Promise.resolve(typeof window !== 'undefined' && typeof window.confirm === 'function' ? window.confirm(question) : false);
+    return new Promise((resolve) =>
+        Alert.alert(
+            question,
+            undefined,
+            [
+                { text: i18n.t('account.deleteNo'), style: 'cancel', onPress: () => resolve(false) },
+                { text: i18n.t('account.switchYes'), onPress: () => resolve(true) }
+            ],
+            { cancelable: true, onDismiss: () => resolve(false) }
+        )
+    );
 };
 
 // Atrás si se llegó desde otra pantalla (vuelta de Google o del correo con la app abierta); si no, al Fantasy
@@ -41,10 +59,13 @@ export default function AuthReturn() {
         }
         if (handled.current === url) return undefined;
         handled.current = url;
-        const auth = consumeAuthUrl(url);
-        // Ya leída (llegó dos veces o la sesión ya era esa): no se avisa nada
-        if (auth && !auth.repeated) showToast(authMessage(auth), undefined, 7000);
-        leave();
+        consumeAuthUrl(url, confirmSwitch)
+            .then((auth) => {
+                // Ya leída (llegó dos veces o la sesión ya era esa): no se avisa nada
+                if (auth && !auth.repeated) showToast(authMessage(auth), undefined, 7000);
+            })
+            .catch(() => undefined)
+            .finally(leave);
         return undefined;
     }, [url]);
     return null;

@@ -226,7 +226,9 @@
   "offline": {
     "banner": "Offline: showing the last data loaded",
     "title": "You're offline",
-    "notLoaded": "This screen hadn't loaded yet. It will load by itself when you're back online."
+    "notLoaded": "This screen hadn't loaded yet. It will load by itself when you're back online.",
+    "bannerAge_one": "Offline: what you see is from {{count}} min ago. It updates on its own when you're back online.",
+    "bannerAge_other": "Offline: what you see is from {{count}} min ago. It updates on its own when you're back online."
   },
   "update": {
     "available": "A new version of El Play is available",
@@ -254,7 +256,11 @@
     "screenTitle": "Something went wrong",
     "screenBody": "This screen ran into a problem. Try again or go back to Games.",
     "notFoundTitle": "This screen doesn't exist",
-    "goGames": "Go to Games"
+    "goGames": "Go to Games",
+    "player_not_found": "We couldn't find that player.",
+    "invalid_user": "That profile link isn't valid.",
+    "accounts_disabled": "Accounts aren't available right now.",
+    "accounts_unavailable": "We couldn't load the fans. Try again in a moment."
   },
   "games": {
     "title": "Games",
@@ -486,7 +492,8 @@
       "clinched": "Clinched",
       "eliminated": "Eliminated"
     },
-    "lastTenShort": "{{record}} L10"
+    "lastTenShort": "{{record}} L10",
+    "lastTenIs": "{{record}} in last 10"
   },
   "leaders": {
     "title": "Leaders",
@@ -518,7 +525,16 @@
     "savesShort": "SV",
     "whip": "WHIP",
     "whipShort": "BB+H / IP",
-    "rank": "No. {{rank}}"
+    "rank": "No. {{rank}}",
+    "one": {
+      "homeRuns": "Home run",
+      "runsBattedIn": "Run batted in",
+      "hits": "Hit",
+      "stolenBases": "Stolen base",
+      "strikeouts": "Strikeout",
+      "wins": "Win",
+      "saves": "Save"
+    }
   },
   "notifications": {
     "gameStarting": "Game starting soon!",
@@ -687,7 +703,10 @@
     "hint": "Pick where to share: on your phone, your app list opens with the image ready.",
     "more": "More options",
     "pick": "In the list that opens, tap {{app}}.",
-    "instagramSaved": "Image saved: post it from Instagram on your phone."
+    "instagramSaved": "Image saved: post it from Instagram on your phone.",
+    "linkOnly": "Just the link",
+    "linkCopied": "Link copied.",
+    "failed": "Could not share."
   },
   "spray": {
     "title": "Spray chart",
@@ -1090,7 +1109,10 @@
     "abs_one": "{{count}} AB",
     "abs_other": "{{count}} AB",
     "chase": "chases {{pct}}% outside",
-    "whiffPct": "Whiff"
+    "whiffPct": "Whiff",
+    "total": "Total",
+    "seasons_one": "{{count}} season",
+    "seasons_other": "{{count}} seasons"
   },
   "account": {
     "title": "Your account",
@@ -1123,7 +1145,11 @@
     "deleteYes": "Yes, delete",
     "deleteNo": "Cancel",
     "google": "Continue with Google",
-    "orEmail": "or with your email"
+    "orEmail": "or with your email",
+    "noNameHint": "You don't have a name yet: others see you as “Fan”. Choose one below.",
+    "keptSession": "You stayed signed in as {{email}}.",
+    "switchConfirm": "You're signed in as {{current}}. Switch to {{next}}?",
+    "switchYes": "Switch"
   },
   "statsPage": {
     "title": "Stats",
@@ -1235,7 +1261,22 @@
     },
     "open": "Stats",
     "info": "Profile",
-    "seePrevious": "See the {{season}} season"
+    "seePrevious": "See the {{season}} season",
+    "teams": "Teams",
+    "teamBat": "Hitting",
+    "teamPitch": "Pitching",
+    "teamLeaders": "League leaders",
+    "teamBest": "Best in {{stat}}: {{team}}, {{value}}",
+    "teamRanking": "Teams by {{stat}}",
+    "teamOpen": "See {{team}} stats",
+    "leagueAverage": "League average {{stat}}: {{value}}",
+    "lowerIsBetter": "lower is better",
+    "runDiff": "Run differential",
+    "runDiffHint": "Runs scored minus runs allowed, and the record that differential points to (Pythagorean expectation).",
+    "runsFor": "{{scored}} RS · {{allowed}} RA",
+    "expected": "expected {{w}}-{{l}}",
+    "teamEmpty": "No team stats for this season yet.",
+    "leagueAverageShort": "League average: {{value}}"
   },
   "team": {
     "rank": "{{rank}} of {{total}}",
@@ -1305,7 +1346,8 @@
         "NUM": "Number change",
         "LON": "Loan",
         "other": "Move"
-      }
+      },
+      "league": "Team moves · last 30 days"
     },
     "sort": {
       "bat": {
@@ -1440,7 +1482,9 @@
       "hr9": "HR/9",
       "kBb": "K/BB",
       "fip": "FIP",
-      "ppi": "P/IP"
+      "ppi": "P/IP",
+      "opsPlus": "OPS+",
+      "eraPlus": "ERA+"
     },
     "columns": {
       "pts": "Fantasy points",

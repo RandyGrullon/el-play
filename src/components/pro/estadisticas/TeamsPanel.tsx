@@ -12,6 +12,9 @@ import { alpha, radius, shadow } from '../../../theme/tokens';
 import type { ProPhaseId, TeamHitting, TeamPitching, TeamStats } from '../../../types/pro-liga';
 import { ErrorState, OfflineState, Skeleton, TeamLogo, Txt, useErrorText } from '../../ui';
 import { openTeam, waitingForNetwork } from '../../stats/common';
+import { RunDifferential } from '../../stats/TeamStats';
+import { TeamMoves } from '../../team/TeamSections';
+import { useTeamStats } from '../../../lib/teamStats';
 import { Chip, HBarChart, ModuleHeader, ProNote, ProSegmented, ScreenTitle, type HBarRow } from '../kit';
 import { LEAGUE_PHASES, tooEarly } from './logic';
 import { PhaseSelect } from './parts';
@@ -267,6 +270,8 @@ export const TeamsScreen: React.FC = () => {
     const tiny = !autoPrevious && !!data && !data.isPreviousSeason && data.season === current && tooEarly(games) && games > 0;
     const eyebrow = [t(`leagues.${activeLeague}.name`), seasonText ? t('pro.estadisticas.seasonEyebrow', { season: seasonText }) : null, t(`pro.estadisticas.phases.${phase}`)].filter(Boolean).join(' · ');
     const pending = base.isPending || (query.isPending && query.fetchStatus !== 'idle');
+    // Diferencia de carreras de la temporada (la misma de Estadísticas → Equipos en el Lite): solo en la fase completa
+    const runs = useTeamStats(activeLeague, season, !missing && phase === phases[0]);
 
     return (
         <ProScroll onRefresh={() => Promise.all([base.refetch(), query.refetch()])}>
@@ -310,11 +315,13 @@ export const TeamsScreen: React.FC = () => {
                     </View>
                 ))
             )}
+            {hasData && phase === phases[0] && runs.data && runs.data.season === data!.season && <RunDifferential teams={runs.data.teams} onOpen={openTeam} />}
             {hasData && (
                 <Txt size={12} tone="muted">
                     {t('pro.estadisticas.teams.note', { fip: data!.constants.fip !== null && data!.constants.fip !== undefined ? data!.constants.fip.toFixed(2) : '—' })}
                 </Txt>
             )}
+            {!missing && <TeamMoves league={activeLeague} season={season} />}
         </ProScroll>
     );
 };

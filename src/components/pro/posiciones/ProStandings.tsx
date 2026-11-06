@@ -11,14 +11,15 @@ import type { ProPhaseId, SeasonCalendar, StandingsProInfo } from '../../../type
 import { useProCalendar, useProStandings } from '../../../lib/pro/liga';
 import { isPermanent } from '../../../lib/pro/http';
 import { seasonLabel, todayKey } from '../../../lib/format';
-import { teamDisplayName } from '../../../lib/teams';
 import { useLeague } from '../../../state/league';
 import { usePreferences } from '../../../state/preferences';
 import { useColors, useTheme } from '../../../theme/theme';
 import { alpha, radius } from '../../../theme/tokens';
 import { Screen } from '../../layout';
 import { ErrorState, OfflineState, Skeleton, TeamLogo, Txt, useErrorText } from '../../ui';
-import { HeaderButton, poolTitle, shareText, waitingForNetwork } from '../../stats/common';
+import { HeaderButton, poolTitle, waitingForNetwork } from '../../stats/common';
+import { useShare } from '../../share/ShareSheet';
+import { standingsPost } from '../../share/subjects';
 import { StandingsTable } from '../StandingsTable';
 import { ChipRow, GrowBar, LiveDot, ModuleHeader, ProNote, ProSection, ScreenTitle, StatTile, fmtSigned, useProColors } from '../kit';
 import { cutStatus, headToHeadMatrix, lastDayNumbers, marginKind, overFive, pairsPending, pendingGames, phaseProgress, raceModel, upcomingDay, type TableRow } from './logic';
@@ -35,10 +36,6 @@ type AnyStandings = Standings & { pro?: StandingsProInfo };
 type LidomStandings = Extract<AnyStandings, { type: 'lidom' }>;
 
 const teamOf = (row: StandingRow): RaceTeam => ({ id: row.team.id, abbrev: row.team.abbrev, name: row.team.name, color: row.team.color, logo: row.team.logo });
-
-/** La tabla en texto para compartir: «1. Estrellas 1-0 · 2. Leones 0-0 …» (como el Lite) */
-const tableText = (rows: StandingRow[], title: string, lang: string) =>
-    [title, ...rows.map((row) => `${row.rank}. ${teamDisplayName(row.team, lang)} ${row.wins}-${row.losses}${row.gamesBack !== '-' ? ` (${row.gamesBack})` : ''}`), '· El Play'].join('\n');
 
 // ---------------------------------------------------------------- fase: píldoras, nota y avance
 
@@ -338,6 +335,7 @@ export const ProStandings: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
     const query = routeMissing ? lite : proQuery;
     const data = (proQuery.data ?? (routeMissing ? lite.data : undefined)) as AnyStandings | undefined;
     const calendar = useProCalendar(activeLeague, undefined, !!data && !routeMissing);
+    const { share: openShare, sheet } = useShare();
     const [picked, setPicked] = useState<{ league: LeagueId; phase: LidomPhase | null }>({ league: activeLeague, phase: null });
     // Otra liga: vuelve a la fase activa
     const phase = picked.league === activeLeague ? picked.phase : null;
@@ -363,7 +361,14 @@ export const ProStandings: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
             ? 4
             : 2;
     const cutLabel = !data ? '' : data.type === 'lidom' ? (activePhase === 'regular' ? t('standings.cutRoundRobin') : t('standings.cutFinal')) : t('standings.cutNext');
-    const share = (tableRows: StandingRow[], subtitle: string) => shareText(tableText(tableRows, `${t('standings.title')} ${leagueName} · ${subtitle}`, i18n.language));
+    // La tabla como imagen (historia o post), como el Lite y la web
+    const share = (tableRows: StandingRow[], subtitle: string) =>
+        openShare({
+            data: standingsPost(tableRows, t('standings.title'), subtitle, leagueName, i18n.language),
+            fileName: `el-play-posiciones-${activeLeague}`,
+            text: `${t('standings.title')} ${leagueName} · El Play`,
+            path: '/posiciones'
+        });
 
     // «Al día: 3 finales del viernes 16 de octubre» (o en vivo)
     const freshness = (() => {
@@ -473,6 +478,7 @@ export const ProStandings: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
                     {t('pro.posiciones.source', { league: leagueName, season })}
                 </Txt>
             )}
+            {sheet}
         </Screen>
     );
 };

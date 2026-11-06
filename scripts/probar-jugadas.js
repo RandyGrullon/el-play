@@ -539,6 +539,125 @@ console.log('avisos de los juegos y del Fantasy');
     });
 }
 
+// ---------------------------------------------------------------- pantallas: estadísticas, posiciones, líderes y ficha
+// Lo que se pasó de la web (lib/teamStats.ts, share/subjects.ts, PlayerSheet…). Va en su propia carpeta, con lo de React
+// Query y la API de mentira para que se pueda cargar en Node.
+const SCREENS = path.join(OUT, 'pantallas');
+const compileTo = (rel) => {
+    const source = fs.readFileSync(path.join(ROOT, 'src', rel), 'utf8');
+    const { outputText } = ts.transpileModule(source, { fileName: rel, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.React } });
+    const target = path.join(SCREENS, rel.replace(/\.tsx?$/, '.js'));
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, outputText);
+    return target;
+};
+const stub = (rel, code) => {
+    const target = path.join(SCREENS, rel);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, code);
+};
+stub('node_modules/@tanstack/react-query/index.js', 'exports.useQuery = () => ({});\n');
+stub('lib/api.js', "exports.ApiError = class ApiError extends Error {};\nexports.getApiJson = async () => ({});\nexports.networkErrorCode = async () => 'network';\n");
+stub('lib/config.js', "exports.API_BASE = '';\n");
+compileTo('lib/advanced.ts');
+const teamStats = require(compileTo('lib/teamStats.ts'));
+
+console.log('estadísticas de los equipos');
+
+// Equipos de mentira: siglas y cifras inventadas
+const equipo = (id, abbrev, hitting, pitching) => ({ id, abbrev, name: `Equipo ${abbrev}`, color: '#123456', logo: '', hitting, pitching });
+const EQUIPOS = [
+    equipo(9001, 'AAA', { avg: '.250', ops: '.700', r: 100, hr: 10, h: 200, g: 30, sb: 5 }, { era: '3.50', whip: '1.30', r: 90, k: 200, w: 18, l: 12, sv: 8 }),
+    equipo(9002, 'BBB', { avg: '.270', ops: '.760', r: 120, hr: 14, h: 230, g: 30, sb: 9 }, { era: '4.10', whip: '1.42', r: 130, k: 180, w: 14, l: 16, sv: 5 }),
+    equipo(9003, 'CCC', null, null)
+];
+
+it('orden de los equipos: el mejor arriba, menos es mejor en la EFE y sin dato al final', () => {
+    const { rankTeams, teamSort } = teamStats;
+    assert.deepStrictEqual(rankTeams(EQUIPOS, teamSort('bat', 'avg')).map((item) => item.team.abbrev), ['BBB', 'AAA', 'CCC']);
+    assert.deepStrictEqual(rankTeams(EQUIPOS, teamSort('pitch', 'era')).map((item) => item.team.abbrev), ['AAA', 'BBB', 'CCC']);
+    assert.strictEqual(rankTeams(EQUIPOS, teamSort('pitch', 'era'))[2].value, null);
+    // Una clave que no existe cae en la primera del grupo
+    assert.strictEqual(teamSort('bat', 'nada').key, 'avg');
+    assert.strictEqual(teamSort('pitch', 'nada').key, 'era');
+});
+
+it('promedio de la liga: el de los equipos con dato; las tarjetas de los mejores existen en el orden', () => {
+    const { leagueAverage, teamSort, TEAM_HIGHLIGHTS, TEAM_SORTS } = teamStats;
+    close(leagueAverage(EQUIPOS, teamSort('bat', 'avg')), 0.26, 3);
+    close(leagueAverage(EQUIPOS, teamSort('pitch', 'whip')), 1.36, 3);
+    assert.strictEqual(leagueAverage([EQUIPOS[2]], teamSort('bat', 'avg')), null);
+    assert.strictEqual(teamSort('bat', 'avg').show(0.26), '.260');
+    for (const group of ['bat', 'pitch']) TEAM_HIGHLIGHTS[group].forEach((key) => assert.ok(TEAM_SORTS[group].some((sort) => sort.key === key), key));
+});
+
+it('récord y diferencia de carreras con los juegos para el récord pitagórico', () => {
+    const { recordOf } = teamStats;
+    partial(recordOf(EQUIPOS[0]), { w: 18, l: 12, games: 30, scored: 100, allowed: 90, diff: 10 });
+    partial(recordOf(EQUIPOS[1]), { diff: -10 });
+    partial(recordOf(EQUIPOS[2]), { w: 0, l: 0, games: 0, scored: null, diff: null });
+    const { pythagorean } = require(path.join(SCREENS, 'lib', 'advanced.js'));
+    partial(pythagorean(100, 90, 30), { wins: 16, losses: 14 });
+});
+
+console.log('imágenes para compartir');
+
+['lib/format.ts', 'lib/teams.ts', 'lib/nationalTeams.ts', 'lib/baseball.ts'].forEach(compileTo);
+const subjects = require(compileTo('components/share/subjects.ts'));
+// Las claves salen tal cual (con sus valores), para ver qué texto se pidió
+const tKeys = (key, options = {}) => {
+    const { defaultValue, ...vars } = options; // eslint-disable-line no-unused-vars
+    return Object.keys(vars).length ? `${key}${JSON.stringify(vars)}` : key;
+};
+
+it('la tabla para la imagen: rango, sigla, nombre, récord y juegos detrás de cada equipo', () => {
+    const fila = (rank, id, abbrev, wins, losses, gamesBack) => ({ rank, team: { id, name: `Equipo ${abbrev}`, shortName: abbrev, abbrev, logo: '', color: '#654321', flag: null }, wins, losses, gamesBack });
+    const post = subjects.standingsPost([fila(1, 9001, 'AAA', 20, 10, '-'), fila(2, 9002, 'BBB', 18, 12, '2.0')], 'Posiciones', 'Regular · 2099-00', 'Liga de Prueba', 'es');
+    partial(post, { kind: 'standings', title: 'Posiciones', subtitle: 'Regular · 2099-00', league: 'Liga de Prueba' });
+    assert.deepStrictEqual(post.rows[1], { rank: 2, abbrev: 'BBB', name: 'Equipo BBB', color: '#654321', wins: 18, losses: 12, gamesBack: '2.0' });
+});
+
+it('el líder para la imagen: la categoría en singular si es 1, su puesto y la línea de abajo', () => {
+    const lider = (value, extra) => ({ rank: 1, id: 12345678, name: 'Pelotero Ficticio', teamId: 9001, teamName: 'Equipo AAA', teamAbbrev: 'AAA', logo: null, color: null, value, extra });
+    const uno = subjects.playerFromLeader(lider(1, { h: 3, ab: 10 }), 'homeRuns', '2099-00', 'Liga de Prueba', tKeys);
+    partial(uno, { kind: 'player', personId: 12345678, value: '1', label: 'leaders.one.homeRuns', color: '#2563eb', detail: 'share.hitsInAtBats{"h":3,"ab":10}' });
+    assert.strictEqual(uno.context, 'share.rankIn{"rank":1,"league":"Liga de Prueba","season":"2099-00"}');
+    const varios = subjects.playerFromLeader(lider(12, { ip: '46.1', k: 34 }), 'strikeouts', '2099-00', 'Liga de Prueba', tKeys);
+    partial(varios, { value: '12', label: 'leaders.strikeouts', detail: 'share.innings{"ip":"46.1","k":34}' });
+    assert.strictEqual(subjects.playerFromLeader(lider(null, {}), 'wins', '2099-00', 'Liga', tKeys).value, '—');
+});
+
+console.log('aviso de sin conexión');
+
+it('la edad de lo que se ve: minutos enteros desde el último dato; sin datos o de hace menos de un minuto, sin edad', () => {
+    const { offlineAge } = require(path.join(SCREENS, 'lib', 'format.js'));
+    const ahora = Date.UTC(2099, 0, 15, 20, 0, 0);
+    assert.strictEqual(offlineAge(0, ahora), null);
+    assert.strictEqual(offlineAge(ahora - 59999, ahora), null);
+    assert.strictEqual(offlineAge(ahora - 60000, ahora), 1);
+    assert.strictEqual(offlineAge(ahora - 7.5 * 60000, ahora), 7);
+    assert.strictEqual(offlineAge(ahora - 3 * 3600000, ahora), 180);
+    // Reloj del teléfono atrasado respecto al dato: no hay edades negativas
+    assert.strictEqual(offlineAge(ahora + 5000, ahora), null);
+});
+
+console.log('ficha del pelotero');
+
+const { careerTotal } = require(compileTo('lib/stats.ts'));
+
+it('total de la carrera: sumas de todas las temporadas (EFE, AVG y OPS de las sumas); con una sola, no hay', () => {
+    const bateo = (g, ab, h, d, t, hr, rbi, bb, hbp, sf) => ({ hitting: { g, ab, h, d, t, hr, rbi, bb, hbp, sf } });
+    const bateador = { role: 'B', career: [bateo(40, 150, 45, 8, 1, 5, 20, 15, 2, 1), bateo(30, 100, 25, 4, 0, 2, 10, 10, 1, 0)] };
+    // 70 J, 70 H en 250 VB (.280), 7 HR, 30 CI; OBP 98/279, SLG 105/250
+    assert.deepStrictEqual(careerTotal(bateador), [70, '.280', 7, 30, ((98 / 279 + 105 / 250).toFixed(3)).replace(/^0/, '')]);
+    const pitcheo = (g, w, l, outs, er, k) => ({ pitching: { g, w, l, outs, er, k } });
+    const lanzador = { role: 'P', career: [pitcheo(10, 3, 2, 100, 12, 40), pitcheo(8, 1, 1, 44, 6, 20)] };
+    // 144 outs = 48.0 IP; 18 CL → 3.38
+    assert.deepStrictEqual(careerTotal(lanzador), [18, '4-3', '3.38', '48.0', 60]);
+    assert.deepStrictEqual(careerTotal({ role: 'P', career: [pitcheo(5, 1, 0, 31, 0, 9), pitcheo(2, 0, 0, 0, 0, 0)] }).slice(2, 4), ['0.00', '10.1']);
+    assert.strictEqual(careerTotal({ role: 'B', career: [bateo(1, 3, 1, 0, 0, 0, 0, 0, 0, 0)] }), null);
+});
+
 fs.rmSync(OUT, { recursive: true, force: true });
 if (failed) {
     console.log(`\n${failed} caso(s) fallaron`);

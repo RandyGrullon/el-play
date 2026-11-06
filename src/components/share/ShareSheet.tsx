@@ -1,19 +1,23 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { PixelRatio, Platform, Share, View, useWindowDimensions } from 'react-native';
+import { Linking, PixelRatio, Platform, Pressable, Share, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Link2, Share2 } from 'lucide-react-native';
+import i18next from 'i18next';
+import Svg, { Line, Path, Rect } from 'react-native-svg';
+import { Link2, MessageCircle, Share2 } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 import { WEB_URL } from '../../lib/config';
 import { showToast } from '../../lib/toast';
 import { useColors } from '../../theme/theme';
-import { Button, Segmented, Sheet, Txt } from '../ui';
+import { Button, Gradient, Segmented, Sheet, Txt } from '../ui';
 import { ShareCard, type CardHandle, type ShareFormat, type ShareStyle } from './ShareCard';
 import type { PostData } from './subjects';
 
-// Compartir: se ve la imagen del resultado (historia o post, en tres estilos) y se manda como foto con la lista de apps
-// del teléfono. Si no se puede (web, o falla la captura) se comparte el texto con el enlace a la web.
+// Compartir (la hoja de la web): se ve la imagen del resultado (historia o post, en tres estilos) y se manda como foto.
+// Como en la web, WhatsApp, Facebook e Instagram no reciben la imagen directo: se abre la lista de apps del teléfono con
+// la imagen lista y se dice cuál tocar. Si no se puede mandar la imagen (web, o falla la captura), WhatsApp y Facebook
+// abren su página con el texto y el enlace, y lo demás comparte el texto con el enlace a la web.
 
 export interface ShareRequest {
     data: PostData;
@@ -24,14 +28,11 @@ export interface ShareRequest {
     path?: string;
 }
 
-const TEXTS = {
-    es: { copied: 'Enlace copiado.', failed: 'No se pudo compartir.', link: 'Solo el enlace' },
-    en: { copied: 'Link copied.', failed: 'Could not share.', link: 'Just the link' }
-};
+type Destination = 'whatsapp' | 'facebook' | 'instagram' | 'more';
 
 /** Comparte texto y enlace; en la web, si no hay menú de compartir, lo copia */
 export const shareLink = async (text: string, path: string | undefined, lang: string) => {
-    const words = lang.startsWith('en') ? TEXTS.en : TEXTS.es;
+    const t = i18next.getFixedT(lang.startsWith('en') ? 'en' : 'es');
     const url = `${WEB_URL}${path ?? ''}`;
     try {
         if (Platform.OS === 'web') {
@@ -39,14 +40,14 @@ export const shareLink = async (text: string, path: string | undefined, lang: st
             if (nav?.share) await nav.share({ text, url });
             else {
                 await Clipboard.setStringAsync(`${text} ${url}`);
-                showToast(words.copied, undefined, 3000);
+                showToast(t('share.linkCopied'), undefined, 3000);
             }
             return;
         }
         // iOS junta mensaje y enlace; Android solo lee el mensaje
         await Share.share(Platform.OS === 'ios' ? { message: text, url } : { message: `${text}\n${url}` });
     } catch (error) {
-        if ((error as Error)?.name !== 'AbortError') showToast(words.failed, undefined, 3000);
+        if ((error as Error)?.name !== 'AbortError') showToast(t('share.failed'), undefined, 3000);
     }
 };
 
@@ -58,28 +59,73 @@ export const useShare = () => {
     return { share, sheet };
 };
 
+// Los íconos de marca de la web (lucide los quitó de la versión del teléfono): mismos trazos, en blanco
+const glyph = { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none', stroke: '#fff', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
+const FacebookIcon: React.FC = () => (
+    <Svg {...glyph}>
+        <Path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+    </Svg>
+);
+const InstagramIcon: React.FC = () => (
+    <Svg {...glyph}>
+        <Rect width={20} height={20} x={2} y={2} rx={5} ry={5} />
+        <Path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+        <Line x1={17.5} x2={17.51} y1={6.5} y2={6.5} />
+    </Svg>
+);
+
+const DESTINATIONS: { id: Exclude<Destination, 'more'>; label: string; color: string; gradient?: readonly [string, string, ...string[]]; icon: React.ReactNode }[] = [
+    { id: 'whatsapp', label: 'WhatsApp', color: '#25D366', icon: <MessageCircle size={24} color="#fff" /> },
+    { id: 'facebook', label: 'Facebook', color: '#1877F2', icon: <FacebookIcon /> },
+    { id: 'instagram', label: 'Instagram', color: '#d62976', gradient: ['#feda75', '#d62976', '#4f5bd5'], icon: <InstagramIcon /> }
+];
+
+const tile = { height: 68, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 4 } as const;
+
 const ShareSheet: React.FC<{ request: ShareRequest | null; onClose: () => void }> = ({ request, onClose }) => {
     const { t, i18n } = useTranslation();
     const window = useWindowDimensions();
     const colors = useColors();
-    const [format, setFormat] = useState<ShareFormat>('post');
+    const [format, setFormat] = useState<ShareFormat>('story');
     const [style, setStyle] = useState<ShareStyle>('color');
     const [busy, setBusy] = useState(false);
+    const [picked, setPicked] = useState<Destination | null>(null);
     const card = useRef<CardHandle>(null);
-    const words = i18n.language.startsWith('en') ? TEXTS.en : TEXTS.es;
-    // La historia es alta: más angosta para que se vea entera en la hoja
-    const width = Math.min(window.width - 32, format === 'story' ? 300 : 360);
+    // Como en la web, cada vez que se abre empieza en historia, color del equipo y sin destino escogido
+    const [opened, setOpened] = useState(request);
+    if (opened !== request) {
+        setOpened(request);
+        if (request) {
+            setFormat('story');
+            setStyle('color');
+            setPicked(null);
+        }
+    }
+    // Como en la web: la historia a un 46 % del alto de la pantalla y el post a un 40 %
+    const story = format === 'story';
+    const width = Math.min(window.width - 32, window.height * (story ? 0.46 * (9 / 16) : 0.4 * (4 / 5)));
 
-    const shareImage = async () => {
+    /** La imagen a 1080 de ancho en un archivo temporal; sin compartir archivos (web) no hay */
+    const capture = async (name: string) => {
+        if (Platform.OS === 'web' || !(await Sharing.isAvailableAsync())) throw new Error('sin compartir archivos');
+        const ratio = PixelRatio.get();
+        return captureRef(card.current as unknown as Parameters<typeof captureRef>[0], { format: 'png', quality: 1, result: 'tmpfile', width: 1080 / ratio, height: (1080 * (story ? 16 / 9 : 5 / 4)) / ratio, fileName: name });
+    };
+
+    const openPage = (url: string) => Linking.openURL(url).catch(() => showToast(t('share.failed'), undefined, 3000));
+
+    const shareTo = async (destination: Destination) => {
         if (!request) return;
+        setPicked(destination);
         setBusy(true);
         try {
-            if (Platform.OS === 'web' || !(await Sharing.isAvailableAsync())) throw new Error('sin compartir archivos');
-            const ratio = PixelRatio.get();
-            const uri = await captureRef(card.current as unknown as Parameters<typeof captureRef>[0], { format: 'png', quality: 1, result: 'tmpfile', width: 1080 / ratio, height: (1080 * (format === 'story' ? 16 / 9 : 5 / 4)) / ratio, fileName: request.fileName });
+            const uri = await capture(`${request.fileName}-${format}`);
             await Sharing.shareAsync(uri, { mimeType: 'image/png', UTI: 'public.png', dialogTitle: t('share.title') });
         } catch {
-            await shareLink(request.text, request.path, i18n.language);
+            const url = `${WEB_URL}${request.path ?? ''}`;
+            if (destination === 'whatsapp') await openPage(`https://wa.me/?text=${encodeURIComponent(`${request.text}\n${url}`)}`);
+            else if (destination === 'facebook') await openPage(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`);
+            else await shareLink(request.text, request.path, i18n.language);
         } finally {
             setBusy(false);
         }
@@ -95,8 +141,8 @@ const ShareSheet: React.FC<{ request: ShareRequest | null; onClose: () => void }
                             value={format}
                             onChange={setFormat}
                             options={[
-                                { value: 'post', label: t('share.post') },
-                                { value: 'story', label: t('share.story') }
+                                { value: 'story', label: t('share.story') },
+                                { value: 'post', label: t('share.post') }
                             ]}
                         />
                         <Txt eyebrow style={{ marginTop: 4 }}>
@@ -114,9 +160,40 @@ const ShareSheet: React.FC<{ request: ShareRequest | null; onClose: () => void }
                             <ShareCard ref={card} data={request.data} format={format} style={style} width={width} />
                         </View>
                     </View>
-                    <Button label={t('share.share')} icon={<Share2 size={18} color="#fff" />} busy={busy} onPress={shareImage} />
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                        {DESTINATIONS.map((destination) => {
+                            const content = (
+                                <>
+                                    {destination.icon}
+                                    <Txt size={14} weight="bold" tone="white" numberOfLines={1}>
+                                        {destination.label}
+                                    </Txt>
+                                </>
+                            );
+                            return (
+                                <Pressable
+                                    key={destination.id}
+                                    onPress={() => shareTo(destination.id)}
+                                    disabled={busy}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={destination.label}
+                                    accessibilityState={{ disabled: busy }}
+                                    style={({ pressed }) => ({ flex: 1, opacity: busy ? 0.5 : pressed ? 0.85 : 1 })}
+                                >
+                                    {destination.gradient ? (
+                                        <Gradient colors={destination.gradient} style={tile}>
+                                            {content}
+                                        </Gradient>
+                                    ) : (
+                                        <View style={[tile, { backgroundColor: destination.color }]}>{content}</View>
+                                    )}
+                                </Pressable>
+                            );
+                        })}
+                    </View>
+                    <Button label={t('share.more')} icon={<Share2 size={18} color="#fff" />} busy={busy && picked === 'more'} disabled={busy} onPress={() => shareTo('more')} />
                     <Button
-                        label={words.link}
+                        label={t('share.linkOnly')}
                         kind="secondary"
                         icon={<Link2 size={18} color={colors.ink} />}
                         onPress={() => {
@@ -125,6 +202,9 @@ const ShareSheet: React.FC<{ request: ShareRequest | null; onClose: () => void }
                             shareLink(request.text, request.path, i18n.language);
                         }}
                     />
+                    <Txt size={12} tone="muted" center accessibilityLiveRegion="polite">
+                        {picked && picked !== 'more' ? t('share.pick', { app: DESTINATIONS.find((destination) => destination.id === picked)?.label }) : t('share.hint')}
+                    </Txt>
                 </>
             )}
         </Sheet>

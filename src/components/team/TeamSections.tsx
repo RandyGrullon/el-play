@@ -570,13 +570,16 @@ export const Upcoming: React.FC<{ games: ScheduleGame[]; teamId: number; skip: n
 const KNOWN_MOVES = new Set(['SFA', 'SGN', 'REL', 'TR', 'ASG', 'OPT', 'CU', 'SC', 'DES', 'OUT', 'CLW', 'RET', 'SU', 'NUM', 'LON']);
 const MOVES_PAGE = 8;
 
-/** Los movimientos del equipo en los últimos 30 días: los que llegan y los que se van */
-export const TeamMoves: React.FC<{ league: LeagueId; teamId: number }> = ({ league, teamId }) => {
+/**
+ * Los movimientos de los últimos 30 días (TransactionsCard de la web): en la página del equipo solo los suyos (los que
+ * llegan y los que se van); sin `teamId`, los de toda la liga (Estadísticas → Equipos). `season`: la ficha se abre en esa.
+ */
+export const TeamMoves: React.FC<{ league: LeagueId; teamId?: number; season?: number }> = ({ league, teamId, season }) => {
     const { t, i18n } = useTranslation();
     const colors = useColors();
     const query = useTransactions(league);
     const [limit, setLimit] = useState(MOVES_PAGE);
-    const list = (query.data?.transactions ?? []).filter((item) => item.team.id === teamId || item.other?.id === teamId);
+    const list = (query.data?.transactions ?? []).filter((item) => !teamId || item.team.id === teamId || item.other?.id === teamId);
     if (!list.length) return null;
     const es = !i18n.language.startsWith('en');
     return (
@@ -584,7 +587,7 @@ export const TeamMoves: React.FC<{ league: LeagueId; teamId: number }> = ({ leag
             <Row gap={6} style={{ marginBottom: 4 }}>
                 <ArrowLeftRight size={14} color={colors.muted} />
                 <Txt eyebrow accessibilityRole="header">
-                    {t('team.moves.title')}
+                    {teamId ? t('team.moves.title') : t('team.moves.league')}
                 </Txt>
             </Row>
             {list.slice(0, limit).map((item, index) => {
@@ -602,7 +605,7 @@ export const TeamMoves: React.FC<{ league: LeagueId; teamId: number }> = ({ leag
                                 <Txt
                                     size={14}
                                     weight="bold"
-                                    onPress={() => openPlayer({ id: item.person.id, name: item.person.name })}
+                                    onPress={() => openPlayer({ id: item.person.id, name: item.person.name }, season)}
                                     accessibilityRole="link"
                                     accessibilityLabel={t('statsPage.viewPlayer', { name: item.person.name })}
                                     style={{ flexShrink: 1 }}

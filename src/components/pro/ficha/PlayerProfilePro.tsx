@@ -25,6 +25,8 @@ import { ByOpponentMonth } from './ByOpponentMonth';
 import { CareerPro } from './CareerPro';
 import { MoreFromMlb } from './MoreFromMlb';
 import { ShareFichaCard, ShareFichaSheet } from './ShareFicha';
+import { AdvancedTiles } from './AdvancedTiles';
+import { Postseason } from '../../stats/PlayerExtras';
 
 export interface PlayerProfileProProps {
     id: number;
@@ -161,6 +163,7 @@ export const PlayerProfilePro: React.FC<PlayerProfileProProps> = ({ id, name, te
                             {player.season > player.currentSeason - 2 && <ProButton block label={t('statsPage.seePrevious', { season: seasonLabel(player.season - 1, activeLeague) })} onPress={() => pick(player.season - 1)} />}
                         </View>
                     )}
+                    {player.g > 0 && <AdvancedTiles player={player} ctx={ctx} />}
                     {player.g > 0 && (
                         <FichaPercentiles
                             player={player}
@@ -183,6 +186,7 @@ export const PlayerProfilePro: React.FC<PlayerProfileProProps> = ({ id, name, te
                         </ProNote>
                     )}
                     {pro && <Situations player={player} pro={pro} />}
+                    {player.g > 0 && <Postseason player={player} />}
                     {pro && player.role === 'B' && <SprayZones player={player} pro={pro} />}
                     {pro && player.role === 'P' && <Arsenal pro={pro} />}
                     {pro && player.role === 'P' && <SprayZones player={player} pro={pro} />}

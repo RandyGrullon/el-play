@@ -15,8 +15,9 @@ import { ShareTeam } from '../../components/fantasy/ShareTeam';
 import { SummaryCard } from '../../components/fantasy/SummaryCard';
 import { TableTab } from '../../components/fantasy/TableTab';
 import { TeamTab } from '../../components/fantasy/TeamTab';
-import { shift, useOpenPlayer } from '../../components/fantasy/shared';
+import { shift } from '../../components/fantasy/shared';
 import { FanSearch } from '../../components/fantasy/FanSearch';
+import { useFanProfile } from '../../components/fantasy/fans';
 import { ProFantasy } from '../../components/pro/fantasy/ProFantasy';
 import { useLocalText } from '../../components/fantasy/texts';
 import { accountEnabled, pushEntry, syncFantasy, useSession } from '../../lib/account';
@@ -52,7 +53,6 @@ export default function FantasyScreen() {
     const store = useFantasyStore();
     const session = useSession();
     const client = useQueryClient();
-    const openPlayer = useOpenPlayer();
     const L = useLocalText();
     // Perfil de un fanático: su propia pantalla (atrás vuelve aquí)
     const openFan = (id: string) => router.push({ pathname: '/fantasy/fan/[id]', params: { id } });
@@ -101,12 +101,17 @@ export default function FantasyScreen() {
     const openFromPicker = (id: number, state: PickerState) => {
         resume.current = state;
         setPicker(null);
+        const player = day?.players.find((item) => item.id === id);
+        // La ficha lleva el botón de agregar o quitar (`fantasy`) con el mismo día (`dia`, sin él «hoy»)
+        const params = { id, fantasy: '1', ...(date ? { dia: date } : {}), ...(player ? { name: player.name, teamId: player.teamId } : {}) };
         // En iOS hay que esperar que la hoja termine de cerrarse antes de presentar la ficha
-        setTimeout(() => openPlayer(id), Platform.OS === 'ios' ? 450 : 0);
+        setTimeout(() => router.push({ pathname: '/jugador/[id]', params }), Platform.OS === 'ios' ? 450 : 0);
     };
 
     const past = useMemo(() => history(store, activeLeague), [store, activeLeague]);
-    const season = past.reduce((sum, d) => sum + d.points, 0);
+    // La temporada la da el servidor (la misma de la tabla y del perfil); mientras carga o sin red, la del teléfono
+    const mine = useFanProfile(playing && session ? session.user.id : null, activeLeague);
+    const season = mine.data?.season ?? { points: Math.round(past.reduce((sum, d) => sum + d.points, 0) * 10) / 10, days: past.length };
     const points = day ? teamPoints(day, entry) : 0;
     const picks = day ? pickPoints(day, entry) : 0;
     const days = today ? [shift(today, -1), today, shift(today, 1)] : [];

@@ -195,7 +195,8 @@ const oauthTrip = async (kind: OAuthTrip, url: string) => {
     trip = { kind, at: Date.now() };
     try {
         const result = await WebBrowser.openAuthSessionAsync(url, back);
-        if (result.type === 'success') return consumeAuthUrl(result.url);
+        // Entrar con Google o vincular: aquí no se pregunta por otra cuenta (la pidió la persona)
+        if (result.type === 'success') return await consumeAuthUrl(result.url);
     } catch {
         /* en la web el navegador pudo bloquear la ventana */
     }
@@ -246,6 +247,8 @@ const decodeJwt = (token: string): { sub?: string; email?: string } | null => {
 export type AuthRedirect = (
     | { result: 'signed-in'; email: string }
     | { result: 'linked'; email: string }
+    // Había otra cuenta abierta y la persona prefirió seguir con ella
+    | { result: 'kept'; email: string }
     // `code` es el error_code de Supabase (otp_expired, identity_already_exists…) o link_other_account; `via` dice de dónde se venía
     | { result: 'error'; code: string | null; via: 'email' | OAuthTrip }
 ) & {
@@ -253,25 +256,41 @@ export type AuthRedirect = (
     repeated?: boolean;
 };
 
+/** Pregunta si se cambia la cuenta abierta (`current`) por la del enlace (`next`) */
+export type ConfirmSwitch = (current: string, next: string) => Promise<boolean>;
+
 // La última vuelta leída: en Android la misma dirección llega al router (/auth) y a openAuthSessionAsync
-let lastReturn: { url: string; auth: AuthRedirect } | null = null;
+let lastReturn: { url: string; auth: Promise<AuthRedirect | null> } | null = null;
 
 /**
  * Al volver del enlace del correo o de Google, Supabase manda la sesión en el fragmento de la dirección
  * (elplay://auth#access_token=…&refresh_token=…) o el error (#error=…&error_code=…). Al vincular, la vuelta tiene
- * que ser la misma cuenta.
+ * que ser la misma cuenta. Una sesión que nadie pidió desde aquí no reemplaza en silencio otra cuenta abierta:
+ * `confirmSwitch` pregunta (sin él se queda la que estaba), como la web.
  */
-export const consumeAuthUrl = (url: string | null | undefined): AuthRedirect | null => {
-    if (!url || !accountEnabled()) return null;
-    if (lastReturn?.url === url) return { ...lastReturn.auth, repeated: true };
+export const consumeAuthUrl = (url: string | null | undefined, confirmSwitch?: ConfirmSwitch): Promise<AuthRedirect | null> => {
+    if (!url || !accountEnabled()) return Promise.resolve(null);
+    if (lastReturn?.url === url) return lastReturn.auth.then((auth) => (auth ? { ...auth, repeated: true } : null));
     const hash = url.includes('#') ? url.slice(url.indexOf('#') + 1) : url.includes('?') ? url.slice(url.indexOf('?') + 1) : '';
-    if (!/(^|&)(access_token|error)=/.test(hash)) return null;
-    const auth = readAuthReturn(new URLSearchParams(hash));
-    if (auth) lastReturn = { url, auth };
+    if (!/(^|&)(access_token|error)=/.test(hash)) return Promise.resolve(null);
+    const auth = readAuthReturn(new URLSearchParams(hash), confirmSwitch);
+    lastReturn = { url, auth };
     return auth;
 };
 
-const readAuthReturn = (params: URLSearchParams): AuthRedirect | null => {
+/**
+ * Qué hacer con una sesión que vuelve: la misma cuenta se queda con su nombre; vincular nunca cambia de cuenta; otra
+ * cuenta que no pidió «Continuar con Google» aquí se pregunta antes de reemplazar la abierta (como la web).
+ */
+export const switchDecision = (previousId: string | null, nextId: string, via: OAuthTrip | null): 'same' | 'new' | 'link-other' | 'ask' => {
+    if (previousId === nextId) return 'same';
+    if (via === 'link') return 'link-other';
+    if (previousId && via !== 'google') return 'ask';
+    return 'new';
+};
+
+const readAuthReturn = async (params: URLSearchParams, confirmSwitch?: ConfirmSwitch): Promise<AuthRedirect | null> => {
+    // Antes de esperar nada: a qué se fue (entrar o vincular)
     const via = takeOAuthTrip();
     if (params.get('error')) {
         let code = params.get('error_code');
@@ -287,10 +306,15 @@ const readAuthReturn = (params: URLSearchParams): AuthRedirect | null => {
     const previous = readSession();
     // La sesión ya es esa (la dirección se había leído antes): no se toca nada
     if (previous?.accessToken === access) return { result: via === 'link' ? 'linked' : 'signed-in', email: previous.user.email, repeated: true };
+    const decision = switchDecision(previous?.user.id ?? null, claims.sub, via);
     // Al vincular vuelve la misma cuenta con una sesión nueva: se queda el nombre
-    const sameUser = previous?.user.id === claims.sub;
+    const sameUser = decision === 'same';
     // Vincular nunca cambia de cuenta: si vuelve otra, no se toca nada
-    if (via === 'link' && !sameUser) return { result: 'error', code: 'link_other_account', via };
+    if (decision === 'link-other') return { result: 'error', code: 'link_other_account', via: 'link' };
+    // Otra cuenta abierta: se pregunta antes de cambiarla por la del enlace (sin respuesta, se queda la que estaba)
+    if (decision === 'ask' && previous && !(await (confirmSwitch?.(previous.user.email, claims.email || '') ?? Promise.resolve(false)).catch(() => false))) {
+        return { result: 'kept', email: previous.user.email };
+    }
     const expiresIn = Number(params.get('expires_in')) || 3600;
     writeSession({ accessToken: access, refreshToken: refresh, expiresAt: Date.now() + (expiresIn - 60) * 1000, user: { id: claims.sub, email: claims.email || '' }, name: sameUser ? previous!.name : null });
     loadProfile()

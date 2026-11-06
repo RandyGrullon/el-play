@@ -1,13 +1,17 @@
 import React from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { fonts, inkOn } from '../../theme/tokens';
 import { PlayerPhoto, TeamLogo, Txt } from '../ui';
 import { LogoMark } from '../feed/LogoMark';
-import type { PlayerPost, PostData, PostTeam, ResultPost } from './subjects';
+import type { PlayerPost, PostData, PostTeam, ResultPost, StandingsPost } from './subjects';
 
 // La imagen para compartir (lo que dibuja el <canvas> de la web), hecha con vistas para capturarla con captureRef.
 // Historia 9:16 y post 4:5; tres estilos: color del equipo, noche y papel. Se diseña a 360 de ancho y se escala.
+// Resultado de un juego, un pelotero o la tabla de posiciones (en el color del líder). Con una foto de fondo (la que
+// escoja el usuario) va la foto con un velo oscuro y todo en blanco, como en la web.
 
 export type ShareFormat = 'story' | 'post';
 export type ShareStyle = 'color' | 'noche' | 'papel';
@@ -55,14 +59,17 @@ interface CardProps {
     format: ShareFormat;
     style: ShareStyle;
     width: number;
+    /** Foto de fondo (uri local) */
+    photo?: string | null;
 }
 
-export const ShareCard: React.FC<CardProps> = ({ ref, data, format, style, width }) => {
+export const ShareCard: React.FC<CardProps> = ({ ref, data, format, style, width, photo }) => {
     const story = format === 'story';
     const height = width * (story ? 16 / 9 : 5 / 4);
     const s = (value: number) => (value * width) / 360;
-    const color = data.kind === 'result' ? winnerOf(data).color : data.color;
-    const pal = palette(style, color);
+    const color = data.kind === 'result' ? winnerOf(data).color : data.kind === 'player' ? data.color : data.rows[0]?.color || '#2563eb';
+    const base = palette(style, color);
+    const pal = photo ? { ...base, ink: '#ffffff', muted: 'rgba(255,255,255,0.8)', panel: 'rgba(0,0,0,0.35)' } : base;
 
     const header = (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8) }}>
@@ -78,7 +85,7 @@ export const ShareCard: React.FC<CardProps> = ({ ref, data, format, style, width
     );
     const pill = (text: string) => (
         <View style={{ alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: s(12), paddingVertical: s(5), backgroundColor: pal.ink }}>
-            <Txt size={s(11)} weight="extrabold" color={style === 'color' ? pal.bg : style === 'papel' ? '#f2ead8' : '#0b0c10'} style={{ letterSpacing: 0.6 }}>
+            <Txt size={s(11)} weight="extrabold" color={style === 'color' && !photo ? pal.bg : style === 'papel' ? '#f2ead8' : '#0b0c10'} style={{ letterSpacing: 0.6 }}>
                 {text}
             </Txt>
         </View>
@@ -86,10 +93,23 @@ export const ShareCard: React.FC<CardProps> = ({ ref, data, format, style, width
 
     return (
         <View ref={ref} collapsable={false} style={{ width, height, backgroundColor: pal.bg, overflow: 'hidden', paddingHorizontal: s(28), paddingTop: s(story ? 64 : 36), paddingBottom: s(story ? 56 : 22) }}>
-            <Seams size={s(story ? 300 : 240)} color={pal.seam} left={s(story ? 170 : 190)} top={s(story ? 330 : 200)} />
+            {photo ? (
+                <>
+                    <Image source={{ uri: photo }} contentFit="cover" style={StyleSheet.absoluteFill} />
+                    <LinearGradient colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.85)']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />
+                </>
+            ) : (
+                <Seams size={s(story ? 300 : 240)} color={pal.seam} left={s(story ? 170 : 190)} top={s(story ? 330 : 200)} />
+            )}
             {header}
             <View style={{ flex: 1, justifyContent: story ? 'center' : 'flex-start', paddingTop: s(story ? 0 : 18), gap: s(story ? 22 : 12), overflow: 'hidden' }}>
-                {data.kind === 'result' ? <Result data={data} pal={pal} s={s} story={story} pill={pill} /> : <Player data={data} pal={pal} s={s} story={story} pill={pill} />}
+                {data.kind === 'result' ? (
+                    <Result data={data} pal={pal} s={s} story={story} pill={pill} />
+                ) : data.kind === 'player' ? (
+                    <Player data={data} pal={pal} s={s} story={story} pill={pill} />
+                ) : (
+                    <Standings data={data} pal={pal} s={s} story={story} pill={pill} onColor={style === 'color' && !photo} />
+                )}
             </View>
             <Txt size={s(10)} weight="semibold" color={pal.muted} center>
                 {SHARE_SITE}
@@ -204,5 +224,60 @@ const Player: React.FC<PartProps<PlayerPost>> = ({ data, pal, s, story, pill }) 
                 {data.context}
             </Txt>
         </View>
+        {data.detail ? (
+            <Txt size={s(story ? 13 : 11)} weight="semibold" color={pal.muted} center>
+                {data.detail}
+            </Txt>
+        ) : null}
     </>
 );
+
+/** La tabla: título grande, la fase o el grupo y hasta 8 equipos; el líder resalta (con un panel claro en su color) */
+const Standings: React.FC<PartProps<StandingsPost> & { onColor: boolean }> = ({ data, pal, s, story, onColor }) => {
+    const rows = data.rows.slice(0, 8);
+    const rowH = s(story ? 42 : 30) * (rows.length > 6 ? 0.9 : 1);
+    return (
+        <>
+            <View style={{ gap: s(4) }}>
+                <Txt size={s(story ? 40 : 32)} weight="black" color={pal.ink} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ textTransform: 'uppercase', lineHeight: s(story ? 44 : 35) }}>
+                    {data.title}
+                </Txt>
+                <Txt size={s(story ? 12 : 10)} weight="semibold" color={pal.muted} numberOfLines={1}>
+                    {data.subtitle}
+                </Txt>
+            </View>
+            <View style={{ gap: s(story ? 6 : 4) }}>
+                {rows.map((row, index) => {
+                    const leaderOnColor = index === 0 && onColor;
+                    const leaderFilled = index === 0 && !leaderOnColor;
+                    const ink = leaderFilled ? inkOn(row.color) : pal.ink;
+                    const badge = rowH * 0.56;
+                    return (
+                        <View
+                            key={`${row.rank}-${row.abbrev}`}
+                            style={{ height: rowH, borderRadius: s(10), paddingHorizontal: s(12), flexDirection: 'row', alignItems: 'center', gap: s(10), backgroundColor: leaderOnColor ? 'rgba(255,255,255,0.22)' : leaderFilled ? row.color : pal.panel }}
+                        >
+                            <Txt color={ink} tabular style={{ width: s(18), fontFamily: fonts.condensed, fontSize: rowH * 0.48, lineHeight: rowH * 0.56 }}>
+                                {row.rank}
+                            </Txt>
+                            <View style={{ width: badge, height: badge, borderRadius: 999, backgroundColor: row.color, alignItems: 'center', justifyContent: 'center' }}>
+                                <Txt size={rowH * 0.17} weight="extrabold" color={inkOn(row.color)} numberOfLines={1}>
+                                    {row.abbrev}
+                                </Txt>
+                            </View>
+                            <Txt size={rowH * 0.32} weight="extrabold" color={ink} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ flex: 1, minWidth: 0 }}>
+                                {row.name}
+                            </Txt>
+                            <Txt color={ink} tabular style={{ fontFamily: fonts.condensed, fontSize: rowH * 0.4, lineHeight: rowH * 0.48 }}>
+                                {row.wins}-{row.losses}
+                            </Txt>
+                            <Txt size={rowH * 0.22} weight="semibold" color={ink} tabular style={{ width: s(26), textAlign: 'right' }}>
+                                {row.gamesBack === '-' ? '—' : row.gamesBack}
+                            </Txt>
+                        </View>
+                    );
+                })}
+            </View>
+        </>
+    );
+};

@@ -226,7 +226,9 @@
   "offline": {
     "banner": "Sin conexión: estás viendo lo último que cargó",
     "title": "Sin conexión",
-    "notLoaded": "Esta pantalla todavía no se había cargado. Cuando vuelva el internet se carga sola."
+    "notLoaded": "Esta pantalla todavía no se había cargado. Cuando vuelva el internet se carga sola.",
+    "bannerAge_one": "Sin conexión: lo que ves es de hace {{count}} min. Se pone al día solo al volver la señal.",
+    "bannerAge_other": "Sin conexión: lo que ves es de hace {{count}} min. Se pone al día solo al volver la señal."
   },
   "update": {
     "available": "Hay una versión nueva de El Play",
@@ -254,7 +256,11 @@
     "screenTitle": "Algo salió mal",
     "screenBody": "Esta pantalla tuvo un problema. Intenta de nuevo o vuelve a Juegos.",
     "notFoundTitle": "Esta pantalla no existe",
-    "goGames": "Ir a Juegos"
+    "goGames": "Ir a Juegos",
+    "player_not_found": "No encontramos a ese pelotero.",
+    "invalid_user": "Ese enlace de perfil no es válido.",
+    "accounts_disabled": "Las cuentas no están disponibles ahora mismo.",
+    "accounts_unavailable": "No pudimos cargar los fanáticos. Intenta en un momento."
   },
   "games": {
     "title": "Juegos",
@@ -486,7 +492,8 @@
       "clinched": "Clasificado",
       "eliminated": "Eliminado"
     },
-    "lastTenShort": "{{record}} últ. 10"
+    "lastTenShort": "{{record}} últ. 10",
+    "lastTenIs": "{{record}} en los últimos 10"
   },
   "leaders": {
     "title": "Líderes",
@@ -518,7 +525,16 @@
     "savesShort": "SV",
     "whip": "WHIP",
     "whipShort": "BB+H / IP",
-    "rank": "N.º {{rank}}"
+    "rank": "N.º {{rank}}",
+    "one": {
+      "homeRuns": "Jonrón",
+      "runsBattedIn": "Carrera impulsada",
+      "hits": "Hit",
+      "stolenBases": "Base robada",
+      "strikeouts": "Ponche",
+      "wins": "Victoria",
+      "saves": "Salvado"
+    }
   },
   "notifications": {
     "gameStarting": "¡El juego va a empezar!",
@@ -687,7 +703,10 @@
     "hint": "Elige dónde compartir: en el teléfono se abre tu lista de apps con la imagen lista.",
     "more": "Más opciones",
     "pick": "En la lista que se abre, toca {{app}}.",
-    "instagramSaved": "Se guardó la imagen: súbela desde Instagram en tu teléfono."
+    "instagramSaved": "Se guardó la imagen: súbela desde Instagram en tu teléfono.",
+    "linkOnly": "Solo el enlace",
+    "linkCopied": "Enlace copiado.",
+    "failed": "No se pudo compartir."
   },
   "spray": {
     "title": "Mapa de batazos",
@@ -1090,7 +1109,10 @@
     "abs_one": "{{count}} turno",
     "abs_other": "{{count}} turnos",
     "chase": "le tira a {{pct}} % de los de afuera",
-    "whiffPct": "Abanica"
+    "whiffPct": "Abanica",
+    "total": "Total",
+    "seasons_one": "{{count}} temporada",
+    "seasons_other": "{{count}} temporadas"
   },
   "account": {
     "title": "Tu cuenta",
@@ -1123,7 +1145,11 @@
     "deleteYes": "Sí, borrar",
     "deleteNo": "Cancelar",
     "google": "Continuar con Google",
-    "orEmail": "o con tu correo"
+    "orEmail": "o con tu correo",
+    "noNameHint": "Todavía no tienes nombre: los demás te ven como «Fanático». Elige uno aquí abajo.",
+    "keptSession": "Seguiste con tu cuenta {{email}}.",
+    "switchConfirm": "Ya tienes abierta la cuenta {{current}}. ¿Cambiar a {{next}}?",
+    "switchYes": "Cambiar"
   },
   "statsPage": {
     "title": "Estadísticas",
@@ -1235,7 +1261,22 @@
     },
     "open": "Estadísticas",
     "info": "Ver ficha",
-    "seePrevious": "Ver la temporada {{season}}"
+    "seePrevious": "Ver la temporada {{season}}",
+    "teams": "Equipos",
+    "teamBat": "Bateo",
+    "teamPitch": "Pitcheo",
+    "teamLeaders": "Los mejores de la liga",
+    "teamBest": "Mejor en {{stat}}: {{team}}, {{value}}",
+    "teamRanking": "Equipos por {{stat}}",
+    "teamOpen": "Ver las estadísticas de {{team}}",
+    "leagueAverage": "Promedio de la liga en {{stat}}: {{value}}",
+    "lowerIsBetter": "menos es mejor",
+    "runDiff": "Diferencia de carreras",
+    "runDiffHint": "Anotadas menos permitidas, y el récord que daría esa diferencia (expectativa pitagórica).",
+    "runsFor": "{{scored}} A · {{allowed}} P",
+    "expected": "esperado {{w}}-{{l}}",
+    "teamEmpty": "Todavía no hay estadísticas de los equipos en esta temporada.",
+    "leagueAverageShort": "Promedio de la liga: {{value}}"
   },
   "team": {
     "rank": "{{rank}} de {{total}}",
@@ -1305,7 +1346,8 @@
         "NUM": "Número",
         "LON": "Préstamo",
         "other": "Movimiento"
-      }
+      },
+      "league": "Movimientos de los equipos · 30 días"
     },
     "sort": {
       "bat": {
@@ -1440,7 +1482,9 @@
       "hr9": "HR/9",
       "kBb": "K/BB",
       "fip": "FIP",
-      "ppi": "Pit/IP"
+      "ppi": "Pit/IP",
+      "opsPlus": "OPS+",
+      "eraPlus": "EFE+"
     },
     "columns": {
       "pts": "Puntos de fantasy",

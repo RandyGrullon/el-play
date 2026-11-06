@@ -1,9 +1,10 @@
 // Estadísticas colectivas de cada equipo (las mismas de la web, lib/teamStats.ts): el récord y las carreras que usa la
-// probabilidad de victoria antes del juego, y el bateo y el pitcheo con su puesto en la liga (página del equipo y comparar).
+// probabilidad de victoria antes del juego, el bateo y el pitcheo con su puesto en la liga (página del equipo y comparar)
+// y la vista «Equipos» de Estadísticas (orden, los mejores de la liga y el promedio de la liga para comparar).
 import { useQuery } from '@tanstack/react-query';
 import type { LeagueId } from '../types';
 import type { HittingLine, PitchingLine, StatsTeam } from './stats';
-import { getApiJson } from './api';
+import { ApiError, getApiJson } from './api';
 
 export interface TeamHitting extends HittingLine {
     lob: number;
@@ -11,8 +12,16 @@ export interface TeamHitting extends HittingLine {
 }
 
 export interface TeamPitching extends PitchingLine {
+    /** Carreras permitidas (limpias y sucias) */
     r: number;
+    /** Lo que le batean */
     avg: string;
+    obp?: string;
+    ops?: string;
+    svo?: number;
+    bs?: number;
+    sho?: number;
+    cg?: number;
 }
 
 export interface TeamRow extends StatsTeam {
@@ -24,25 +33,29 @@ export interface TeamStatsData {
     league: LeagueId;
     season: number;
     currentSeason: number;
+    seasons?: number[];
     isPreviousSeason: boolean;
     teams: TeamRow[];
 }
 
-export const useTeamStats = (league: LeagueId, enabled = true) =>
+/** La de la temporada que se ve (sin `season`, la vigente: así la comparten la portada, el juego y el equipo) */
+export const useTeamStats = (league: LeagueId, season?: number, enabled = true) =>
     useQuery({
-        queryKey: ['team-stats', league, 'actual'],
-        queryFn: ({ signal }) => getApiJson<TeamStatsData>(`/api/v2/team-stats?league=${league}`, signal),
+        queryKey: ['team-stats', league, season ?? 'actual'],
+        queryFn: ({ signal }) => getApiJson<TeamStatsData>(`/api/v2/team-stats?league=${league}${season ? `&season=${season}` : ''}`, signal),
         enabled,
-        staleTime: 5 * 60 * 1000
+        staleTime: 5 * 60 * 1000,
+        placeholderData: (previous) => (previous?.league === league ? previous : undefined),
+        retry: (count, error) => !(error instanceof ApiError && [400, 404].includes(error.status)) && count < 2
     });
 
-/** Récord (de las decisiones del pitcheo) y carreras anotadas y permitidas */
+/** Récord (de las decisiones del pitcheo), carreras anotadas y permitidas, su diferencia y los juegos */
 export const recordOf = (team: TeamRow) => {
     const w = team.pitching?.w ?? 0;
     const l = team.pitching?.l ?? 0;
     const scored = team.hitting?.r ?? null;
     const allowed = team.pitching?.r ?? null;
-    return { w, l, scored, allowed, diff: scored !== null && allowed !== null ? scored - allowed : null };
+    return { w, l, games: Math.max(w + l, team.hitting?.g ?? 0), scored, allowed, diff: scored !== null && allowed !== null ? scored - allowed : null };
 };
 
 // ---------------------------------------------------------------- orden y puestos
@@ -92,6 +105,22 @@ export const TEAM_SORTS: Record<TeamGroup, TeamSort[]> = {
     ]
 };
 
+/** Los de la tarjeta de cada vista (los que más se miran) */
+export const TEAM_HIGHLIGHTS: Record<TeamGroup, string[]> = { bat: ['avg', 'hr', 'r', 'sb'], pitch: ['era', 'k', 'whip', 'sv'] };
+
+export const teamSort = (group: TeamGroup, key: string) => TEAM_SORTS[group].find((sort) => sort.key === key) ?? TEAM_SORTS[group][0];
+
+/** Equipos de mejor a peor en ese orden (los que no tienen el dato van al final) */
+export const rankTeams = (teams: TeamRow[], sort: TeamSort) =>
+    teams
+        .map((team) => ({ team, value: sort.value(team) }))
+        .sort((a, b) => {
+            if (a.value === null && b.value === null) return a.team.abbrev.localeCompare(b.team.abbrev);
+            if (a.value === null) return 1;
+            if (b.value === null) return -1;
+            return (sort.asc ? a.value - b.value : b.value - a.value) || a.team.abbrev.localeCompare(b.team.abbrev);
+        });
+
 /** Puesto de un equipo en la liga (1 = el mejor; los empatados comparten puesto) */
 export const leagueRank = (teams: TeamRow[], team: TeamRow, sort: TeamSort) => {
     const mine = sort.value(team);
@@ -101,4 +130,10 @@ export const leagueRank = (teams: TeamRow[], team: TeamRow, sort: TeamSort) => {
         return value !== null && (sort.asc ? value < mine : value > mine);
     }).length;
     return better + 1;
+};
+
+/** Promedio de la liga en ese orden (los totales, por equipo) */
+export const leagueAverage = (teams: TeamRow[], sort: TeamSort) => {
+    const values = teams.map(sort.value).filter((value): value is number => value !== null);
+    return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 };

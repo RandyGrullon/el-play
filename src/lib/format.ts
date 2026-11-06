@@ -64,3 +64,13 @@ export const lastName = (name: string) => {
 
 /** Temporada de invierno: 2025 → "2025-26" */
 export const seasonLabel = (season: number, league: string) => (league === 'lidom' ? `${season}-${String(season + 1).slice(2)}` : String(season));
+
+/**
+ * Minutos desde lo más nuevo que hay en pantalla (el aviso de «sin conexión»): null si no hay datos o es de hace menos
+ * de un minuto (entonces el aviso no dice la edad).
+ */
+export const offlineAge = (updatedAt: number, now: number) => {
+    if (!updatedAt) return null;
+    const minutes = Math.max(0, Math.floor((now - updatedAt) / 60000));
+    return minutes < 1 ? null : minutes;
+};

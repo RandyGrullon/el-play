@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
+import { ChevronRight } from 'lucide-react-native';
 import type { LeagueId } from '../../../types';
 import type { PlayerDetail } from '../../../lib/stats';
 import { numOf } from '../../../lib/advanced';
@@ -10,6 +11,7 @@ import { todayKey } from '../../../lib/format';
 import { fonts, radius } from '../../../theme/tokens';
 import type { PlayerPro } from '../../../types/pro-liga';
 import { PlayerPhoto, Txt, type LogoTeam } from '../../ui';
+import { openTeam } from '../../stats/common';
 import { DrawPath, FadeG, linePath, polylineLength, teamInk, useChartBox, type Point } from '../kit';
 import { chronological, ipOf, rollingValues, seasonAge, sumHitting, sumPitching, valueOfGames, windowGames } from '../estadisticas/logic';
 import { dateRange, era, heightText, placeText, rate } from './format';
@@ -50,6 +52,7 @@ export const FichaHeader: React.FC<FichaHeaderProps> = ({ id, name, team, player
     const teamName = player?.team?.name || pro?.team?.name || ' ';
     const teamForPhoto = player?.team ? { id: player.team.id, logo: player.team.logo, color: player.team.color } : team;
     const abbrev = player?.team?.abbrev || pro?.team?.abbrev;
+    const teamId = player?.team?.id ?? pro?.team?.id ?? null;
 
     return (
         <View accessibilityLabel={t('pro.ficha.header.aria', { name })} style={{ borderRadius: 28, padding: 16, overflow: 'hidden', backgroundColor: color }}>
@@ -73,9 +76,25 @@ export const FichaHeader: React.FC<FichaHeaderProps> = ({ id, name, team, player
                     <Txt size={26} weight="black" color={ink} accessibilityRole="header" style={{ lineHeight: 28, letterSpacing: -0.5 }}>
                         {name || ' '}
                     </Txt>
-                    <Txt size={14} weight="semibold" color={ink} numberOfLines={1} style={{ marginTop: 2, opacity: 0.85 }}>
-                        {teamName}
-                    </Txt>
+                    {teamId ? (
+                        // Su equipo lleva a la página del equipo (como la web)
+                        <Pressable
+                            onPress={() => openTeam(teamId)}
+                            accessibilityRole="link"
+                            accessibilityLabel={t('team.open', { team: teamName })}
+                            hitSlop={6}
+                            style={({ pressed }) => ({ marginTop: 2, flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', maxWidth: '100%', opacity: pressed ? 0.6 : 0.9 })}
+                        >
+                            <Txt size={14} weight="semibold" color={ink} numberOfLines={1} style={{ flexShrink: 1 }}>
+                                {teamName}
+                            </Txt>
+                            <ChevronRight size={14} color={ink} />
+                        </Pressable>
+                    ) : (
+                        <Txt size={14} weight="semibold" color={ink} numberOfLines={1} style={{ marginTop: 2, opacity: 0.85 }}>
+                            {teamName}
+                        </Txt>
+                    )}
                 </View>
             </View>
             {chips.length > 0 || awards.length > 0 ? (
