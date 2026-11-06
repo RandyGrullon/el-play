@@ -5,7 +5,9 @@ import { FlatList, Pressable, ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Lock, Plus, Search, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { addPlayer, canAdd, creditsLeft, perTeamLimit, removePlayer, type AddProblem, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
+import type { TFunction } from 'i18next';
+import { addPlayer, canAdd, creditsLeft, isLocked, perTeamLimit, removePlayer, useEntry, useFantasyDay, type AddProblem, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
+import type { LeagueId } from '../../types';
 import { useIsPro } from '../../lib/pro';
 import { usePlayers } from '../../lib/stats';
 import { useColors } from '../../theme/theme';
@@ -26,6 +28,22 @@ export interface PickerState {
 }
 
 const normalized = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/** Por qué no se puede agregar (equipo lleno, juego empezado, créditos…), como en la lista y en la ficha */
+export const problemTextOf = (problem: AddProblem, role: 'B' | 'P', day: FantasyDay, entry: DayEntry, t: TFunction, lang: string) =>
+    problem === 'locked'
+        ? t('fantasy.problem.locked')
+        : problem === 'full'
+          ? role === 'P'
+              ? t('fantasy.problem.fullP')
+              : t('fantasy.problem.fullB')
+          : problem === 'team'
+            ? t('fantasy.problem.team', { n: perTeamLimit(day) })
+            : problem === 'budget'
+              ? t('fantasy.problem.budget', { left: formatCredits(Math.max(0, creditsLeft(day, entry) ?? 0), lang) })
+              : problem === 'already'
+                ? t('fantasy.problem.already')
+                : '';
 
 export const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; initial: PickerState; onClose: () => void; onOpenPlayer: (id: number, state: PickerState) => void }> = ({
     day,
@@ -62,20 +80,7 @@ export const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; initial:
     }, [day.players, role, teamId, search, started, averages, sort, hasProj]);
 
     const left = creditsLeft(day, entry);
-    const problemText = (problem: AddProblem) =>
-        problem === 'locked'
-            ? t('fantasy.problem.locked')
-            : problem === 'full'
-              ? role === 'P'
-                  ? t('fantasy.problem.fullP')
-                  : t('fantasy.problem.fullB')
-              : problem === 'team'
-                ? t('fantasy.problem.team', { n: perTeamLimit(day) })
-                : problem === 'budget'
-                  ? t('fantasy.problem.budget', { left: formatCredits(Math.max(0, left ?? 0), i18n.language) })
-                  : problem === 'already'
-                    ? t('fantasy.problem.already')
-                    : '';
+    const problemText = (problem: AddProblem) => problemTextOf(problem, role, day, entry, t, i18n.language);
 
     const chip = (active: boolean) => ({ flexDirection: 'row', alignItems: 'center', gap: 6, height: 30, borderRadius: radius.pill, backgroundColor: active ? colors.ink : colors.raised }) as const;
 
@@ -256,5 +261,42 @@ export const PlayerPicker: React.FC<{ day: FantasyDay; entry: DayEntry; initial:
                 }
             />
         </Sheet>
+    );
+};
+
+/**
+ * Botón de la ficha abierta desde el selector (PickerAction de la web): agregar o quitar sin volver a la lista. Lee el
+ * mismo día del Fantasy que tenía la pantalla (`date`: el escogido, o sin él «hoy»); al hacerlo, `onDone` vuelve.
+ */
+export const PickerAction: React.FC<{ league: LeagueId; date?: string; playerId: number; onDone: () => void }> = ({ league, date, playerId, onDone }) => {
+    const { t, i18n } = useTranslation();
+    const colors = useColors();
+    const day = useFantasyDay(league, date).data;
+    const entry = useEntry(league, day?.date);
+    const player = day?.players.find((item) => item.id === playerId);
+    if (!day || !player) return null;
+    const inTeam = entry.lineup.includes(player.id);
+    const problem = canAdd(day, entry, player);
+    const blocked = inTeam ? isLocked(day, player) : !!problem;
+    const ink = inTeam ? colors.ink : '#fff';
+    const label = inTeam ? t('fantasy.remove', { name: player.name }) : blocked ? problemTextOf(problem, player.role, day, entry, t, i18n.language) : t('fantasy.add', { name: player.name });
+    return (
+        <Pressable
+            disabled={blocked}
+            onPress={() => {
+                if (inTeam ? removePlayer(day, player) : addPlayer(day, entry, player)) {
+                    Haptics.selectionAsync().catch(() => undefined);
+                    onDone();
+                }
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: blocked }}
+            style={({ pressed }) => ({ height: 48, borderRadius: radius.tile, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16, backgroundColor: inTeam ? colors.raised : colors.accent, opacity: blocked ? 0.5 : pressed ? 0.85 : 1 })}
+        >
+            {inTeam ? <X size={16} color={ink} /> : blocked ? <Lock size={16} color={ink} /> : <Plus size={16} color={ink} />}
+            <Txt size={14} weight="extrabold" color={ink} numberOfLines={1} style={{ flexShrink: 1 }}>
+                {label}
+            </Txt>
+        </Pressable>
     );
 };

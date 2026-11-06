@@ -9,7 +9,8 @@ import { formatCredits } from './shared';
 
 const round = (value: number) => Math.round(value * 10) / 10;
 
-export const SummaryCard: React.FC<{ points: number; picks: number; season: number; past: { date: string; points: number }[] }> = ({ points, picks, season, past }) => {
+/** `season`: puntos y días de la temporada (los del servidor, o los del teléfono mientras cargan); `past`, para las barras */
+export const SummaryCard: React.FC<{ points: number; picks: number; season: { points: number; days: number }; past: { date: string; points: number }[] }> = ({ points, picks, season, past }) => {
     const { t, i18n } = useTranslation();
     // Con la coma o el punto del idioma (141,5 en español), como la web
     const num = (value: number) => formatCredits(round(value), i18n.language);
@@ -33,7 +34,7 @@ export const SummaryCard: React.FC<{ points: number; picks: number; season: numb
                         {t('fantasy.picksPts', { pts: num(picks) })}
                     </Txt>
                     <Txt size={14} weight="semibold" tone="white">
-                        {t('fantasy.seasonPts', { pts: num(season), count: past.length, days: past.length })}
+                        {t('fantasy.seasonPts', { pts: num(season.points), count: season.days, days: season.days })}
                     </Txt>
                 </Row>
                 {past.length > 0 && <HistoryBars days={past.slice(0, 7).reverse()} />}

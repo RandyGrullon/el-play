@@ -14,12 +14,14 @@ import { ProScroll } from '../../components/pro/estadisticas/scroll';
 import { ActionDial } from '../../components/ActionDial';
 import { PlayerCompareSheet } from '../../components/compare/CompareSheet';
 import { openTeam, shareLink } from '../../components/stats/common';
+import { PickerAction } from '../../components/fantasy/PlayerPicker';
 
 // Ficha del pelotero (modal). Parámetros: id; opcionales season (año) y name/teamId para pintar la cabecera mientras carga.
+// Desde el selector del Fantasy llega `fantasy` (y `dia`, el día escogido): la ficha lleva el botón de agregar o quitar.
 // En PRO la cabecera dice «Ficha del pelotero» con la insignia y un botón para compartirla como imagen. En los dos, el
 // botón flotante: compararlo con otro, compartir su página, ir a su equipo o a su último juego.
 export default function JugadorScreen() {
-    const params = useLocalSearchParams<{ id: string; season?: string; name?: string; teamId?: string }>();
+    const params = useLocalSearchParams<{ id: string; season?: string; name?: string; teamId?: string; fantasy?: string; dia?: string }>();
     const { t } = useTranslation();
     const colors = useColors();
     const insets = useSafeAreaInsets();
@@ -44,7 +46,17 @@ export default function JugadorScreen() {
     const profile = !id ? (
         <ErrorState message={t('errors.not_found')} />
     ) : (
-        <PlayerProfile id={id} name={params.name ?? ''} team={team} season={season} onSeasonChange={setSeason} onOpenGame={openGame} shareOpen={shareOpen} onShareClose={() => setShareOpen(false)} />
+        <PlayerProfile
+            id={id}
+            name={params.name ?? ''}
+            team={team}
+            season={season}
+            onSeasonChange={setSeason}
+            onOpenGame={openGame}
+            shareOpen={shareOpen}
+            onShareClose={() => setShareOpen(false)}
+            action={params.fantasy ? <PickerAction league={activeLeague} date={params.dia || undefined} playerId={id} onDone={close} /> : undefined}
+        />
     );
 
     return (
