@@ -1,7 +1,6 @@
 // Previa del juego: cómo llegan los dos equipos (posiciones), entre ellos en la temporada, los que vienen calientes
 // (últimos 7 días) y las alineaciones cuando se anuncian.
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Flame, Swords, TrendingUp, Users } from 'lucide-react';
 import type { GameDetail, StandingRow, Standings } from '../../types';
@@ -11,6 +10,10 @@ import { PlayerPhoto } from '../ui/PlayerPhoto';
 import { Segmented } from '../ui/Segmented';
 import { TeamLogo } from '../ui/TeamLogo';
 import { PlayerLink } from '../ui/PlayerLink';
+import { TeamLink } from '../ui/TeamLink';
+import { CardLink, OVER_CARD } from '../ui/CardLink';
+import { withNodes } from '../ui/TextLinks';
+import { slot } from '../../lib/links';
 
 /** La fila del equipo en las posiciones (en LIDOM, la de la fase que se juega) */
 const rowOf = (standings: Standings | undefined, teamId: number): StandingRow | null => {
@@ -68,10 +71,10 @@ export const TeamFormCard: React.FC<{ game: GameDetail }> = ({ game }) => {
                         </th>
                         {(['away', 'home'] as const).map((side) => (
                             <th key={side} scope="col" className="w-[30%] pb-2 text-center">
-                                <span className="inline-flex items-center gap-1.5 font-extrabold">
+                                <TeamLink id={game[side].id} className="inline-flex items-center gap-1.5 font-extrabold">
                                     <TeamLogo team={game[side]} size={20} />
                                     {game[side].abbrev}
-                                </span>
+                                </TeamLink>
                             </th>
                         ))}
                     </tr>
@@ -115,34 +118,39 @@ export const HeadToHeadCard: React.FC<{ game: GameDetail }> = ({ game }) => {
                             <React.Fragment key={side}>
                                 {index === 1 && <span className="text-xl font-bold text-faint">–</span>}
                                 <span className={`flex items-center gap-2 ${index === 1 ? 'flex-row-reverse' : ''}`}>
-                                    <TeamLogo team={game[side]} size={32} />
+                                    <TeamLink id={game[side].id} label={t('team.open', { team: game[side].name })} className="flex shrink-0">
+                                        <TeamLogo team={game[side]} size={32} />
+                                    </TeamLink>
                                     <span className="font-display text-[34px] font-extrabold leading-none tabular-nums">{wins(game[side].id)}</span>
                                 </span>
                             </React.Fragment>
                         ))}
                     </div>
                     <p className="mt-1 text-center text-xs font-semibold text-muted">
-                        {t('previewMore.h2hRuns', { away: game.away.abbrev, awayRuns: h2h.runs[game.away.id] ?? 0, home: game.home.abbrev, homeRuns: h2h.runs[game.home.id] ?? 0 })}
+                        {withNodes(t('previewMore.h2hRuns', { away: slot('away'), awayRuns: h2h.runs[game.away.id] ?? 0, home: slot('home'), homeRuns: h2h.runs[game.home.id] ?? 0 }), {
+                            away: <TeamLink id={game.away.id}>{game.away.abbrev}</TeamLink>,
+                            home: <TeamLink id={game.home.id}>{game.home.abbrev}</TeamLink>
+                        })}
                     </p>
                     <ul className="mt-3 divide-y divide-line/10 text-sm">
                         {h2h.games.slice(0, 5).map((meeting) => {
                             const awayTeam = teamOf(meeting.away.id);
                             const homeTeam = teamOf(meeting.home.id);
                             return (
-                                <li key={meeting.gamePk}>
-                                    <Link to={`/juego/${meeting.gamePk}`} className="flex items-center gap-3 py-2">
-                                        <span className="w-20 shrink-0 text-xs font-semibold text-muted first-letter:uppercase">{meeting.date ? formatShortDate(meeting.date, i18n.language) : ''}</span>
-                                        <span className="flex-1 tabular-nums">
-                                            <span className={meeting.winnerId === awayTeam.id ? 'font-extrabold' : 'text-muted'}>
-                                                {awayTeam.abbrev} {meeting.away.runs}
-                                            </span>
-                                            <span className="mx-1.5 text-faint">·</span>
-                                            <span className={meeting.winnerId === homeTeam.id ? 'font-extrabold' : 'text-muted'}>
-                                                {homeTeam.abbrev} {meeting.home.runs}
-                                            </span>
+                                // Toda la fila abre ese juego; las siglas, la página de cada equipo
+                                <li key={meeting.gamePk} className="relative isolate flex items-center gap-3 py-2">
+                                    <CardLink to={`/juego/${meeting.gamePk}`} label={t('card.openGame', { away: awayTeam.name, home: homeTeam.name })} />
+                                    <span className="w-20 shrink-0 text-xs font-semibold text-muted first-letter:uppercase">{meeting.date ? formatShortDate(meeting.date, i18n.language) : ''}</span>
+                                    <span className="flex-1 tabular-nums">
+                                        <span className={meeting.winnerId === awayTeam.id ? 'font-extrabold' : 'text-muted'}>
+                                            <TeamLink id={awayTeam.id} className={OVER_CARD}>{awayTeam.abbrev}</TeamLink> {meeting.away.runs}
                                         </span>
-                                        {meeting.winnerId && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: teamOf(meeting.winnerId).color }} aria-hidden="true" />}
-                                    </Link>
+                                        <span className="mx-1.5 text-faint">·</span>
+                                        <span className={meeting.winnerId === homeTeam.id ? 'font-extrabold' : 'text-muted'}>
+                                            <TeamLink id={homeTeam.id} className={OVER_CARD}>{homeTeam.abbrev}</TeamLink> {meeting.home.runs}
+                                        </span>
+                                    </span>
+                                    {meeting.winnerId && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: teamOf(meeting.winnerId).color }} aria-hidden="true" />}
                                 </li>
                             );
                         })}
@@ -168,13 +176,17 @@ export const HotPlayersCard: React.FC<{ game: GameDetail }> = ({ game }) => {
                 {sides.map(({ side, team, players }) => (
                     <div key={side}>
                         <p className="mb-2 flex items-center gap-1.5 text-xs font-extrabold">
-                            <TeamLogo team={team} size={18} />
-                            {team.abbrev}
+                            <TeamLink id={team.id} className="flex items-center gap-1.5">
+                                <TeamLogo team={team} size={18} />
+                                {team.abbrev}
+                            </TeamLink>
                         </p>
                         <ul className="space-y-2">
                             {players.map((player) => (
                                 <li key={player.id} className="flex items-center gap-3">
-                                    <PlayerPhoto personId={player.id} name={player.name} size={40} background={`${team.color}22`} team={team} />
+                                    <PlayerLink id={player.id} decorative className="flex shrink-0">
+                                        <PlayerPhoto personId={player.id} name={player.name} size={40} background={`${team.color}22`} team={team} />
+                                    </PlayerLink>
                                     <span className="min-w-0 flex-1">
                                         <PlayerLink id={player.id} className="block truncate font-bold">{player.name}</PlayerLink>
                                         <span className="block text-xs text-muted">
@@ -221,7 +233,7 @@ export const LineupsCard: React.FC<{ game: GameDetail }> = ({ game }) => {
             {!lineups ? (
                 <p className="text-sm text-muted">{t('previewMore.lineupsLater')}</p>
             ) : list.length === 0 ? (
-                <p className="text-sm text-muted">{t('previewMore.lineupPending', { team: game[side].abbrev })}</p>
+                <p className="text-sm text-muted">{withNodes(t('previewMore.lineupPending', { team: slot('team') }), { team: <TeamLink id={game[side].id}>{game[side].abbrev}</TeamLink> })}</p>
             ) : (
                 <ol className="divide-y divide-line/10 text-sm">
                     {list.map((player, index) => (

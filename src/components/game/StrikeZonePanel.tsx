@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next';
 import type { AtBat, GameDetail } from '../../types';
 import { arsenal, atBatForZone, battersFaced, eventName, inningBreak, isWhiff, pitchTypeColor, pitchesByPitcher } from '../../lib/baseball';
 import { surname } from '../../lib/format';
+import { slot } from '../../lib/links';
 import { Segmented } from '../ui/Segmented';
+import { PlayerLink } from '../ui/PlayerLink';
+import { withNodes } from '../ui/TextLinks';
 import { StrikeZone } from './StrikeZone';
 import { uniformColors } from './BatterFigure';
 import { PitchList } from './PitchList';
@@ -97,20 +100,22 @@ export const StrikeZonePanel: React.FC<StrikeZonePanelProps> = ({ game, atBat: f
                     </p>
                 ) : mode === 'atBat' ? (
                     <p className="text-sm">
-                        <span className="font-semibold">{atBat.batter.name}</span>
+                        <PlayerLink id={atBat.batter.id} className="font-semibold">{atBat.batter.name}</PlayerLink>
                         <span className="text-muted"> {t('zone.facing')} </span>
-                        <span className="font-semibold">{atBat.pitcher.name}</span>
+                        <PlayerLink id={atBat.pitcher.id} className="font-semibold">{atBat.pitcher.name}</PlayerLink>
                         <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-semibold ${atBat.complete ? 'bg-raised text-muted' : 'bg-live/10 text-live'}`}>{status}</span>
                     </p>
                 ) : (
                     <>
                         <p className="text-sm">
-                            <span className="font-semibold">{pitcher?.name}</span>
+                            <PlayerLink id={pitcher?.id} className="font-semibold">{pitcher?.name}</PlayerLink>
                             <span className="text-muted">
                                 {' · '}
                                 {batterId === null
                                     ? t('zone.pitchesToday', { count: pitcherPitches.length })
-                                    : t('zone.pitchesTo', { count: pitcherPitches.length, batter: batters.find((b) => b.id === batterId)?.name ?? atBat.batter.name })}
+                                    : withNodes(t('zone.pitchesTo', { count: pitcherPitches.length, batter: slot('batter') }), {
+                                          batter: <PlayerLink id={batterId}>{batters.find((b) => b.id === batterId)?.name ?? atBat.batter.name}</PlayerLink>
+                                      })}
                             </span>
                         </p>
                         {/* Por bateador: el actual primero, luego los demás que ha enfrentado (el más reciente antes) y «Todos» */}

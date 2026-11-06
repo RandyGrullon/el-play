@@ -5,6 +5,7 @@ import React, { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { GameDetail } from '../../types';
 import { TeamLogo } from '../ui/TeamLogo';
+import { TeamLink } from '../ui/TeamLink';
 
 export const LineScore: React.FC<{ game: GameDetail }> = ({ game }) => {
     const { t } = useTranslation();
@@ -51,7 +52,7 @@ export const LineScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                 {t('lineScore.title')}
             </h2>
             <div className="flex items-stretch pb-2">
-                {/* Equipos */}
+                {/* Equipos (el lector los tiene en la tabla de las entradas; aquí son solo para tocar y abrir su página) */}
                 <table className="shrink-0 text-sm" aria-hidden="true">
                     <tbody>
                         <tr className="h-7" />
@@ -61,11 +62,11 @@ export const LineScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                             return (
                                 <tr key={side} className="h-9">
                                     <td className="pl-2.5 pr-2 min-[380px]:pr-1">
-                                        <span className={`flex items-center gap-1.5 ${dim ? 'opacity-60' : ''}`}>
+                                        <TeamLink id={team.id} decorative className={`flex items-center gap-1.5 ${dim ? 'opacity-60' : ''}`}>
                                             <span className="h-6 w-[3px] rounded-full" style={{ backgroundColor: team.color }} />
                                             <TeamLogo team={team} size={22} className="hidden min-[380px]:inline-flex" />
                                             <span className="text-[13px] font-extrabold">{team.abbrev}</span>
-                                        </span>
+                                        </TeamLink>
                                     </td>
                                 </tr>
                             );
@@ -142,7 +143,7 @@ export const LineScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                         return (
                             <span key={side} className="inline-flex items-center gap-1.5 font-semibold" aria-label={t('lineScore.absAria', { team: game[side].abbrev, left: count.remaining ?? '—', won: count.won, lost: count.lost })}>
                                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: game[side].color }} aria-hidden="true" />
-                                {game[side].abbrev}
+                                <TeamLink id={game[side].id}>{game[side].abbrev}</TeamLink>
                                 {/* Lo que importa es cuántos le quedan; ganados y perdidos solo si no llega el total */}
                                 {count.remaining !== null ? (
                                     <b className="rounded-md bg-raised px-1.5 tabular-nums">{t('lineScore.absLeft', { count: count.remaining })}</b>

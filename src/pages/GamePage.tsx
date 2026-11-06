@@ -39,6 +39,9 @@ import { Bases, OutsDots } from '../components/game/Bases';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
 import { PlayerLink } from '../components/ui/PlayerLink';
+import { TeamLink } from '../components/ui/TeamLink';
+import { withNodes } from '../components/ui/TextLinks';
+import { slot } from '../lib/links';
 import { TeamLogo } from '../components/ui/TeamLogo';
 import { ErrorState, NotFoundCard, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
@@ -105,13 +108,17 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
                     </div>
                     {pause ? (
                         <div className="min-w-0 text-center text-xs font-semibold text-muted">
-                            <b className="block truncate text-sm text-ink">{leadoff ? surname(leadoff.name) : pause.next.abbrev}</b>
-                            {leadoff ? t('zone.breakLeadsOff', { team: pause.next.abbrev }) : t('zone.breakStatus')}
+                            <b className="block truncate text-sm text-ink">
+                                {leadoff ? <PlayerLink id={leadoff.id}>{surname(leadoff.name)}</PlayerLink> : <TeamLink id={pause.next.id}>{pause.next.abbrev}</TeamLink>}
+                            </b>
+                            {leadoff ? withNodes(t('zone.breakLeadsOff', { team: slot('team') }), { team: <TeamLink id={pause.next.id}>{pause.next.abbrev}</TeamLink> }) : t('zone.breakStatus')}
                         </div>
                     ) : game.matchup && (
                         <div className="min-w-0 text-center text-xs font-semibold text-muted">
-                            <b className="block truncate text-sm text-ink">{surname(game.matchup.batter.name)}</b>
-                            {t('zone.facing')} {surname(game.matchup.pitcher.name)}
+                            <b className="block truncate text-sm text-ink">
+                                <PlayerLink id={game.matchup.batter.id}>{surname(game.matchup.batter.name)}</PlayerLink>
+                            </b>
+                            {t('zone.facing')} <PlayerLink id={game.matchup.pitcher.id}>{surname(game.matchup.pitcher.name)}</PlayerLink>
                         </div>
                     )}
                 </div>
@@ -130,7 +137,7 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
                 <p className="flex flex-wrap gap-1.5 px-5 pt-2.5 text-xs" aria-label={t('runners.title')}>
                     {runners.map(({ base, person }) => (
                         <span key={base} className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 font-semibold shadow-card">
-                            <span className="font-extrabold text-muted">{t(`runners.${base}`)}</span> {surname(person.name)}
+                            <span className="font-extrabold text-muted">{t(`runners.${base}`)}</span> <PlayerLink id={person.id}>{surname(person.name)}</PlayerLink>
                         </span>
                     ))}
                 </p>
@@ -226,11 +233,15 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                         return (
                             <li key={side} className="flex items-center gap-3">
                                 {pitcher ? (
-                                    <PlayerPhoto personId={pitcher.id} name={pitcher.name} size={56} background={`${game[side].color}33`} team={game[side]} />
+                                    <PlayerLink id={pitcher.id} decorative className="flex shrink-0">
+                                        <PlayerPhoto personId={pitcher.id} name={pitcher.name} size={56} background={`${game[side].color}33`} team={game[side]} />
+                                    </PlayerLink>
                                 ) : (
-                                    <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full" style={{ background: `${game[side].color}22` }}>
-                                        <TeamLogo team={game[side]} size={38} />
-                                    </span>
+                                    <TeamLink id={game[side].id} label={t('team.open', { team: game[side].name })} className="flex shrink-0 rounded-full">
+                                        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full" style={{ background: `${game[side].color}22` }}>
+                                            <TeamLogo team={game[side]} size={38} />
+                                        </span>
+                                    </TeamLink>
                                 )}
                                 <span className="min-w-0 flex-1">
                                     {pitcher ? (
@@ -238,7 +249,9 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                                     ) : (
                                         <span className="block truncate font-extrabold">{t('preview.tbd')}</span>
                                     )}
-                                    <span className="block truncate text-sm text-muted">{teamDisplayName(game[side], i18n.language)}</span>
+                                    <TeamLink id={game[side].id} className="block truncate text-sm text-muted">
+                                        {teamDisplayName(game[side], i18n.language)}
+                                    </TeamLink>
                                 </span>
                                 {pitcher && (
                                     <span className="text-right text-sm tabular-nums">

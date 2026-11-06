@@ -1,9 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import type { AtBat, GameDetail } from '../../types';
 import { describePlay, eventName, eventTone, inningName, type EventTone } from '../../lib/baseball';
+import { peopleOf, slot } from '../../lib/links';
 import { Segmented } from '../ui/Segmented';
+import { PlayerLink } from '../ui/PlayerLink';
+import { TeamLink } from '../ui/TeamLink';
+import { OVER_CARD } from '../ui/CardLink';
+import { LinkedNames, withNodes } from '../ui/TextLinks';
 import { StrikeZone } from './StrikeZone';
 import { uniformColors } from './BatterFigure';
 import { PitchList } from './PitchList';
@@ -28,6 +33,9 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = f
     const { t, i18n } = useTranslation();
     const [filter, setFilter] = useState<'all' | 'scoring'>('all');
     const [open, setOpen] = useState<number | null>(null);
+    const uid = useId();
+    // Los nombres de las jugadas abren la página de cada pelotero
+    const people = useMemo(() => peopleOf(game.atBats), [game.atBats]);
 
     // Más reciente primero; el turno en curso solo si ya tiene pitcheos
     const plays = useMemo(() => {
@@ -53,39 +61,49 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = f
         const expanded = open === atBat.i;
         const tone = eventTone(atBat.event);
         const team = battingTeam(atBat);
+        const labelId = `${uid}-${atBat.i}`;
+        const person = (who: { id: number; name: string }) => (
+            <PlayerLink id={who.id} className={OVER_CARD}>
+                {who.name}
+            </PlayerLink>
+        );
         return (
             <li key={atBat.i} className="border-b border-line/10 last:border-0">
-                <button
-                    type="button"
-                    onClick={() => setOpen(expanded ? null : atBat.i)}
-                    aria-expanded={expanded}
-                    className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-raised/50"
-                >
+                {/* Toda la fila abre los pitcheos (el botón va por encima del contenido); los equipos y los peloteros que
+                    nombra la jugada van encima del botón y abren su página */}
+                <div className="relative isolate flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-raised/50">
+                    <button type="button" onClick={() => setOpen(expanded ? null : atBat.i)} aria-expanded={expanded} aria-labelledby={labelId} className="absolute inset-0 z-[1] w-full" />
                     <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: team.color }} aria-hidden="true" />
-                    <span className="min-w-0 flex-1">
+                    <span id={labelId} className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-2">
                             <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${atBat.complete ? TONES[tone] : 'bg-live/10 text-live'}`}>
                                 {atBat.complete ? eventName(atBat, i18n.language) : t('plays.inProgress')}
                             </span>
                             {atBat.scoring && atBat.away !== null && (
                                 <span className="num text-xs font-semibold">
-                                    {game.away.abbrev} {atBat.away} · {game.home.abbrev} {atBat.home}
+                                    <TeamLink id={game.away.id} className={OVER_CARD}>{game.away.abbrev}</TeamLink> {atBat.away} · <TeamLink id={game.home.id} className={OVER_CARD}>{game.home.abbrev}</TeamLink> {atBat.home}
                                 </span>
                             )}
                             {compact && <span className="text-[11px] text-faint">{inningName({ n: atBat.inning, isTop: atBat.top }, i18n.language, true)}</span>}
                         </span>
                         <span className="mt-1 block text-sm leading-snug">
-                            {atBat.complete ? describePlay(atBat.desc, i18n.language) : t('plays.atBatNow', { batter: atBat.batter.name, pitcher: atBat.pitcher.name })}
+                            {atBat.complete ? (
+                                <LinkedNames text={describePlay(atBat.desc, i18n.language)} people={people} linkClassName={OVER_CARD} />
+                            ) : (
+                                withNodes(t('plays.atBatNow', { batter: slot('batter'), pitcher: slot('pitcher') }), { batter: person(atBat.batter), pitcher: person(atBat.pitcher) })
+                            )}
                         </span>
                         {atBat.actions.length > 0 && (
-                            <span className="mt-1 block text-xs text-muted">{atBat.actions.map((action) => describePlay(action.desc, i18n.language)).join(' ')}</span>
+                            <span className="mt-1 block text-xs text-muted">
+                                <LinkedNames text={atBat.actions.map((action) => describePlay(action.desc, i18n.language)).join(' ')} people={people} linkClassName={OVER_CARD} />
+                            </span>
                         )}
                     </span>
                     <span className="flex shrink-0 items-center gap-1 text-xs text-faint">
                         {atBat.pitches.length > 0 && t('plays.pitches', { count: atBat.pitches.length })}
                         <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
                     </span>
-                </button>
+                </div>
                 {expanded && (
                     <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2 sm:items-start">
                         <StrikeZone pitches={atBat.pitches} batterSide={atBat.batter.side} uniform={uniformColors(team, !atBat.top)} className="mx-auto w-full max-w-[280px]" />

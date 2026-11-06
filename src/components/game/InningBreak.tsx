@@ -3,8 +3,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { InningBreak as Pause } from '../../lib/baseball';
+import { slot } from '../../lib/links';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
 import { TeamLogo } from '../ui/TeamLogo';
+import { TeamLink } from '../ui/TeamLink';
+import { PlayerLink } from '../ui/PlayerLink';
+import { withNodes } from '../ui/TextLinks';
 
 export const InningBreak: React.FC<{ pause: Pause }> = ({ pause }) => {
     const { t } = useTranslation();
@@ -41,15 +45,19 @@ export const InningBreak: React.FC<{ pause: Pause }> = ({ pause }) => {
 
             <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                    <TeamLogo team={next} size={40} />
+                    <TeamLink id={next.id} decorative className="flex shrink-0">
+                        <TeamLogo team={next} size={40} />
+                    </TeamLink>
                     <div className="min-w-0">
                         <p className="eyebrow">{t('zone.breakNext')}</p>
-                        <p className="truncate font-display text-lg font-extrabold leading-tight">{next.name}</p>
+                        <p className="truncate font-display text-lg font-extrabold leading-tight">
+                            <TeamLink id={next.id}>{next.name}</TeamLink>
+                        </p>
                     </div>
                 </div>
                 {runs !== null && (
                     <p className="text-sm text-muted">
-                        {t('zone.breakRuns', { team: ended.abbrev, count: runs })}
+                        {withNodes(t('zone.breakRuns', { team: slot('team'), count: runs }), { team: <TeamLink id={ended.id}>{ended.abbrev}</TeamLink> })}
                     </p>
                 )}
                 {dueUp.length > 0 && (
@@ -59,8 +67,12 @@ export const InningBreak: React.FC<{ pause: Pause }> = ({ pause }) => {
                             {dueUp.map((batter, index) => (
                                 <li key={batter.id} className="zb-due flex items-center gap-3 rounded-2xl bg-raised px-2.5 py-1.5" style={{ animationDelay: `${index * 0.12}s` }}>
                                     <span className="w-4 text-center text-xs font-extrabold text-faint">{index + 1}</span>
-                                    <PlayerPhoto personId={batter.id} name={batter.name} size={32} team={{ id: next.id, logo: next.logo, color: next.color }} />
-                                    <span className="min-w-0 truncate text-sm font-semibold">{batter.name}</span>
+                                    <PlayerLink id={batter.id} decorative className="flex shrink-0">
+                                        <PlayerPhoto personId={batter.id} name={batter.name} size={32} team={{ id: next.id, logo: next.logo, color: next.color }} />
+                                    </PlayerLink>
+                                    <PlayerLink id={batter.id} className="min-w-0 truncate text-sm font-semibold">
+                                        {batter.name}
+                                    </PlayerLink>
                                 </li>
                             ))}
                         </ol>

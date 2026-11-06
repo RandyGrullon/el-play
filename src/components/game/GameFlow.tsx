@@ -6,8 +6,12 @@ import type { GameDetail } from '../../types';
 import { biggestSwings, winNow, winSeries, type WinPoint } from '../../lib/liveWinProbability';
 import { eventName, inningName } from '../../lib/baseball';
 import { surname } from '../../lib/format';
+import { slot } from '../../lib/links';
 import { Segmented } from '../ui/Segmented';
 import { TeamLogo } from '../ui/TeamLogo';
+import { TeamLink } from '../ui/TeamLink';
+import { PlayerLink } from '../ui/PlayerLink';
+import { withNodes } from '../ui/TextLinks';
 import { usePregameWin } from './WinProbability';
 
 const W = 320;
@@ -140,10 +144,15 @@ export const GameFlow: React.FC<{ game: GameDetail }> = ({ game }) => {
 
             {view === 'win' ? (
                 <div className="px-4 pb-4 pt-3">
-                    <p className="flex items-center gap-2" role="img" aria-label={t('flow.now', { team: leader.abbrev, pct: leaderPct })}>
-                        <TeamLogo team={leader} size={24} />
+                    {/* El logo y la sigla abren la página del equipo (el lector lee el texto tal cual) */}
+                    <p className="flex items-center gap-2">
+                        <TeamLink id={leader.id} label={t('team.open', { team: leader.name })} className="flex shrink-0">
+                            <TeamLogo team={leader} size={24} />
+                        </TeamLink>
                         <span className="font-display text-[28px] font-extrabold leading-none tabular-nums">{final ? t('flow.won') : `${leaderPct}%`}</span>
-                        <span className="text-sm font-semibold text-muted">{final ? leader.abbrev : t('flow.toWin', { team: leader.abbrev })}</span>
+                        <span className="text-sm font-semibold text-muted">
+                            {final ? <TeamLink id={leader.id}>{leader.abbrev}</TeamLink> : withNodes(t('flow.toWin', { team: slot('team') }), { team: <TeamLink id={leader.id}>{leader.abbrev}</TeamLink> })}
+                        </span>
                     </p>
                     <div className="mt-2 flex justify-between text-[10px] font-extrabold uppercase tracking-wide text-faint">
                         <span>{game.home.abbrev} ↑</span>
@@ -163,7 +172,7 @@ export const GameFlow: React.FC<{ game: GameDetail }> = ({ game }) => {
                                                 +{Math.round(Math.abs(point.delta) * 100)}%
                                             </span>
                                             <span className="min-w-0 flex-1 truncate">
-                                                <b>{eventName(atBat, i18n.language)}</b> · {surname(atBat.batter.name)}
+                                                <b>{eventName(atBat, i18n.language)}</b> · <PlayerLink id={atBat.batter.id}>{surname(atBat.batter.name)}</PlayerLink>
                                             </span>
                                             <span className="shrink-0 text-xs font-semibold text-muted">{inningName({ n: atBat.inning, isTop: atBat.top }, i18n.language, true)}</span>
                                         </li>
@@ -180,7 +189,7 @@ export const GameFlow: React.FC<{ game: GameDetail }> = ({ game }) => {
                         {(['away', 'home'] as const).map((side) => (
                             <span key={side} className="inline-flex items-center gap-1.5">
                                 <span className="h-2 w-4 rounded-full" style={{ backgroundColor: game[side].color }} />
-                                {game[side].abbrev} {game[side].runs}
+                                <TeamLink id={game[side].id}>{game[side].abbrev}</TeamLink> {game[side].runs}
                             </span>
                         ))}
                     </div>

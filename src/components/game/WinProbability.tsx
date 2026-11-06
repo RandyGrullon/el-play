@@ -6,6 +6,9 @@ import { Home, Sparkles } from 'lucide-react';
 import type { GameDetail } from '../../types';
 import { inkOn } from '../gamecast/GameHero';
 import { TeamLogo } from '../ui/TeamLogo';
+import { TeamLink } from '../ui/TeamLink';
+import { withNodes } from '../ui/TextLinks';
+import { slot } from '../../lib/links';
 import { recordOf, useTeamStats, type TeamRow } from '../../lib/teamStats';
 import { percents, winProbability, type TeamForm } from '../../lib/winProbability';
 
@@ -83,25 +86,29 @@ export const WinProbabilityCard: React.FC<{ game: GameDetail }> = ({ game }) => 
                     {favorite ? (
                         <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold" style={{ backgroundColor: favorite.color, color: inkOn(favorite.color) }}>
                             <Sparkles className="h-3 w-3" aria-hidden="true" />
-                            {t('winProb.favorite', { team: favorite.abbrev })}
+                            {withNodes(t('winProb.favorite', { team: slot('team') }), { team: <TeamLink id={favorite.id}>{favorite.abbrev}</TeamLink> })}
                         </span>
                     ) : (
                         <span className="rounded-full bg-raised px-2.5 py-1 text-[11px] font-extrabold text-muted">{t('winProb.even')}</span>
                     )}
                 </div>
 
-                <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2" role="img" aria-label={t('winProb.aria', { away: game.away.name, a: pct.away, home: game.home.name, h: pct.home })}>
+                {/* El lector oye el resumen; el logo y la sigla de cada uno abren su página */}
+                <p className="sr-only">{t('winProb.aria', { away: game.away.name, a: pct.away, home: game.home.name, h: pct.home })}</p>
+                <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
                     {sides.map(({ side, team, value }, index) => (
                         <React.Fragment key={side}>
                             {index === 1 && (
                                 // La columna del medio queda siempre (la cuadrícula es de tres); el «vs» se ve desde 360 px
-                                <span className="w-1 text-xs font-extrabold uppercase text-faint min-[360px]:w-auto">
+                                <span className="w-1 text-xs font-extrabold uppercase text-faint min-[360px]:w-auto" aria-hidden="true">
                                     <span className="hidden min-[360px]:inline">vs</span>
                                 </span>
                             )}
                             <div className={`flex min-w-0 items-center gap-2.5 ${side === 'home' ? 'flex-row-reverse text-right' : ''}`}>
                                 <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full min-[360px]:h-14 min-[360px]:w-14" style={{ boxShadow: `inset 0 0 0 3px ${team.color}`, backgroundColor: `${team.color}1a` }}>
-                                    <TeamLogo team={team} size={36} />
+                                    <TeamLink id={team.id} label={t('team.open', { team: team.name })} className="flex shrink-0">
+                                        <TeamLogo team={team} size={36} />
+                                    </TeamLink>
                                     {side === 'home' && (
                                         <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-surface shadow-card" title={t('winProb.home')}>
                                             <Home className="h-3 w-3 text-muted" aria-label={t('winProb.home')} />
@@ -109,11 +116,13 @@ export const WinProbabilityCard: React.FC<{ game: GameDetail }> = ({ game }) => 
                                     )}
                                 </span>
                                 <span className="min-w-0">
-                                    <span className="block font-display text-[28px] font-extrabold leading-none tabular-nums min-[360px]:text-[34px]">
+                                    <span className="block font-display text-[28px] font-extrabold leading-none tabular-nums min-[360px]:text-[34px]" aria-hidden="true">
                                         {value}
                                         <span className="text-lg">%</span>
                                     </span>
-                                    <span className="block truncate text-xs font-bold text-muted">{team.abbrev}</span>
+                                    <TeamLink id={team.id} className="block truncate text-xs font-bold text-muted">
+                                        {team.abbrev}
+                                    </TeamLink>
                                 </span>
                             </div>
                         </React.Fragment>

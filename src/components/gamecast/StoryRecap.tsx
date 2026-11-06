@@ -5,6 +5,8 @@ import type { Decision, GameDetail, TopPerformer } from '../../types';
 import { keyPlayOf } from '../../lib/baseball';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
 import { PlayerLink } from '../ui/PlayerLink';
+import { TeamLink } from '../ui/TeamLink';
+import { LinkedNames } from '../ui/TextLinks';
 import { StrikeZone } from '../game/StrikeZone';
 import { uniformColors } from '../game/BatterFigure';
 import { inkOn } from './GameHero';
@@ -38,7 +40,9 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
     const decision = (tag: string, person: Decision | null, extra: string, team: typeof winner) =>
         person && (
             <li className="flex items-center gap-3 rounded-2xl px-3 py-2.5" style={{ background: soft }}>
-                <PlayerPhoto personId={person.id} name={person.name} size={48} background="rgba(255,255,255,0.85)" team={team} />
+                <PlayerLink id={person.id} decorative className="flex shrink-0">
+                    <PlayerPhoto personId={person.id} name={person.name} size={48} background="rgba(255,255,255,0.85)" team={team} />
+                </PlayerLink>
                 <span className="flex-1">
                     <span className="block text-xs font-bold opacity-80">{tag}</span>
                     <PlayerLink id={person.id} className="block font-extrabold">{person.name}</PlayerLink>
@@ -68,7 +72,9 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
                 {slide === 'key' && key && (
                     <div className="animate-fade-up">
                         <span className="pill px-3 py-1.5 text-[13px]" style={{ background: soft }}>{t('share.keyPlay')}</span>
-                        <h2 className="mt-3 text-[40px] font-extrabold leading-[1.02]">{key.headline}</h2>
+                        <h2 className="mt-3 text-[40px] font-extrabold leading-[1.02]">
+                            <LinkedNames text={key.headline} people={[key.atBat.batter]} />
+                        </h2>
                         <p className="mt-2 text-base font-semibold opacity-85">{key.detail}</p>
                         <div className="light-scope mt-4 rounded-3xl bg-white/90 p-3 text-[#14151a]">
                             <StrikeZone pitches={key.atBat.pitches} batterSide={key.atBat.batter.side} uniform={uniformColors(key.atBat.top ? game.away : game.home, !key.atBat.top)} showLegend={false} className="mx-auto max-w-[240px]" />
@@ -82,7 +88,9 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
                         <ul className="mt-4 flex flex-col gap-3">
                             {game.topPerformers.map((player) => (
                                 <li key={`${player.kind}-${player.id}`} className="flex items-center gap-3 rounded-3xl px-3 py-3" style={{ background: soft }}>
-                                    <PlayerPhoto personId={player.id} name={player.name} size={64} background="rgba(255,255,255,0.85)" team={player.teamId === game.home.id ? game.home : game.away} />
+                                    <PlayerLink id={player.id} decorative className="flex shrink-0">
+                                        <PlayerPhoto personId={player.id} name={player.name} size={64} background="rgba(255,255,255,0.85)" team={player.teamId === game.home.id ? game.home : game.away} />
+                                    </PlayerLink>
                                     <span className="min-w-0 flex-1">
                                         <PlayerLink id={player.id} className="block truncate text-lg font-extrabold">{shortName(player.name)}</PlayerLink>
                                         <span className="block text-sm font-semibold opacity-85">
@@ -118,7 +126,9 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
                                 <tbody>
                                     {(['away', 'home'] as const).map((side) => (
                                         <tr key={side} className="border-t border-black/5">
-                                            <th scope="row" className="py-2 text-left font-extrabold">{game[side].abbrev}</th>
+                                            <th scope="row" className="py-2 text-left font-extrabold">
+                                                <TeamLink id={game[side].id}>{game[side].abbrev}</TeamLink>
+                                            </th>
                                             {game.linescore.map((inning, position) => (
                                                 <td key={inning.n}>{inning[side] ?? (side === 'home' && position === game.linescore.length - 1 ? 'x' : '')}</td>
                                             ))}
@@ -131,7 +141,7 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
                             </table>
                         </div>
                         <p className="mt-4 text-[44px] font-extrabold leading-none">
-                            {game.away.abbrev} {game.away.runs} · {game.home.abbrev} {game.home.runs}
+                            <TeamLink id={game.away.id}>{game.away.abbrev}</TeamLink> {game.away.runs} · <TeamLink id={game.home.id}>{game.home.abbrev}</TeamLink> {game.home.runs}
                         </p>
                     </div>
                 )}
