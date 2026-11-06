@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Animated, Platform, Pressable, ScrollView, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
+import { Animated, Platform, Pressable, ScrollView, View, type GestureResponderEvent } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, Share2 } from 'lucide-react-native';
@@ -24,7 +24,8 @@ const FadeUp: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return <Animated.View style={{ opacity: value, transform: [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>{children}</Animated.View>;
 };
 
-// Resumen de un juego terminado como historia: jugada clave, figuras, marcador y decisiones (con las flechas o las barras)
+// Resumen de un juego terminado como historia: jugada clave, figuras, marcador y decisiones. Se avanza tocando los lados
+// (como las historias), con las flechas o con las barras.
 export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (performer: TopPerformer) => void }> = ({ game, onSharePerformer }) => {
     const { t, i18n } = useTranslation();
     const winner = game.home.isWinner ? game.home : game.away;
@@ -36,6 +37,17 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
     const [index, setIndex] = useState(0);
     const slide = slides[Math.min(index, slides.length - 1)];
     const go = (step: number) => setIndex((current) => Math.max(0, Math.min(slides.length - 1, current + step)));
+    // Un toque en el tercio izquierdo vuelve y en el derecho avanza; los botones y enlaces de adentro atienden su toque
+    const area = useRef<ComponentRef<typeof View> | null>(null);
+    const tapSide = (event: GestureResponderEvent) => {
+        const pageX = event.nativeEvent.pageX;
+        area.current?.measure((_x, _y, width, _height, left) => {
+            if (!width) return;
+            const x = (pageX - left) / width;
+            if (x < 1 / 3) go(-1);
+            else if (x > 2 / 3) go(1);
+        });
+    };
 
     const tag = (label: string) => (
         <View style={{ alignSelf: 'flex-start', borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: soft }}>
@@ -97,7 +109,7 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
                 ))}
             </View>
 
-            <View style={{ minHeight: 460, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 80 }}>
+            <Pressable ref={area} onPress={tapSide} accessible={false} style={{ minHeight: 460, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 80 }}>
                 {slide === 'key' && key && (
                     <FadeUp key="key">
                         {tag(t('share.keyPlay'))}
@@ -195,7 +207,7 @@ export const StoryRecap: React.FC<{ game: GameDetail; onSharePerformer: (perform
 
                 {arrow(-1)}
                 {arrow(1)}
-            </View>
+            </Pressable>
         </View>
     );
 };
