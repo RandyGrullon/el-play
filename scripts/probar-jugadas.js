@@ -338,6 +338,66 @@ it('suspendido: con fecha nueva se espera como programado; sin ella, en espera c
     assert.strictEqual(isOnHold({ detailedState: 'Scheduled', date: at(-180) }, NOW), false);
 });
 
+// ---------------------------------------------------------------- pantallas: estadísticas, posiciones, líderes y ficha
+// Lo que se pasó de la web (lib/teamStats.ts, share/subjects.ts, PlayerSheet…). Va en su propia carpeta, con lo de React
+// Query y la API de mentira para que se pueda cargar en Node.
+const SCREENS = path.join(OUT, 'pantallas');
+const compileTo = (rel) => {
+    const source = fs.readFileSync(path.join(ROOT, 'src', rel), 'utf8');
+    const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.React } });
+    const target = path.join(SCREENS, rel.replace(/\.tsx?$/, '.js'));
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, outputText);
+    return target;
+};
+const stub = (rel, code) => {
+    const target = path.join(SCREENS, rel);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, code);
+};
+stub('node_modules/@tanstack/react-query/index.js', 'exports.useQuery = () => ({});\n');
+stub('lib/api.js', 'exports.ApiError = class ApiError extends Error {};\nexports.getApiJson = async () => ({});\n');
+compileTo('lib/advanced.ts');
+const teamStats = require(compileTo('lib/teamStats.ts'));
+
+console.log('estadísticas de los equipos');
+
+// Equipos de mentira: siglas y cifras inventadas
+const equipo = (id, abbrev, hitting, pitching) => ({ id, abbrev, name: `Equipo ${abbrev}`, color: '#123456', logo: '', hitting, pitching });
+const EQUIPOS = [
+    equipo(9001, 'AAA', { avg: '.250', ops: '.700', r: 100, hr: 10, h: 200, g: 30, sb: 5 }, { era: '3.50', whip: '1.30', r: 90, k: 200, w: 18, l: 12, sv: 8 }),
+    equipo(9002, 'BBB', { avg: '.270', ops: '.760', r: 120, hr: 14, h: 230, g: 30, sb: 9 }, { era: '4.10', whip: '1.42', r: 130, k: 180, w: 14, l: 16, sv: 5 }),
+    equipo(9003, 'CCC', null, null)
+];
+
+it('orden de los equipos: el mejor arriba, menos es mejor en la EFE y sin dato al final', () => {
+    const { rankTeams, teamSort } = teamStats;
+    assert.deepStrictEqual(rankTeams(EQUIPOS, teamSort('bat', 'avg')).map((item) => item.team.abbrev), ['BBB', 'AAA', 'CCC']);
+    assert.deepStrictEqual(rankTeams(EQUIPOS, teamSort('pitch', 'era')).map((item) => item.team.abbrev), ['AAA', 'BBB', 'CCC']);
+    assert.strictEqual(rankTeams(EQUIPOS, teamSort('pitch', 'era'))[2].value, null);
+    // Una clave que no existe cae en la primera del grupo
+    assert.strictEqual(teamSort('bat', 'nada').key, 'avg');
+    assert.strictEqual(teamSort('pitch', 'nada').key, 'era');
+});
+
+it('promedio de la liga: el de los equipos con dato; las tarjetas de los mejores existen en el orden', () => {
+    const { leagueAverage, teamSort, TEAM_HIGHLIGHTS, TEAM_SORTS } = teamStats;
+    close(leagueAverage(EQUIPOS, teamSort('bat', 'avg')), 0.26, 3);
+    close(leagueAverage(EQUIPOS, teamSort('pitch', 'whip')), 1.36, 3);
+    assert.strictEqual(leagueAverage([EQUIPOS[2]], teamSort('bat', 'avg')), null);
+    assert.strictEqual(teamSort('bat', 'avg').show(0.26), '.260');
+    for (const group of ['bat', 'pitch']) TEAM_HIGHLIGHTS[group].forEach((key) => assert.ok(TEAM_SORTS[group].some((sort) => sort.key === key), key));
+});
+
+it('récord y diferencia de carreras con los juegos para el récord pitagórico', () => {
+    const { recordOf } = teamStats;
+    partial(recordOf(EQUIPOS[0]), { w: 18, l: 12, games: 30, scored: 100, allowed: 90, diff: 10 });
+    partial(recordOf(EQUIPOS[1]), { diff: -10 });
+    partial(recordOf(EQUIPOS[2]), { w: 0, l: 0, games: 0, scored: null, diff: null });
+    const { pythagorean } = require(path.join(SCREENS, 'lib', 'advanced.js'));
+    partial(pythagorean(100, 90, 30), { wins: 16, losses: 14 });
+});
+
 fs.rmSync(OUT, { recursive: true, force: true });
 if (failed) {
     console.log(`\n${failed} caso(s) fallaron`);

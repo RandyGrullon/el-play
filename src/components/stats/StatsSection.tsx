@@ -1,5 +1,6 @@
 // Estadísticas de todos los peloteros (igual que StatsPage de la web): buscar sin tildes, bateadores o lanzadores,
-// temporada actual o pasada, filtro por equipo, orden (también por puntos de fantasy), podio y lista con «Ver más».
+// temporada actual o pasada, filtro por equipo, orden (también por puntos de fantasy) con el promedio de la liga, podio y
+// lista con «Ver más». «Equipos»: las colectivas de cada equipo (TeamStats.tsx) y los movimientos de la liga.
 // En PRO, la pantalla de pro/estadisticas (vistas por percentil, dispersión, cara a cara y la pestaña Equipos).
 import React, { useMemo, useState } from 'react';
 import { Platform, Pressable, TextInput, View } from 'react-native';
@@ -10,15 +11,21 @@ import { useLeague } from '../../state/league';
 import { lastName, seasonLabel } from '../../lib/format';
 import { useIsPro } from '../../lib/pro';
 import { SORTS, normalize, seasonSummary, sortPlayers, usePlayers, type PlayerRow, type SortKey, type StatsTeam } from '../../lib/stats';
+import { leagueAverage, teamSort, useTeamStats } from '../../lib/teamStats';
 import { useColors } from '../../theme/theme';
 import { fonts, inkOn, radius, shadow } from '../../theme/tokens';
 import { Screen } from '../layout';
 import { Card, ErrorState, OfflineState, Pill, PlayerPhoto, Row, Segmented, Skeleton, TeamLogo, Txt, useErrorText } from '../ui';
 import { StatsPro } from '../pro/estadisticas/StatsPro';
 import { TeamsScreen } from '../pro/estadisticas/TeamsPanel';
-import { ChipRow, MoreButton, Notice, SectionHeader, openPlayer, waitingForNetwork } from './common';
+import { TeamMoves } from '../team/TeamSections';
+import { ChipRow, MoreButton, Notice, SectionHeader, openPlayer, openTeam, waitingForNetwork } from './common';
+import { TeamStatsView } from './TeamStats';
 
 const PAGE = 40;
+
+/** Bateadores, lanzadores o equipos */
+type StatsView = 'B' | 'P' | 'T';
 
 export const StatsSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
     const pro = useIsPro();
@@ -34,12 +41,16 @@ const StatsLite: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
     const errorText = useErrorText();
     const { activeLeague } = useLeague();
     const [season, setSeason] = useState<number | undefined>(undefined);
-    const [role, setRole] = useState<'B' | 'P'>('B');
+    const [view, setView] = useState<StatsView>('B');
+    const role: 'B' | 'P' = view === 'P' ? 'P' : 'B';
+    const teamsView = view === 'T';
     const [teamId, setTeamId] = useState<number | null>(null);
     const [sortKey, setSortKey] = useState<SortKey>('pts');
     const [search, setSearch] = useState('');
     const [limit, setLimit] = useState(PAGE);
     const query = usePlayers(activeLeague, season);
+    // Las colectivas: para la vista de equipos y para el promedio de la liga en los promedios de los peloteros
+    const teamQuery = useTeamStats(activeLeague, season);
     const data = query.data;
 
     // Otra liga: temporada actual y todos los equipos. Otro filtro: primera página. Se ajusta en el render, sin efecto
@@ -49,7 +60,7 @@ const StatsLite: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
         setSeason(undefined);
         setTeamId(null);
     }
-    const filters = `${role}|${teamId}|${sortKey}|${search}|${season}`;
+    const filters = `${view}|${teamId}|${sortKey}|${search}|${season}`;
     const [shownFilters, setShownFilters] = useState(filters);
     if (shownFilters !== filters) {
         setShownFilters(filters);
@@ -69,6 +80,12 @@ const StatsLite: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
 
     const top = !search && rows.length >= 3 && rows[0].ranked ? rows.slice(0, 3).map((item) => item.row) : [];
     const rest = top.length ? rows.slice(3) : rows;
+    // El promedio de la liga para comparar el orden elegido (AVG y OPS de bateo; EFE y WHIP de pitcheo)
+    const averageKey = role === 'B' ? (sort.key === 'avg' || sort.key === 'ops' ? sort.key : null) : sort.key === 'era' || sort.key === 'whip' ? sort.key : null;
+    const averageSort = averageKey ? teamSort(role === 'B' ? 'bat' : 'pitch', averageKey) : null;
+    const average = averageSort && teamQuery.data?.teams.length ? leagueAverage(teamQuery.data.teams, averageSort) : null;
+    // Los movimientos abren la ficha en la temporada que se ve (si no es la actual)
+    const seasonParam = data && data.season !== data.currentSeason ? data.season : undefined;
     const empty = (
         <Card style={{ paddingVertical: 32 }}>
             <Txt size={14} tone="muted" center>
@@ -78,7 +95,7 @@ const StatsLite: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
     );
 
     return (
-        <Screen onRefresh={() => query.refetch()}>
+        <Screen onRefresh={() => (teamsView ? teamQuery.refetch() : query.refetch())}>
             {tabs}
             <SectionHeader
                 subtitle={`${t(`leagues.${activeLeague}.name`)}${data ? ` · ${t('common.season', { season: seasonLabel(data.season, activeLeague) })}` : ''}`}
@@ -90,35 +107,38 @@ const StatsLite: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
 
             {/* Buscar y filtrar */}
             <View style={{ gap: 12 }}>
-                <Row gap={8} style={[{ height: 48, borderRadius: radius.tile, backgroundColor: colors.surface, paddingHorizontal: 16 }, shadow('card')]}>
-                    <Search size={16} color={colors.muted} />
-                    <TextInput
-                        value={search}
-                        onChangeText={setSearch}
-                        placeholder={t('statsPage.search')}
-                        placeholderTextColor={colors.faint}
-                        accessibilityLabel={t('statsPage.search')}
-                        returnKeyType="search"
-                        autoCorrect={false}
-                        autoCapitalize="words"
-                        style={[{ flex: 1, minWidth: 0, height: 48, fontFamily: fonts.regular, fontSize: 15, color: colors.ink }, Platform.OS === 'web' && ({ outlineStyle: 'none' } as object)]}
-                    />
-                    {search ? (
-                        <Pressable onPress={() => setSearch('')} accessibilityRole="button" accessibilityLabel={t('statsPage.clear')} hitSlop={8} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' }}>
-                            <X size={14} color={colors.muted} />
-                        </Pressable>
-                    ) : null}
-                </Row>
+                {!teamsView && (
+                    <Row gap={8} style={[{ height: 48, borderRadius: radius.tile, backgroundColor: colors.surface, paddingHorizontal: 16 }, shadow('card')]}>
+                        <Search size={16} color={colors.muted} />
+                        <TextInput
+                            value={search}
+                            onChangeText={setSearch}
+                            placeholder={t('statsPage.search')}
+                            placeholderTextColor={colors.faint}
+                            accessibilityLabel={t('statsPage.search')}
+                            returnKeyType="search"
+                            autoCorrect={false}
+                            autoCapitalize="words"
+                            style={[{ flex: 1, minWidth: 0, height: 48, fontFamily: fonts.regular, fontSize: 15, color: colors.ink }, Platform.OS === 'web' && ({ outlineStyle: 'none' } as object)]}
+                        />
+                        {search ? (
+                            <Pressable onPress={() => setSearch('')} accessibilityRole="button" accessibilityLabel={t('statsPage.clear')} hitSlop={8} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' }}>
+                                <X size={14} color={colors.muted} />
+                            </Pressable>
+                        ) : null}
+                    </Row>
+                )}
                 <Row justify="space-between" gap={8} wrap>
-                    <Segmented<'B' | 'P'>
-                        value={role}
+                    <Segmented<StatsView>
+                        value={view}
                         onChange={(value) => {
-                            setRole(value);
+                            setView(value);
                             setSortKey('pts');
                         }}
                         options={[
                             { value: 'B', label: t('statsPage.batters') },
-                            { value: 'P', label: t('statsPage.pitchers') }
+                            { value: 'P', label: t('statsPage.pitchers') },
+                            { value: 'T', label: t('statsPage.teams') }
                         ]}
                     />
                     {data && (
@@ -132,7 +152,7 @@ const StatsLite: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
                 </Row>
             </View>
 
-            {teams.length > 1 && (
+            {!teamsView && teams.length > 1 && (
                 <ChipRow label={t('statsPage.filterTeam')}>
                     <Pill label={t('statsPage.allTeams')} active={teamId === null} onPress={() => setTeamId(null)} />
                     {teams.map((team) => (
@@ -141,26 +161,62 @@ const StatsLite: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
                 </ChipRow>
             )}
 
-            <ChipRow label={t('statsPage.sortBy')}>
-                {SORTS[role].map((option) => {
-                    const active = option.key === sort.key;
-                    return (
-                        <Pressable
-                            key={option.key}
-                            onPress={() => setSortKey(option.key)}
-                            accessibilityRole="tab"
-                            accessibilityState={{ selected: active }}
-                            style={{ height: 36, borderRadius: radius.pill, paddingHorizontal: 14, justifyContent: 'center', backgroundColor: active ? colors.accent : colors.raised }}
-                        >
-                            <Txt size={13} weight="bold" color={active ? '#fff' : colors.muted}>
-                                {t(`statsPage.sort.${option.key}`)}
-                            </Txt>
-                        </Pressable>
-                    );
-                })}
-            </ChipRow>
+            {!teamsView && (
+                <ChipRow label={t('statsPage.sortBy')}>
+                    {SORTS[role].map((option) => {
+                        const active = option.key === sort.key;
+                        return (
+                            <Pressable
+                                key={option.key}
+                                onPress={() => setSortKey(option.key)}
+                                accessibilityRole="tab"
+                                accessibilityState={{ selected: active }}
+                                style={{ height: 36, borderRadius: radius.pill, paddingHorizontal: 14, justifyContent: 'center', backgroundColor: active ? colors.accent : colors.raised }}
+                            >
+                                <Txt size={13} weight="bold" color={active ? '#fff' : colors.muted}>
+                                    {t(`statsPage.sort.${option.key}`)}
+                                </Txt>
+                            </Pressable>
+                        );
+                    })}
+                </ChipRow>
+            )}
 
-            {waitingForNetwork(query) ? (
+            {!teamsView && average !== null && averageSort && (
+                <Txt size={12} weight="semibold" tone="muted" style={{ marginTop: -4 }}>
+                    {t('statsPage.leagueAverageShort', { value: averageSort.show(average) })}
+                </Txt>
+            )}
+
+            {teamsView ? (
+                waitingForNetwork(teamQuery) ? (
+                    <OfflineState />
+                ) : teamQuery.isPending ? (
+                    <View style={{ gap: 12 }}>
+                        <Row gap={8} wrap>
+                            {[0, 1, 2, 3].map((index) => (
+                                <View key={index} style={{ flexBasis: '45%', flexGrow: 1 }}>
+                                    <Skeleton height={76} round={22} />
+                                </View>
+                            ))}
+                        </Row>
+                        <Skeleton height={320} />
+                    </View>
+                ) : teamQuery.isError && !teamQuery.data ? (
+                    <ErrorState message={errorText(teamQuery.error)} onRetry={() => teamQuery.refetch()} />
+                ) : teamQuery.data?.teams.length ? (
+                    <>
+                        <TeamStatsView teams={teamQuery.data.teams} onOpenTeam={openTeam} />
+                        <TeamMoves league={activeLeague} season={seasonParam} />
+                    </>
+                ) : (
+                    <Card style={{ paddingVertical: 32 }}>
+                        <Txt size={14} tone="muted" center>
+                            {t('statsPage.teamEmpty')}
+                        </Txt>
+                    </Card>
+                )
+            ) : waitingForNetwork(query) ? (
                 <OfflineState />
             ) : query.isPending ? (
                 <View style={{ gap: 12 }}>

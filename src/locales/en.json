@@ -1170,7 +1170,22 @@
     },
     "open": "Stats",
     "info": "Profile",
-    "seePrevious": "See the {{season}} season"
+    "seePrevious": "See the {{season}} season",
+    "teams": "Teams",
+    "teamBat": "Hitting",
+    "teamPitch": "Pitching",
+    "teamLeaders": "League leaders",
+    "teamBest": "Best in {{stat}}: {{team}}, {{value}}",
+    "teamRanking": "Teams by {{stat}}",
+    "teamOpen": "See {{team}} stats",
+    "leagueAverage": "League average {{stat}}: {{value}}",
+    "lowerIsBetter": "lower is better",
+    "runDiff": "Run differential",
+    "runDiffHint": "Runs scored minus runs allowed, and the record that differential points to (Pythagorean expectation).",
+    "runsFor": "{{scored}} RS · {{allowed}} RA",
+    "expected": "expected {{w}}-{{l}}",
+    "teamEmpty": "No team stats for this season yet.",
+    "leagueAverageShort": "League average: {{value}}"
   },
   "team": {
     "rank": "{{rank}} of {{total}}",
@@ -1240,7 +1255,8 @@
         "NUM": "Number change",
         "LON": "Loan",
         "other": "Move"
-      }
+      },
+      "league": "Team moves · last 30 days"
     },
     "sort": {
       "bat": {

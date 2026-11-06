@@ -1170,7 +1170,22 @@
     },
     "open": "Estadísticas",
     "info": "Ver ficha",
-    "seePrevious": "Ver la temporada {{season}}"
+    "seePrevious": "Ver la temporada {{season}}",
+    "teams": "Equipos",
+    "teamBat": "Bateo",
+    "teamPitch": "Pitcheo",
+    "teamLeaders": "Los mejores de la liga",
+    "teamBest": "Mejor en {{stat}}: {{team}}, {{value}}",
+    "teamRanking": "Equipos por {{stat}}",
+    "teamOpen": "Ver las estadísticas de {{team}}",
+    "leagueAverage": "Promedio de la liga en {{stat}}: {{value}}",
+    "lowerIsBetter": "menos es mejor",
+    "runDiff": "Diferencia de carreras",
+    "runDiffHint": "Anotadas menos permitidas, y el récord que daría esa diferencia (expectativa pitagórica).",
+    "runsFor": "{{scored}} A · {{allowed}} P",
+    "expected": "esperado {{w}}-{{l}}",
+    "teamEmpty": "Todavía no hay estadísticas de los equipos en esta temporada.",
+    "leagueAverageShort": "Promedio de la liga: {{value}}"
   },
   "team": {
     "rank": "{{rank}} de {{total}}",
@@ -1240,7 +1255,8 @@
         "NUM": "Número",
         "LON": "Préstamo",
         "other": "Movimiento"
-      }
+      },
+      "league": "Movimientos de los equipos · 30 días"
     },
     "sort": {
       "bat": {
