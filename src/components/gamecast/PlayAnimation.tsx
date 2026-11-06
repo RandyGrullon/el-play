@@ -18,7 +18,7 @@ import { Confetti, type Burst } from './Confetti';
 import { HomeRunFlight, homeRunFlightMs } from './HomeRunFlight';
 
 // Animaciones de jugada en el juego en vivo (calcadas de la web): fin de entrada, ponche, hit, doble, triple, jonrón,
-// outs, base por bolas, robo, emergentes, cambio de lanzador, cambio en el marcador, la victoria (o el dejado en el
+// outs, reto del ABS, base por bolas, robo, emergentes, cambio de lanzador, cambio en el marcador, la victoria (o el dejado en el
 // terreno) al terminar y el campeonato cuando ese juego da el título; con el logo y los colores del equipo protagonista.
 // Se cierran solas o al tocarlas y solo ocupan la parte de arriba. Con «reducir movimiento» en el teléfono solo aparecen
 // y desaparecen.
@@ -36,6 +36,7 @@ const HOLD: Record<PlayEvent['kind'], number> = {
     pinchHitter: 2800,
     pinchRunner: 2800,
     out: 2300,
+    abs: 3000,
     walk: 2120,
     steal: 2700,
     pitchingChange: 3000,
@@ -49,6 +50,13 @@ const HOLD: Record<PlayEvent['kind'], number> = {
 };
 const STAGE_H = 430;
 const EXIT = 380;
+
+// Reto del ABS: la zona en pies (vista del receptor) dentro de un cuadro de 200×250, centrada (0,9 pies en y = 226),
+// que se pinta a 172×215
+const ABS_FT = 60;
+const absX = (ft: number) => Math.min(188, Math.max(12, 100 + ft * ABS_FT));
+const absY = (ft: number) => Math.min(232, Math.max(12, 226 - (ft - 0.9) * ABS_FT));
+const ABS_SCALE = 172 / 200;
 
 // Trayectoria de la bola en cada tipo de out (cuadro de 100×100, home abajo): puntos [x, y, tamaño] y dónde la atrapan
 type Point = [number, number, number];
@@ -110,7 +118,7 @@ AccessibilityInfo.addEventListener?.('reduceMotionChanged', (value) => (reduceMo
 
 // r0…r3: cada corredor del hit (bases recorridas); g0…g3: el que anota se desvanece; field: el vuelo del jonrón;
 // leadPop: el salto del número del que anotó en el cambio en el marcador
-const NAMES = ['stage', 'card', 'logo', 'sub', 'kicker', 'runner', 'rays', 'trail', 'ball', 'zone', 'k', 'shake', 'label', 'wipe', 'scoreline', 'glow', 'trophy', 'panel', 'shutter', 'nextLogo', 'outP', 'inP', 'arrows', 'm0', 'm1', 'm2', 'd0', 'd1', 'd2', 'b1', 'b2', 'b3', 'r0', 'r1', 'r2', 'r3', 'g0', 'g1', 'g2', 'g3', 'field', 'rbiPop', 'plus', 'scorePop', 'leadPop'] as const;
+const NAMES = ['stage', 'card', 'logo', 'sub', 'kicker', 'runner', 'rays', 'trail', 'ball', 'zone', 'k', 'shake', 'label', 'wipe', 'scoreline', 'glow', 'trophy', 'panel', 'shutter', 'nextLogo', 'outP', 'inP', 'arrows', 'm0', 'm1', 'm2', 'd0', 'd1', 'd2', 'b1', 'b2', 'b3', 'r0', 'r1', 'r2', 'r3', 'g0', 'g1', 'g2', 'g3', 'field', 'rbiPop', 'plus', 'scorePop', 'leadPop', 'absHead', 'absZone', 'absBall', 'absBox', 'absVerdict', 'scan', 'ring', 'dot0', 'dot1', 'dot2'] as const;
 type Name = (typeof NAMES)[number];
 // Empiezan «en reposo» (1): los saltos de «+N» y del marcador, que se reinician con cada carrera
 const REST: Name[] = ['rbiPop', 'scorePop'];
@@ -385,6 +393,34 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                 }
             }
             go(v.sub, 1, 300, 1100);
+        } else if (kind === 'abs' && event.abs) {
+            go(v.panel, 1, 220);
+            go(v.absHead, 1, 380, 120);
+            go(v.absZone, 1, 420, 160);
+            go(v.absBall, 1, 420, 420, BOUNCE_BIG);
+            // Lo que se repite mientras revisan: la línea que barre la zona, el anillo de la bola y los puntitos
+            const loop = (animation: Animated.CompositeAnimation) => {
+                if (reduce) return;
+                running.push(animation);
+                animation.start();
+            };
+            const timing = (value: Animated.Value, toValue: number, duration: number, easing: (x: number) => number) => Animated.timing(value, { toValue, duration, easing, useNativeDriver: native });
+            if (event.abs.phase === 'checking') {
+                letters(word(t('anim.absChecking')), 280, 520, 45);
+                loop(Animated.loop(Animated.sequence([timing(v.scan, 1, 1050, Easing.inOut(Easing.ease)), timing(v.scan, 0, 1050, Easing.inOut(Easing.ease))])));
+                loop(Animated.loop(timing(v.ring, 1, 1200, Easing.out(Easing.quad))));
+                (['dot0', 'dot1', 'dot2'] as const).forEach((name, index) =>
+                    loop(Animated.sequence([Animated.delay(index * 180), Animated.loop(Animated.sequence([timing(v[name], 1, 480, Easing.inOut(Easing.ease)), timing(v[name], 0, 480, Easing.inOut(Easing.ease)), Animated.delay(240)]))]))
+                );
+            } else {
+                // La zona destella en el color de la decisión y la palabra cae letra por letra
+                go(v.absBox, 1, 620, 600, Easing.linear);
+                go(v.absVerdict, 1, 420, 640, Easing.bezier(0.5, 0, 0.75, 0));
+                letters(word(t(event.abs.call === 'ball' ? 'anim.absBall' : 'anim.absStrike')), 340, 900, 55, BOUNCE_BIG);
+                // Sin movimiento el destello no se queda encendido
+                if (reduce) v.absBox.setValue(0);
+            }
+            go(v.sub, 1, 300, event.abs.phase === 'checking' ? 900 : 1300);
         } else if (kind === 'champion') {
             go(v.glow, 1, 1600, 200);
             go(v.trophy, 1, 900, 300, Easing.bezier(0.2, 0.9, 0.3, 1.2));
@@ -422,7 +458,9 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
               ? landAt + 2900
               : hitPaths.length
                 ? Math.max(HOLD[kind], RUN_START + runLegs * RUN_LEG + 1300)
-                : HOLD[kind];
+                : kind === 'abs' && event.abs?.phase === 'checking'
+                  ? 2600
+                  : HOLD[kind];
         // Con menos movimiento el jonrón sale ya caído: un poco más de tiempo para leer la distancia
         timers.push(setTimeout(close, reduce ? Math.min(hold, flight !== null ? 3200 : 1600) : hold));
 
@@ -447,8 +485,8 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
     const big = (size: number, color = on): TextStyle => ({ fontFamily: fonts.condensed, fontSize: size, lineHeight: size * 0.95, color, includeFontPadding: false });
 
     /** Letras de la palabra grande, cada una con su entrada */
-    const letters = (text: string, size: number, offset = 0, color = on) => (
-        <View style={{ flexDirection: 'row' }}>
+    const letters = (text: string, size: number, offset = 0, color = on, spacing = 0) => (
+        <View style={{ flexDirection: 'row', columnGap: spacing }}>
             {[...text].map((char, index) => {
                 const value = letterValues[Math.min(offset + index, letterValues.length - 1)];
                 let transform: object[];
@@ -460,13 +498,16 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                 else if (kind === 'walkoff') transform = [{ scale: value.interpolate({ inputRange: [0, 0.7, 1], outputRange: [2.6, 0.94, 1] }) }];
                 else if (kind === 'champion') transform = [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [-size * 0.9, 0] }) }, { scale: value.interpolate({ inputRange: [0, 1], outputRange: [1.5, 1] }) }];
                 else if (kind === 'lead') transform = [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [-size * 0.9, 0] }) }, { scale: value.interpolate({ inputRange: [0, 1], outputRange: [1.4, 1] }) }];
+                // ABS: «REVISANDO» sube un poco; la decisión cae desde arriba
+                else if (kind === 'abs' && event.abs?.phase === 'result') transform = [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [-size * 1.1, 0] }) }, { scale: value.interpolate({ inputRange: [0, 1], outputRange: [1.3, 1] }) }];
+                else if (kind === 'abs') transform = [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [size * 0.5, 0] }) }];
                 else transform = [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [size * 0.6, 0] }) }];
                 return (
                     <Animated.Text
                         key={index}
                         style={[
                             big(size, color),
-                            kind === 'champion' && Platform.select({ web: { textShadow: '0 4px 12px rgba(0,0,0,0.5)' } as object, default: { textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 12, textShadowOffset: { width: 0, height: 4 } } }),
+                            (kind === 'champion' || (kind === 'abs' && size > 60)) && Platform.select({ web: { textShadow: '0 4px 12px rgba(0,0,0,0.5)' } as object, default: { textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 12, textShadowOffset: { width: 0, height: 4 } } }),
                             { opacity, transform: transform as never }
                         ]}
                     >
@@ -1161,6 +1202,195 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                     </Animated.Text>
                 </Animated.View>
             </View>
+        );
+    } else if (kind === 'abs' && event.abs) {
+        const { phase, overturned, call, original, by, player, remaining, pitch } = event.abs;
+        const callName = (value: 'ball' | 'strike') => t(value === 'ball' ? 'anim.absBall' : 'anim.absStrike');
+        const who = by && player ? t(`anim.absBy_${by}`, { name: player }) : t('anim.absByTeam', { team: team.name });
+        // Dónde pasó el lanzamiento (si no lo ubicaron, al centro de la zona)
+        const top = pitch.top ?? 3.4;
+        const bot = pitch.bot ?? 1.6;
+        const ball = { x: absX(pitch.x ?? 0), y: absY(pitch.z ?? (top + bot) / 2) };
+        const zone = { x: absX(-17 / 24), y: absY(top), w: (17 / 12) * ABS_FT, h: (top - bot) * ABS_FT };
+        const decided = phase === 'result' ? call : null;
+        const stroke = decided === 'strike' ? '#ff5a5f' : decided === 'ball' ? '#34c778' : '#ffffff';
+        const sc = ABS_SCALE;
+        const dot = 16 * sc;
+        const subLine = [subStyle, { color: '#fff', paddingHorizontal: 24, textAlign: 'center' as const }, fade(v.sub, 0.9)];
+        body = (
+            <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#0b0d12', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: insets.top + 64, overflow: 'hidden' }, fade(v.panel)]}>
+                {/* Cuadrícula que se pierde hacia los bordes */}
+                <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+                    <Defs>
+                        <Pattern id={`ag${id}`} patternUnits="userSpaceOnUse" width={22} height={22}>
+                            <Path d="M22 0H0V22" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+                        </Pattern>
+                        <RadialGradient id={`af${id}`} cx="50%" cy="45%" r="60%">
+                            <Stop offset="0.45" stopColor="#0b0d12" stopOpacity={0} />
+                            <Stop offset="1" stopColor="#0b0d12" stopOpacity={1} />
+                        </RadialGradient>
+                    </Defs>
+                    <Rect x={0} y={0} width="100%" height="100%" fill={`url(#ag${id})`} />
+                    <Rect x={0} y={0} width="100%" height="100%" fill={`url(#af${id})`} />
+                </Svg>
+                <Animated.View
+                    style={{
+                        position: 'absolute',
+                        top: insets.top + 18,
+                        left: 16,
+                        right: 16,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 10,
+                        opacity: v.absHead,
+                        transform: [{ translateX: v.absHead.interpolate({ inputRange: [0, 1], outputRange: [-30, 0] }) }]
+                    }}
+                >
+                    <Badge team={team} size={46} pad={6} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                        <Txt style={[kicker, { color: '#fff' }]} numberOfLines={1}>
+                            {t('anim.absKicker', { team: team.abbrev })}
+                        </Txt>
+                        <Txt size={12} weight="semibold" tone="white" numberOfLines={1} style={{ opacity: 0.8 }}>
+                            {who}
+                        </Txt>
+                    </View>
+                </Animated.View>
+                <Animated.View style={{ width: 172, height: 215, opacity: v.absZone, transform: [{ scale: v.absZone.interpolate({ inputRange: [0, 1], outputRange: [1.25, 1] }) }] }}>
+                    <Svg width={172} height={215} viewBox="0 0 200 250">
+                        {/* Esquinas de visor alrededor de la zona */}
+                        {[
+                            [zone.x - 10, zone.y - 10, 1, 1],
+                            [zone.x + zone.w + 10, zone.y - 10, -1, 1],
+                            [zone.x - 10, zone.y + zone.h + 10, 1, -1],
+                            [zone.x + zone.w + 10, zone.y + zone.h + 10, -1, -1]
+                        ].map(([x, y, sx, sy], index) => (
+                            <Path key={index} d={`M${x} ${y + 14 * sy}V${y}H${x + 14 * sx}`} fill="none" stroke={team.color} strokeWidth={3} strokeLinecap="round" />
+                        ))}
+                        <Rect x={zone.x} y={zone.y} width={zone.w} height={zone.h} rx={3} fill="rgba(255,255,255,0.04)" stroke={stroke} strokeWidth={2.5} />
+                        {[1, 2].map((part) => (
+                            <G key={part} stroke="rgba(255,255,255,0.22)" strokeWidth={1}>
+                                <Path d={`M${zone.x + (zone.w * part) / 3} ${zone.y}V${zone.y + zone.h}`} />
+                                <Path d={`M${zone.x} ${zone.y + (zone.h * part) / 3}H${zone.x + zone.w}`} />
+                            </G>
+                        ))}
+                        <Path d="M83 238h34v6l-17 6-17-6z" fill="rgba(255,255,255,0.5)" />
+                    </Svg>
+                    {/* Al decidir, la zona destella en el color de la decisión */}
+                    {phase === 'result' && (
+                        <Animated.View
+                            pointerEvents="none"
+                            style={{
+                                position: 'absolute',
+                                left: zone.x * sc - 2,
+                                top: zone.y * sc - 2,
+                                width: zone.w * sc + 4,
+                                height: zone.h * sc + 4,
+                                borderRadius: 4,
+                                borderWidth: 5,
+                                borderColor: stroke,
+                                opacity: v.absBox.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 1, 0] })
+                            }}
+                        />
+                    )}
+                    {/* Revisando: la línea barre la zona de arriba abajo y la bola late */}
+                    {phase === 'checking' && (
+                        <>
+                            <Animated.View
+                                pointerEvents="none"
+                                style={[
+                                    {
+                                        position: 'absolute',
+                                        left: (zone.x - 18) * sc,
+                                        top: zone.y * sc - 1.5,
+                                        width: (zone.w + 36) * sc,
+                                        height: 3,
+                                        borderRadius: 1.5,
+                                        backgroundColor: team.color,
+                                        transform: [{ translateY: v.scan.interpolate({ inputRange: [0, 1], outputRange: [0, zone.h * sc] }) }]
+                                    },
+                                    Platform.select({ ios: { shadowColor: team.color, shadowOpacity: 1, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } }, default: {} })
+                                ]}
+                            />
+                            <Animated.View
+                                pointerEvents="none"
+                                style={{
+                                    position: 'absolute',
+                                    left: ball.x * sc - dot / 2,
+                                    top: ball.y * sc - dot / 2,
+                                    width: dot,
+                                    height: dot,
+                                    borderRadius: dot / 2,
+                                    borderWidth: 2,
+                                    borderColor: '#fff',
+                                    opacity: v.ring.interpolate({ inputRange: [0, 1], outputRange: [reduce ? 0 : 0.9, 0] }),
+                                    transform: [{ scale: v.ring.interpolate({ inputRange: [0, 1], outputRange: [1, 3] }) }]
+                                }}
+                            />
+                        </>
+                    )}
+                    <Animated.View
+                        pointerEvents="none"
+                        style={{
+                            position: 'absolute',
+                            left: ball.x * sc - (dot + 3) / 2,
+                            top: ball.y * sc - (dot + 3) / 2,
+                            width: dot + 3,
+                            height: dot + 3,
+                            borderRadius: (dot + 3) / 2,
+                            backgroundColor: '#fff',
+                            borderWidth: 3 * sc,
+                            borderColor: phase === 'result' ? stroke : team.color,
+                            transform: [{ scale: v.absBall.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 1.5, 1] }) }]
+                        }}
+                    />
+                </Animated.View>
+                {phase === 'checking' ? (
+                    <>
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
+                            {letters(t('anim.absChecking'), 40, 0, '#fff', 4.8)}
+                            <View style={{ flexDirection: 'row', gap: 4, marginBottom: 9 }}>
+                                {(['dot0', 'dot1', 'dot2'] as const).map((name) => (
+                                    <Animated.View
+                                        key={name}
+                                        style={{
+                                            width: 6,
+                                            height: 6,
+                                            borderRadius: 3,
+                                            backgroundColor: '#fff',
+                                            opacity: v[name].interpolate({ inputRange: [0, 1], outputRange: [reduce ? 1 : 0.25, 1] }),
+                                            transform: [{ translateY: v[name].interpolate({ inputRange: [0, 1], outputRange: [0, -2] }) }]
+                                        }}
+                                    />
+                                ))}
+                            </View>
+                        </View>
+                        <Animated.Text style={subLine}>{t('anim.absCalled', { call: callName(original) })}</Animated.Text>
+                    </>
+                ) : (
+                    <>
+                        <Animated.View
+                            style={{
+                                paddingHorizontal: 12,
+                                paddingVertical: 4,
+                                borderRadius: 999,
+                                backgroundColor: overturned ? '#22c55e' : 'rgba(255,255,255,0.14)',
+                                opacity: v.absVerdict.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0, 1, 1] }),
+                                transform: [{ scale: v.absVerdict.interpolate({ inputRange: [0, 0.7, 1], outputRange: [2.2, 0.94, 1] }) }]
+                            }}
+                        >
+                            <Txt size={12} weight="black" color={overturned ? '#052e14' : '#fff'} style={{ letterSpacing: 1.9, textTransform: 'uppercase' }}>
+                                {overturned ? t('anim.absOverturned') : t('anim.absConfirmed')}
+                            </Txt>
+                        </Animated.View>
+                        {letters(callName(call).toUpperCase(), 88, 0, call === 'ball' ? '#34c778' : '#ff5a5f')}
+                        <Animated.Text style={subLine}>
+                            {overturned ? t('anim.absChange', { from: callName(original), to: callName(call) }) : t('anim.absStays', { call: callName(call) })}
+                            {remaining !== null ? ` · ${t(overturned ? 'anim.absWon' : 'anim.absLost', { count: remaining, team: team.abbrev })}` : ''}
+                        </Animated.Text>
+                    </>
+                )}
+            </Animated.View>
         );
     } else if (kind === 'champion') {
         const colorsList = [team.color, second, '#f2c14e', '#ffe08a', '#ffffff'];

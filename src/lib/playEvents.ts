@@ -3,7 +3,7 @@
 // El Lite (como la web) anima también la base por bolas, el robo, el cambio de lanzador, el cambio en el marcador y el
 // dejado en el terreno. El modo PRO (newPlayEvents con { pro: true }) suma error, WP/PB, carrera, el aviso de sin hit y
 // «Te lo perdiste» al volver del segundo plano, y no tiene ni el cambio en el marcador ni el dejado en el terreno.
-import type { AtBat, GameDetail, GameTeam, LeagueId, PitcherLine, SeriesStatus } from '../types';
+import type { AtBat, GameDetail, GameTeam, LeagueId, PitcherLine, Pitch, SeriesStatus } from '../types';
 import type { AnimationMode } from '../state/preferences';
 import { proActive } from './pro';
 import { basesOf, type Bases } from './runners';
@@ -20,6 +20,7 @@ export type PlayKind =
     | 'pinchHitter'
     | 'pinchRunner'
     | 'out'
+    | 'abs'
     | 'walk'
     | 'steal'
     | 'pitchingChange'
@@ -41,6 +42,20 @@ export interface PlayPerson {
 
 /** Cambio en el marcador: abre el marcador, se va arriba, le da la vuelta o empata */
 export type LeadChange = 'open' | 'ahead' | 'comeback' | 'tie';
+
+/** Reto del ABS: «revisando» (si alcanzó a verse) y el resultado */
+export interface AbsPlay {
+    phase: 'checking' | 'result';
+    overturned: boolean;
+    /** Decisión que queda (en «revisando», la del umpire) y la que había cantado el umpire */
+    call: 'ball' | 'strike';
+    original: 'ball' | 'strike';
+    by: 'batter' | 'pitcher' | 'catcher' | null;
+    player: string | null;
+    /** Retos que le quedan al equipo que retó (null si no se sabe) */
+    remaining: number | null;
+    pitch: Pitch;
+}
 
 /** Cómo fue el out: cada uno tiene su propia trayectoria en la animación */
 export type OutVariant = 'ground' | 'fly' | 'line' | 'pop' | 'force' | 'dp' | 'tp' | 'sac';
@@ -76,6 +91,8 @@ export interface PlayEvent {
      * «Remolca N».
      */
     runs?: { count: number; away: number; home: number };
+    /** Reto del ABS */
+    abs?: AbsPlay;
     /** Base por bolas, intencional o golpeado */
     walk?: 'bb' | 'ibb' | 'hbp';
     /** Robo (o atrapado robando): a qué base (4 = home) y quién (su nombre en la narración) */
@@ -208,6 +225,45 @@ export const leadChange = (before: { away: number; home: number }, after: { away
     return null;
 };
 
+/**
+ * Retos del ABS nuevos entre dos lecturas: «revisando» cuando aparece en revisión y el resultado cuando se resuelve
+ * (también si ya llegó resuelto: la revisión dura ~15 s y el juego se lee cada ~20). Van antes que la jugada del turno.
+ * Los mismos en el Lite y en el PRO (en el PRO los pinta la animación del Lite).
+ */
+const absEvents = (prev: GameDetail, next: GameDetail): PlayEvent[] => {
+    const before = new Map(prev.atBats.map((atBat) => [atBat.i, atBat.pitches]));
+    const events: PlayEvent[] = [];
+    for (const atBat of next.atBats) {
+        atBat.pitches.forEach((pitch, index) => {
+            const abs = pitch.abs;
+            if (!abs) return;
+            const seen = before.get(atBat.i)?.[index]?.abs;
+            const phase = abs.inProgress ? 'checking' : 'result';
+            if (phase === 'checking' ? seen?.inProgress : seen && !seen.inProgress) return;
+            // El equipo que retó (a veces cambia el id en la revisión: vale el último)
+            const team = abs.teamId === next.home.id ? next.home : abs.teamId === next.away.id ? next.away : atBat.top ? next.away : next.home;
+            const rival = team.id === next.home.id ? next.away : next.home;
+            const call = pitch.r === 'ball' ? 'ball' : 'strike';
+            const original = phase === 'result' && abs.overturned ? (call === 'ball' ? 'strike' : 'ball') : call;
+            const by = abs.by ? (abs.by.id === atBat.batter.id ? 'batter' : abs.by.id === atBat.pitcher.id ? 'pitcher' : 'catcher') : null;
+            const count = next.abs?.[team.id === next.home.id ? 'home' : 'away'];
+            events.push({
+                key: `abs-${atBat.i}-${index}-${phase}`,
+                kind: 'abs',
+                team,
+                rival,
+                away: next.away,
+                home: next.home,
+                atBat,
+                inning: null,
+                gamePk: next.gamePk,
+                abs: { phase, overturned: phase === 'result' && abs.overturned, call, original, by, player: abs.by?.name ?? null, remaining: count?.remaining ?? null, pitch }
+            });
+        });
+    }
+    return events;
+};
+
 export interface PlayEventOptions {
     /** Modo PRO: eventos nuevos y carreras en cada jugada */
     pro?: boolean;
@@ -299,7 +355,7 @@ const litePlayEvents = (prev: GameDetail | null | undefined, next: GameDetail): 
             }
         });
     });
-    const events = ordered.sort((a, b) => a.order - b.order).map((item) => item.event);
+    const events = [...absEvents(prev, next), ...ordered.sort((a, b) => a.order - b.order).map((item) => item.event)];
 
     // Cambio en el marcador (después de la jugada que lo hizo): abren el marcador, se van arriba, le dan la vuelta o empatan
     const shown = { away: prev.away.runs, home: prev.home.runs };
@@ -388,7 +444,7 @@ export const queuePlays = (queue: PlayEvent[], fresh: PlayEvent[], max = 4): Pla
 };
 
 /** Las que siempre salen aunque el juego no sea de tu equipo */
-const BIG: PlayKind[] = ['hr', 'k', 'inning', 'win', 'champion', 'noHitter', 'lead', 'walkoff'];
+const BIG: PlayKind[] = ['hr', 'k', 'inning', 'win', 'champion', 'abs', 'noHitter', 'lead', 'walkoff'];
 
 /**
  * Filtra las animaciones según lo elegido en «Más» (en «smart», tu equipo las ve todas; «cine» es «all» más largo).
@@ -495,7 +551,7 @@ const proPlayEvents = (prev: GameDetail | null | undefined, next: GameDetail): P
         });
     });
 
-    const events = ordered.sort((a, b) => a.order - b.order).map((item) => item.event);
+    const events = [...absEvents(prev, next), ...ordered.sort((a, b) => a.order - b.order).map((item) => item.event)];
 
     // Final o fin de media entrada (igual que en el Lite, pero el dejado en el terreno es la victoria de siempre) y, desde
     // la 5.ª, el aviso de sin hit

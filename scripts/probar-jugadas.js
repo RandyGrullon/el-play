@@ -27,7 +27,7 @@ fs.writeFileSync(path.join(OUT, 'pro.js'), 'exports.proActive = () => false;\n')
 
 const { camera, flightMs, flightOf, gamedayToFeet, groundAt, heightAt, parkFor, wallAt, wallCrossing } = require(path.join(OUT, 'flight.js'));
 const { basesOf, legsOf, runnerPaths, walkPaths } = require(path.join(OUT, 'runners.js'));
-const { leadChange, newPlayEvents } = require(path.join(OUT, 'playEvents.js'));
+const { forMode, leadChange, newPlayEvents } = require(path.join(OUT, 'playEvents.js'));
 const { isOnHold } = require(path.join(OUT, 'baseball.js'));
 const { gameInterval } = require(path.join(OUT, 'polling.js'));
 
@@ -321,6 +321,53 @@ it('dejado en el terreno: el local gana en la baja de la última entrada (o en e
     // El PRO sigue con la victoria de siempre
     partial(final(false, 9, 9, true)[0], { kind: 'win', atBat: null });
 });
+
+console.log('reto del ABS: revisando y resultado entre dos lecturas (los mismos casos de la web)');
+{
+    const lanz = (extra = {}) => ({ n: 1, x: 0, z: 2.5, top: 3.4, bot: 1.6, r: 'strike', code: 'C', call: 'Called Strike', type: null, typeDesc: null, mph: null, spin: null, zone: 5, b: 0, s: 1, ...extra });
+    const turno = (pitches, extra = {}) => ({ ...ab(44, null, { top: false, pitches, batter: { id: 1, name: 'Bateador Prueba', side: 'R' }, pitcher: { id: 2, name: 'Lanzador Prueba', hand: 'R' } }), ...extra });
+    const partida = (atBats, abs = null) => juego(atBats, { inning: { n: 6, ordinal: '6th', isTop: false, state: 'Bottom' }, away: club(668, 'TOR'), home: club(672, 'LIC'), abs });
+    const bola = lanz({ r: 'ball', code: 'B', call: 'Ball' });
+    const revisando = { ...lanz({ r: 'ball', code: 'B', call: 'Ball' }), abs: { inProgress: true, overturned: false, teamId: 672, by: null } };
+    const cambiado = { ...lanz(), abs: { inProgress: false, overturned: true, teamId: 672, by: { id: 1, name: 'Bateador Prueba' } } };
+    const retos = { away: { won: 1, lost: 0, remaining: 2 }, home: { won: 2, lost: 2, remaining: 1 }, challenging: null };
+
+    it('aparece «revisando» con la decisión del umpire y después el resultado (una vez cada uno)', () => {
+        const antes = partida([turno([lanz(), bola])]);
+        const durante = partida([turno([lanz(), revisando])], { ...retos, challenging: 672 });
+        const despues = partida([turno([lanz(), cambiado], { complete: true, event: 'strikeout' })], retos);
+        const [primero] = newPlayEvents(antes, durante);
+        partial(primero, { kind: 'abs', key: 'abs-44-1-checking', team: { abbrev: 'LIC' }, abs: { phase: 'checking', call: 'ball', original: 'ball' } });
+        const eventos = newPlayEvents(durante, despues);
+        // El reto va antes que la jugada del turno (el ponche que salió del reto)
+        assert.deepStrictEqual(
+            eventos.map((event) => event.kind),
+            ['abs', 'k']
+        );
+        partial(eventos[0], { key: 'abs-44-1-result', abs: { phase: 'result', overturned: true, call: 'strike', original: 'ball', by: 'batter', remaining: 1 } });
+        assert.deepStrictEqual(newPlayEvents(despues, despues), []);
+        assert.deepStrictEqual(newPlayEvents(durante, durante), []);
+        // En el PRO también (lo pinta la animación del Lite), una vez y antes del ponche
+        assert.deepStrictEqual(
+            newPlayEvents(durante, despues, { pro: true }).map((event) => event.kind),
+            ['abs', 'k']
+        );
+    });
+
+    it('si ya llegó resuelto (la revisión dura menos que una lectura) sale directo el resultado', () => {
+        const confirmado = { ...lanz({ r: 'ball', code: 'B', call: 'Ball' }), abs: { inProgress: false, overturned: false, teamId: 668, by: { id: 2, name: 'Lanzador Prueba' } } };
+        const [evento] = newPlayEvents(partida([turno([lanz()])]), partida([turno([lanz(), confirmado])], retos));
+        partial(evento, { kind: 'abs', team: { abbrev: 'TOR' }, abs: { phase: 'result', overturned: false, call: 'ball', original: 'ball', by: 'pitcher', remaining: 2 } });
+    });
+
+    it('en «inteligentes» sale aunque el juego no sea de tu equipo', () => {
+        const eventos = newPlayEvents(partida([turno([bola])]), partida([turno([revisando])]));
+        assert.deepStrictEqual(
+            forMode(eventos, 'smart', null, [668, 672]).map((event) => event.kind),
+            ['abs']
+        );
+    });
+}
 
 console.log('juegos suspendidos');
 
