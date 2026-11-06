@@ -3,11 +3,14 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Home, Menu, Radio, Sparkles, BarChart3 } from 'lucide-react';
 import { useLeague } from '../../store/LeagueContext';
-import { useSchedule } from '../../lib/queries';
-import { formatTime } from '../../lib/format';
+import { usePrefetchGame, useSchedule } from '../../lib/queries';
+import { formatShortDate, formatTime } from '../../lib/format';
 import { inningName } from '../../lib/baseball';
+import { useNow } from '../../hooks/useNow';
 import { BottomSheet } from '../ui/BottomSheet';
 import { TeamLogo } from '../ui/TeamLogo';
+import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../ui/States';
+import { Bases } from '../game/Bases';
 import { OfflineBanner } from './OfflineBanner';
 import { UpdateToast } from './UpdateToast';
 import { Toast } from './Toast';
@@ -76,34 +79,73 @@ const BottomNav: React.FC<{ onLive: () => void; liveCount: number }> = ({ onLive
     );
 };
 
+// Hoja del botón rojo de la barra: los juegos en vivo de la liga (quién batea y las bases); si no hay, los próximos tres
+// con su fecha. Al tocar o pasar por un juego se precarga, para que abra ya listo.
 const LiveSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
     const { t, i18n } = useTranslation();
     const { activeLeague } = useLeague();
     const schedule = useSchedule(activeLeague);
+    const prefetch = usePrefetchGame();
+    // Mientras está abierta, la hora avanza sola (el que ya empezó sale de «próximos»)
+    const now = useNow(30000, open);
     const games = schedule.data?.games ?? [];
     const live = games.filter((game) => game.state === 'live');
-    const next = games.filter((game) => game.state === 'preview' && new Date(game.date).getTime() > Date.now()).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
+    const next = games.filter((game) => game.state === 'preview' && new Date(game.date).getTime() > now).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
     const list = live.length ? live : next;
 
     return (
         <BottomSheet open={open} onClose={onClose} title={live.length ? t('live.title') : t('live.noneTitle')}>
-            {!live.length && <p className="mb-3 text-sm text-muted">{next.length ? t('live.next') : t('live.nothing')}</p>}
-            <ul className="flex flex-col gap-2 pb-2">
-                {list.map((game) => (
-                    <li key={game.gamePk}>
-                        <Link to={`/juego/${game.gamePk}`} onClick={onClose} className="flex items-center gap-3 rounded-2xl bg-surface p-3 shadow-card">
-                            <TeamLogo team={game.away} size={36} />
-                            <span className="flex-1 font-bold">
-                                {game.away.abbrev} {game.away.score ?? ''} <span className="text-muted">·</span> {game.home.abbrev} {game.home.score ?? ''}
-                            </span>
-                            <span className={`pill ${game.state === 'live' ? 'bg-live text-white' : 'bg-raised text-muted'}`}>
-                                {game.state === 'live' && game.live ? inningName({ n: game.live.inning, isTop: game.live.isTop, state: game.live.inningState }, i18n.language, true) : formatTime(game.date, i18n.language)}
-                            </span>
-                            <TeamLogo team={game.home} size={36} />
-                        </Link>
-                    </li>
-                ))}
-            </ul>
+            {waitingForNetwork(schedule) ? (
+                <div className="pb-2">
+                    <OfflineState />
+                </div>
+            ) : schedule.isPending ? (
+                <div className="flex flex-col gap-2 pb-2">
+                    {[0, 1, 2].map((index) => (
+                        <Skeleton key={index} className="h-16 rounded-2xl" />
+                    ))}
+                </div>
+            ) : schedule.isError && !schedule.data ? (
+                <div className="pb-2">
+                    <ErrorState error={schedule.error} onRetry={() => schedule.refetch()} compact />
+                </div>
+            ) : (
+                <>
+                    {!live.length && <p className="mb-3 text-sm text-muted">{next.length ? t('live.next') : t('live.nothing')}</p>}
+                    <ul className="flex flex-col gap-2 pb-2">
+                        {list.map((game) => {
+                            const playing = game.state === 'live' ? game.live : null;
+                            const between = playing?.inningState === 'Middle' || playing?.inningState === 'End';
+                            const warm = () => {
+                                prefetch(game.gamePk).catch(() => undefined);
+                            };
+                            return (
+                                <li key={game.gamePk}>
+                                    <Link to={`/juego/${game.gamePk}`} onClick={onClose} onPointerEnter={warm} onTouchStart={warm} onFocus={warm} className="flex items-center gap-3 rounded-2xl bg-surface p-3 shadow-card">
+                                        <TeamLogo team={game.away} size={36} />
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate font-bold">
+                                                {game.away.abbrev} {game.away.score ?? ''} <span className="text-muted">·</span> {game.home.abbrev} {game.home.score ?? ''}
+                                            </span>
+                                            {playing ? (
+                                                playing.batter && <span className="block truncate text-xs text-muted">{t('card.batting', { name: playing.batter.name })}</span>
+                                            ) : (
+                                                <span className="block truncate text-xs text-muted">{formatShortDate(game.date, i18n.language)}</span>
+                                            )}
+                                        </span>
+                                        {playing && !between && <Bases runners={playing.runners} size={24} color={(playing.isTop ? game.away : game.home).color} className="shrink-0" />}
+                                        <span className={`pill shrink-0 ${playing ? 'bg-live text-white' : 'bg-raised text-muted'}`}>
+                                            {playing && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />}
+                                            {playing ? inningName({ n: playing.inning, isTop: playing.isTop, state: playing.inningState }, i18n.language, true) : formatTime(game.date, i18n.language)}
+                                        </span>
+                                        <TeamLogo team={game.home} size={36} />
+                                    </Link>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </>
+            )}
         </BottomSheet>
     );
 };
