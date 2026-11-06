@@ -10,7 +10,7 @@ import { usePreferences } from '../../../../state/preferences';
 import { useColors } from '../../../../theme/theme';
 import { alpha, radius } from '../../../../theme/tokens';
 import { Txt } from '../../../ui';
-import { useAlertToggle } from '../../../feed/alerts';
+import { alertsAvailable, useAlertToggle } from '../../../feed/alerts';
 import { capitalize } from '../../../feed/DayChips';
 import { GradientCard, LiveDot, MOTION_EASE, MOTION_MS, Odometer, ProButton, countdownParts, pad2, useMotion, useNow, useProColors } from '../../kit';
 import { shortVenue } from './logica';
@@ -152,7 +152,7 @@ export const Countdown: React.FC<{ game: GameDetail; phase: string | null }> = (
                         </View>
                     ) : null}
                 </View>
-                {!notPlayed && game.date ? (
+                {!notPlayed && game.date && alertsAvailable() ? (
                     <ProButton
                         variant={subscribed ? 'soft' : 'solid'}
                         label={subscribed ? t('pro.previa.countdown.notified') : t('preview.notifyShort')}

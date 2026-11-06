@@ -39,7 +39,7 @@ import { HeadToHeadCard, HotPlayersCard, LineupsCard, TeamFormCard, WinProbabili
 import { ProGame } from '../../components/pro/juego/ProGame';
 import { HeroPulse, ProScoreBar } from '../../components/pro/juego/vivo/ScoreBar';
 import { ProGameScroll, ProScrollProvider, useProScrollState } from '../../components/pro/juego/vivo/scroll';
-import { useAlertToggle } from '../../components/feed/alerts';
+import { alertsAvailable, useAlertToggle } from '../../components/feed/alerts';
 import { capitalize, waitingForNetwork } from '../../components/feed/DayChips';
 import { useNow } from '../../components/feed/useNow';
 import { useShare } from '../../components/share/ShareSheet';
@@ -357,7 +357,7 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
             {/* Pospuesto o cancelado: ni aviso ni Compartir (saldría «0 - 0») */}
             {!notPlayed && (
                 <Row gap={8}>
-                    {game.date && (
+                    {game.date && alertsAvailable() && (
                         <ActionButton
                             icon={(color) => (subscribed ? <BellRing size={16} color={color} /> : <Bell size={16} color={color} />)}
                             label={subscribed ? t('preview.notifyOff') : t('preview.notifyOn')}

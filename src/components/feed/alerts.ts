@@ -11,6 +11,9 @@ const TEXTS = {
     en: { blocked: 'Notifications are off. Turn them on for El Play in your phone settings.', settings: 'Settings', web: 'Alerts arrive in the phone app.', past: 'That game already started.' }
 };
 
+/** La campana «Avisarme» sale solo donde los avisos funcionan: en el teléfono (iOS y Android), no en la web de Expo */
+export const alertsAvailable = () => Platform.OS !== 'web';
+
 /** Lo que hace falta de un juego (del calendario o del detalle) para su aviso */
 export interface AlertGame {
     gamePk: number;

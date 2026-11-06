@@ -14,7 +14,7 @@ import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Card, Row, Skeleton, TeamLogo, Txt } from '../ui';
 import { Bases, OutsDots } from '../game/Bases';
 import { PulseDot } from './PulseDot';
-import { useAlertToggle } from './alerts';
+import { alertsAvailable, useAlertToggle } from './alerts';
 import { useNow } from './useNow';
 
 const LivePill: React.FC<{ label: string }> = ({ label }) => {
@@ -211,7 +211,7 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame; onShare?: (game: Sched
                                 <Share2 size={16} color={colors.ink} />
                             </Pressable>
                         )}
-                        {game.state === 'preview' && !notPlayed && (
+                        {game.state === 'preview' && !notPlayed && alertsAvailable() && (
                             <Pressable
                                 onPress={() => toggleAlert(game)}
                                 accessibilityRole="button"
