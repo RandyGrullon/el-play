@@ -1,18 +1,19 @@
 // Previa del juego (lo mismo de la web): la probabilidad de victoria antes de empezar, cómo llegan los dos equipos,
 // entre ellos en la temporada, los que vienen calientes (7 días) y las alineaciones cuando se anuncian.
-import React, { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, View, useWindowDimensions } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Flame, Sparkles, Swords, TrendingUp, Users } from 'lucide-react-native';
+import { Flame, Home, Sparkles, Swords, TrendingUp, Users } from 'lucide-react-native';
 import type { GameDetail, StandingRow, Standings } from '../../types';
 import { usePreview, useStandings } from '../../lib/queries';
 import { formatShortDate, seasonLabel } from '../../lib/format';
 import { percents, winProbability, type TeamForm } from '../../lib/winProbability';
 import { recordOf, useTeamStats, type TeamRow } from '../../lib/teamStats';
 import { useColors } from '../../theme/theme';
-import { alpha, inkOn, radius } from '../../theme/tokens';
-import { Card, PlayerPhoto, Row, Segmented, TeamLogo, Txt } from '../ui';
+import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
+import { Card, PlayerPhoto, Row, Segmented, Skeleton, TeamLogo, Txt, useReduceMotion } from '../ui';
 
 const Heading: React.FC<{ icon: React.ReactNode; children: React.ReactNode }> = ({ icon, children }) => (
     <Row gap={6} style={{ marginBottom: 10 }}>
@@ -33,23 +34,79 @@ const formOf = (team: TeamRow | undefined, fallback: GameDetail['home']): TeamFo
     return { w: fallback.record?.wins ?? 0, l: fallback.record?.losses ?? 0, scored: null, allowed: null };
 };
 
+/** La barra partida en los colores de los dos: sale pareja (50-50) y se acomoda; con «Reducir movimiento», quieta */
+const WinBar: React.FC<{ away: number; awayColor: string; homeColor: string }> = ({ away, awayColor, homeColor }) => {
+    const colors = useColors();
+    const reduce = useReduceMotion();
+    const share = useSharedValue(reduce ? away : 50);
+    useEffect(() => {
+        share.set(reduce ? away : withDelay(120, withTiming(away, { duration: 700, easing: Easing.out(Easing.ease) })));
+    }, [away, reduce, share]);
+    const width = useAnimatedStyle(() => ({ width: `${share.get()}%` }));
+    return (
+        <View style={{ marginTop: 16, flexDirection: 'row', height: 14, borderRadius: 7, overflow: 'hidden', backgroundColor: colors.raised }}>
+            <Animated.View style={[{ height: '100%', backgroundColor: awayColor }, width]} />
+            <View style={{ width: 3, backgroundColor: colors.surface }} />
+            <View style={{ flex: 1, backgroundColor: homeColor }} />
+        </View>
+    );
+};
+
+// Probabilidad de victoria antes del juego (lib/winProbability.ts): los dos equipos frente a frente con su porcentaje,
+// la barra partida en sus colores (sale de 50-50 y se acomoda), el favorito y por qué (récord, carreras, EFE y AVG).
 export const WinProbabilityCard: React.FC<{ game: GameDetail }> = ({ game }) => {
     const { t } = useTranslation();
     const colors = useColors();
+    const { width } = useWindowDimensions();
+    const roomy = width >= 360;
     const stats = useTeamStats(game.league);
-    if (!stats.data) return null;
-    const rows = stats.data.teams;
-    const probability = winProbability(formOf(rows.find((row) => row.id === game.home.id), game.home), formOf(rows.find((row) => row.id === game.away.id), game.away), { homeEra: game.probables.home?.era, awayEra: game.probables.away?.era }, stats.data.isPreviousSeason ? 40 : 20);
+    const rows = stats.data?.teams ?? [];
+    const homeRow = rows.find((row) => row.id === game.home.id);
+    const awayRow = rows.find((row) => row.id === game.away.id);
+    const previous = !!stats.data?.isPreviousSeason;
+    // Con los números de la temporada pasada (antes del primer juego) pesa todavía menos
+    const probability = winProbability(formOf(homeRow, game.home), formOf(awayRow, game.away), { homeEra: game.probables.home?.era, awayEra: game.probables.away?.era }, previous ? 40 : 20);
     const pct = percents(probability);
+    // Con 52-48 o menos no hay favorito: «Parejo»
     const favorite = Math.abs(pct.home - pct.away) <= 4 ? null : pct.home > pct.away ? game.home : game.away;
+
+    if (stats.isPending && !stats.data) return <Skeleton height={244} />;
+
+    const sides = [
+        { side: 'away' as const, team: game.away, value: pct.away },
+        { side: 'home' as const, team: game.home, value: pct.home }
+    ];
+    const recordText = (row: TeamRow | undefined, team: GameDetail['home']) => {
+        if (row?.pitching) return `${row.pitching.w}-${row.pitching.l}`;
+        return team.record ? `${team.record.wins}-${team.record.losses}` : '—';
+    };
+    const diffOf = (row: TeamRow | undefined) => (row ? recordOf(row).diff : null);
+    const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
+    const num = (text: string | undefined) => (text && Number.isFinite(parseFloat(text)) ? parseFloat(text) : null);
+    // Comparación rápida: el mejor de cada fila en negrita
+    const lines: { key: string; label: string; away: string; home: string; better: 'away' | 'home' | null }[] = [];
+    const better = (a: number | null, h: number | null, lowerIsBetter = false) => (a === null || h === null || a === h ? null : (lowerIsBetter ? a < h : a > h) ? 'away' : 'home');
+    const winPctOf = (row: TeamRow | undefined, team: GameDetail['home']) => {
+        const w = row?.pitching ? row.pitching.w : team.record?.wins ?? 0;
+        const l = row?.pitching ? row.pitching.l : team.record?.losses ?? 0;
+        return w + l ? w / (w + l) : null;
+    };
+    lines.push({ key: 'record', label: t('winProb.record'), away: recordText(awayRow, game.away), home: recordText(homeRow, game.home), better: better(winPctOf(awayRow, game.away), winPctOf(homeRow, game.home)) });
+    const awayDiff = diffOf(awayRow);
+    const homeDiff = diffOf(homeRow);
+    if (awayDiff !== null && homeDiff !== null) lines.push({ key: 'diff', label: t('winProb.diff'), away: signed(awayDiff), home: signed(homeDiff), better: better(awayDiff, homeDiff) });
+    if (awayRow?.pitching && homeRow?.pitching) lines.push({ key: 'era', label: t('winProb.era'), away: awayRow.pitching.era, home: homeRow.pitching.era, better: better(num(awayRow.pitching.era), num(homeRow.pitching.era), true) });
+    if (awayRow?.hitting && homeRow?.hitting) lines.push({ key: 'avg', label: t('winProb.avg'), away: awayRow.hitting.avg, home: homeRow.hitting.avg, better: better(num(awayRow.hitting.avg), num(homeRow.hitting.avg)) });
+    const ring = roomy ? 56 : 48;
+
     return (
-        <Card style={{ gap: 12 }}>
-            <Row justify="space-between">
-                <Txt eyebrow accessibilityRole="header">
+        <Card>
+            <Row justify="space-between" gap={8}>
+                <Txt eyebrow accessibilityRole="header" style={{ flexShrink: 1 }}>
                     {t('winProb.title')}
                 </Txt>
                 {favorite ? (
-                    <Row gap={4} style={{ borderRadius: radius.pill, backgroundColor: favorite.color, paddingHorizontal: 10, paddingVertical: 4 }}>
+                    <Row gap={4} style={{ flexShrink: 0, borderRadius: radius.pill, backgroundColor: favorite.color, paddingHorizontal: 10, paddingVertical: 4 }}>
                         <Sparkles size={12} color={inkOn(favorite.color)} />
                         <Txt size={11} weight="extrabold" color={inkOn(favorite.color)}>
                             {t('winProb.favorite', { team: favorite.abbrev })}
@@ -63,21 +120,73 @@ export const WinProbabilityCard: React.FC<{ game: GameDetail }> = ({ game }) => 
                     </View>
                 )}
             </Row>
-            <Row justify="space-between">
-                {(['away', 'home'] as const).map((side) => (
-                    <Row key={side} gap={8} style={{ flexDirection: side === 'home' ? 'row-reverse' : 'row' }}>
-                        <TeamLogo team={game[side]} size={32} />
-                        <Txt size={30} weight="extrabold" tabular>
-                            {pct[side]}%
-                        </Txt>
-                    </Row>
+
+            <View
+                style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                accessible
+                accessibilityRole="image"
+                accessibilityLabel={t('winProb.aria', { away: game.away.name, a: pct.away, home: game.home.name, h: pct.home })}
+            >
+                {sides.map(({ side, team, value }, index) => (
+                    <React.Fragment key={side}>
+                        {/* El «vs» del medio se ve desde 360 de ancho */}
+                        {index === 1 && (
+                            <Txt size={12} weight="extrabold" tone="faint" style={{ width: roomy ? undefined : 4, textTransform: 'uppercase' }}>
+                                {roomy ? 'vs' : ''}
+                            </Txt>
+                        )}
+                        <View style={{ flex: 1, minWidth: 0, flexDirection: side === 'home' ? 'row-reverse' : 'row', alignItems: 'center', gap: 10 }}>
+                            <View style={{ width: ring, height: ring, borderRadius: ring / 2, borderWidth: 3, borderColor: team.color, backgroundColor: alpha(team.color, 0.1), alignItems: 'center', justifyContent: 'center' }}>
+                                <TeamLogo team={team} size={36} />
+                                {side === 'home' && (
+                                    <View
+                                        style={[{ position: 'absolute', bottom: -4, right: -4, width: 20, height: 20, borderRadius: 10, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }, shadow('card')]}
+                                        accessibilityLabel={t('winProb.home')}
+                                    >
+                                        <Home size={12} color={colors.muted} />
+                                    </View>
+                                )}
+                            </View>
+                            <View style={{ minWidth: 0, flexShrink: 1, alignItems: side === 'home' ? 'flex-end' : 'flex-start' }}>
+                                <Txt size={roomy ? 34 : 28} weight="extrabold" tabular style={{ lineHeight: roomy ? 36 : 30 }}>
+                                    {value}
+                                    <Txt size={18} weight="extrabold">
+                                        %
+                                    </Txt>
+                                </Txt>
+                                <Txt size={12} weight="bold" tone="muted" numberOfLines={1}>
+                                    {team.abbrev}
+                                </Txt>
+                            </View>
+                        </View>
+                    </React.Fragment>
                 ))}
-            </Row>
-            <View style={{ flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden' }} accessibilityLabel={`${game.away.abbrev} ${pct.away}% · ${game.home.abbrev} ${pct.home}%`}>
-                <View style={{ flex: pct.away, backgroundColor: game.away.color }} />
-                <View style={{ width: 2, backgroundColor: colors.surface }} />
-                <View style={{ flex: pct.home, backgroundColor: game.home.color }} />
             </View>
+
+            <WinBar away={pct.away} awayColor={game.away.color} homeColor={game.home.color} />
+
+            {lines.length > 0 && (
+                <View style={{ marginTop: 16, borderRadius: radius.tile, backgroundColor: alpha(colors.raised, 0.6) }}>
+                    {lines.map((line, index) => (
+                        <View key={line.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: index ? 1 : 0, borderTopColor: colors.line }}>
+                            <Txt size={14} tabular weight={line.better === 'away' ? 'extrabold' : 'regular'} tone={line.better === 'away' ? 'ink' : 'muted'} style={{ flex: 1 }}>
+                                {line.away}
+                            </Txt>
+                            <Txt size={11} weight="semibold" tone="muted" center style={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                {line.label}
+                            </Txt>
+                            <Txt size={14} tabular weight={line.better === 'home' ? 'extrabold' : 'regular'} tone={line.better === 'home' ? 'ink' : 'muted'} style={{ flex: 1, textAlign: 'right' }}>
+                                {line.home}
+                            </Txt>
+                        </View>
+                    ))}
+                </View>
+            )}
+
+            <Txt size={11} tone="faint" style={{ marginTop: 12, lineHeight: 15 }}>
+                {t(probability.starters ? 'winProb.noteStarters' : 'winProb.note')}
+                {previous ? ` ${t('winProb.previous')}` : probability.early ? ` ${t('winProb.early')}` : ''}
+            </Txt>
         </Card>
     );
 };
