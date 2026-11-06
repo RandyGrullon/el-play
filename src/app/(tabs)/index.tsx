@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, CalendarX2 } from 'lucide-react-native';
+import { ArrowRight, CalendarX2, Gamepad2 } from 'lucide-react-native';
 import type { LeagueId, ScheduleGame } from '../../types';
 import { useSchedule } from '../../lib/queries';
 import { dayKey, dayRange, formatLongDate, todayKey } from '../../lib/format';
@@ -11,7 +11,7 @@ import { usePreferences } from '../../state/preferences';
 import { useColors } from '../../theme/theme';
 import { radius, shadow } from '../../theme/tokens';
 import { Screen } from '../../components/layout';
-import { Card, ErrorState, OfflineState, ProBadge, Row, Txt, useErrorText } from '../../components/ui';
+import { Card, ErrorState, OfflineState, ProBadge, Row, Skeleton, Txt, useErrorText } from '../../components/ui';
 import { GameFeedCard, GameFeedCardSkeleton } from '../../components/feed/GameFeedCard';
 import { TeamStories } from '../../components/feed/TeamStories';
 import { DayChips, capitalize, waitingForNetwork } from '../../components/feed/DayChips';
@@ -20,6 +20,9 @@ import { LogoMark } from '../../components/feed/LogoMark';
 import { useShare } from '../../components/share/ShareSheet';
 import { resultFromSchedule } from '../../components/share/subjects';
 import { ProPortada } from '../../components/pro/portada/ProPortada';
+
+// Solo se carga si el usuario quiere jugar mientras no hay juegos
+const MiniGame = lazy(() => import('../../components/game/MiniGame'));
 
 const ORDER = { live: 0, preview: 1, final: 2 } as const;
 
@@ -43,6 +46,7 @@ export default function GamesScreen() {
     const setSelected = (day: string) => setPicked({ ...current, day });
     const setTeam = (next: number | null) => setPicked({ ...current, team: next });
     const [leagueOpen, setLeagueOpen] = useState(false);
+    const [playing, setPlaying] = useState(false);
 
     const byDay = useMemo(() => {
         const map: Record<string, ScheduleGame[]> = {};
@@ -100,24 +104,43 @@ export default function GamesScreen() {
     else if (games.length > 0) content = games.map((game) => <GameFeedCard key={game.gamePk} game={game} onShare={shareGame} />);
     else
         content = (
-            <Card style={{ alignItems: 'center', gap: 6, paddingVertical: 32 }}>
-                <CalendarX2 size={32} color={colors.faint} />
-                <Txt weight="extrabold" center>
-                    {team !== null ? t('games.noneForTeam') : t('games.none')}
-                </Txt>
-                {nextDay ? (
-                    <Pressable onPress={() => setSelected(nextDay)} accessibilityRole="button" style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Txt weight="semibold" tone="accentInk" center style={{ flexShrink: 1 }}>
-                            {t('games.nextDay', { date: formatLongDate(nextDay, i18n.language) })}
-                        </Txt>
-                        <ArrowRight size={16} color={colors.accentInk} />
-                    </Pressable>
-                ) : (
-                    <Txt size={14} tone="muted" center>
-                        {t('games.noneInRange')}
+            <>
+                <Card style={{ alignItems: 'center', gap: 6, paddingVertical: 32 }}>
+                    <CalendarX2 size={32} color={colors.faint} />
+                    <Txt weight="extrabold" center>
+                        {team !== null ? t('games.noneForTeam') : t('games.none')}
                     </Txt>
+                    {nextDay ? (
+                        <Pressable onPress={() => setSelected(nextDay)} accessibilityRole="button" style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Txt weight="semibold" tone="accentInk" center style={{ flexShrink: 1 }}>
+                                {t('games.nextDay', { date: formatLongDate(nextDay, i18n.language) })}
+                            </Txt>
+                            <ArrowRight size={16} color={colors.accentInk} />
+                        </Pressable>
+                    ) : (
+                        <Txt size={14} tone="muted" center>
+                            {t('games.noneInRange')}
+                        </Txt>
+                    )}
+                    {!playing && (
+                        <Pressable
+                            onPress={() => setPlaying(true)}
+                            accessibilityRole="button"
+                            style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, backgroundColor: colors.raised, paddingHorizontal: 16, paddingVertical: 8 }}
+                        >
+                            <Gamepad2 size={16} color={colors.ink} />
+                            <Txt size={12} weight="bold">
+                                {t('games.playMini')}
+                            </Txt>
+                        </Pressable>
+                    )}
+                </Card>
+                {playing && (
+                    <Suspense fallback={<Skeleton height={280} />}>
+                        <MiniGame leagueColor={leagueConfig.color} leagueName={leagueConfig.shortName} />
+                    </Suspense>
                 )}
-            </Card>
+            </>
         );
 
     return (
