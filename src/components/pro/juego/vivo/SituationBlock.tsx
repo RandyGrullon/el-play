@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Radar, ShieldCheck } from 'lucide-react-native';
 import type { GameDetail } from '../../../../types';
@@ -14,6 +14,7 @@ import { ZoneField, pitchColor } from '../zona/ZoneField';
 import { SpringUp, absLine } from '../zona/PitchCard';
 import { countBefore, hbView, pitchItems, typeMix } from './logic';
 import { CountDots, RunnerDiamond, absOf, callText, fmtInches, fmtMph, heightText, isBetween, ordinal, placeText } from './parts';
+import { LinkedNames, playerTextLink } from '../../../stats/common';
 
 // Situación PRO: diamante grande con los corredores, el conteo y los outs; la zona con el bateador uniformado y
 // los pitcheos del turno del color de su tipo; la lista del turno y la ficha del último pitcheo (o del elegido),
@@ -107,7 +108,7 @@ export const SituationBlock: React.FC<SituationBlockProps> = ({ game, pro, onOpe
                         />
                         {!items.length && (
                             <Txt size={12} weight="semibold" tone="muted" center style={{ paddingBottom: 8 }}>
-                                {t('pro.vivo.waiting', { name: lastName(atBat.batter.name) })}
+                                <LinkedNames text={t('pro.vivo.waiting', { name: lastName(atBat.batter.name) })} people={[{ ...atBat.batter, name: lastName(atBat.batter.name), teamId: batting.id }]} />
                             </Txt>
                         )}
                     </View>
@@ -239,7 +240,7 @@ export const SituationBlock: React.FC<SituationBlockProps> = ({ game, pro, onOpe
                                                         <Txt size={12} weight="extrabold" color={pitch.rev?.over ? proColors.up : proColors.down}>
                                                             {pitch.rev?.over ? '✓ ' : '✗ '}
                                                         </Txt>
-                                                        {who ? shortName(who) : t('pro.vivo.abs.someone')}, {t(pitch.rev?.over ? 'pro.vivo.abs.overturned' : 'pro.vivo.abs.confirmed')}
+                                                        {who ? <Text {...playerTextLink(pitch.rev?.player ? { id: pitch.rev.player, name: who } : null)}>{shortName(who)}</Text> : t('pro.vivo.abs.someone')}, {t(pitch.rev?.over ? 'pro.vivo.abs.overturned' : 'pro.vivo.abs.confirmed')}
                                                     </Txt>
                                                 );
                                             })}

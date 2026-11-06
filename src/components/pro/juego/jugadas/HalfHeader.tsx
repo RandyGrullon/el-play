@@ -4,12 +4,14 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { useTranslation } from 'react-i18next';
 import type { GameDetail } from '../../../../types';
 import type { HalfInning, NameBook } from './model';
+import { nameForms } from '../../../../lib/links';
 import { shadow } from '../../../../theme/tokens';
 import { Txt } from '../../../ui';
 import { MOTION_EASE, MOTION_MS, useMotion } from '../../kit';
 import { HalfSwing } from './PlayRow';
 import { Turn, fmtSwing, usePlayColors } from './parts';
 import { halfAria, halfSummary, halfTitle, halfVs } from './texts';
+import { LinkedNames, LinkedTeams } from '../../../stats/common';
 
 type Game = Pick<GameDetail, 'away' | 'home' | 'state'>;
 
@@ -37,6 +39,12 @@ export const HalfHeader: React.FC<HalfHeaderProps> = ({ half, game, names, open,
     }, [stuck, motion.animate, lift]);
     const shade = useAnimatedStyle(() => ({ opacity: lift.get() }));
     const sub = open || half.current ? halfVs(t, half, names) : halfSummary(t, half, names, i18n.language);
+    // Las siglas del título van a la página del equipo y los lanzadores del resumen, a su ficha
+    const pitchers = [...half.pitchers, ...half.plays.flatMap((item) => item.events.filter((event) => event.kind === 'pitching_change').map((event) => event.player))];
+    const people = nameForms(
+        pitchers.flatMap((id) => (id ? [{ id, name: names.full(id) || names.label(id) }] : [])),
+        (person) => [names.label(person.id)]
+    );
     const swing = half.swing ? `${half.swing.side ? `${game[half.swing.side].abbrev} ` : ''}${fmtSwing(half.swing.value, i18n.language)}` : null;
 
     return (
@@ -55,7 +63,7 @@ export const HalfHeader: React.FC<HalfHeaderProps> = ({ half, game, names, open,
                         <Txt size={13.5} color={paint.team(team.color)}>
                             {half.top ? '▲' : '▼'}{' '}
                         </Txt>
-                        {halfTitle(t, half, game, i18n.language)}
+                        <LinkedTeams text={halfTitle(t, half, game, i18n.language)} teams={[team]} />
                         {half.current ? (
                             <Txt size={11} weight="bold" color={paint.pro.live}>
                                 {'  '}
@@ -64,7 +72,7 @@ export const HalfHeader: React.FC<HalfHeaderProps> = ({ half, game, names, open,
                         ) : null}
                     </Txt>
                     <Txt size={12} tone="muted" style={{ lineHeight: 16 }}>
-                        {sub}
+                        <LinkedNames text={sub} people={people} />
                     </Txt>
                 </View>
                 <HalfSwing swing={half.swing} game={game} />

@@ -723,6 +723,14 @@ it('los del juego para enlazar: los cuatro grupos del box de cada lado con su eq
     assert.deepStrictEqual(gamePeople({ away: { id: 9001 }, home: { id: 9002 }, box: null }), []);
 });
 
+it('las otras formas del nombre: cada una enlaza a la misma persona, sin repetir ni vacías', () => {
+    const { nameForms, nameSegments } = links;
+    const formas = nameForms([{ id: 12345678, name: 'Pelotero Uno', teamId: 9001 }], () => ['P. Uno', 'Pelotero Uno', '', null]);
+    assert.deepStrictEqual(formas.map((person) => [person.id, person.name, person.teamId]), [[12345678, 'Pelotero Uno', 9001], [12345678, 'P. Uno', 9001]]);
+    const partes = nameSegments('P. Uno roba la segunda; Pelotero Uno anota', formas);
+    assert.deepStrictEqual(partes.filter((part) => part.person).map((part) => [part.text, part.person.id]), [['P. Uno', 12345678], ['Pelotero Uno', 12345678]]);
+});
+
 fs.rmSync(OUT, { recursive: true, force: true });
 if (failed) {
     console.log(`\n${failed} caso(s) fallaron`);

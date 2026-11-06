@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, View, type GestureResponderEvent } from 'react-native';
+import { Pressable, Text, View, type GestureResponderEvent } from 'react-native';
 import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,7 @@ import { TeamLogo, Txt } from '../../../ui';
 import { ChipButton, ChipRow, DrawPath, FadeG, GrowBar, ProNote, ProSection, heatColor, lastName, linearScale, middle, useAxisText, useChartBox, useInView, useProColors } from '../../kit';
 import { fenceDistances, teamShortName } from './logic';
 import { fmtMph, halfInning } from './parts';
+import { PlayerLink, playerTextLink, teamTextLink } from '../../../stats/common';
 
 // Pestaña «Contacto»: velocidad de salida contra ángulo (con la franja barrel de Statcast como referencia), el mapa
 // de batazos con el jardín a la escala del parque (si MLB da sus medidas) y los puntos de frío a caliente según la
@@ -297,7 +298,7 @@ export const ContactTab: React.FC<ContactTabProps> = ({ game, pro }) => {
             {current && (
                 <View accessibilityLiveRegion="polite" style={{ borderRadius: radius.tile, backgroundColor: colors.raised, padding: 12 }}>
                     <Txt size={14} weight="extrabold">
-                        {current.atBat.batter.name} · <Txt size={14} weight="extrabold" color={colors.accentInk}>{eventName(current.atBat, lang)}</Txt>
+                        <Text {...playerTextLink({ ...current.atBat.batter, teamId: game[current.side].id })}>{current.atBat.batter.name}</Text> · <Txt size={14} weight="extrabold" color={colors.accentInk}>{eventName(current.atBat, lang)}</Txt>
                     </Txt>
                     <Txt size={14} tone="muted">
                         {[halfInning(current.atBat.inning, current.atBat.top, lang), detail(current)].filter(Boolean).join(' · ')}
@@ -375,8 +376,8 @@ export const ContactTab: React.FC<ContactTabProps> = ({ game, pro }) => {
                                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: game[ball.side].color }} />
                                 <View style={{ flex: 1, minWidth: 0 }}>
                                     <Txt size={14} weight="extrabold" numberOfLines={1}>
-                                        {lastName(ball.atBat.batter.name)}{' '}
-                                        <Txt size={11} weight="extrabold" tone="muted">
+                                        <Text {...playerTextLink({ ...ball.atBat.batter, teamId: game[ball.side].id })}>{lastName(ball.atBat.batter.name)}</Text>{' '}
+                                        <Txt size={11} weight="extrabold" tone="muted" {...teamTextLink(game[ball.side].id)}>
                                             {game[ball.side].abbrev}
                                         </Txt>
                                     </Txt>
@@ -404,7 +405,12 @@ export const ContactTab: React.FC<ContactTabProps> = ({ game, pro }) => {
                         const share = Math.max(0.02, (row.avg - evMin) / span);
                         const mark = Math.min(1, (row.max - evMin) / span);
                         return (
-                            <View key={row.id} accessible accessibilityLabel={t('pro.vivo.contact.byBatterAria', { name: row.name, avg: fmtMph(row.avg, lang), max: fmtMph(row.max, lang), count: row.evs.length })} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <PlayerLink
+                                key={row.id}
+                                player={{ id: row.id, name: row.name, teamId: game[row.side].id }}
+                                label={t('pro.vivo.contact.byBatterAria', { name: row.name, avg: fmtMph(row.avg, lang), max: fmtMph(row.max, lang), count: row.evs.length })}
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                            >
                                 <Txt size={13} weight="extrabold" numberOfLines={1} style={{ width: 96 }}>
                                     {lastName(row.name)}{' '}
                                     <Txt size={11} weight="semibold" tone="muted">
@@ -418,7 +424,7 @@ export const ContactTab: React.FC<ContactTabProps> = ({ game, pro }) => {
                                 <Txt condensed size={17} tabular style={{ width: 40, textAlign: 'right' }}>
                                     {fmtMph(row.avg, lang)}
                                 </Txt>
-                            </View>
+                            </PlayerLink>
                         );
                     })}
                     <Txt size={12} tone="muted">

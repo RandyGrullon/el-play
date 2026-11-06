@@ -5,6 +5,7 @@ import { alpha, radius } from '../../../theme/tokens';
 import { TeamLogo, Txt, type LogoTeam } from '../../ui';
 import { teamInk } from './color';
 import { toneColors, useProColors, type ProTone } from './theme';
+import { TeamLink } from '../../stats/common';
 
 export type ChipTone = ProTone;
 
@@ -120,7 +121,7 @@ export const ChipRow: React.FC<ChipRowProps> = ({ children, label, bleed = true,
 );
 
 interface TeamChipProps {
-    team: LogoTeam & { abbrev: string; color: string };
+    team: LogoTeam & { abbrev: string; color: string; name?: string };
     /** Texto (la sigla por defecto) */
     children?: React.ReactNode;
     /** Logo a la izquierda (lado del visitante) o a la derecha */
@@ -129,7 +130,8 @@ interface TeamChipProps {
     style?: StyleProp<ViewStyle>;
 }
 
-// Píldora con el color del equipo, su sigla y el logo en un círculo blanco (cara a cara, pronósticos).
+// Píldora con el color del equipo, su sigla y el logo en un círculo blanco (cara a cara, pronósticos). Lleva a la página
+// del equipo.
 export const TeamChip: React.FC<TeamChipProps> = ({ team, children, logo = 'end', size = 'md', style }) => {
     const logoSize = size === 'md' ? 20 : 16;
     const mark = (
@@ -138,7 +140,9 @@ export const TeamChip: React.FC<TeamChipProps> = ({ team, children, logo = 'end'
         </View>
     );
     return (
-        <View
+        <TeamLink
+            id={team.id}
+            name={team.name ?? team.abbrev}
             style={[
                 { height: size === 'md' ? 28 : 24, flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, backgroundColor: team.color },
                 logo === 'end' ? { paddingLeft: 10, paddingRight: 4 } : { paddingLeft: 4, paddingRight: 10 },
@@ -154,6 +158,6 @@ export const TeamChip: React.FC<TeamChipProps> = ({ team, children, logo = 'end'
                 children
             )}
             {logo === 'end' && mark}
-        </View>
+        </TeamLink>
     );
 };

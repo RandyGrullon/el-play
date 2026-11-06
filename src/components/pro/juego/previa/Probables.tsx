@@ -9,6 +9,7 @@ import { useColors } from '../../../../theme/theme';
 import { radius } from '../../../../theme/tokens';
 import { PlayerPhoto, TeamLogo, Txt } from '../../../ui';
 import { ProNote, ProSection, withAlpha } from '../../kit';
+import { TeamLink, teamTextLink } from '../../../stats/common';
 
 // Abridores probables. En LIDOM MLB no los publica (0 de 374 juegos en 2025-26 y 2026-27): se dice tal cual.
 // Cuando existen (Clásico, Serie del Caribe) salen con G-P, EFE, WHIP y su repertorio en una mini barra.
@@ -51,7 +52,7 @@ const Starter: React.FC<{ game: GameDetail; side: 'away' | 'home'; pitcher: Deci
                 <Txt size={15} weight="extrabold" style={{ letterSpacing: -0.3, lineHeight: 18 }}>
                     {pitcher?.name ?? t('preview.tbd')}
                 </Txt>
-                <Txt size={12} tone="muted" numberOfLines={1}>
+                <Txt size={12} tone="muted" numberOfLines={1} {...(pitcher ? teamTextLink(team.id) : {})}>
                     {team.teamName}
                 </Txt>
             </View>
@@ -69,9 +70,10 @@ const Starter: React.FC<{ game: GameDetail; side: 'away' | 'home'; pitcher: Deci
                     {head}
                 </Pressable>
             ) : (
-                <View accessible accessibilityLabel={`${t('preview.tbd')}, ${team.teamName}`}>
+                // Sin abridor: el logo y el nombre llevan a la página del equipo
+                <TeamLink id={team.id} name={team.teamName} label={`${t('preview.tbd')}, ${team.teamName}`}>
                     {head}
-                </View>
+                </TeamLink>
             )}
             {pitcher ? (
                 <>

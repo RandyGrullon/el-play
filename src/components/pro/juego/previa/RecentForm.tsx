@@ -10,6 +10,7 @@ import { TeamLogo, Txt } from '../../../ui';
 import { ProSection, useInView, useProColors } from '../../kit';
 import type { SeriesSource } from './logica';
 import { SeenEnter } from './shared';
+import { TeamLink } from '../../../stats/common';
 
 // Forma reciente: los últimos 5 de cada uno con su marcador (del más reciente al más viejo) y el récord de los
 // últimos 10. Las casillas punteadas son los juegos que todavía no se han jugado.
@@ -39,10 +40,14 @@ export const RecentForm: React.FC<{ game: GameDetail; source: SeriesSource }> = 
         return (
             <View style={{ gap: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <TeamLogo team={team} size={28} />
-                    <Txt size={13} weight="extrabold" style={{ flex: 1 }}>
-                        {team.abbrev}
-                    </Txt>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                        <TeamLink id={team.id} name={team.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <TeamLogo team={team} size={28} />
+                            <Txt size={13} weight="extrabold">
+                                {team.abbrev}
+                            </Txt>
+                        </TeamLink>
+                    </View>
                     <View style={{ alignItems: 'flex-end' }} accessible accessibilityLabel={t('pro.previa.form.last10Aria', { team: team.abbrev, wins, losses: games.length - wins, count: games.length })}>
                         <Txt condensed size={20} tabular style={{ lineHeight: 22 }}>{`${wins}-${games.length - wins}`}</Txt>
                         {games.length < 10 ? (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, useWindowDimensions } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import type { GameDetail, PersonRef } from '../../../../types';
@@ -16,6 +16,7 @@ import { countryShort, useSeasonContext } from './logic';
 import { Avatar, isBetween, ordinal } from './parts';
 import { batterSide, pitcherSide, queueLine, type BatterSide, type PitcherSide } from './duel';
 import { PaChips } from './PaChips';
+import { LinkedNames, PlayerLink, playerTextLink } from '../../../stats/common';
 
 // Duelo en vivo: dos tarjetas enfrentadas (bateador con lo de hoy, su temporada, contra zurdos y derechos y su
 // historial contra este lanzador; lanzador con el medidor de pitcheos, su línea de hoy, su temporada y la vez por
@@ -100,7 +101,7 @@ const BatterCard: React.FC<{ game: GameDetail; batter: BatterSide; pitcherName: 
                 </View>
             </View>
             <Txt size={17} weight="black" accessibilityRole="header" style={{ marginTop: 8, lineHeight: 20, letterSpacing: -0.3 }}>
-                {batter.ref.name}
+                <Text {...playerTextLink({ ...batter.ref, teamId: batter.team.id })}>{batter.ref.name}</Text>
             </Txt>
             <Txt size={12} tone="muted" numberOfLines={1}>
                 {identity(t, lang, batter.side, 'bats', batter.player?.age, batter.player?.country)}
@@ -159,7 +160,7 @@ const BatterCard: React.FC<{ game: GameDetail; batter: BatterSide; pitcherName: 
                     {vs && (
                         <View accessible style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
                             <Txt size={12} tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
-                                {t('pro.vivo.duel.vs', { name: lastName(pitcherName) })}
+                                <LinkedNames text={t('pro.vivo.duel.vs', { name: lastName(pitcherName) })} people={[{ id: pitcherId, name: lastName(pitcherName) }]} />
                             </Txt>
                             <Txt condensed size={17} color={colors.accentInk} tabular>
                                 {vs.line.h ?? 0}-{vs.line.ab ?? 0}
@@ -209,7 +210,7 @@ const PitcherCard: React.FC<{ game: GameDetail; pro?: GamePro; pitcher: PitcherS
                 </View>
             </View>
             <Txt size={17} weight="black" accessibilityRole="header" style={{ marginTop: 8, lineHeight: 20, letterSpacing: -0.3 }}>
-                {pitcher.ref.name}
+                <Text {...playerTextLink({ ...pitcher.ref, teamId: pitcher.team.id })}>{pitcher.ref.name}</Text>
             </Txt>
             <Txt size={12} tone="muted" numberOfLines={1}>
                 {identity(t, lang, pitcher.hand, 'throws', pitcher.player?.age, pitcher.player?.country)}
@@ -281,7 +282,12 @@ const QueueItem: React.FC<{ game: GameDetail; person: PersonRef; label: string; 
     const proColors = useProColors();
     const line = queueLine(game, person.id);
     return (
-        <View accessible accessibilityLabel={`${label}: ${person.name}${line ? `, ${t('pro.vivo.todayLine', { line: `${line.h}-${line.ab}` })}` : ''}`} style={{ flex: wide ? 1 : undefined, flexBasis: wide ? 0 : undefined, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        // El que viene abre su ficha
+        <PlayerLink
+            player={{ ...person, teamId: team.id }}
+            label={`${label}: ${person.name}${line ? `, ${t('pro.vivo.todayLine', { line: `${line.h}-${line.ab}` })}` : ''}`}
+            style={{ flex: wide ? 1 : undefined, flexBasis: wide ? 0 : undefined, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+        >
             <Avatar person={person} team={team} size={34} />
             <View style={{ flex: 1, minWidth: 0 }}>
                 <Txt size={10} weight="extrabold" color={live ? proColors.live : colors.accentInk} numberOfLines={1} style={{ textTransform: 'uppercase' }}>
@@ -296,7 +302,7 @@ const QueueItem: React.FC<{ game: GameDetail; person: PersonRef; label: string; 
                     </Txt>
                 )}
             </View>
-        </View>
+        </PlayerLink>
     );
 };
 

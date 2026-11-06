@@ -12,6 +12,7 @@ import { alpha } from '../../../../theme/tokens';
 import { PlayerPhoto, Txt } from '../../../ui';
 import { MOTION_EASE, MOTION_MS, shortName, useMotion } from '../../kit';
 import { zoneFromLocation, zonePlace } from './logic';
+import { PlayerLink, playerTextLink } from '../../../stats/common';
 
 // Piezas compartidas del juego en vivo y la hoja de zona: puntos de bolas/strikes/outs, el diamante con los
 // corredores, la foto del pelotero y los textos de cada pitcheo.
@@ -151,8 +152,9 @@ export const RunnerDiamond: React.FC<{ runners: GameDetail['runners']; color: st
                     if (!runner) return null;
                     const top = (base.y / 100) * size + (base.key === 'second' ? -0.27 : 0.13) * height;
                     return (
-                        <View key={`n-${base.key}`} pointerEvents="none" style={{ position: 'absolute', left: (base.x / 100) * size - 34, top, width: 68, alignItems: 'center' }}>
-                            <Txt size={11} weight="extrabold" numberOfLines={1} style={{ maxWidth: 68, borderRadius: 6, backgroundColor: alpha(colors.surface, 0.9), paddingHorizontal: 4, lineHeight: 16, overflow: 'hidden' }}>
+                        // El nombre del corredor abre su ficha
+                        <View key={`n-${base.key}`} pointerEvents="box-none" style={{ position: 'absolute', left: (base.x / 100) * size - 34, top, width: 68, alignItems: 'center' }}>
+                            <Txt size={11} weight="extrabold" numberOfLines={1} style={{ maxWidth: 68, borderRadius: 6, backgroundColor: alpha(colors.surface, 0.9), paddingHorizontal: 4, lineHeight: 16, overflow: 'hidden' }} {...playerTextLink(runner)}>
                                 {shortName(runner.name, true)}
                             </Txt>
                         </View>
@@ -164,9 +166,13 @@ export const RunnerDiamond: React.FC<{ runners: GameDetail['runners']; color: st
 
 // ---------------------------------------------------------------- Foto
 
-/** Foto del pelotero en círculo con el logo de su equipo (o sus iniciales en el color del equipo) */
+/** Foto del pelotero en círculo con el logo de su equipo (o sus iniciales en el color del equipo); abre su ficha */
 export const Avatar: React.FC<{ person: PersonRef | null | undefined; team: Team; size?: number }> = ({ person, team, size = 52 }) =>
-    person ? <PlayerPhoto personId={person.id} name={person.name} size={size} background={alpha(team.color, 0.2)} team={team} /> : null;
+    person ? (
+        <PlayerLink player={{ ...person, teamId: team.id }}>
+            <PlayerPhoto personId={person.id} name={person.name} size={size} background={alpha(team.color, 0.2)} team={team} />
+        </PlayerLink>
+    ) : null;
 
 // ---------------------------------------------------------------- Textos de un pitcheo
 

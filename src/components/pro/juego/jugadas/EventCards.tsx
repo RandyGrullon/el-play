@@ -5,12 +5,14 @@ import { ArrowLeftRight, CircleAlert, Hand, Info, Repeat, ScanLine, Shield, User
 import type { GameDetail, GameTeam } from '../../../../types';
 import type { GamePro } from '../../../../lib/pro/juego';
 import type { Challenge, EventKind, NameBook, PlayEvent, PlayItem } from './model';
+import { bookPeople } from './model';
 import { useColors } from '../../../../theme/theme';
 import { alpha, radius, shadow } from '../../../../theme/tokens';
 import { PlayerPhoto, Txt } from '../../../ui';
 import { GradientCard } from '../../kit';
 import { usePlayColors } from './parts';
 import { baseText, challengeText, eventText, occupied, pitcherLineText } from './texts';
+import { LinkedNames, LinkedTeams, PlayerLink } from '../../../stats/common';
 
 // Chips de lo que pasa entre jugadas (robo, WP/PB, visita, emergentes), la tarjeta del cambio de lanzador
 // y la del reto ABS. Son informativos: no se tocan (cada uno se lee de una vez).
@@ -60,7 +62,7 @@ export const EventChip: React.FC<{ event: PlayEvent; item: PlayItem; names: Name
                 {text ? (
                     <Txt size={13} tone="muted">
                         {' · '}
-                        {text}
+                        <LinkedNames text={text} people={bookPeople(game, names)} />
                     </Txt>
                 ) : null}
             </Txt>
@@ -72,8 +74,9 @@ const PitcherSide: React.FC<{ id: number | null; names: NameBook; team: GameTeam
     const { t } = useTranslation();
     const paint = usePlayColors();
     const name = names.full(id) || names.label(id);
+    // Foto y nombre abren la ficha del lanzador
     return (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+        <PlayerLink player={{ id, name, teamId: team.id }} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
             <PlayerPhoto personId={id} name={name} size={36} team={team} />
             <View style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
                 <Txt size={14} weight="extrabold" style={{ lineHeight: 20 }}>
@@ -84,7 +87,7 @@ const PitcherSide: React.FC<{ id: number | null; names: NameBook; team: GameTeam
                 </Txt>
                 {children}
             </View>
-        </View>
+        </PlayerLink>
     );
 };
 
@@ -108,7 +111,7 @@ export const PitchingChangeCard: React.FC<{ event: PlayEvent; names: NameBook; g
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <ArrowLeftRight size={16} color={colors.accentInk} />
                 <Txt size={11} weight="extrabold" color={colors.accentInk} style={{ letterSpacing: 1.2, textTransform: 'uppercase', flex: 1 }}>
-                    {t('pro.jugadas.change.title', { team: team.abbrev })}
+                    <LinkedTeams text={t('pro.jugadas.change.title', { team: team.abbrev })} teams={[team]} />
                 </Txt>
             </View>
             {event.replaced ? (
@@ -120,7 +123,7 @@ export const PitchingChangeCard: React.FC<{ event: PlayEvent; names: NameBook; g
                 {inLine && <Txt {...small}>{t(final ? 'pro.jugadas.change.final' : 'pro.jugadas.change.today', { line: pitcherLineText(t, inLine) })}</Txt>}
                 {inherited > 0 && (
                     <Txt {...small}>
-                        {t('pro.jugadas.change.inherits', { count: inherited, who: who || '' })}
+                        <LinkedNames text={t('pro.jugadas.change.inherits', { count: inherited, who: who || '' })} people={bookPeople(game, names)} />
                         {scored !== null && ` · ${scored === 0 ? t('pro.jugadas.change.noneScored', { count: inherited }) : t('pro.jugadas.change.scored', { count: scored })}`}
                     </Txt>
                 )}
@@ -148,7 +151,7 @@ export const ChallengeCard: React.FC<{ challenge: Challenge; names: NameBook; ga
                     {title}
                     <Txt size={13} style={{ lineHeight: 18 }}>
                         {' · '}
-                        {who} · {what}
+                        <LinkedNames text={who} people={bookPeople(game, names)} /> · {what}
                     </Txt>
                 </Txt>
                 {left ? (

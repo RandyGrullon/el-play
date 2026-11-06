@@ -13,6 +13,7 @@ import { capitalize } from '../../../feed/DayChips';
 import { GradientCard, ProSection, TeamChip, useInView } from '../../kit';
 import { gamesBetween, ordinal, seasonSeries, shortVenue, venueByName, type SeriesSource } from './logica';
 import { Eyebrow, SeenEnter, useDivider } from './shared';
+import { LinkedTeams, TeamLink } from '../../../stats/common';
 
 // Serie particular de la temporada: cómo va entre los dos, una fila de mini marcadores (los dos últimos jugados, hoy
 // y el próximo), cuántos faltan y cómo quedó la de la temporada pasada. Con el calendario corto del Lite se dice de
@@ -61,7 +62,7 @@ const MiniGame: React.FC<{ item: CalendarGame; number: number; today: boolean; t
                 ) : null}
             </View>
             {lines.map((line, position) => (
-                <View key={position} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <TeamLink key={position} id={line.team?.id} name={line.team?.name ?? line.abbrev} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     {line.team ? <TeamLogo team={line.team} size={20} /> : null}
                     <Txt size={13} weight="extrabold" tone={final && !line.won ? 'muted' : 'ink'} style={{ flex: 1 }} numberOfLines={1}>
                         {line.abbrev}
@@ -69,7 +70,7 @@ const MiniGame: React.FC<{ item: CalendarGame; number: number; today: boolean; t
                     <Txt condensed size={18} tabular tone={line.won ? 'ink' : 'muted'}>
                         {line.score}
                     </Txt>
-                </View>
+                </TeamLink>
             ))}
             <View>
                 <Txt size={11} tone="muted" numberOfLines={1}>
@@ -190,7 +191,7 @@ export const SeasonSeries: React.FC<SeasonSeriesProps> = ({ game, source, previo
                     <Txt condensed size={16} tabular>
                         {lastSeason.wins === lastSeason.losses
                             ? t('pro.previa.series.lastTied', { wins: lastSeason.wins, losses: lastSeason.losses })
-                            : `${lastSeason.wins > lastSeason.losses ? game.away.abbrev : game.home.abbrev} ${Math.max(lastSeason.wins, lastSeason.losses)}-${Math.min(lastSeason.wins, lastSeason.losses)}`}
+                            : <LinkedTeams text={`${lastSeason.wins > lastSeason.losses ? game.away.abbrev : game.home.abbrev} ${Math.max(lastSeason.wins, lastSeason.losses)}-${Math.min(lastSeason.wins, lastSeason.losses)}`} teams={[game.away, game.home]} />}
                     </Txt>
                 </View>
             ) : null}

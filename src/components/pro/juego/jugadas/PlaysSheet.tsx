@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, SectionList, View } from 'react-native';
+import { Pressable, SectionList, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Gauge } from 'lucide-react-native';
 import type { GameDetail } from '../../../../types';
@@ -15,6 +15,7 @@ import { HalfHeader } from './HalfHeader';
 import { PlayRow } from './PlayRow';
 import { RowIn, fmtSwing, usePlayColors } from './parts';
 import { ordinal, totalsText } from './texts';
+import { teamTextLink } from '../../../stats/common';
 
 type Game = Pick<GameDetail, 'away' | 'home' | 'state' | 'box' | 'atBats'>;
 
@@ -122,7 +123,7 @@ const WinProbBlock: React.FC<{ game: Game; winProb: WinProb; names: NameBook; on
                 <Txt size={12} tone="muted">
                     {t(game.state === 'final' ? 'pro.jugadas.chart.finalLead' : 'pro.jugadas.chart.nowLead')}{' '}
                     <Txt size={14} weight="extrabold">
-                        {leader.abbrev} {leaderPct}
+                        <Text {...teamTextLink(leader.id)}>{leader.abbrev}</Text> {leaderPct}
                     </Txt>
                 </Txt>
             </View>
@@ -310,7 +311,7 @@ export const PlaysSheet: React.FC<PlaysSheetProps> = ({ game, pro, winProb, halv
             >
                 <Txt eyebrow>{t('pro.jugadas.end', { count: counts.all })}</Txt>
                 <Txt size={21} condensed tabular>
-                    {game.away.abbrev} {game.away.runs} – {game.home.runs} {game.home.abbrev}
+                    <Text {...teamTextLink(game.away.id)}>{game.away.abbrev}</Text> {game.away.runs} – {game.home.runs} <Text {...teamTextLink(game.home.id)}>{game.home.abbrev}</Text>
                 </Txt>
             </View>
         ) : null;

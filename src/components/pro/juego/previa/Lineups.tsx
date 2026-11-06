@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { GameDetail } from '../../../../types';
 import type { LineupPlayer } from '../../../../lib/pro/pantallas';
@@ -8,6 +8,7 @@ import { alpha, radius } from '../../../../theme/tokens';
 import { Txt } from '../../../ui';
 import { ProSection, TeamChip, shortName, useInView } from '../../kit';
 import { SeenEnter, useDivider } from './shared';
+import { playerTextLink } from '../../../stats/common';
 
 // Alineaciones (9 y 9) cuando MLB las publica antes del juego; si no hay ninguna, el bloque no sale.
 
@@ -28,7 +29,7 @@ const Column: React.FC<{ team: GameDetail['away']; players: LineupPlayer[] | nul
                                 {player.order}
                             </Txt>
                             <Txt size={13} weight="bold" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
-                                {shortName(player.name)}
+                                <Text {...playerTextLink({ ...player, teamId: team.id })}>{shortName(player.name)}</Text>
                             </Txt>
                             {player.pos ? (
                                 <Txt size={11} weight="semibold" tone="muted">

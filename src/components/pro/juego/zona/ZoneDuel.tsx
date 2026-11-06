@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { AtBat, GameDetail } from '../../../../types';
 import type { GamePro } from '../../../../lib/pro/juego';
@@ -12,6 +12,7 @@ import { useSeasonContext } from '../vivo/logic';
 import { Avatar, CountDots, sidesOf } from '../vivo/parts';
 import { batterSide, pitcherSide, queueLine } from '../vivo/duel';
 import { PaChips } from '../vivo/PaChips';
+import { LinkedNames, playerTextLink } from '../../../stats/common';
 
 // Duelo arriba de la hoja de zona: lanzador contra bateador con lo de hoy (pitcheos, H-VB, turnos), la línea del
 // lanzador, el conteo con los corredores y quién viene en espera.
@@ -65,7 +66,7 @@ export const ZoneDuel: React.FC<ZoneDuelProps> = ({ game, pro, atBat }) => {
                     </Txt>
                 </View>
                 <Txt size={17} weight="black" style={{ width: '100%', lineHeight: 20, letterSpacing: -0.3, textAlign: end ? 'right' : 'left' }}>
-                    {data.ref.name}
+                    <Text {...playerTextLink({ ...data.ref, teamId: data.team.id })}>{data.ref.name}</Text>
                 </Txt>
                 <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} style={{ width: '100%', textAlign: end ? 'right' : 'left' }}>
                     {parts.join(' · ')}
@@ -130,7 +131,7 @@ export const ZoneDuel: React.FC<ZoneDuelProps> = ({ game, pro, atBat }) => {
             {line && (
                 <View accessible accessibilityLabel={`${t('pro.zona.pitcherToday', { name: pitcher.ref.name })}: ${STATS.map((key) => `${line[key]} ${t(`pro.vivo.stat.${key}.name`)}`).join(', ')}`} style={{ flexDirection: 'row', alignItems: 'center', borderRadius: radius.tile, backgroundColor: colors.raised, paddingHorizontal: 12, paddingVertical: 8 }}>
                     <Txt size={11} weight="bold" tone="muted" numberOfLines={2} style={{ width: '28%' }}>
-                        {t('pro.zona.todayOf', { name: lastName(pitcher.ref.name) })}
+                        <LinkedNames text={t('pro.zona.todayOf', { name: lastName(pitcher.ref.name) })} people={[{ ...pitcher.ref, name: lastName(pitcher.ref.name), teamId: pitcher.team.id }]} />
                     </Txt>
                     {STATS.map((key) => (
                         <View key={key} style={{ flex: 1, alignItems: 'center' }}>
@@ -161,7 +162,7 @@ export const ZoneDuel: React.FC<ZoneDuelProps> = ({ game, pro, atBat }) => {
                             {runners.length ? (
                                 runners.map((base) => (
                                     <Txt key={base} size={12} weight="bold" numberOfLines={1}>
-                                        {t(`pro.vivo.base.${base}`)} <Txt size={12} weight="extrabold">{shortName(game.runners[base]!.name, true)}</Txt>
+                                        {t(`pro.vivo.base.${base}`)} <Txt size={12} weight="extrabold" {...playerTextLink({ ...game.runners[base]!, teamId: batting.id })}>{shortName(game.runners[base]!.name, true)}</Txt>
                                     </Txt>
                                 ))
                             ) : (
@@ -179,7 +180,7 @@ export const ZoneDuel: React.FC<ZoneDuelProps> = ({ game, pro, atBat }) => {
                                     {t('pro.vivo.onDeck')}
                                 </Txt>
                                 <Txt size={14} weight="extrabold" numberOfLines={1}>
-                                    {onDeck.name}
+                                    <Text {...playerTextLink({ ...onDeck, teamId: batting.id })}>{onDeck.name}</Text>
                                     {onDeckPlayer?.pos ? <Txt size={14} weight="semibold" tone="muted">{` · ${onDeckPlayer.pos}`}</Txt> : null}
                                 </Txt>
                             </View>

@@ -9,6 +9,7 @@ import { TeamLogo, Txt } from '../../../ui';
 import { Flash, ProSection, shortName, teamInk, useProColors } from '../../kit';
 import { boardRows, gameErrors, type BoardCell } from './logic';
 import { ordinal } from './parts';
+import { LinkedNames, TeamLink } from '../../../stats/common';
 
 // Pizarra por entradas: 1-9 (o las extras) con C H E LOB fijos a la derecha. Debajo de cada carrera van los hits
 // y los dejados en base de esa entrada; el fondo se intensifica con los dejados y un punto rojo marca el error de
@@ -108,6 +109,11 @@ export const LiveBoard: React.FC<LiveBoardProps> = ({ game, pro }) => {
             });
         })
         .join(' · ');
+    // Los que cometieron el error abren su ficha
+    const errorPeople = errors.flatMap((error) => {
+        const player = pro?.players?.[String(error.player)];
+        return player ? [{ id: player.id, name: shortName(player.name), teamId: player.teamId }] : [];
+    });
 
     return (
         <ProSection title={t('pro.vivo.board.title')} aside={board.detailed ? t('pro.vivo.board.aside') : undefined} bodyStyle={{ paddingHorizontal: 10 }}>
@@ -116,9 +122,9 @@ export const LiveBoard: React.FC<LiveBoardProps> = ({ game, pro }) => {
                 <View style={{ width: 28 }}>
                     <View style={{ height: 18 }} />
                     {(['away', 'home'] as const).map((side) => (
-                        <View key={side} accessible accessibilityLabel={game[side].name} style={{ height: CELL_H + 2, justifyContent: 'center' }}>
+                        <TeamLink key={side} id={game[side].id} name={game[side].name} style={{ height: CELL_H + 2, justifyContent: 'center' }}>
                             <TeamLogo team={game[side]} size={24} />
-                        </View>
+                        </TeamLink>
                     ))}
                 </View>
                 {/* Entradas: se deslizan de lado si no caben */}
@@ -181,7 +187,11 @@ export const LiveBoard: React.FC<LiveBoardProps> = ({ game, pro }) => {
                     <Txt size={12} tone="muted">
                         {t('pro.vivo.board.legendLob')}
                     </Txt>
-                    {errorLine ? <Txt size={12}>{t('pro.vivo.board.errors', { list: errorLine })}</Txt> : null}
+                    {errorLine ? (
+                        <Txt size={12}>
+                            <LinkedNames text={t('pro.vivo.board.errors', { list: errorLine })} people={errorPeople} />
+                        </Txt>
+                    ) : null}
                 </View>
             )}
         </ProSection>

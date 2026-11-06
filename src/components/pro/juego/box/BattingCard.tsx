@@ -12,6 +12,7 @@ import { TeamLogo, Txt } from '../../../ui';
 import { MOTION_EASE, MOTION_MS, ModuleHeader, useElementWidth, useMotion } from '../../kit';
 import { RowIn, usePlayColors } from '../jugadas/parts';
 import { ordinal } from '../jugadas/texts';
+import { PlayerLink, TeamLink } from '../../../stats/common';
 
 type Side = 'away' | 'home';
 
@@ -136,7 +137,12 @@ export const BattingCard: React.FC<{ game: GameDetail; pro?: GamePro; side: Side
             </>
         );
         return (
-            <View accessible accessibilityLabel={rowAria(row)} style={{ height: rowHeight, justifyContent: 'center', paddingLeft: sub ? (twoLines ? 8 : 14) : 4, paddingRight: 4 }}>
+            // El nombre abre la ficha del bateador
+            <PlayerLink
+                player={{ id: row.line.id, name: names.full(row.line.id, row.line.name), teamId: team.id }}
+                label={rowAria(row)}
+                style={{ height: rowHeight, justifyContent: 'center', paddingLeft: sub ? (twoLines ? 8 : 14) : 4, paddingRight: 4 }}
+            >
                 {twoLines ? (
                     <>
                         <Txt size={12.5} weight="bold" numberOfLines={1} style={{ lineHeight: 16 }}>
@@ -160,7 +166,7 @@ export const BattingCard: React.FC<{ game: GameDetail; pro?: GamePro; side: Side
                         {hr}
                     </View>
                 )}
-            </View>
+            </PlayerLink>
         );
     };
 
@@ -187,9 +193,9 @@ export const BattingCard: React.FC<{ game: GameDetail; pro?: GamePro; side: Side
     return (
         <View onLayout={onLayout} style={[{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: alpha(colors.line, 0.06), padding: 16, paddingBottom: 12 }, shadow('card')]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+                <TeamLink id={team.id} name={team.name} style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
                     <TeamLogo team={team} size={18} />
-                </View>
+                </TeamLink>
                 <ModuleHeader title={t('pro.box.bat.title', { team: team.name })} style={{ flex: 1 }} />
             </View>
             {rows.length === 0 ? (

@@ -10,6 +10,7 @@ import { PlayerPhoto, Txt } from '../../../ui';
 import { CountUp, Gauge, ProSection, shortName, useInView, useProColors, withAlpha } from '../../kit';
 import { useDivider } from '../previa/shared';
 import { sideOfTeam, type Side } from './logica';
+import { PlayerLink } from '../../../stats/common';
 
 // Figuras del juego con el gameScore de MLB en medidor circular (sus 3 topPerformers; sin los datos PRO, las
 // figuras del Lite sin medidor) y la franja de decisiones G / P / SV con récord y EFE. Tocar una figura abre su
@@ -51,7 +52,8 @@ const DecisionSlot: React.FC<{ tag: string; ink: string; bg: string; person: Dec
 }) => {
     const colors = useColors();
     return (
-        <View accessible accessibilityLabel={label} style={{ flexGrow: 1, flexBasis: 90, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        // Con pitcher, el lugar abre su ficha
+        <PlayerLink player={person && { id: person.id, name: person.name, teamId: side ? game[side].id : null }} label={label} style={{ flexGrow: 1, flexBasis: 90, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             {person && side ? (
                 <PlayerPhoto personId={person.id} name={person.name} size={34} background={withAlpha(game[side].color, 0.2)} team={game[side]} />
             ) : (
@@ -70,7 +72,7 @@ const DecisionSlot: React.FC<{ tag: string; ink: string; bg: string; person: Dec
                     {person ? extra : emptySub}
                 </Txt>
             </View>
-        </View>
+        </PlayerLink>
     );
 };
 
@@ -115,10 +117,13 @@ export const Figures: React.FC<{ game: GameDetail; pro?: GamePro; onSharePerform
                                 <View style={{ position: 'absolute', right: 8, top: 8 }}>
                                     <Share2 size={14} color={colors.muted} />
                                 </View>
-                                <PlayerPhoto personId={item.id} name={name} size={52} background={withAlpha(team.color, 0.2)} team={team} />
-                                <Txt size={12} weight="extrabold" numberOfLines={1} center style={{ marginTop: 2, alignSelf: 'stretch' }}>
-                                    {name}
-                                </Txt>
+                                {/* Foto y nombre abren su ficha; el resto de la tarjeta la comparte */}
+                                <PlayerLink player={{ id: item.id, name, teamId: team.id }} style={{ alignItems: 'center', gap: 6, alignSelf: 'stretch' }}>
+                                    <PlayerPhoto personId={item.id} name={name} size={52} background={withAlpha(team.color, 0.2)} team={team} />
+                                    <Txt size={12} weight="extrabold" numberOfLines={1} center style={{ marginTop: 2, alignSelf: 'stretch' }}>
+                                        {name}
+                                    </Txt>
+                                </PlayerLink>
                                 <Txt size={11} weight="semibold" tone="muted" center style={{ minHeight: 28, lineHeight: 14 }}>
                                     {second ? `${first}\n${second}` : first}
                                 </Txt>

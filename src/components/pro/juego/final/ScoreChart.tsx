@@ -10,6 +10,7 @@ import { Enter, MarkerBadge, ProSection, StepChart, withAlpha } from '../../kit'
 import { inningLabel, ordinal } from '../previa/logica';
 import { biggestLead, cumulativeRuns } from './logica';
 import { resultText } from './text';
+import { LinkedNames, PlayerLink, teamTextLink } from '../../../stats/common';
 
 // Gráfica del marcador: escalones por entrada en los dos colores con un «HR» en cada entrada con jonrón.
 // Al tocarlo se abre la jugada (foto, entrada, distancia, velocidad y ángulo). Debajo, la mayor ventaja.
@@ -45,7 +46,7 @@ export const ScoreChart: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game
                 {(['away', 'home'] as const).map((side) => (
                     <View key={side} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <View style={{ width: 16, height: 3, borderRadius: 2, backgroundColor: game[side].color }} />
-                        <Txt size={12} weight="bold">{`${game[side].abbrev} ${game[side].runs}`}</Txt>
+                        <Txt size={12} weight="bold" {...teamTextLink(game[side].id)}>{`${game[side].abbrev} ${game[side].runs}`}</Txt>
                     </View>
                 ))}
                 {markers.length > 0 ? (
@@ -82,13 +83,15 @@ export const ScoreChart: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game
                                     accessibilityLabel={[inningLabel(atBat.inning, atBat.top, lang), t('pro.final.score.hrOf', { batter: atBat.batter.name }), result, numbers].filter(Boolean).join(', ')}
                                     style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: radius.tile, borderLeftWidth: 3, borderLeftColor: colors.gold, backgroundColor: colors.raised, paddingHorizontal: 12, paddingVertical: 10 }}
                                 >
-                                    <PlayerPhoto personId={atBat.batter.id} name={atBat.batter.name} size={40} background={withAlpha(game[side].color, 0.2)} team={game[side]} />
+                                    <PlayerLink player={{ ...atBat.batter, teamId: game[side].id }}>
+                                        <PlayerPhoto personId={atBat.batter.id} name={atBat.batter.name} size={40} background={withAlpha(game[side].color, 0.2)} team={game[side]} />
+                                    </PlayerLink>
                                     <View style={{ flex: 1, minWidth: 0 }}>
                                         <Txt size={10} weight="extrabold" tone="muted" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>
                                             {inningLabel(atBat.inning, atBat.top, lang)}
                                         </Txt>
                                         <Txt size={13} weight="extrabold" style={{ lineHeight: 17 }}>
-                                            {t('pro.final.score.hrOf', { batter: atBat.batter.name })}
+                                            <LinkedNames text={t('pro.final.score.hrOf', { batter: atBat.batter.name })} people={[{ ...atBat.batter, teamId: game[side].id }]} />
                                             {result ? (
                                                 <Txt size={13} weight="semibold" tone="muted">
                                                     {` · ${result}`}

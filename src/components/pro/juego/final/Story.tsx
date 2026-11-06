@@ -12,6 +12,7 @@ import { radius, shadow } from '../../../../theme/tokens';
 import { TeamLogo, Txt } from '../../../ui';
 import { MOTION_EASE, ModuleHeader, contrastRatio, mix, teamInk, useMotion, withAlpha, type ViewNode } from '../../kit';
 import { buildSlides, type StoryTheme } from './StorySlides';
+import { LinkedTeams, TeamLink } from '../../../stats/common';
 
 // Historia PRO del juego: diapositivas que avanzan solas cada 5 s (la barra de progreso va por tiempo, no por
 // cuadros), con deslizar y toques en los lados (react-native-gesture-handler) y los botones de abajo (anterior,
@@ -193,11 +194,11 @@ export const ProStory: React.FC<{ game: GameDetail; pro?: GamePro; winProb?: Win
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingHorizontal: 20, paddingTop: 12 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0 }}>
-                            <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+                            <TeamLink id={winner.id} name={winner.name} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
                                 <TeamLogo team={winner} size={16} />
-                            </View>
+                            </TeamLink>
                             <Txt size={12} weight="bold" color={ink} numberOfLines={1} style={{ flexShrink: 1 }}>
-                                {label}
+                                <LinkedTeams text={label} teams={[game.away, game.home]} />
                             </Txt>
                         </View>
                         <Txt condensed size={14} tabular color={ink} accessibilityLabel={t('pro.final.story.slideLabel', { n: current + 1, total: count, name: slides[current].pill })}>{`${current + 1} / ${count}`}</Txt>

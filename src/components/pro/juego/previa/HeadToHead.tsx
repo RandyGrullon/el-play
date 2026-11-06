@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import Svg, { Line } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import type { GameDetail } from '../../../../types';
@@ -11,6 +11,7 @@ import { Chip, FormDots, Gauge, GrowBar, ProNote, ProSection, TeamChip, fmtSigne
 import { betterSide, fmtPct3, leagueRunsPerGame, ordinal, parseStreak, perGame, pythagorean, winPct, type WinLoss } from './logica';
 import type { H2HRow } from './datos';
 import { Eyebrow, MirrorLine, MirrorValue, useDivider, verdictOf } from './shared';
+import { teamTextLink } from '../../../stats/common';
 
 // Cara a cara en espejo con los colores de cada equipo: récord, posición, racha, últimos 10, casa y gira,
 // diferencial, carreras por juego en barras desde el centro, récord pitagórico y los récords por situación de MLB
@@ -138,7 +139,7 @@ export const HeadToHead: React.FC<HeadToHeadProps> = ({ game, rows, seasonLabel,
                 </Txt>
             </Gauge>
             <View style={{ flex: 1, minWidth: 0 }}>
-                <Txt size={13} weight="extrabold">
+                <Txt size={13} weight="extrabold" {...teamTextLink(team.id)}>
                     {team.abbrev}
                 </Txt>
                 <Txt size={11} tone="muted">
@@ -344,13 +345,13 @@ export const HeadToHead: React.FC<HeadToHeadProps> = ({ game, rows, seasonLabel,
                 <View style={[{ marginTop: 16, paddingTop: 14 }, divider]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', paddingBottom: 6 }}>
                         <Txt size={12} weight="extrabold" style={{ flex: 1 }}>
-                            {A.abbrev}
+                            <Text {...teamTextLink(A.id)}>{A.abbrev}</Text>
                         </Txt>
                         <Eyebrow center style={{ flex: 2 }}>
                             {t('pro.previa.h2h.situations')}
                         </Eyebrow>
                         <Txt size={12} weight="extrabold" style={{ flex: 1, textAlign: 'right' }}>
-                            {H.abbrev}
+                            <Text {...teamTextLink(H.id)}>{H.abbrev}</Text>
                         </Txt>
                     </View>
                     {splits.map((key) => {

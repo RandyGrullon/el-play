@@ -12,6 +12,8 @@ import { CountUp, GrowBar, ProSection, lastName, shortName, useInView, useProCol
 import { ordinal } from '../previa/logica';
 import { recordsFromLite, reliefStrikeouts } from './logica';
 import { nameOf, sideOfPlayer } from './text';
+import { nameForms, type LinkPerson } from '../../../../lib/links';
+import { LinkedNames, PlayerLink } from '../../../stats/common';
 
 // Récords del juego (calculados del feed: MLB no los manda para LIDOM): pitcheo más rápido, batazo más largo y más
 // duro, turno más largo, más ponches de un relevista y el ritmo entre pitcheos de cada lanzador (este solo con los
@@ -25,6 +27,8 @@ interface TileData {
     unit: string;
     label: string;
     detail: string;
+    /** Los nombrados en el detalle: cada nombre abre su ficha */
+    people?: LinkPerson[];
 }
 
 const Tile: React.FC<{ tile: TileData; seen: boolean; wide: boolean }> = ({ tile, seen, wide }) => {
@@ -49,7 +53,7 @@ const Tile: React.FC<{ tile: TileData; seen: boolean; wide: boolean }> = ({ tile
                 {tile.label}
             </Txt>
             <Txt size={12} weight="semibold" style={{ lineHeight: 16 }}>
-                {tile.detail}
+                <LinkedNames text={tile.detail} people={tile.people ?? []} />
             </Txt>
         </View>
     );
@@ -66,6 +70,11 @@ export const Records: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game, p
         return side ? game[side] : null;
     };
     const atBat = (i: number) => game.atBats.find((item) => item.i === i);
+    // Con su nombre completo, el apellido y el corto (los textos usan cualquiera)
+    const who = (id: number | null | undefined, fallback?: string): LinkPerson[] => {
+        const full = name(id) || fallback;
+        return id && full ? nameForms([{ id, name: full, teamId: teamOf(id)?.id }], (person) => [lastName(person.name), shortName(person.name)]) : [];
+    };
     const icon = 18;
     const { fastest, hardest, longest, longestPA } = pro?.records ?? recordsFromLite(game);
     const relief = reliefStrikeouts(game);
@@ -80,6 +89,7 @@ export const Records: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game, p
             digits: 1,
             unit: 'mph',
             label: t('pro.final.records.fastest'),
+            people: [...who(fastest.pitcher), ...who(turn?.batter.id, turn?.batter.name)],
             detail: t('pro.final.records.fastestDetail', {
                 pitcher: name(fastest.pitcher),
                 team: teamOf(fastest.pitcher)?.abbrev ?? '',
@@ -97,6 +107,7 @@ export const Records: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game, p
             value: longest.dist,
             unit: t('pro.final.records.feet'),
             label: t(longest.event === 'home_run' ? 'pro.final.records.longestHr' : 'pro.final.records.longest'),
+            people: who(longest.batter),
             detail: t('pro.final.records.hitDetail', { batter: lastName(name(longest.batter)), event: turn ? eventName(turn, lang).toLowerCase() : '', inning: turn ? ordinal(turn.inning, lang, 'f') : '' })
         });
     }
@@ -109,6 +120,7 @@ export const Records: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game, p
             digits: 1,
             unit: 'mph',
             label: t('pro.final.records.hardest'),
+            people: who(hardest.batter),
             detail: t('pro.final.records.hitDetail', { batter: lastName(name(hardest.batter)), event: turn ? eventName(turn, lang).toLowerCase() : '', inning: turn ? ordinal(turn.inning, lang, 'f') : '' })
         });
     }
@@ -120,6 +132,7 @@ export const Records: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game, p
             value: longestPA.pitches,
             unit: t('pro.final.records.pitches'),
             label: t('pro.final.records.longestPa'),
+            people: [...who(longestPA.batter), ...who(longestPA.pitcher)],
             detail: t('pro.final.records.paDetail', {
                 batter: lastName(name(longestPA.batter)),
                 pitcher: lastName(name(longestPA.pitcher)),
@@ -135,6 +148,7 @@ export const Records: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game, p
             value: relief.k,
             unit: 'K',
             label: t('pro.final.records.reliefK'),
+            people: who(relief.id, relief.name),
             detail: t('pro.final.records.reliefDetail', { pitcher: name(relief.id) || relief.name, team: game[relief.side].abbrev, ip: relief.ip })
         });
     }
@@ -165,7 +179,7 @@ export const Records: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game, p
                         {pace.map((item, index) => {
                             const team = teamOf(item.id);
                             return (
-                                <View key={item.id} accessible accessibilityLabel={`${name(item.id)}: ${item.sec.toFixed(1)} s`} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <PlayerLink key={item.id} player={{ id: item.id, name: name(item.id), teamId: team?.id }} label={`${name(item.id)}: ${item.sec.toFixed(1)} s`} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                     <View style={{ width: 104, flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 }}>
                                         {team ? (
                                             <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
@@ -178,7 +192,7 @@ export const Records: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game, p
                                     </View>
                                     <GrowBar value={item.sec / slowest} color={team?.color} index={index} height={8} style={{ flex: 1 }} />
                                     <Txt condensed size={14} tabular style={{ width: 48, textAlign: 'right' }}>{`${item.sec.toFixed(1)} s`}</Txt>
-                                </View>
+                                </PlayerLink>
                             );
                         })}
                     </View>

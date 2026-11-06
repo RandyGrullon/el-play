@@ -9,6 +9,7 @@ import { alpha, radius, shadow } from '../../../../theme/tokens';
 import { PlayerPhoto, TeamLogo, Txt } from '../../../ui';
 import { GrowBar, ModuleHeader } from '../../kit';
 import { RowIn, usePlayColors } from '../jugadas/parts';
+import { PlayerLink, TeamLink } from '../../../stats/common';
 
 type Side = 'away' | 'home';
 const STATS = ['ip', 'h', 'r', 'er', 'bb', 'k'] as const;
@@ -54,9 +55,9 @@ export const PitchingCard: React.FC<{ game: GameDetail; pro?: GamePro; side: Sid
     return (
         <View style={[{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: alpha(colors.line, 0.06), padding: 16, paddingBottom: 12 }, shadow('card')]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+                <TeamLink id={team.id} name={team.name} style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
                     <TeamLogo team={team} size={18} />
-                </View>
+                </TeamLink>
                 <ModuleHeader title={t('pro.box.pit.title', { team: team.name })} style={{ flex: 1 }} />
             </View>
             {lines.length === 0 ? (
@@ -107,7 +108,8 @@ export const PitchingCard: React.FC<{ game: GameDetail; pro?: GamePro; side: Sid
                             .join('. ');
                         return (
                             <RowIn key={line.id} index={index} play style={{ borderTopWidth: 1, borderTopColor: alpha(colors.line, 0.08), paddingTop: 10, paddingBottom: 10, gap: 6 }}>
-                                <View accessible accessibilityLabel={label} style={{ gap: 6 }}>
+                                {/* La fila abre la ficha del lanzador */}
+                                <PlayerLink player={{ id: line.id, name: full, teamId: team.id }} label={label} style={{ gap: 6 }}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                         <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                             {wide && <PlayerPhoto personId={line.id} name={full} size={32} team={team} />}
@@ -162,7 +164,7 @@ export const PitchingCard: React.FC<{ game: GameDetail; pro?: GamePro; side: Sid
                                             </View>
                                         ))}
                                     </View>
-                                </View>
+                                </PlayerLink>
                             </RowIn>
                         );
                     })}

@@ -8,6 +8,7 @@ import { useColors } from '../../../../theme/theme';
 import { TeamLogo, Txt } from '../../../ui';
 import { ProSection, useProColors, withAlpha } from '../../kit';
 import { useDivider } from '../previa/shared';
+import { TeamLink } from '../../../stats/common';
 
 // Pizarra completa fuera de la historia: carreras por entrada (en el color del equipo cuando anotó) y debajo
 // H, E y LOB de cada entrada (con los datos PRO). El LOB más intenso = más corredores dejados.
@@ -75,14 +76,14 @@ export const LineScore: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game,
         return (
             <View accessible accessibilityLabel={label(side)}>
                 <View style={[{ flexDirection: 'row', height: 36, alignItems: 'center' }, divider]}>
-                    <View style={{ width: LABEL, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <TeamLink id={team.id} name={team.name} style={{ width: LABEL, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                         <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
                             <TeamLogo team={team} size={14} />
                         </View>
                         <Txt size={13} weight="extrabold">
                             {team.abbrev}
                         </Txt>
-                    </View>
+                    </TeamLink>
                     {list.map((n) => {
                         const value = runs(side, n);
                         const played = game.linescore.some((inning) => inning.n === n);

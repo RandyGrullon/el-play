@@ -6,10 +6,12 @@ import type { GamePro, WinProb } from '../../../../lib/pro/juego';
 import { useColors } from '../../../../theme/theme';
 import { alpha, radius } from '../../../../theme/tokens';
 import { TeamLogo, Txt } from '../../../ui';
-import { Enter, ProNote, ProSection, WinProbChart, fmtSigned, lastName, useProColors } from '../../kit';
+import { Enter, ProNote, ProSection, WinProbChart, fmtSigned, lastName, shortName, useProColors } from '../../kit';
 import { inningLabel } from '../previa/logica';
 import { floorAfter, inningStarts, keySwings, peakFor, type Side } from './logica';
 import { headlineOf, resultText } from './text';
+import { nameForms } from '../../../../lib/links';
+import { LinkedNames, LinkedTeams, TeamLink } from '../../../stats/common';
 
 // Probabilidad de ganar completa (MLB, por turno): área en los dos colores con las 3 jugadas clave que se pueden
 // tocar (en la gráfica o en los botones de abajo), el pico del que perdió y desde cuándo el ganador no bajó de
@@ -59,13 +61,13 @@ export const WinProbBlock: React.FC<{ game: GameDetail; pro?: GamePro; winProb: 
             <View style={{ marginBottom: 10, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
                 {final !== null ? (
                     <View accessible accessibilityLabel={`${Math.round(final)} %, ${t('pro.final.wp.atEnd', { team: game[winner].abbrev })}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+                        <TeamLink id={game[winner].id} name={game[winner].name} style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
                             <TeamLogo team={game[winner]} size={21} />
-                        </View>
+                        </TeamLink>
                         <View>
                             <Txt condensed size={28} tabular style={{ lineHeight: 30 }}>{`${Math.round(final)} %`}</Txt>
                             <Txt size={11} weight="semibold" tone="muted">
-                                {t('pro.final.wp.atEnd', { team: game[winner].abbrev })}
+                                <LinkedTeams text={t('pro.final.wp.atEnd', { team: game[winner].abbrev })} teams={[game[winner]]} />
                             </Txt>
                         </View>
                     </View>
@@ -158,13 +160,13 @@ export const WinProbBlock: React.FC<{ game: GameDetail; pro?: GamePro; winProb: 
                                 {[inningLabel(current.atBat.inning, current.atBat.top, lang), current.play.li !== null ? t('pro.final.wp.pressure', { value: current.play.li.toFixed(2) }) : null].filter(Boolean).join(' · ')}
                             </Txt>
                             <Txt size={14} weight="bold" style={{ lineHeight: 19 }}>
-                                {headlineOf(current.atBat, t, lang)}
+                                <LinkedNames text={headlineOf(current.atBat, t, lang)} people={nameForms([{ ...current.atBat.batter, teamId: (current.atBat.top ? game.away : game.home).id }, { ...current.atBat.pitcher, teamId: (current.atBat.top ? game.home : game.away).id }], (person) => [lastName(person.name), shortName(person.name)])} />
                                 {result ? `: ${result}` : ''}
                             </Txt>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: game[current.side].color }} />
                                 <Txt condensed size={15} tabular>
-                                    {t('pro.final.wp.change', { team: game[current.side].abbrev, from: current.before.toFixed(1), to: current.after.toFixed(1) })}
+                                    <LinkedTeams text={t('pro.final.wp.change', { team: game[current.side].abbrev, from: current.before.toFixed(1), to: current.after.toFixed(1) })} teams={[game[current.side]]} />
                                 </Txt>
                             </View>
                         </Enter>

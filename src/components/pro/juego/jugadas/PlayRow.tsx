@@ -1,16 +1,18 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Svg, { Circle, G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import type { GameDetail, Pitch } from '../../../../types';
 import type { NameBook, PlayItem } from './model';
-import { battedBall, finalCount, narrate, playDetail, scorebook } from './model';
+import type { LinkPerson } from '../../../../lib/links';
+import { atBatPeople, battedBall, bookPeople, finalCount, narrate, playDetail, scorebook } from './model';
 import { eventName, eventTone } from '../../../../lib/baseball';
 import { PRO_GRADIENT, alpha, fonts, shadow } from '../../../../theme/tokens';
 import { PlayerPhoto, Txt } from '../../../ui';
 import { middle } from '../../kit';
 import { Collapse, EventBadge, OutDots, PitchPill, PressureChip, ScorePill, WpaPill, fmtSwing, usePlayColors, useSwingLabel } from './parts';
 import { detailJoiner, detailText, playLine } from './texts';
+import { LinkedNames, PlayerLink, playerTextLink, teamTextLink } from '../../../stats/common';
 
 type Game = Pick<GameDetail, 'away' | 'home' | 'state' | 'box'>;
 type T = ReturnType<typeof useTranslation>['t'];
@@ -85,19 +87,21 @@ export const MiniZone: React.FC<{ pitches: Pitch[]; challenged: number[]; label:
 
 // ------------------------------------------------------------------ Lo que se abre al tocar una jugada
 
-export const PlayPanel: React.FC<{ item: PlayItem; names: NameBook; showDesc: boolean }> = ({ item, names, showDesc }) => {
+export const PlayPanel: React.FC<{ item: PlayItem; names: NameBook; showDesc: boolean; people?: LinkPerson[] }> = ({ item, names, showDesc, people }) => {
     const { t, i18n } = useTranslation();
     const { atBat } = item;
+    // Los nombres de la línea y de la narración abren la ficha de cada uno
+    const named = people ?? atBatPeople(atBat, names);
     const located = atBat.pitches.some((pitch) => pitch.x !== null && pitch.z !== null);
     const challenged = item.challenges.map((challenge) => challenge.k);
     return (
         <View style={{ gap: 8, paddingHorizontal: 4, paddingTop: 8, paddingBottom: 4 }}>
             <Txt size={12} tone="muted" style={{ lineHeight: 17 }}>
-                {playLine(t, atBat, names, atBat.complete ? finalCount(atBat) : null)}
+                <LinkedNames text={playLine(t, atBat, names, atBat.complete ? finalCount(atBat) : null)} people={named} />
             </Txt>
             {showDesc && atBat.desc ? (
                 <Txt size={13.5} style={{ lineHeight: 20 }}>
-                    {narrate(atBat.desc, i18n.language)}
+                    <LinkedNames text={narrate(atBat.desc, i18n.language)} people={named} />
                 </Txt>
             ) : null}
             {atBat.pitches.length > 0 && (
@@ -159,6 +163,8 @@ export const PlayRow: React.FC<PlayRowProps> = ({ item, game, names, open, onTog
     const team = atBat.top ? game.away : game.home;
     const event = atBat.complete ? eventName(atBat, i18n.language) || t('pro.jugadas.play') : t('pro.jugadas.inProgress');
     const swing = swingLabel(item.swing, game);
+    const people = [...atBatPeople(atBat, names, game), ...bookPeople(game, names)];
+    const batter = { id: atBat.batter.id, name: names.full(atBat.batter.id, atBat.batter.name), teamId: team.id };
 
     if (!(big || isBig(item))) {
         const detail = playDetail(item);
@@ -178,18 +184,18 @@ export const PlayRow: React.FC<PlayRowProps> = ({ item, game, names, open, onTog
                 >
                     <EventBadge atBat={atBat} inProgress={!atBat.complete} />
                     <Txt size={13} style={{ flex: 1, minWidth: 0, lineHeight: 18 }}>
-                        {name}
+                        <Text {...playerTextLink(batter)}>{name}</Text>
                         {text ? (
                             <Txt size={13} tone="muted">
                                 {detailJoiner(detail)}
-                                {text}
+                                <LinkedNames text={text} people={people} />
                             </Txt>
                         ) : null}
                     </Txt>
                     <WpaPill swing={item.swing} game={game} />
                 </Pressable>
                 <Collapse open={open}>
-                    <PlayPanel item={item} names={names} showDesc />
+                    <PlayPanel item={item} names={names} showDesc people={people} />
                 </Collapse>
             </View>
         );
@@ -218,10 +224,12 @@ export const PlayRow: React.FC<PlayRowProps> = ({ item, game, names, open, onTog
                     <WpaPill swing={item.swing} game={game} strong={item.scoring || item.key} />
                 </View>
                 <Txt size={14.5} weight="medium" style={{ lineHeight: 20 }}>
-                    {desc}
+                    <LinkedNames text={desc} people={people} />
                 </Txt>
                 <View style={{ minHeight: 22, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <PlayerPhoto personId={atBat.batter.id} name={atBat.batter.name} size={22} team={team} />
+                    <PlayerLink player={batter} hitSlop={6}>
+                        <PlayerPhoto personId={atBat.batter.id} name={atBat.batter.name} size={22} team={team} />
+                    </PlayerLink>
                     <Txt size={11.5} tone="muted" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
                         {batted ?? scorebookWords(t, item)}
                     </Txt>
@@ -230,7 +238,7 @@ export const PlayRow: React.FC<PlayRowProps> = ({ item, game, names, open, onTog
                 </View>
             </Pressable>
             <Collapse open={open}>
-                <PlayPanel item={item} names={names} showDesc={false} />
+                <PlayPanel item={item} names={names} showDesc={false} people={people} />
             </Collapse>
         </View>
     );
@@ -265,11 +273,11 @@ export const ScorebookRow: React.FC<{ item: PlayItem; names: NameBook; open: boo
                     {code ?? '·'}
                 </Txt>
                 <Txt size={13} weight="semibold" style={{ flex: 1, minWidth: 0, lineHeight: 18 }}>
-                    {name}
+                    <Text {...playerTextLink({ id: atBat.batter.id, name })}>{name}</Text>
                     {text ? (
                         <Txt size={13} tone="muted">
                             {detailJoiner(detail)}
-                            {text}
+                            <LinkedNames text={text} people={atBatPeople(atBat, names)} />
                         </Txt>
                     ) : null}
                 </Txt>
@@ -292,7 +300,8 @@ export const HalfSwing: React.FC<{ swing: PlayItem['swing']; game: Pick<GameDeta
     const team = swing.side ? game[swing.side] : null;
     return (
         <Txt size={14} condensed tabular color={team ? paint.team(team.color) : paint.colors.muted} style={{ flexShrink: 0 }}>
-            {team ? `${team.abbrev} ` : ''}
+            {team ? <Text {...teamTextLink(team.id)}>{team.abbrev}</Text> : null}
+            {team ? ' ' : ''}
             {fmtSwing(swing.value, i18n.language)}
         </Txt>
     );

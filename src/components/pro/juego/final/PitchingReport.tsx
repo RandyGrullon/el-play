@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import type { GameDetail, PitcherLine } from '../../../../types';
@@ -11,6 +11,7 @@ import { GrowBar, ProNote, ProSection, shortName, useGrow, useInView } from '../
 import { useDivider } from '../previa/shared';
 import { litePitchers, pitcherSpans, situationBefore, strikePct, type PitcherSpan, type Side } from './logica';
 import { basesText, nameOf } from './text';
+import { PlayerLink, TeamLink, playerTextLink } from '../../../stats/common';
 
 // Informe de pitcheo: Game Score de cada abridor, el bullpen como barras por las entradas que lanzó cada uno
 // (desde el out en que entró), pitcheos-strikes de cada lanzador y los corredores heredados que anotaron.
@@ -52,9 +53,10 @@ const StarterCard: React.FC<{ game: GameDetail; pro?: GamePro; starter: Starter 
         .filter(Boolean)
         .join(' · ');
     return (
-        <View
-            accessible
-            accessibilityLabel={[t('pro.final.report.starter', { team: team.abbrev }), full, starter.gs !== null ? `Game Score ${starter.gs}` : null, stats, counts].filter(Boolean).join(', ')}
+        // La tarjeta abre la ficha del abridor
+        <PlayerLink
+            player={{ id: starter.id, name: full, teamId: team.id }}
+            label={[t('pro.final.report.starter', { team: team.abbrev }), full, starter.gs !== null ? `Game Score ${starter.gs}` : null, stats, counts].filter(Boolean).join(', ')}
             style={{ flex: 1, flexBasis: 0, minWidth: 0, gap: 6, borderRadius: radius.tile, backgroundColor: colors.raised, padding: 12 }}
         >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -89,7 +91,7 @@ const StarterCard: React.FC<{ game: GameDetail; pro?: GamePro; starter: Starter 
                     {counts}
                 </Txt>
             ) : null}
-        </View>
+        </PlayerLink>
     );
 };
 
@@ -99,14 +101,15 @@ const SpanBar: React.FC<{ left: number; width: number; color: string; index: num
     return <Animated.View style={[{ position: 'absolute', top: 10, height: 14, borderRadius: 7, left: `${left}%`, backgroundColor: color }, grow]} />;
 };
 
-const SpanRow: React.FC<{ span: PitcherSpan; name: string; ip: string; ps: string; innings: number; color: string; index: number; seen: boolean }> = ({ span, name, ip, ps, innings, color, index, seen }) => {
+const SpanRow: React.FC<{ span: PitcherSpan; name: string; teamId: number; ip: string; ps: string; innings: number; color: string; index: number; seen: boolean }> = ({ span, name, teamId, ip, ps, innings, color, index, seen }) => {
     const { t } = useTranslation();
     const colors = useColors();
     const left = (span.start / innings) * 100;
     const width = Math.max(1.5, (span.length / innings) * 100);
     const inherited = span.ir ? t('pro.final.report.inherited', { ir: span.ir, irs: span.irs ?? 0 }) : null;
     return (
-        <View accessible accessibilityLabel={[name, ip, inherited, `${t('pro.final.report.psAria', { value: ps })}`].filter(Boolean).join(', ')} style={{ height: 34, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        // La fila abre la ficha del lanzador
+        <PlayerLink player={{ id: span.id, name, teamId }} label={[name, ip, inherited, `${t('pro.final.report.psAria', { value: ps })}`].filter(Boolean).join(', ')} style={{ height: 34, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <View style={{ width: NAME, minWidth: 0 }}>
                 <Txt size={12} weight="bold" numberOfLines={1}>
                     {name}
@@ -124,7 +127,7 @@ const SpanRow: React.FC<{ span: PitcherSpan; name: string; ip: string; ps: strin
             <Txt condensed size={14} tabular style={{ width: PS, textAlign: 'right' }}>
                 {ps}
             </Txt>
-        </View>
+        </PlayerLink>
     );
 };
 
@@ -165,12 +168,12 @@ export const PitchingReport: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ 
         const team = game[side];
         return (
             <View key={side}>
-                <View style={{ marginTop: 10, marginBottom: 2, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <TeamLink id={team.id} name={team.name} style={{ marginTop: 10, marginBottom: 2, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
                     <TeamMark team={team} size={16} />
                     <Txt size={12} weight="extrabold">
                         {t(side === 'away' ? 'pro.final.report.awayHalves' : 'pro.final.report.homeHalves', { team: team.abbrev })}
                     </Txt>
-                </View>
+                </TeamLink>
                 <View accessibilityLabel={t('pro.final.report.groupAria', { team: team.name })}>
                     {spans.map((span) => {
                         const line = lineOf(side, span.id);
@@ -182,6 +185,7 @@ export const PitchingReport: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ 
                                 key={span.id}
                                 span={span}
                                 name={shortName(nameOf(game, pro, span.id, line?.name ?? ''))}
+                                teamId={team.id}
                                 ip={`${line?.ip ?? '—'} IP`}
                                 ps={np !== null ? `${np}-${st ?? 0}` : '—'}
                                 innings={innings}
@@ -236,7 +240,7 @@ export const PitchingReport: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ 
                                 return (
                                     <View key={span.id} style={{ borderRadius: radius.pill, backgroundColor: colors.raised, paddingHorizontal: 10, paddingVertical: 6 }}>
                                         <Txt size={12} weight="semibold">
-                                            {`${shortName(nameOf(game, pro, span.id, lineOf(span.side, span.id)?.name ?? ''))} `}
+                                            <Text {...playerTextLink({ id: span.id, name: nameOf(game, pro, span.id, lineOf(span.side, span.id)?.name ?? ''), teamId: game[span.side].id })}>{shortName(nameOf(game, pro, span.id, lineOf(span.side, span.id)?.name ?? ''))}</Text>{' '}
                                             <Txt condensed size={14} tabular>{`${span.ir} · ${span.irs ?? 0}`}</Txt>
                                             {situation ? <Txt size={12} tone="muted">{` (${situation})`}</Txt> : null}
                                         </Txt>

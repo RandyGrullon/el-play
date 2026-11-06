@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Flame } from 'lucide-react-native';
 import type { GameDetail } from '../../../../types';
 import type { GamePro, WinProb } from '../../../../lib/pro/juego';
+import { gamePeople } from '../../../../lib/links';
 import { describePlay, eventName } from '../../../../lib/baseball';
 import { useColors } from '../../../../theme/theme';
 import { alpha, radius } from '../../../../theme/tokens';
@@ -11,6 +12,7 @@ import { Txt } from '../../../ui';
 import { Chip, CountUp, ProNote, ProSection, WinProbChart, fmtPercent, lastName, useChipInk, type WinProbMarker } from '../../kit';
 import { PRESSURE_MIN, basesBefore, highPressure, keyPlays, probBefore, winProbPoints } from './logic';
 import { halfInning } from './parts';
+import { LinkedNames, LinkedTeams, teamTextLink } from '../../../stats/common';
 
 // Probabilidad de ganar (MLB, por turno): área partida en el 50 % con el color de cada equipo, las 3 jugadas que
 // más la movieron (se tocan para leerlas) y el chip de presión cuando el índice de presión llega a 2.
@@ -82,7 +84,7 @@ export const WinProbBlock: React.FC<WinProbBlockProps> = ({ game, pro, winProb }
                     return (
                         <View key={side} accessible accessibilityLabel={`${game[side].abbrev} ${pct(last[side])}`} style={{ flexDirection: side === 'home' ? 'row-reverse' : 'row', alignItems: 'baseline', gap: 8, flexShrink: 1 }}>
                             <View style={{ width: 12, height: 12, borderRadius: 4, backgroundColor: game[side].color, alignSelf: 'center' }} />
-                            <Txt size={14} weight="extrabold" color={lead ? colors.ink : colors.muted}>
+                            <Txt size={14} weight="extrabold" color={lead ? colors.ink : colors.muted} {...teamTextLink(game[side].id)}>
                                 {game[side].abbrev}
                             </Txt>
                             {lead ? (
@@ -175,11 +177,11 @@ export const WinProbBlock: React.FC<WinProbBlockProps> = ({ game, pro, winProb }
                         )}
                     </View>
                     <Txt size={15} weight="semibold" style={{ lineHeight: 20 }}>
-                        {describePlay(detail.desc, lang)}
+                        <LinkedNames text={describePlay(detail.desc, lang)} people={[{ ...detail.batter, teamId: (detail.top ? game.away : game.home).id }, { ...detail.pitcher, teamId: (detail.top ? game.home : game.away).id }, ...gamePeople(game)]} />
                     </Txt>
                     {before !== null && after !== null && (
                         <Txt size={12} tone="muted">
-                            {t('pro.vivo.wp.moved', { team: game[selected.side].abbrev, from: pct(before), to: pct(after) })}
+                            <LinkedTeams text={t('pro.vivo.wp.moved', { team: game[selected.side].abbrev, from: pct(before), to: pct(after) })} teams={[game[selected.side]]} />
                         </Txt>
                     )}
                 </View>

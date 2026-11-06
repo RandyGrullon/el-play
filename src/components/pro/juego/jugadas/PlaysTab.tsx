@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, ListFilter } from 'lucide-react-native';
 import type { AtBat, GameDetail } from '../../../../types';
 import type { GamePro } from '../../../../lib/pro/juego';
 import type { HalfInning, NameBook, PlayEvent, PlayItem } from './model';
-import { filterCounts } from './model';
+import { bookPeople, filterCounts } from './model';
 import { pitchTypeColor, pitchTypeName } from '../../../../lib/baseball';
 import { alpha, radius, shadow } from '../../../../theme/tokens';
 import { Txt } from '../../../ui';
@@ -15,6 +15,7 @@ import { ChallengeCard, EventChip, PitchingChangeCard } from './EventCards';
 import { HalfSwing, PlayRow, ScorebookRow } from './PlayRow';
 import { Collapse, RowIn, Turn, usePlayColors } from './parts';
 import { eventText, halfAria, occupiedText, ordinal, pitchOrdinal } from './texts';
+import { LinkedNames, LinkedTeams, playerTextLink, teamTextLink } from '../../../stats/common';
 
 type Game = Pick<GameDetail, 'away' | 'home' | 'state' | 'box' | 'atBats' | 'currentAtBat' | 'count' | 'runners' | 'inning'>;
 type T = ReturnType<typeof useTranslation>['t'];
@@ -52,11 +53,11 @@ const NowCard: React.FC<{ game: Game; atBat: AtBat; names: NameBook }> = ({ game
                 </Txt>
             </View>
             <Txt size={15} style={{ lineHeight: 21 }}>
-                <Txt size={15} weight="extrabold">
+                <Txt size={15} weight="extrabold" {...playerTextLink({ id: atBat.batter.id, name: batter, teamId: (atBat.top ? game.away : game.home).id })}>
                     {batter}
                 </Txt>{' '}
                 {t('pro.jugadas.now.vs')}{' '}
-                <Txt size={15} weight="extrabold">
+                <Txt size={15} weight="extrabold" {...playerTextLink({ id: atBat.pitcher.id, name: pitcher, teamId: (atBat.top ? game.home : game.away).id })}>
                     {pitcher}
                 </Txt>
                 , {runners}.
@@ -92,7 +93,7 @@ const SectionTitle: React.FC<{ half: HalfInning; game: Game; aside: string }> = 
                     <Txt size={12.5} color={paint.team(game[half.side].color)}>
                         {half.top ? '▲' : '▼'}{' '}
                     </Txt>
-                    {t('pro.jugadas.tab.batting', { inning: ordinal(half.inning, i18n.language), team: game[half.side].teamName })}
+                    <LinkedTeams text={t('pro.jugadas.tab.batting', { inning: ordinal(half.inning, i18n.language), team: game[half.side].teamName })} teams={[{ id: game[half.side].id, name: game[half.side].teamName }]} by="name" />
                     <Txt size={11} weight="semibold" tone="muted">
                         {'  '}
                         {aside}
@@ -269,7 +270,7 @@ export const PlaysTab: React.FC<PlaysTabProps> = ({ game, pro, halves, names, on
                                                 </Txt>
                                             </View>
                                             <Txt size={12} tone="muted" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
-                                                {names.label(previous.pitchers[0])} · {t('pro.jugadas.line.pitches', { count: previous.pitches })}
+                                                <Text {...playerTextLink(previous.pitchers[0] ? { id: previous.pitchers[0], name: names.full(previous.pitchers[0]) || names.label(previous.pitchers[0]) } : null)}>{names.label(previous.pitchers[0])}</Text> · {t('pro.jugadas.line.pitches', { count: previous.pitches })}
                                             </Txt>
                                             <HalfSwing swing={previous.swing} game={game} />
                                         </View>
@@ -304,7 +305,7 @@ export const PlaysTab: React.FC<PlaysTabProps> = ({ game, pro, halves, names, on
                                                         {ordinal(half.inning, i18n.language)}
                                                     </Txt>
                                                     <Txt size={13.5} weight="bold" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
-                                                        {team.teamName}
+                                                        <Text {...teamTextLink(team.id)}>{team.teamName}</Text>
                                                     </Txt>
                                                     <Txt size={15} condensed tabular>
                                                         {line}
@@ -316,7 +317,7 @@ export const PlaysTab: React.FC<PlaysTabProps> = ({ game, pro, halves, names, on
                                                         {list.map((text) => (
                                                             <View key={text} style={{ height: 24, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: colors.raised, paddingHorizontal: 10 }}>
                                                                 <Txt size={11.5} weight="semibold" numberOfLines={1}>
-                                                                    {text}
+                                                                    <LinkedNames text={text} people={bookPeople(game, names)} />
                                                                 </Txt>
                                                             </View>
                                                         ))}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { GameDetail } from '../../../../types';
 import type { LineHalf } from '../../../../types/pro-juego';
@@ -10,6 +10,7 @@ import { alpha, radius, shadow } from '../../../../theme/tokens';
 import { TeamLogo, Txt } from '../../../ui';
 import { ProSegmented, teamInk, useElementWidth, useProColors } from '../../kit';
 import { usePlayColors } from '../jugadas/parts';
+import { TeamLink, playerTextLink } from '../../../stats/common';
 
 type Metric = 'r' | 'h' | 'lob';
 type Side = 'away' | 'home';
@@ -135,7 +136,7 @@ export const Linescore: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game,
                 <View style={{ width: teamWidth }}>
                     <View style={{ height: 22 }} />
                     {(['away', 'home'] as const).map((side) => (
-                        <View key={side} accessible accessibilityLabel={rowLabel(side)} style={{ height: 34, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TeamLink key={side} id={game[side].id} name={game[side].name} label={rowLabel(side)} style={{ height: 34, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                             <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
                                 <TeamLogo team={game[side]} size={18} />
                             </View>
@@ -144,7 +145,7 @@ export const Linescore: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game,
                                     {game[side].abbrev}
                                 </Txt>
                             )}
-                        </View>
+                        </TeamLink>
                     ))}
                 </View>
                 {/* Entradas (se deslizan si no caben) */}
@@ -172,7 +173,7 @@ export const Linescore: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game,
                             <Txt size={12} weight="extrabold" color={paint.tone(proColors.up)}>
                                 {t('pro.box.dec.W')}
                             </Txt>{' '}
-                            {lastOf(decisions.winner.name)}
+                            <Text {...playerTextLink(decisions.winner)}>{lastOf(decisions.winner.name)}</Text>
                             {decisions.winner.wins !== null && ` (${decisions.winner.wins}-${decisions.winner.losses}${decisions.winner.era ? `, ${decisions.winner.era}` : ''})`}
                         </Txt>
                     )}
@@ -181,7 +182,7 @@ export const Linescore: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game,
                             <Txt size={12} weight="extrabold" color={paint.tone(proColors.down)}>
                                 {t('pro.box.dec.L')}
                             </Txt>{' '}
-                            {lastOf(decisions.loser.name)}
+                            <Text {...playerTextLink(decisions.loser)}>{lastOf(decisions.loser.name)}</Text>
                             {decisions.loser.wins !== null && ` (${decisions.loser.wins}-${decisions.loser.losses}${decisions.loser.era ? `, ${decisions.loser.era}` : ''})`}
                         </Txt>
                     )}
@@ -190,7 +191,7 @@ export const Linescore: React.FC<{ game: GameDetail; pro?: GamePro }> = ({ game,
                             <Txt size={12} weight="extrabold" color={colors.accentInk}>
                                 {t('pro.box.dec.S')}
                             </Txt>{' '}
-                            {lastOf(decisions.save.name)}
+                            <Text {...playerTextLink(decisions.save)}>{lastOf(decisions.save.name)}</Text>
                             {decisions.save.saves != null && ` (${decisions.save.saves})`}
                         </Txt>
                     ) : (

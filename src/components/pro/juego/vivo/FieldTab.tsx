@@ -9,6 +9,7 @@ import { alpha, shadow } from '../../../../theme/tokens';
 import { TeamLogo, Txt } from '../../../ui';
 import { ChipButton, ChipRow, Enter, ProNote, ProSection, initials, shortName, teamInk, useElementWidth, useProColors } from '../../kit';
 import { Avatar, halfInning } from './parts';
+import { LinkedTeams, PlayerLink, playerTextLink } from '../../../stats/common';
 
 // Pestaña «En el terreno»: los 9 defensores en su posición, el bullpen (quién no ha lanzado, con su EFE y sus
 // entradas de la temporada; los que ya lanzaron en gris con sus pitcheos de hoy) y la banca con su OPS.
@@ -46,12 +47,13 @@ const Initials: React.FC<{ name: string; color: string; muted?: boolean }> = ({ 
     );
 };
 
-const Row: React.FC<{ children: React.ReactNode; label: string; dim?: boolean; last?: boolean }> = ({ children, label, dim, last }) => {
+/** Fila del bullpen o la banca: abre la ficha del pelotero */
+const Row: React.FC<{ children: React.ReactNode; label: string; player: { id: number; name: string; teamId: number }; dim?: boolean; last?: boolean }> = ({ children, label, player, dim, last }) => {
     const colors = useColors();
     return (
-        <View accessible accessibilityLabel={label} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6, opacity: dim ? 0.6 : 1, borderBottomWidth: last ? 0 : 1, borderBottomColor: alpha(colors.line, 0.08) }}>
+        <PlayerLink player={player} label={label} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6, opacity: dim ? 0.6 : 1, borderBottomWidth: last ? 0 : 1, borderBottomColor: alpha(colors.line, 0.08) }}>
             {children}
-        </View>
+        </PlayerLink>
     );
 };
 
@@ -128,7 +130,7 @@ export const FieldTab: React.FC<FieldTabProps> = ({ game, pro }) => {
                                         <Txt size={10} weight="extrabold" tone="muted">
                                             {place.abbr}
                                         </Txt>
-                                        <Txt size={11} weight="extrabold" numberOfLines={1} style={{ flexShrink: 1 }}>
+                                        <Txt size={11} weight="extrabold" numberOfLines={1} style={{ flexShrink: 1 }} {...playerTextLink({ ...person, teamId: team.id })}>
                                             {shortName(person.name, true).replace(/^\S+\s/, '')}
                                         </Txt>
                                     </View>
@@ -137,7 +139,7 @@ export const FieldTab: React.FC<FieldTabProps> = ({ game, pro }) => {
                         })}
                     </View>
                     <Txt size={12} tone="muted">
-                        {t('pro.vivo.field.defenseNote', { team: team.teamName || team.abbrev, half: game.inning ? halfInning(game.inning.n, game.inning.isTop, lang) : '' })}
+                        <LinkedTeams text={t('pro.vivo.field.defenseNote', { team: team.teamName || team.abbrev, half: game.inning ? halfInning(game.inning.n, game.inning.isTop, lang) : '' })} teams={[{ id: team.id, name: team.teamName || team.abbrev }]} by="name" />
                     </Txt>
                 </ProSection>
             ) : (
@@ -152,7 +154,7 @@ export const FieldTab: React.FC<FieldTabProps> = ({ game, pro }) => {
                     const armName = name(arm.id) ?? `#${arm.number ?? '—'}`;
                     const sub = [arm.number ? `#${arm.number}` : null, arm.throws ? t(`pro.vivo.hand.throws.${arm.throws}`, { defaultValue: arm.throws }) : null].filter(Boolean).join(' · ');
                     return (
-                        <Row key={arm.id} label={`${armName}, ${sub}. ${arm.season.era ?? '—'} ${t('pro.vivo.duel.era')}, ${arm.season.ip ?? '—'} IP`} last={index === box.bullpen.length - 1}>
+                        <Row key={arm.id} player={{ id: arm.id, name: armName, teamId: team.id }} label={`${armName}, ${sub}. ${arm.season.era ?? '—'} ${t('pro.vivo.duel.era')}, ${arm.season.ip ?? '—'} IP`} last={index === box.bullpen.length - 1}>
                             <Initials name={armName} color={team.color} />
                             <View style={{ flex: 1, minWidth: 0 }}>
                                 <Txt size={14} weight="extrabold" numberOfLines={1}>
@@ -182,7 +184,7 @@ export const FieldTab: React.FC<FieldTabProps> = ({ game, pro }) => {
                             const now = arm.id === nowPitching;
                             const line = [arm.np !== null ? `${arm.np} P` : null, `${arm.ip} IP`].filter(Boolean).join(' · ');
                             return (
-                                <Row key={arm.id} label={`${armName}${now ? `, ${t('pro.vivo.field.onMound')}` : ''}: ${line}`} dim={!now} last={index === used.length - 1}>
+                                <Row key={arm.id} player={{ id: arm.id, name: armName, teamId: team.id }} label={`${armName}${now ? `, ${t('pro.vivo.field.onMound')}` : ''}: ${line}`} dim={!now} last={index === used.length - 1}>
                                     <Initials name={armName} color={team.color} muted={!now} />
                                     <Txt size={14} weight={now ? 'extrabold' : 'semibold'} numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
                                         {armName}
@@ -204,7 +206,7 @@ export const FieldTab: React.FC<FieldTabProps> = ({ game, pro }) => {
                         const playerName = name(player.id) ?? `#${player.number ?? '—'}`;
                         const sub = [player.number ? `#${player.number}` : null, player.pos, player.bats ? t(`pro.vivo.hand.bats.${player.bats}`, { defaultValue: player.bats }) : null].filter(Boolean).join(' · ');
                         return (
-                            <Row key={player.id} label={`${playerName}, ${sub}. ${player.season.ops ?? '—'} OPS`} last={index === box.bench.length - 1}>
+                            <Row key={player.id} player={{ id: player.id, name: playerName, teamId: team.id }} label={`${playerName}, ${sub}. ${player.season.ops ?? '—'} OPS`} last={index === box.bench.length - 1}>
                                 <Initials name={playerName} color={team.color} />
                                 <View style={{ flex: 1, minWidth: 0 }}>
                                     <Txt size={14} weight="extrabold" numberOfLines={1}>

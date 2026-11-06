@@ -50,10 +50,12 @@ const LETTER = /[A-Za-zÀ-ÖØ-öø-ÿ'’.-]/;
  */
 export const nameSegments = (text: string, people: readonly (LinkPerson | null | undefined)[]): { text: string; person: LinkPerson | null }[] => {
     if (!text) return [];
-    const seen = new Set<number>();
+    // La misma persona puede venir con varios nombres («Pelotero Uno», «P. Uno»): se repite solo el par id + nombre
+    const seen = new Set<string>();
     const list = people.filter((person): person is LinkPerson => {
-        if (!person || !linkId(person.id) || !person.name || person.name.trim().length < 2 || seen.has(person.id)) return false;
-        seen.add(person.id);
+        const key = person ? `${person.id}|${person.name?.trim()}` : '';
+        if (!person || !linkId(person.id) || !person.name || person.name.trim().length < 2 || seen.has(key)) return false;
+        seen.add(key);
         return true;
     });
     const matches: { start: number; end: number; person: LinkPerson }[] = [];
@@ -88,4 +90,11 @@ export const gamePeople = (game: { away: { id: number }; home: { id: number }; b
         const box = game.box?.[side];
         if (!box) return [];
         return [...box.batters, ...box.pitchers, ...(box.bench ?? []), ...(box.bullpen ?? [])].map((person) => ({ id: person.id, name: person.name, teamId: game[side].id }));
+    });
+
+/** Cada persona con sus otras formas del nombre (el corto «P. Uno» del PRO, el del box «Uno, P»), sin repetir */
+export const nameForms = (people: readonly LinkPerson[], forms: (person: LinkPerson) => readonly (string | null | undefined)[]): LinkPerson[] =>
+    people.flatMap((person) => {
+        const names = [person.name, ...forms(person)].map((name) => name?.trim() ?? '').filter((name, index, list) => name && list.indexOf(name) === index);
+        return names.map((name) => ({ ...person, name }));
     });

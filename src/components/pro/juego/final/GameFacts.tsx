@@ -11,6 +11,7 @@ import { TeamLogo, Txt } from '../../../ui';
 import { capitalize } from '../../../feed/DayChips';
 import { GradientCard, shortName, toCelsius } from '../../kit';
 import { clock, gamesBetween, phaseOf, seasonSeries, skyKey, toKmh, windKind, type SeriesSource } from '../previa/logica';
+import { LinkedTeams, TeamLink } from '../../../stats/common';
 
 // Cabecera del final (debajo del marcador): chapa de serie y ficha del juego con duración (contra la liga),
 // primer pitcheo, demora, clima, viento, árbitros y retos ABS. Sin asistencia: en LIDOM MLB siempre manda 0.
@@ -87,23 +88,23 @@ export const GameFacts: React.FC<{ game: GameDetail; pro?: GamePro; source: Seri
             {seriesLine ? (
                 <GradientCard radius="tile" innerStyle={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 8, paddingHorizontal: 14, paddingVertical: 12 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-                        <View style={{ width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
+                        <TeamLink id={game.away.id} name={game.away.name} style={{ width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
                             <TeamLogo team={game.away} size={24} />
-                        </View>
-                        <View style={{ marginLeft: -8, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderWidth: 2, borderColor: colors.surface }}>
+                        </TeamLink>
+                        <TeamLink id={game.home.id} name={game.home.name} style={{ marginLeft: -8, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderWidth: 2, borderColor: colors.surface }}>
                             <TeamLogo team={game.home} size={22} />
-                        </View>
+                        </TeamLink>
                     </View>
                     <View accessible accessibilityLabel={[isPlayoff ? playoff!.name || t('pro.final.facts.series') : t('pro.previa.series.title'), seriesLine, seriesSub].filter(Boolean).join(', ')} style={{ flex: 1, minWidth: 120 }}>
                         <Txt size={10} weight="extrabold" tone="muted" numberOfLines={1} style={{ textTransform: 'uppercase', letterSpacing: 1.2 }}>
                             {isPlayoff ? playoff!.name || t('pro.final.facts.series') : t('pro.previa.series.title')}
                         </Txt>
                         <Txt size={15} weight="extrabold" numberOfLines={1} style={{ marginTop: 2, letterSpacing: -0.3 }}>
-                            {seriesLine}
+                            <LinkedTeams text={seriesLine} teams={[game.away, game.home]} />
                         </Txt>
                         {seriesSub ? (
                             <Txt size={11} weight="semibold" tone="muted" numberOfLines={1}>
-                                {seriesSub}
+                                <LinkedTeams text={seriesSub} teams={[game.away, game.home]} />
                             </Txt>
                         ) : null}
                     </View>
@@ -159,7 +160,7 @@ export const GameFacts: React.FC<{ game: GameDetail; pro?: GamePro; source: Seri
                 ) : null}
                 {abs ? (
                     <Fact icon={(c) => <ShieldCheck size={size} color={c} />} label={t('pro.final.facts.abs')} span={wind ? 1 : 2} text={absLine}>
-                        {absLine}
+                        <LinkedTeams text={absLine} teams={[game.away, game.home]} />
                     </Fact>
                 ) : null}
                 {plate ? (

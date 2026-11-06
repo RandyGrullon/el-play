@@ -5,6 +5,7 @@
 import type { AtBat, GameDetail, Pitch, PitcherLine } from '../../../../types';
 import type { GamePro, ProAction, ProPlay, ProRunner, WinProb, WinProbPlay } from '../../../../lib/pro/juego';
 import { describePlay } from '../../../../lib/baseball';
+import { gamePeople, nameForms, type LinkPerson } from '../../../../lib/links';
 
 export type Side = 'away' | 'home';
 export type Base = '1B' | '2B' | '3B';
@@ -871,3 +872,27 @@ export const absByTeam = (halves: HalfInning[]) => {
     }
     return result;
 };
+
+const peopleCache = new WeakMap<NameBook, LinkPerson[]>();
+
+/**
+ * Los del juego (el box de los dos) con sus nombres completo, corto y el del box, para que cada nombre que sale en una
+ * jugada o una nota abra la ficha de ese pelotero. Se arma una vez por libreta de nombres.
+ */
+export const bookPeople = (game: Pick<GameDetail, 'away' | 'home' | 'box'>, names: NameBook): LinkPerson[] => {
+    const cached = peopleCache.get(names);
+    if (cached) return cached;
+    const list = nameForms(gamePeople(game), (person) => [names.full(person.id, person.name), names.label(person.id, person.name)]);
+    peopleCache.set(names, list);
+    return list;
+};
+
+/** El bateador y el lanzador del turno con sus nombres (completo y corto); con el juego, cada uno con su equipo */
+export const atBatPeople = (atBat: AtBat, names: NameBook, game?: Pick<GameDetail, 'away' | 'home'>): LinkPerson[] =>
+    nameForms(
+        [
+            { id: atBat.batter.id, name: atBat.batter.name, teamId: game ? (atBat.top ? game.away : game.home).id : null },
+            { id: atBat.pitcher.id, name: atBat.pitcher.name, teamId: game ? (atBat.top ? game.home : game.away).id : null }
+        ],
+        (person) => [names.full(person.id, person.name), names.label(person.id, person.name)]
+    );
