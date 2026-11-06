@@ -75,7 +75,7 @@ export type PlanGame = Pick<ScheduleGame, 'gamePk' | 'date' | 'state' | 'detaile
  * cuáles quitar (otro favorito, playball apagado, el juego ahora tiene campana, se pospuso o ya pasó). Un juego que ya no
  * sale en el calendario guardado no se toca: su aviso sigue programado.
  */
-export const planTeamAlerts = ({
+export const planTeamAlerts = <G extends PlanGame>({
     games,
     current,
     bell,
@@ -83,14 +83,14 @@ export const planTeamAlerts = ({
     kinds,
     now
 }: {
-    games: PlanGame[];
+    games: G[];
     current: Record<string, TeamAlert>;
     bell: number[];
     favoriteTeamId: number | null;
     kinds: AlertKinds;
     now: number;
 }) => {
-    const wanted = (game: PlanGame) =>
+    const wanted = (game: G) =>
         favoriteTeamId !== null &&
         kinds.start &&
         (game.away.id === favoriteTeamId || game.home.id === favoriteTeamId) &&
@@ -102,7 +102,7 @@ export const planTeamAlerts = ({
         Date.parse(game.date) > now;
     const byPk = new Map(games.map((game) => [String(game.gamePk), game]));
     const cancel: string[] = [];
-    const schedule: PlanGame[] = [];
+    const schedule: G[] = [];
     for (const [key, alert] of Object.entries(current)) {
         const game = byPk.get(key);
         if (favoriteTeamId === null || alert.teamId !== favoriteTeamId || !kinds.start || bell.includes(Number(key))) cancel.push(key);
