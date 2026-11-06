@@ -77,16 +77,20 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
         const favorite = favoriteTeamId === team.id;
         return (
             <div className={`flex min-w-0 flex-1 flex-col justify-end px-4 pb-7 pt-16 ${align === 'end' ? 'items-end text-right' : ''}`} style={{ backgroundColor: team.color, color: ink }}>
-                <button
-                    type="button"
-                    onClick={() => toggleFavoriteTeam(team.id)}
-                    className={`mb-1 inline-flex max-w-full items-center gap-1 text-base font-bold ${align === 'end' ? 'flex-row-reverse' : ''}`}
-                    aria-pressed={favorite}
-                    aria-label={favorite ? t('teams.removeFavorite', { name: team.name }) : t('teams.addFavorite', { name: team.name })}
-                >
-                    <span className="truncate">{teamDisplayName(team, i18n.language)}</span>
-                    <Star className={`h-4 w-4 shrink-0 ${favorite ? 'fill-current' : 'opacity-50'}`} />
-                </button>
+                <span className={`mb-1 inline-flex max-w-full items-center gap-1 text-base font-bold ${align === 'end' ? 'flex-row-reverse' : ''}`}>
+                    <Link to={`/equipo/${team.id}`} className="truncate underline-offset-2 hover:underline">
+                        {teamDisplayName(team, i18n.language)}
+                    </Link>
+                    <button
+                        type="button"
+                        onClick={() => toggleFavoriteTeam(team.id)}
+                        className="-m-1.5 flex shrink-0 p-1.5"
+                        aria-pressed={favorite}
+                        aria-label={favorite ? t('teams.removeFavorite', { name: team.name }) : t('teams.addFavorite', { name: team.name })}
+                    >
+                        <Star className={`h-4 w-4 ${favorite ? 'fill-current' : 'opacity-50'}`} />
+                    </button>
+                </span>
                 {showScores ? (
                     <span className={`text-[76px] font-extrabold leading-[0.9] tabular-nums ${dim ? 'opacity-60' : ''}`}>{team.score ?? 0}</span>
                 ) : (

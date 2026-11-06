@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { GameDetail } from '../../types';
 import { Segmented } from '../ui/Segmented';
 import { TeamLogo } from '../ui/TeamLogo';
+import { PlayerLink } from '../ui/PlayerLink';
 
 export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
     const { t } = useTranslation();
@@ -47,7 +48,7 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                                 {box.batters.map((batter) => (
                                     <tr key={batter.id}>
                                         <td className={`sticky left-0 z-[1] min-w-[7.5rem] bg-surface py-2 pr-2 ${batter.sub ? 'pl-8' : 'pl-4'}`}>
-                                            <span className="font-medium">{batter.name}</span>
+                                            <PlayerLink id={batter.id} className="font-medium">{batter.name}</PlayerLink>
                                             <span className="ml-1.5 text-xs text-faint">{batter.pos}</span>
                                             {batter.hr > 0 && <span className="ml-1.5 rounded bg-gold/15 px-1 text-[10px] font-bold text-gold">HR{batter.hr > 1 ? ` ${batter.hr}` : ''}</span>}
                                         </td>
@@ -95,7 +96,7 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                                 {box.pitchers.map((pitcher) => (
                                     <tr key={pitcher.id}>
                                         <td className="sticky left-0 z-[1] bg-surface py-2 pl-4 pr-2">
-                                            <span className="font-medium">{pitcher.name}</span>
+                                            <PlayerLink id={pitcher.id} className="font-medium">{pitcher.name}</PlayerLink>
                                             {pitcher.note && <span className="ml-1.5 text-xs font-semibold text-accent-ink">{pitcher.note}</span>}
                                         </td>
                                         <td className="num px-1.5 text-right">{pitcher.ip}</td>
@@ -124,7 +125,7 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                                 <ul className="mt-1.5 divide-y divide-line/10 text-sm">
                                     {box.bench.map((player) => (
                                         <li key={player.id} className="flex items-center gap-2 py-1.5">
-                                            <span className="min-w-0 flex-1 truncate font-medium">{player.name}</span>
+                                            <PlayerLink id={player.id} className="min-w-0 flex-1 truncate font-medium">{player.name}</PlayerLink>
                                             <span className="text-xs text-faint">{player.pos}</span>
                                             <span className="num w-12 text-right text-muted">{player.avg ?? '—'}</span>
                                         </li>
@@ -138,7 +139,7 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                                 <ul className="mt-1.5 divide-y divide-line/10 text-sm">
                                     {box.bullpen.map((arm) => (
                                         <li key={arm.id} className="flex items-center gap-2 py-1.5">
-                                            <span className="min-w-0 flex-1 truncate font-medium">{arm.name}</span>
+                                            <PlayerLink id={arm.id} className="min-w-0 flex-1 truncate font-medium">{arm.name}</PlayerLink>
                                             {arm.throws && <span className="text-xs text-faint">{t(`box.hand${arm.throws}`, { defaultValue: arm.throws })}</span>}
                                             <span className="num w-16 text-right text-muted">{arm.era ? t('box.era', { era: arm.era }) : '—'}</span>
                                         </li>

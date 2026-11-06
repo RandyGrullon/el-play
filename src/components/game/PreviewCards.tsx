@@ -10,6 +10,7 @@ import { formatShortDate, seasonLabel } from '../../lib/format';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
 import { Segmented } from '../ui/Segmented';
 import { TeamLogo } from '../ui/TeamLogo';
+import { PlayerLink } from '../ui/PlayerLink';
 
 /** La fila del equipo en las posiciones (en LIDOM, la de la fase que se juega) */
 const rowOf = (standings: Standings | undefined, teamId: number): StandingRow | null => {
@@ -175,7 +176,7 @@ export const HotPlayersCard: React.FC<{ game: GameDetail }> = ({ game }) => {
                                 <li key={player.id} className="flex items-center gap-3">
                                     <PlayerPhoto personId={player.id} name={player.name} size={40} background={`${team.color}22`} team={team} />
                                     <span className="min-w-0 flex-1">
-                                        <span className="block truncate font-bold">{player.name}</span>
+                                        <PlayerLink id={player.id} className="block truncate font-bold">{player.name}</PlayerLink>
                                         <span className="block text-xs text-muted">
                                             {[t('previewMore.hits', { h: player.h, ab: player.ab }), player.hr ? t('previewMore.hr', { count: player.hr }) : null, player.rbi ? t('previewMore.rbi', { count: player.rbi }) : null].filter(Boolean).join(' · ')}
                                         </span>
@@ -227,7 +228,7 @@ export const LineupsCard: React.FC<{ game: GameDetail }> = ({ game }) => {
                         <li key={player.id} className="flex items-center gap-3 py-2">
                             <span className="w-4 text-center text-xs font-extrabold text-muted">{index + 1}</span>
                             <span className="min-w-0 flex-1 truncate font-semibold">
-                                {player.name}
+                                <PlayerLink id={player.id}>{player.name}</PlayerLink>
                                 {player.bats && <span className="ml-1.5 text-xs font-normal text-faint">{t(`previewMore.bats.${player.bats}`, { defaultValue: player.bats })}</span>}
                             </span>
                             <span className="w-7 text-xs font-bold text-muted">{player.pos}</span>

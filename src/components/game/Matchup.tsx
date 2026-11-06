@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { GameDetail } from '../../types';
+import { PlayerLink } from '../ui/PlayerLink';
 
 // Lanzador contra bateador con su línea del día
 export const Matchup: React.FC<{ game: GameDetail }> = ({ game }) => {
@@ -14,7 +15,7 @@ export const Matchup: React.FC<{ game: GameDetail }> = ({ game }) => {
         <section className="card grid grid-cols-2 divide-x divide-line/10" aria-label={t('game.matchup')}>
             <div className="p-4">
                 <p className="eyebrow">{t('game.pitcher')}</p>
-                <p className="mt-1 truncate font-semibold">{pitcher.name}</p>
+                <PlayerLink id={pitcher.id} className="mt-1 block truncate font-semibold">{pitcher.name}</PlayerLink>
                 <p className="text-xs text-muted">{hand(pitcher.hand, 'throws')}</p>
                 <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
                     <Stat label={t('game.pitchCount')} value={pitcher.pitches} />
@@ -25,7 +26,7 @@ export const Matchup: React.FC<{ game: GameDetail }> = ({ game }) => {
             </div>
             <div className="p-4">
                 <p className="eyebrow">{t('game.batter')}</p>
-                <p className="mt-1 truncate font-semibold">{batter.name}</p>
+                <PlayerLink id={batter.id} className="mt-1 block truncate font-semibold">{batter.name}</PlayerLink>
                 <p className="text-xs text-muted">{hand(batter.side, 'bats')}</p>
                 <dl className="mt-3 grid grid-cols-2 gap-2 text-center">
                     <Stat label={t('game.today')} value={batter.ab !== null ? `${batter.h ?? 0}-${batter.ab}` : null} />
