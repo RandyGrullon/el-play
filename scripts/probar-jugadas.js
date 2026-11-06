@@ -398,6 +398,33 @@ it('récord y diferencia de carreras con los juegos para el récord pitagórico'
     partial(pythagorean(100, 90, 30), { wins: 16, losses: 14 });
 });
 
+console.log('imágenes para compartir');
+
+['lib/format.ts', 'lib/teams.ts', 'lib/nationalTeams.ts', 'lib/baseball.ts'].forEach(compileTo);
+const subjects = require(compileTo('components/share/subjects.ts'));
+// Las claves salen tal cual (con sus valores), para ver qué texto se pidió
+const tKeys = (key, options = {}) => {
+    const { defaultValue, ...vars } = options; // eslint-disable-line no-unused-vars
+    return Object.keys(vars).length ? `${key}${JSON.stringify(vars)}` : key;
+};
+
+it('la tabla para la imagen: rango, sigla, nombre, récord y juegos detrás de cada equipo', () => {
+    const fila = (rank, id, abbrev, wins, losses, gamesBack) => ({ rank, team: { id, name: `Equipo ${abbrev}`, shortName: abbrev, abbrev, logo: '', color: '#654321', flag: null }, wins, losses, gamesBack });
+    const post = subjects.standingsPost([fila(1, 9001, 'AAA', 20, 10, '-'), fila(2, 9002, 'BBB', 18, 12, '2.0')], 'Posiciones', 'Regular · 2099-00', 'Liga de Prueba', 'es');
+    partial(post, { kind: 'standings', title: 'Posiciones', subtitle: 'Regular · 2099-00', league: 'Liga de Prueba' });
+    assert.deepStrictEqual(post.rows[1], { rank: 2, abbrev: 'BBB', name: 'Equipo BBB', color: '#654321', wins: 18, losses: 12, gamesBack: '2.0' });
+});
+
+it('el líder para la imagen: la categoría en singular si es 1, su puesto y la línea de abajo', () => {
+    const lider = (value, extra) => ({ rank: 1, id: 12345678, name: 'Pelotero Ficticio', teamId: 9001, teamName: 'Equipo AAA', teamAbbrev: 'AAA', logo: null, color: null, value, extra });
+    const uno = subjects.playerFromLeader(lider(1, { h: 3, ab: 10 }), 'homeRuns', '2099-00', 'Liga de Prueba', tKeys);
+    partial(uno, { kind: 'player', personId: 12345678, value: '1', label: 'leaders.one.homeRuns', color: '#2563eb', detail: 'share.hitsInAtBats{"h":3,"ab":10}' });
+    assert.strictEqual(uno.context, 'share.rankIn{"rank":1,"league":"Liga de Prueba","season":"2099-00"}');
+    const varios = subjects.playerFromLeader(lider(12, { ip: '46.1', k: 34 }), 'strikeouts', '2099-00', 'Liga de Prueba', tKeys);
+    partial(varios, { value: '12', label: 'leaders.strikeouts', detail: 'share.innings{"ip":"46.1","k":34}' });
+    assert.strictEqual(subjects.playerFromLeader(lider(null, {}), 'wins', '2099-00', 'Liga', tKeys).value, '—');
+});
+
 fs.rmSync(OUT, { recursive: true, force: true });
 if (failed) {
     console.log(`\n${failed} caso(s) fallaron`);

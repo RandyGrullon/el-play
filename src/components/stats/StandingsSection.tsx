@@ -16,7 +16,9 @@ import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Screen } from '../layout';
 import { Card, ErrorState, OfflineState, Pill, Row, Skeleton, TeamLogo, Txt, useErrorText } from '../ui';
-import { ChipRow, HeaderButton, Notice, SectionHeader, openTeam, poolTitle, shareText, waitingForNetwork } from './common';
+import { ChipRow, HeaderButton, Notice, SectionHeader, openTeam, poolTitle, waitingForNetwork } from './common';
+import { useShare } from '../share/ShareSheet';
+import { standingsPost } from '../share/subjects';
 import { RaceChart } from './RaceChart';
 import { raceStatus, type RaceStatus } from '../../lib/standings';
 
@@ -100,7 +102,7 @@ const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabe
                     </Txt>
                     {leader.lastTen && (
                         <Txt size={12} weight="semibold" color={ink} style={{ opacity: 0.75 }}>
-                            {t('standings.lastTenShort', { record: `${leader.lastTen.wins}-${leader.lastTen.losses}` })}
+                            {t('standings.lastTenIs', { record: `${leader.lastTen.wins}-${leader.lastTen.losses}` })}
                         </Txt>
                     )}
                 </Pressable>
@@ -168,10 +170,6 @@ const StandingCards: React.FC<{ rows: StandingRow[]; cutoff?: number; cutoffLabe
     );
 };
 
-/** La tabla en texto para compartir: «1. Estrellas 1-0 · 2. Leones 0-0 …» */
-const tableText = (rows: StandingRow[], title: string, lang: string) =>
-    [title, ...rows.map((row) => `${row.rank}. ${teamDisplayName(row.team, lang)} ${row.wins}-${row.losses}${row.gamesBack !== '-' ? ` (${row.gamesBack})` : ''}`), '· El Play'].join('\n');
-
 export const StandingsSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) => {
     const { t, i18n } = useTranslation();
     const errorText = useErrorText();
@@ -180,6 +178,7 @@ export const StandingsSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) 
     const data = standings.data;
     const [phase, setPhase] = useState<Phase | null>(null);
     const pro = useIsPro();
+    const { share: openShare, sheet } = useShare();
     // Otra liga: vuelve a la fase activa (se ajusta en el render, sin efecto)
     const [shownLeague, setShownLeague] = useState(activeLeague);
     if (shownLeague !== activeLeague) {
@@ -192,7 +191,14 @@ export const StandingsSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) 
     const activePhase = data?.type === 'lidom' ? phase ?? data.activePhase : null;
     const rows = !data ? [] : data.type === 'lidom' ? data[activePhase!] : data.type === 'sdc' ? data.teams : [];
     const phaseLabel = activePhase ? t(`standings.${activePhase}`) : '';
-    const share = (tableRows: StandingRow[], subtitle: string) => shareText(tableText(tableRows, `${t('standings.title')} ${leagueName} · ${subtitle}`, i18n.language));
+    // La tabla como imagen (historia o post), como la web
+    const share = (tableRows: StandingRow[], subtitle: string) =>
+        openShare({
+            data: standingsPost(tableRows, t('standings.title'), subtitle, leagueName, i18n.language),
+            fileName: `el-play-posiciones-${activeLeague}`,
+            text: `${t('standings.title')} ${leagueName} · El Play`,
+            path: '/posiciones'
+        });
 
     // Clasificados y eliminados en la temporada regular de LIDOM (4 de 6 pasan al Round Robin)
     const statuses = data?.type === 'lidom' && activePhase === 'regular' ? raceStatus(data.regular, 4, data.regularSeasonGames) : undefined;
@@ -263,6 +269,7 @@ export const StandingsSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) 
             ) : data?.type === 'sdc' ? (
                 table(data.teams, 4, t('standings.cutNext'))
             ) : null}
+            {sheet}
         </Screen>
     );
 };

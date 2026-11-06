@@ -476,7 +476,8 @@
       "clinched": "Clasificado",
       "eliminated": "Eliminado"
     },
-    "lastTenShort": "{{record}} últ. 10"
+    "lastTenShort": "{{record}} últ. 10",
+    "lastTenIs": "{{record}} en los últimos 10"
   },
   "leaders": {
     "title": "Líderes",
@@ -508,7 +509,16 @@
     "savesShort": "SV",
     "whip": "WHIP",
     "whipShort": "BB+H / IP",
-    "rank": "N.º {{rank}}"
+    "rank": "N.º {{rank}}",
+    "one": {
+      "homeRuns": "Jonrón",
+      "runsBattedIn": "Carrera impulsada",
+      "hits": "Hit",
+      "stolenBases": "Base robada",
+      "strikeouts": "Ponche",
+      "wins": "Victoria",
+      "saves": "Salvado"
+    }
   },
   "notifications": {
     "gameStarting": "¡El juego va a empezar!",

@@ -1,5 +1,6 @@
-// Convierte los datos del juego en el contenido de la imagen para compartir (igual que el-play/src/share/subjects.ts)
-import type { GameDetail, ScheduleGame, TopPerformer } from '../../types';
+// Convierte los datos de la app en el contenido de la imagen para compartir (igual que el-play/src/share/subjects.ts):
+// el resultado de un juego, un pelotero (figura del juego o líder de una categoría) y la tabla de posiciones.
+import type { GameDetail, Leader, ScheduleGame, StandingRow, TopPerformer } from '../../types';
 import { finalLabel, inningName, keyPlayOf, stateName } from '../../lib/baseball';
 import { formatShortDate, formatTime } from '../../lib/format';
 import { teamDisplayName } from '../../lib/teams';
@@ -43,10 +44,20 @@ export interface PlayerPost {
     value: string;
     label: string;
     context: string;
+    /** Línea de abajo («12 H en 40 VB», «46.1 IP · 34 K») */
+    detail?: string;
     league: string;
 }
 
-export type PostData = ResultPost | PlayerPost;
+export interface StandingsPost {
+    kind: 'standings';
+    title: string;
+    subtitle: string;
+    league: string;
+    rows: { rank: number; abbrev: string; name: string; color: string; wins: number; losses: number; gamesBack: string }[];
+}
+
+export type PostData = ResultPost | PlayerPost | StandingsPost;
 
 const statusOf = (
     state: 'preview' | 'live' | 'final',
@@ -111,6 +122,30 @@ export const resultFromSchedule = (game: ScheduleGame, leagueName: string, t: T,
     };
 };
 
+/** Un líder de una categoría (Líderes): su cifra, la categoría (en singular si es 1) y su puesto en la liga */
+export const playerFromLeader = (leader: Leader, categoryId: string, seasonLabel: string, leagueName: string, t: T): PlayerPost => {
+    const extra = leader.extra || {};
+    let detail: string | undefined;
+    if (extra.h !== null && extra.h !== undefined && extra.ab) detail = t('share.hitsInAtBats', { h: extra.h, ab: extra.ab });
+    else if (extra.ip) detail = t('share.innings', { ip: extra.ip, k: extra.k ?? 0 });
+    return {
+        kind: 'player',
+        personId: leader.id,
+        name: leader.name,
+        teamId: leader.teamId,
+        teamName: leader.teamName,
+        teamAbbrev: leader.teamAbbrev,
+        logo: leader.logo,
+        color: leader.color || '#2563eb',
+        color2: leader.color2,
+        value: String(leader.value ?? '—'),
+        label: String(leader.value) === '1' ? t(`leaders.one.${categoryId}`, { defaultValue: t(`leaders.${categoryId}`) }) : t(`leaders.${categoryId}`),
+        context: t('share.rankIn', { rank: leader.rank, league: leagueName, season: seasonLabel }),
+        detail,
+        league: leagueName
+    };
+};
+
 export const playerFromPerformer = (performer: TopPerformer, game: GameDetail, leagueName: string, t: T, lang: string): PlayerPost => {
     const team = game.home.id === performer.teamId ? game.home : game.away;
     const rival = team === game.home ? game.away : game.home;
@@ -134,3 +169,20 @@ export const playerFromPerformer = (performer: TopPerformer, game: GameDetail, l
         league: leagueName
     };
 };
+
+/** La tabla de posiciones (o un grupo del Clásico) */
+export const standingsPost = (rows: StandingRow[], title: string, subtitle: string, leagueName: string, lang: string): StandingsPost => ({
+    kind: 'standings',
+    title,
+    subtitle,
+    league: leagueName,
+    rows: rows.map((row) => ({
+        rank: row.rank,
+        abbrev: row.team.abbrev,
+        name: teamDisplayName(row.team, lang),
+        color: row.team.color,
+        wins: row.wins,
+        losses: row.losses,
+        gamesBack: row.gamesBack
+    }))
+});

@@ -476,7 +476,8 @@
       "clinched": "Clinched",
       "eliminated": "Eliminated"
     },
-    "lastTenShort": "{{record}} L10"
+    "lastTenShort": "{{record}} L10",
+    "lastTenIs": "{{record}} in last 10"
   },
   "leaders": {
     "title": "Leaders",
@@ -508,7 +509,16 @@
     "savesShort": "SV",
     "whip": "WHIP",
     "whipShort": "BB+H / IP",
-    "rank": "No. {{rank}}"
+    "rank": "No. {{rank}}",
+    "one": {
+      "homeRuns": "Home run",
+      "runsBattedIn": "Run batted in",
+      "hits": "Hit",
+      "stolenBases": "Stolen base",
+      "strikeouts": "Strikeout",
+      "wins": "Win",
+      "saves": "Save"
+    }
   },
   "notifications": {
     "gameStarting": "Game starting soon!",

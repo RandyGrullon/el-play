@@ -4,10 +4,11 @@ import Svg, { Path } from 'react-native-svg';
 import { fonts, inkOn } from '../../theme/tokens';
 import { PlayerPhoto, TeamLogo, Txt } from '../ui';
 import { LogoMark } from '../feed/LogoMark';
-import type { PlayerPost, PostData, PostTeam, ResultPost } from './subjects';
+import type { PlayerPost, PostData, PostTeam, ResultPost, StandingsPost } from './subjects';
 
 // La imagen para compartir (lo que dibuja el <canvas> de la web), hecha con vistas para capturarla con captureRef.
 // Historia 9:16 y post 4:5; tres estilos: color del equipo, noche y papel. Se diseña a 360 de ancho y se escala.
+// Resultado de un juego, un pelotero o la tabla de posiciones (en el color del líder).
 
 export type ShareFormat = 'story' | 'post';
 export type ShareStyle = 'color' | 'noche' | 'papel';
@@ -61,7 +62,7 @@ export const ShareCard: React.FC<CardProps> = ({ ref, data, format, style, width
     const story = format === 'story';
     const height = width * (story ? 16 / 9 : 5 / 4);
     const s = (value: number) => (value * width) / 360;
-    const color = data.kind === 'result' ? winnerOf(data).color : data.color;
+    const color = data.kind === 'result' ? winnerOf(data).color : data.kind === 'player' ? data.color : data.rows[0]?.color || '#2563eb';
     const pal = palette(style, color);
 
     const header = (
@@ -89,7 +90,13 @@ export const ShareCard: React.FC<CardProps> = ({ ref, data, format, style, width
             <Seams size={s(story ? 300 : 240)} color={pal.seam} left={s(story ? 170 : 190)} top={s(story ? 330 : 200)} />
             {header}
             <View style={{ flex: 1, justifyContent: story ? 'center' : 'flex-start', paddingTop: s(story ? 0 : 18), gap: s(story ? 22 : 12), overflow: 'hidden' }}>
-                {data.kind === 'result' ? <Result data={data} pal={pal} s={s} story={story} pill={pill} /> : <Player data={data} pal={pal} s={s} story={story} pill={pill} />}
+                {data.kind === 'result' ? (
+                    <Result data={data} pal={pal} s={s} story={story} pill={pill} />
+                ) : data.kind === 'player' ? (
+                    <Player data={data} pal={pal} s={s} story={story} pill={pill} />
+                ) : (
+                    <Standings data={data} pal={pal} s={s} story={story} pill={pill} onColor={style === 'color'} />
+                )}
             </View>
             <Txt size={s(10)} weight="semibold" color={pal.muted} center>
                 {SHARE_SITE}
@@ -204,5 +211,60 @@ const Player: React.FC<PartProps<PlayerPost>> = ({ data, pal, s, story, pill }) 
                 {data.context}
             </Txt>
         </View>
+        {data.detail ? (
+            <Txt size={s(story ? 13 : 11)} weight="semibold" color={pal.muted} center>
+                {data.detail}
+            </Txt>
+        ) : null}
     </>
 );
+
+/** La tabla: título grande, la fase o el grupo y hasta 8 equipos; el líder resalta (con un panel claro en su color) */
+const Standings: React.FC<PartProps<StandingsPost> & { onColor: boolean }> = ({ data, pal, s, story, onColor }) => {
+    const rows = data.rows.slice(0, 8);
+    const rowH = s(story ? 42 : 30) * (rows.length > 6 ? 0.9 : 1);
+    return (
+        <>
+            <View style={{ gap: s(4) }}>
+                <Txt size={s(story ? 40 : 32)} weight="black" color={pal.ink} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ textTransform: 'uppercase', lineHeight: s(story ? 44 : 35) }}>
+                    {data.title}
+                </Txt>
+                <Txt size={s(story ? 12 : 10)} weight="semibold" color={pal.muted} numberOfLines={1}>
+                    {data.subtitle}
+                </Txt>
+            </View>
+            <View style={{ gap: s(story ? 6 : 4) }}>
+                {rows.map((row, index) => {
+                    const leaderOnColor = index === 0 && onColor;
+                    const leaderFilled = index === 0 && !leaderOnColor;
+                    const ink = leaderFilled ? inkOn(row.color) : pal.ink;
+                    const badge = rowH * 0.56;
+                    return (
+                        <View
+                            key={`${row.rank}-${row.abbrev}`}
+                            style={{ height: rowH, borderRadius: s(10), paddingHorizontal: s(12), flexDirection: 'row', alignItems: 'center', gap: s(10), backgroundColor: leaderOnColor ? 'rgba(255,255,255,0.22)' : leaderFilled ? row.color : pal.panel }}
+                        >
+                            <Txt color={ink} tabular style={{ width: s(18), fontFamily: fonts.condensed, fontSize: rowH * 0.48, lineHeight: rowH * 0.56 }}>
+                                {row.rank}
+                            </Txt>
+                            <View style={{ width: badge, height: badge, borderRadius: 999, backgroundColor: row.color, alignItems: 'center', justifyContent: 'center' }}>
+                                <Txt size={rowH * 0.17} weight="extrabold" color={inkOn(row.color)} numberOfLines={1}>
+                                    {row.abbrev}
+                                </Txt>
+                            </View>
+                            <Txt size={rowH * 0.32} weight="extrabold" color={ink} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ flex: 1, minWidth: 0 }}>
+                                {row.name}
+                            </Txt>
+                            <Txt color={ink} tabular style={{ fontFamily: fonts.condensed, fontSize: rowH * 0.4, lineHeight: rowH * 0.48 }}>
+                                {row.wins}-{row.losses}
+                            </Txt>
+                            <Txt size={rowH * 0.22} weight="semibold" color={ink} tabular style={{ width: s(26), textAlign: 'right' }}>
+                                {row.gamesBack === '-' ? '—' : row.gamesBack}
+                            </Txt>
+                        </View>
+                    );
+                })}
+            </View>
+        </>
+    );
+};

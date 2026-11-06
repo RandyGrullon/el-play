@@ -14,7 +14,9 @@ import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Screen } from '../layout';
 import { Card, ErrorState, OfflineState, Pill, PlayerPhoto, Row, Skeleton, Txt, useErrorText } from '../ui';
-import { ChipRow, Notice, SectionHeader, openPlayer, openTeam, shareText, waitingForNetwork } from './common';
+import { ChipRow, Notice, SectionHeader, openPlayer, openTeam, waitingForNetwork } from './common';
+import { useShare, type ShareRequest } from '../share/ShareSheet';
+import { playerFromLeader } from '../share/subjects';
 
 const GAP = 12;
 
@@ -32,7 +34,15 @@ const useCardWidths = () => {
     return { first: Math.min(300, Math.round(inner * 0.78)), rest: Math.min(240, Math.round(inner * 0.62)) };
 };
 
-const LeaderCard: React.FC<{ leader: Leader; first: boolean; width: number; categoryId: string; season: string; seasonYear?: number }> = ({ leader, first, width, categoryId, season, seasonYear }) => {
+const LeaderCard: React.FC<{ leader: Leader; first: boolean; width: number; categoryId: string; season: string; seasonYear?: number; onShare: (request: ShareRequest) => void }> = ({
+    leader,
+    first,
+    width,
+    categoryId,
+    season,
+    seasonYear,
+    onShare
+}) => {
     const { t } = useTranslation();
     const colors = useColors();
     const { activeLeague } = useLeague();
@@ -40,8 +50,14 @@ const LeaderCard: React.FC<{ leader: Leader; first: boolean; width: number; cate
     const ink = first ? inkOn(color) : colors.ink;
     const soft = first ? ink : colors.muted;
     const open = () => openPlayer({ id: leader.id, name: leader.name, teamId: leader.teamId }, seasonYear);
+    // El líder como imagen (historia o post), como la web
     const share = () =>
-        shareText(`${leader.name} · ${t(`leaders.${categoryId}`)} ${leader.value ?? '—'} · ${t('share.rankIn', { rank: leader.rank, league: t(`leagues.${activeLeague}.name`), season })} · El Play`);
+        onShare({
+            data: playerFromLeader(leader, categoryId, season, t(`leagues.${activeLeague}.name`), t),
+            fileName: `el-play-${leader.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            text: `${leader.name} · ${t(`leaders.${categoryId}`)} ${leader.value ?? '—'} · El Play`,
+            path: '/lideres'
+        });
 
     return (
         <View style={[{ width, borderRadius: 28, padding: 20, overflow: 'hidden', backgroundColor: first ? color : colors.surface }, shadow(first ? 'float' : 'card')]}>
@@ -99,7 +115,7 @@ const LeaderCard: React.FC<{ leader: Leader; first: boolean; width: number; cate
 };
 
 // Carrusel de una categoría
-const CategoryCarousel: React.FC<{ data: Leaders; group: 'hitting' | 'pitching'; season: string }> = ({ data, group, season }) => {
+const CategoryCarousel: React.FC<{ data: Leaders; group: 'hitting' | 'pitching'; season: string; onShare: (request: ShareRequest) => void }> = ({ data, group, season, onShare }) => {
     const { t } = useTranslation();
     const widths = useCardWidths();
     const categories = data.categories.filter((category) => category.group === group);
@@ -144,6 +160,7 @@ const CategoryCarousel: React.FC<{ data: Leaders; group: 'hitting' | 'pitching';
                             categoryId={category.id}
                             season={season}
                             seasonYear={data.isPreviousSeason ? data.season : undefined}
+                            onShare={onShare}
                         />
                     ))}
                 </ScrollView>
@@ -159,6 +176,7 @@ export const LeadersSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) =>
     const leaders = useLeaders(activeLeague);
     const pro = useIsPro();
     const widths = useCardWidths();
+    const { share, sheet } = useShare();
     const data = leaders.data;
     const season = data ? seasonLabel(data.season, activeLeague) : '';
 
@@ -182,13 +200,14 @@ export const LeadersSection: React.FC<{ tabs: React.ReactNode }> = ({ tabs }) =>
                 <ErrorState message={errorText(leaders.error)} onRetry={() => leaders.refetch()} />
             ) : data ? (
                 <>
-                    <CategoryCarousel key={`${activeLeague}-hitting`} data={data} group="hitting" season={season} />
-                    <CategoryCarousel key={`${activeLeague}-pitching`} data={data} group="pitching" season={season} />
+                    <CategoryCarousel key={`${activeLeague}-hitting`} data={data} group="hitting" season={season} onShare={share} />
+                    <CategoryCarousel key={`${activeLeague}-pitching`} data={data} group="pitching" season={season} onShare={share} />
                     <Txt size={12} tone="muted">
                         {t('leaders.qualifiedNote')}
                     </Txt>
                 </>
             ) : null}
+            {sheet}
         </Screen>
     );
 };
