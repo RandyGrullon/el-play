@@ -1,5 +1,6 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import type { GameDetail } from '../../types';
 import { useColors } from '../../theme/theme';
@@ -32,9 +33,12 @@ export const Matchup: React.FC<{ game: GameDetail }> = ({ game }) => {
         <Card padded={false} style={{ flexDirection: 'row' }}>
             <View style={{ flex: 1, padding: 16, borderRightWidth: 1, borderRightColor: colors.line }} accessibilityLabel={t('game.pitcher')}>
                 <Txt eyebrow>{t('game.pitcher')}</Txt>
-                <Txt weight="semibold" numberOfLines={1} style={{ marginTop: 4 }}>
-                    {pitcher.name}
-                </Txt>
+                {/* El nombre abre su página */}
+                <Pressable onPress={() => pitcher.id && router.push(`/jugador/${pitcher.id}`)} disabled={!pitcher.id} accessibilityRole="link" hitSlop={6}>
+                    <Txt weight="semibold" numberOfLines={1} style={{ marginTop: 4 }}>
+                        {pitcher.name}
+                    </Txt>
+                </Pressable>
                 <Txt size={12} tone="muted">
                     {hand(pitcher.hand, 'throws')}
                 </Txt>
@@ -51,9 +55,11 @@ export const Matchup: React.FC<{ game: GameDetail }> = ({ game }) => {
             </View>
             <View style={{ flex: 1, padding: 16 }} accessibilityLabel={t('game.batter')}>
                 <Txt eyebrow>{t('game.batter')}</Txt>
-                <Txt weight="semibold" numberOfLines={1} style={{ marginTop: 4 }}>
-                    {batter.name}
-                </Txt>
+                <Pressable onPress={() => batter.id && router.push(`/jugador/${batter.id}`)} disabled={!batter.id} accessibilityRole="link" hitSlop={6}>
+                    <Txt weight="semibold" numberOfLines={1} style={{ marginTop: 4 }}>
+                        {batter.name}
+                    </Txt>
+                </Pressable>
                 <Txt size={12} tone="muted">
                     {hand(batter.side, 'bats')}
                 </Txt>

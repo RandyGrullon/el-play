@@ -143,19 +143,22 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
         const end = align === 'end';
         return (
             <View style={{ flex: 1, minWidth: 0, justifyContent: 'flex-end', alignItems: end ? 'flex-end' : 'flex-start', paddingHorizontal: 16, paddingBottom: 28, paddingTop: insets.top + 68, backgroundColor: team.color }}>
-                <Pressable
-                    onPress={() => toggleFavoriteTeam(team.id)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: favorite }}
-                    accessibilityLabel={favorite ? t('teams.removeFavorite', { name: team.name }) : t('teams.addFavorite', { name: team.name })}
-                    hitSlop={6}
-                    style={{ marginBottom: 4, maxWidth: '100%', flexDirection: end ? 'row-reverse' : 'row', alignItems: 'center', gap: 4 }}
-                >
-                    <Txt size={16} weight="bold" color={ink} numberOfLines={1} style={{ flexShrink: 1, textAlign: end ? 'right' : 'left' }}>
-                        {teamDisplayName(team, i18n.language)}
-                    </Txt>
-                    <Star size={16} color={ink} fill={favorite ? ink : 'transparent'} style={{ opacity: favorite ? 1 : 0.5 }} />
-                </Pressable>
+                <View style={{ marginBottom: 4, maxWidth: '100%', flexDirection: end ? 'row-reverse' : 'row', alignItems: 'center', gap: 4 }}>
+                    <Pressable onPress={() => router.push({ pathname: '/equipo/[id]', params: { id: team.id } })} accessibilityRole="link" accessibilityLabel={team.name} hitSlop={6} style={{ flexShrink: 1 }}>
+                        <Txt size={16} weight="bold" color={ink} numberOfLines={1} style={{ textAlign: end ? 'right' : 'left' }}>
+                            {teamDisplayName(team, i18n.language)}
+                        </Txt>
+                    </Pressable>
+                    <Pressable
+                        onPress={() => toggleFavoriteTeam(team.id)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: favorite }}
+                        accessibilityLabel={favorite ? t('teams.removeFavorite', { name: team.name }) : t('teams.addFavorite', { name: team.name })}
+                        hitSlop={8}
+                    >
+                        <Star size={16} color={ink} fill={favorite ? ink : 'transparent'} style={{ opacity: favorite ? 1 : 0.5 }} />
+                    </Pressable>
+                </View>
                 {showScores && pro ? (
                     <ProScore score={team.score ?? 0} color={ink} dim={dim} end={end} />
                 ) : showScores ? (
