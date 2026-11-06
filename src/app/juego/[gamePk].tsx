@@ -314,6 +314,15 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                 )}
             </Card>
 
+            {!notPlayed && (
+                <>
+                    <TeamFormCard game={game} />
+                    <HeadToHeadCard game={game} />
+                    <HotPlayersCard game={game} />
+                    <LineupsCard game={game} />
+                </>
+            )}
+
             <Card style={{ gap: 10 }}>
                 {game.date && (
                     <Txt weight="bold">
@@ -344,15 +353,6 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
                     </Row>
                 )}
             </Card>
-
-            {!notPlayed && (
-                <>
-                    <TeamFormCard game={game} />
-                    <HeadToHeadCard game={game} />
-                    <HotPlayersCard game={game} />
-                    <LineupsCard game={game} />
-                </>
-            )}
 
             {/* Pospuesto o cancelado: ni aviso ni Compartir (saldría «0 - 0») */}
             {!notPlayed && (
