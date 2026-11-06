@@ -539,8 +539,9 @@ export default function GameScreen() {
                             {/* En la pausa entre entradas el duelo es el del último out: la zona ya dice a quién le toca */}
                             {!inningBreak(game) && <Matchup game={game} />}
                         </Sheet>
-                        <Sheet open={sheet === 'plays'} onClose={() => setSheet(null)} title={t('plays.title')}>
-                            <PlayByPlay game={game} />
+                        {/* La lista lleva su propio desplazamiento: así el encabezado de cada media entrada se queda pegado arriba */}
+                        <Sheet open={sheet === 'plays'} onClose={() => setSheet(null)} title={t('plays.title')} scroll={false}>
+                            <PlayByPlay game={game} fill />
                         </Sheet>
                         <Sheet open={sheet === 'box'} onClose={() => setSheet(null)} title={t('game.tabs.box')}>
                             <BoxScore game={game} />

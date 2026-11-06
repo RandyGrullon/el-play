@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, SectionList, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react-native';
 import type { AtBat, GameDetail } from '../../types';
@@ -17,12 +18,18 @@ interface PlayByPlayProps {
     limit?: number;
     /** Solo los últimos turnos, sin filtro ni agrupación */
     compact?: boolean;
+    /**
+     * En una hoja con `scroll={false}`: la lista lleva su propio desplazamiento y el encabezado de cada media entrada
+     * se queda pegado arriba (el `sticky` de la web). Sin esto va todo seguido dentro del ScrollView de la hoja.
+     */
+    fill?: boolean;
 }
 
 // Jugada a jugada, de la más reciente a la más vieja, agrupada por media entrada; al tocar una se ve su zona
-export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = false }) => {
+export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = false, fill = false }) => {
     const { t, i18n } = useTranslation();
     const colors = useColors();
+    const insets = useSafeAreaInsets();
     const [filter, setFilter] = useState<'all' | 'scoring'>('all');
     const [open, setOpen] = useState<number | null>(null);
 
@@ -105,36 +112,65 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = f
 
     if (compact) return <View>{plays.map(row)}</View>;
 
+    const top = (
+        <Row justify="space-between" style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.line }}>
+            <Txt eyebrow accessibilityRole="header">
+                {t('plays.title')}
+            </Txt>
+            <Segmented
+                small
+                value={filter}
+                onChange={setFilter}
+                options={[
+                    { value: 'all', label: t('plays.all') },
+                    { value: 'scoring', label: t('plays.scoring') }
+                ]}
+            />
+        </Row>
+    );
+    const empty = (
+        <Txt size={14} tone="muted" center style={{ paddingHorizontal: 16, paddingVertical: 40 }}>
+            {filter === 'scoring' ? t('plays.noScoring') : t('plays.none')}
+        </Txt>
+    );
+    const groupHeader = (label: string) => (
+        <View style={{ backgroundColor: colors.raised, paddingHorizontal: 16, paddingVertical: 6 }}>
+            <Txt size={12} weight="bold" tone="muted" style={{ textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                {label}
+            </Txt>
+        </View>
+    );
+
+    if (fill) {
+        return (
+            <Card padded={false} style={{ flex: 1, overflow: 'hidden', marginBottom: insets.bottom }}>
+                <SectionList
+                    sections={groups.map((group) => ({ key: group.key, label: group.label, data: group.plays }))}
+                    keyExtractor={(atBat) => String(atBat.i)}
+                    renderItem={({ item, index }) => row(item, index)}
+                    renderSectionHeader={({ section }) => groupHeader(section.label)}
+                    stickySectionHeadersEnabled
+                    ListHeaderComponent={top}
+                    ListEmptyComponent={empty}
+                    extraData={open}
+                    initialNumToRender={14}
+                    style={{ flex: 1 }}
+                />
+            </Card>
+        );
+    }
+
     return (
         <Card padded={false} style={{ overflow: 'hidden' }}>
-            <Row justify="space-between" style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.line }}>
-                <Txt eyebrow>{t('plays.title')}</Txt>
-                <Segmented
-                    small
-                    value={filter}
-                    onChange={setFilter}
-                    options={[
-                        { value: 'all', label: t('plays.all') },
-                        { value: 'scoring', label: t('plays.scoring') }
-                    ]}
-                />
-            </Row>
-            {groups.length === 0 ? (
-                <Txt size={14} tone="muted" center style={{ paddingHorizontal: 16, paddingVertical: 40 }}>
-                    {filter === 'scoring' ? t('plays.noScoring') : t('plays.none')}
-                </Txt>
-            ) : (
-                groups.map((group) => (
-                    <View key={group.key}>
-                        <View style={{ backgroundColor: colors.raised, paddingHorizontal: 16, paddingVertical: 6 }}>
-                            <Txt size={12} weight="bold" tone="muted" style={{ textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                                {group.label}
-                            </Txt>
-                        </View>
-                        {group.plays.map(row)}
-                    </View>
-                ))
-            )}
+            {top}
+            {groups.length === 0
+                ? empty
+                : groups.map((group) => (
+                      <View key={group.key}>
+                          {groupHeader(group.label)}
+                          {group.plays.map(row)}
+                      </View>
+                  ))}
         </Card>
     );
 };
