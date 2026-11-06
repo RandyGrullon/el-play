@@ -243,7 +243,8 @@ export const ProPortada: React.FC<ProPortadaProps> = ({ schedule, byDay, days, t
         });
     };
 
-    const nextDay = days.find((key) => key > day && byDay[key]?.length);
+    // El próximo día con juegos (del equipo elegido, si hay uno)
+    const nextDay = days.find((key) => key > day && byDay[key]?.some((game) => team === null || game.away.id === team || game.home.id === team));
     const empty = (
         <Card style={{ alignItems: 'center', gap: 8, paddingVertical: 32, paddingHorizontal: 24 }}>
             <CalendarX2 size={32} color={colors.faint} />
