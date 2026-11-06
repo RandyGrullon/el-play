@@ -1714,7 +1714,8 @@
     "results": "Results",
     "upcoming": "Upcoming games",
     "tbd": "TBD",
-    "shareText": "{{team}} on El Play: record, form, roster and results"
+    "shareText": "{{team}} on El Play: record, form, roster and results",
+    "back": "Back"
   },
   "dial": {
     "close": "Close options",

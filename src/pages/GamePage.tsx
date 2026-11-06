@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Bell, BellRing, CloudSun, ListOrdered, MapPin, SearchX, Share2, Table2, Target } from 'lucide-react';
+import { Bell, BellRing, CloudSun, ListOrdered, MapPin, Share2, Table2, Target } from 'lucide-react';
 import type { GameDetail, ScheduleGame, TopPerformer } from '../types';
 import { findScheduledGame, useGame } from '../lib/queries';
 import { ApiError } from '../lib/api';
@@ -12,6 +12,7 @@ import { formatCountdown, formatShortDate, formatTime, surname } from '../lib/fo
 import { teamDisplayName } from '../lib/teams';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { useNow } from '../hooks/useNow';
+import { useBack } from '../hooks/useBack';
 import { useLeague } from '../store/LeagueContext';
 import { usePreferences } from '../store/preferences';
 import { useShare } from '../share/ShareSheet';
@@ -39,7 +40,7 @@ import { BottomSheet } from '../components/ui/BottomSheet';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
 import { PlayerLink } from '../components/ui/PlayerLink';
 import { TeamLogo } from '../components/ui/TeamLogo';
-import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
+import { ErrorState, NotFoundCard, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { LiveProPanel } from '../components/pro/LiveProPanel';
 import { useIsPro } from '../lib/pro';
@@ -307,6 +308,7 @@ export const GamePage: React.FC = () => {
     const scheduled = useMemo(() => findScheduledGame(client, gamePk), [client, gamePk]);
     const { leagueConfig } = useLeague();
     const share = useShare();
+    const back = useBack('/');
     const [sheet, setSheet] = useState<Sheet>(null);
     const { trackGameView } = useAnalytics();
     const tracked = useRef<string | null>(null);
@@ -387,16 +389,7 @@ export const GamePage: React.FC = () => {
 
             {notFoundCode ? (
                 <div className="px-4 pt-6">
-                    <div className="card flex flex-col items-center gap-3 px-6 py-10 text-center" role="alert">
-                        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-raised">
-                            <SearchX className="h-6 w-6 text-muted" aria-hidden="true" />
-                        </span>
-                        <p className="text-lg font-extrabold">{t(`errors.${notFoundCode}`)}</p>
-                        <p className="max-w-xs text-sm text-muted">{t('game.notFoundHint')}</p>
-                        <Link to="/" className="mt-1 inline-flex h-11 items-center rounded-full bg-accent px-5 text-sm font-bold text-white">
-                            {t('game.backToGames')}
-                        </Link>
-                    </div>
+                    <NotFoundCard title={t(`errors.${notFoundCode}`)} hint={t('game.notFoundHint')} action={{ to: '/', label: t('game.backToGames') }} onBack={back} />
                 </div>
             ) : waitingForNetwork(query) && !game ? (
                 <div className="px-4 pt-4">

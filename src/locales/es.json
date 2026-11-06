@@ -1714,7 +1714,8 @@
     "results": "Resultados",
     "upcoming": "Próximos juegos",
     "tbd": "Por definir",
-    "shareText": "{{team}} en El Play: récord, forma, plantilla y resultados"
+    "shareText": "{{team}} en El Play: récord, forma, plantilla y resultados",
+    "back": "Volver"
   },
   "dial": {
     "close": "Cerrar las opciones",
