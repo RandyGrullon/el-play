@@ -1718,7 +1718,8 @@
     "upcoming": "Próximos juegos",
     "tbd": "Por definir",
     "shareText": "{{team}} en El Play: récord, forma, plantilla y resultados",
-    "back": "Volver"
+    "back": "Volver",
+    "open": "Abrir la página de {{team}}"
   },
   "dial": {
     "close": "Cerrar las opciones",
