@@ -22,17 +22,17 @@ const realDay = (value) => {
     return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value;
 };
 
-const PLAYED_OUT = new Set(['Postponed', 'Cancelled']);
-const isPlayable = (game) => !PLAYED_OUT.has(game.status?.detailedState);
+// Pospuesto o cancelado: MLB lo da «Final» (codedGameState D o C) aunque no se jugó
+const isPlayable = (game) => !/^(Postponed|Cancelled)/i.test(game.status?.detailedState || '') && !['D', 'C'].includes(game.status?.codedGameState);
 
-/** Juegos de la liga entre dos días (sin repetidos ni pospuestos), un minuto en caché */
+/** Juegos de la liga entre dos días (sin repetidos ni pospuestos), con las alineaciones publicadas; un minuto en caché */
 const scheduleBetween = (leagueKey, startDate, endDate) => {
     const league = leagueOf(leagueKey);
     return cached(
         `pro_schedule_${league.id}_${startDate}_${endDate}`,
         60,
         async () => {
-            const data = await http.mlbGet(`${MLB_API_BASE}/schedule`, { sportId: league.sportId, leagueId: league.leagueId, startDate, endDate, hydrate: 'team,linescore' });
+            const data = await http.mlbGet(`${MLB_API_BASE}/schedule`, { sportId: league.sportId, leagueId: league.leagueId, startDate, endDate, hydrate: 'team,linescore,lineups' });
             return uniqueGames((data?.dates || []).flatMap((entry) => entry.games || [])).filter(isPlayable);
         },
         { staleSec: 600 }

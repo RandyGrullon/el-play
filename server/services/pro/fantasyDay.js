@@ -1,5 +1,5 @@
 const fans = require('../fantasyFans'); // por el módulo: cachedDay usa fantasy.fantasyDay, que las pruebas sustituyen
-const { effectiveEntry, dayResult, dayStarted, hasPlay, lockTime, round1 } = require('../fantasyScore');
+const { effectiveEntry, dayResult, dayStarted, hasPlay, lockTime, round1, isPostponedGame } = require('../fantasyScore');
 const { cached } = require('../../utils/cache');
 const accounts = require('./accounts');
 const { leagueOf, todayOf, shiftDay, scheduleBetween, gameLinesOrNull, pool, gameState } = require('./games');
@@ -32,7 +32,8 @@ const median = (sorted) => {
  */
 const computeStats = async (league, date, now = Date.now()) => {
     const [day, rows] = await Promise.all([fans.cachedDay(league, date), accounts.entries({ league, from: date, to: date, max: DAY_ROWS })]);
-    const locks = new Map(day.games.map((game) => [game.gamePk, lockTime(game)]));
+    // Un juego pospuesto nunca se cierra: sus peloteros y pronósticos no cuentan (effectiveEntry tampoco los suma)
+    const locks = new Map(day.games.map((game) => [game.gamePk, isPostponedGame(game) ? Infinity : lockTime(game)]));
     const locked = new Set([...locks].filter(([, at]) => at <= now).map(([gamePk]) => gamePk));
     const gameOf = new Map(day.players.map((player) => [player.id, player.gamePk]));
 
@@ -163,7 +164,9 @@ const computeLineups = async (league, date) => {
             if (!lines && state !== 'preview') missing += 1;
             const out = { gamePk: game.gamePk, state, away: null, home: null, source: { away: null, home: null } };
             for (const side of ['away', 'home']) {
-                const official = lines?.lineups?.[side];
+                // Publicada: el orden del box score o, si todavía no lo trae, la del calendario (hydrate=lineups)
+                const scheduled = (game.lineups?.[`${side}Players`] || []).map((person) => person?.id).filter(Boolean);
+                const official = lines?.lineups?.[side]?.length ? lines.lineups[side] : state === 'preview' && scheduled.length ? scheduled : null;
                 if (official?.length) {
                     out[side] = official;
                     out.source[side] = 'official';

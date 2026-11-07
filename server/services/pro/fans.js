@@ -1,5 +1,5 @@
 const fans = require('../fantasyFans'); // por el módulo: cachedDay usa fantasy.fantasyDay, que las pruebas sustituyen
-const { effectiveEntry, dayResult, dayStarted, lockTime, playerScore, round1 } = require('../fantasyScore');
+const { effectiveEntry, dayResult, dayStarted, lockTime, playerScore, round1, isPostponedGame, isPostponedPlayer } = require('../fantasyScore');
 const { cached } = require('../../utils/cache');
 const accounts = require('./accounts');
 const { todayOf, shiftDay } = require('./games');
@@ -32,9 +32,11 @@ const teamsOf = (day) => day.teams || {};
 const fanDay = (day, saved, now = Date.now()) => {
     const result = dayResult(day, saved);
     const used = effectiveEntry(day, saved);
+    // Un juego pospuesto no se cierra y sus peloteros y pronósticos no cuentan: no salen ni como escondidos
+    const postponed = new Set(day.games.filter(isPostponedGame).map((game) => String(game.gamePk)));
     const locks = new Map(day.games.map((game) => [String(game.gamePk), lockTime(game)]));
     const isLocked = (gamePk) => (locks.get(String(gamePk)) ?? Infinity) <= now;
-    const known = result.lineup.map((id) => day.players.find((player) => player.id === id)).filter(Boolean);
+    const known = result.lineup.map((id) => day.players.find((player) => player.id === id)).filter((player) => player && !isPostponedPlayer(player) && !postponed.has(String(player.gamePk)));
     const shown = known.filter((player) => isLocked(player.gamePk));
     const lineup = shown.map((player) => ({
         id: player.id,
@@ -49,7 +51,7 @@ const fanDay = (day, saved, now = Date.now()) => {
         score: playerScore(used, player),
         captain: used.captain === player.id
     }));
-    const picks = Object.entries(used.picks).filter(([gamePk, teamId]) => teamId && day.games.some((game) => String(game.gamePk) === gamePk));
+    const picks = Object.entries(used.picks).filter(([gamePk, teamId]) => teamId && !postponed.has(gamePk) && day.games.some((game) => String(game.gamePk) === gamePk));
     const pickList = picks
         .filter(([gamePk]) => isLocked(gamePk))
         .map(([gamePk, teamId]) => {
@@ -76,7 +78,9 @@ const fanDay = (day, saved, now = Date.now()) => {
             state: game.state,
             venue: game.venue || null,
             away: { id: game.away.id, score: game.away.score ?? null, isWinner: !!game.away.isWinner },
-            home: { id: game.home.id, score: game.home.score ?? null, isWinner: !!game.home.isWinner }
+            home: { id: game.home.id, score: game.home.score ?? null, isWinner: !!game.home.isWinner },
+            // MLB da «final» a un juego pospuesto: esto lo distingue
+            ...(postponed.has(String(game.gamePk)) ? { postponed: true } : {})
         }))
     };
 };
@@ -175,7 +179,7 @@ const computeFan = async (league, userId, { today = todayOf(league), now = Date.
             .map((day) => ({ date: day.date, total: day.total }))
             .sort((a, b) => a.date.localeCompare(b.date))
     };
-    const upcoming = [...days.values()].flatMap((day) => day.games.map(lockTime)).filter((at) => Number.isFinite(at) && at > now);
+    const upcoming = [...days.values()].flatMap((day) => day.games.filter((game) => !isPostponedGame(game)).map(lockTime)).filter((at) => Number.isFinite(at) && at > now);
     return {
         profile: { userId, league, name: profile.name, season: { points: seasonPoints, days: startedDays.length, best }, days: out, pro },
         detail: {

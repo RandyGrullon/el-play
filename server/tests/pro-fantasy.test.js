@@ -50,6 +50,7 @@ const P1 = 12345601;
 const P2 = 12345602;
 const P3 = 12345603;
 const P4 = 12345604;
+const P5 = 12345605;
 const D1 = '2026-10-15';
 const D2 = '2026-10-16';
 const FUTURE = '2030-01-01T00:00:00Z';
@@ -64,10 +65,21 @@ const DAYS = {
         games: [game(99000001, 'final', '2026-10-15T20:00:00Z', 9901, 9902, 9901, [5, 2]), game(99000002, 'final', '2026-10-15T23:00:00Z', 9903, 9904, 9904, [1, 3])],
         players: [player(P1, 9901, 99000001, 'B', 10), player(P2, 9902, 99000001, 'B', 4), player(P3, 9903, 99000002, 'P', 6), player(P4, 9904, 99000002, 'B', -1)]
     },
-    // Hoy de la prueba: el 99000003 en vivo (cerrado) y el 99000004 por empezar en 2030 (abierto)
+    // Hoy de la prueba: el 99000003 en vivo (cerrado), el 99000004 por empezar en 2030 (abierto) y el 99000005 pospuesto
+    // (MLB lo da «final» y su hora ya pasó, pero nunca se cierra: su pelotero y su pronóstico no cuentan)
     [D2]: {
-        games: [game(99000003, 'live', '2026-10-16T20:00:00Z', 9901, 9902, null, [1, 0]), game(99000004, 'preview', FUTURE, 9903, 9904)],
-        players: [player(P1, 9901, 99000003, 'B', 3), player(P2, 9902, 99000003, 'B', 2), { ...player(P3, 9903, 99000004, 'P', 0), played: false, line: null }, { ...player(P4, 9904, 99000004, 'B', 0), played: false, line: null }]
+        games: [
+            game(99000003, 'live', '2026-10-16T20:00:00Z', 9901, 9902, null, [1, 0]),
+            game(99000004, 'preview', FUTURE, 9903, 9904),
+            { ...game(99000005, 'final', '2026-10-16T18:00:00Z', 9905, 9906), status: 'postponed', detailedState: 'Postponed' }
+        ],
+        players: [
+            player(P1, 9901, 99000003, 'B', 3),
+            player(P2, 9902, 99000003, 'B', 2),
+            { ...player(P3, 9903, 99000004, 'P', 0), played: false, line: null },
+            { ...player(P4, 9904, 99000004, 'B', 0), played: false, line: null },
+            { ...player(P5, 9905, 99000005, 'B', 0), played: false, line: null, status: 'postponed' }
+        ]
     }
 };
 const fakeDay = async (league, date) => {
@@ -77,7 +89,7 @@ const fakeDay = async (league, date) => {
 
 const ROWS = [
     { user_id: A, day: D1, lineup: [P1, P2, P3], captain: P1, picks: { 99000001: 9901, 99000002: 9903 } },
-    { user_id: A, day: D2, lineup: [P1, P3], captain: P3, picks: { 99000003: 9901, 99000004: 9904 } },
+    { user_id: A, day: D2, lineup: [P1, P3, P5], captain: P3, picks: { 99000003: 9901, 99000004: 9904, 99000005: 9905 } },
     { user_id: B, day: D1, lineup: [P2, P4], captain: P2, picks: { 99000001: 9902 } },
     { user_id: B, day: D2, lineup: [P1, P2], captain: P1, picks: { 99000003: 9902 } },
     { user_id: C, day: D2, lineup: [], captain: null, picks: { 99000004: 9903 } }
@@ -127,7 +139,9 @@ describe('fantasy PRO: lo de todos en el día (stats)', () => {
         expect(data.topCaptain).toEqual({ id: P1, count: 1, pct: 50 });
         expect(data.games).toEqual([
             { gamePk: 99000003, locked: true, picks: { 9901: { count: 1, pct: 50 }, 9902: { count: 1, pct: 50 } }, picksMade: 2 },
-            { gamePk: 99000004, locked: false, picks: null, picksMade: null }
+            { gamePk: 99000004, locked: false, picks: null, picksMade: null },
+            // Pospuesto: aunque su hora pasó, no se cierra (el pronóstico de A y su P5 no salen)
+            { gamePk: 99000005, locked: false, picks: null, picksMade: null }
         ]);
         // B: P1 capitán 3 × 1,5 + P2 2 = 6,5; A: 3; C solo pronosticó un juego abierto: 0
         expect(data.scores).toEqual([6.5, 3, 0]);
@@ -325,14 +339,17 @@ describe('fantasy PRO: alineaciones del día (chip «Titular»)', () => {
     const games = [
         scheduleGame(99000201, '2026-10-19', 'final', 9903, 9904),
         scheduleGame(99000202, DATE, 'live', 9901, 9902),
-        scheduleGame(99000203, DATE, 'preview', 9903, 9904)
+        // Por empezar: el de casa ya publicó su alineación (solo en el calendario, hydrate=lineups); el visitante no
+        { ...scheduleGame(99000203, DATE, 'preview', 9903, 9904), lineups: { homePlayers: [{ id: 12345641 }, { id: 12345642 }] } },
+        // Pospuesto: MLB lo da «Final» (codedGameState D); no tiene alineaciones y no sale
+        { ...scheduleGame(99000204, DATE, 'final', 9905, 9906), status: { abstractGameState: 'Final', codedGameState: 'D', detailedState: 'Postponed' } }
     ];
     const boxes = {
         // Ayer: los titulares de 9903 y 9904 (P4 entró de emergente: 101)
         99000201: box(9903, 9904, [boxPlayer(12345611, '2B', '100'), boxPlayer(12345612, 'CF', '200')], [boxPlayer(12345621, 'C', '100'), boxPlayer(P4, 'PH', '101')]),
         // En vivo: los que abrieron (el emergente no cuenta)
         99000202: box(9901, 9902, [boxPlayer(P1, 'SS', '100'), boxPlayer(12345631, '1B', '200'), boxPlayer(12345632, 'PH', '201')], [boxPlayer(P2, 'LF', '100')]),
-        // Por empezar: MLB todavía sin alineaciones
+        // Por empezar: el box score todavía sin el orden
         99000203: box(9903, 9904, [], [])
     };
     const setup = () => {
@@ -345,13 +362,13 @@ describe('fantasy PRO: alineaciones del día (chip «Titular»)', () => {
         };
     };
 
-    it('publicadas en vivo y, por empezar, las esperadas (las del último juego de cada equipo)', async () => {
+    it('publicadas en vivo; por empezar, la publicada de un lado y la esperada (la del último juego) del otro', async () => {
         setup();
         const data = await proDay.computeLineups('lidom', DATE);
-        expect(data).toMatchObject({ league: 'lidom', date: DATE, posted: 1, expected: 1, partial: false });
+        expect(data).toMatchObject({ league: 'lidom', date: DATE, posted: 2, expected: 1, partial: false });
         expect(data.games).toEqual([
             { gamePk: 99000202, state: 'live', away: [P1, 12345631], home: [P2], source: { away: 'official', home: 'official' } },
-            { gamePk: 99000203, state: 'preview', away: [12345611, 12345612], home: [12345621], source: { away: 'expected', home: 'expected' } }
+            { gamePk: 99000203, state: 'preview', away: [12345611, 12345612], home: [12345641, 12345642], source: { away: 'expected', home: 'official' } }
         ]);
     });
 
@@ -388,7 +405,19 @@ describe('fantasy PRO con el simulador (MLB_MOCK=1, npm run dev:mock)', () => {
         const viewer = 'eeeeeeee-5555-4555-8555-eeeeeeeeeeee';
         const mine = await proFans.seasonRanking('lidom', { today, users: [viewer] });
         expect(mine.ranking).toEqual([expect.objectContaining({ userId: viewer, rank: expect.any(Number) })]);
+        // Alineaciones con el día simulado de hoy (doble cartelera, uno por empezar con un solo lado publicado y uno
+        // pospuesto): cada juego que se juega sale; el pospuesto no; por empezar, lo no publicado sale como esperado
+        const mock = require('../mock');
+        const simulated = mock.gamesForDay(today);
         const lineups = await proDay.dayLineups('lidom', today);
-        expect(lineups.games.every((game) => game.away?.length && game.home?.length)).toBe(true);
+        const listed = new Set(lineups.games.map((game) => game.gamePk));
+        for (const game of simulated) expect([game.gamePk, listed.has(game.gamePk)]).toEqual([game.gamePk, game.mode !== 'postponed']);
+        for (const game of lineups.games) {
+            const sim = simulated.find((item) => item.gamePk === game.gamePk);
+            for (const side of ['away', 'home']) {
+                expect(game[side]?.length).toBeGreaterThan(0);
+                expect([game.gamePk, side, game.source[side]]).toEqual([game.gamePk, side, sim.lineups?.[side] === false && game.state === 'preview' ? 'expected' : 'official']);
+            }
+        }
     });
 });
