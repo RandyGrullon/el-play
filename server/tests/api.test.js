@@ -717,6 +717,94 @@ describe('datos simulados (MLB_MOCK)', () => {
     });
 });
 
+describe('vista del terreno: los nueve de la defensa y los de la ofensiva (field)', () => {
+    it('juego en vivo real (851491): cada posición con su pelotero, el bateador, los dos que siguen y los equipos', () => {
+        const game = transformGame(fixture('feed-851491-vivo-sin-rastreo'));
+        expect(game.state).toBe('live');
+        expect(game.field.defenseTeamId).toBe(672);
+        expect(game.field.offenseTeamId).toBe(671);
+        expect(Object.keys(game.field.defense)).toEqual(['pitcher', 'catcher', 'first', 'second', 'third', 'shortstop', 'left', 'center', 'right']);
+        expect(game.field.defense.pitcher).toEqual({ id: 658431, name: 'Adonis Medina' });
+        expect(game.field.defense.shortstop).toEqual({ id: 815908, name: 'Jesús Made' });
+        expect(game.field.defense.right).toEqual({ id: 664314, name: 'Estevan Florial' });
+        expect(Object.values(game.field.defense).every((person) => person && person.id && person.name)).toBe(true);
+        expect(game.field.offense.batter).toEqual({ id: 570481, name: 'Erik González' });
+        expect(game.field.offense.onDeck).toEqual({ id: 593647, name: 'Sócrates Brito' });
+        expect(game.field.offense.inHole).toEqual({ id: 516809, name: 'Junior Lake' });
+    });
+
+    it('corredores con su id; lo que falta es null y sin el equipo sale de la entrada', () => {
+        const feed = fixture('feed-851491-vivo-sin-rastreo');
+        const linescore = feed.liveData.linescore;
+        const copy = {
+            ...feed,
+            liveData: {
+                ...feed.liveData,
+                linescore: {
+                    ...linescore,
+                    isTopInning: true,
+                    inningState: 'Top',
+                    defense: { pitcher: { id: 12345678, fullName: 'Pelotero Uno' } },
+                    offense: { batter: { id: 87654321, fullName: 'Pelotero Dos' }, second: { id: 11223344, fullName: 'Pelotero Tres' } }
+                }
+            }
+        };
+        const { field } = transformGame(copy);
+        expect(field.defense.pitcher).toEqual({ id: 12345678, name: 'Pelotero Uno' });
+        expect(field.defense.catcher).toBeNull();
+        expect(field.offense).toEqual({ batter: { id: 87654321, name: 'Pelotero Dos' }, onDeck: null, inHole: null, first: null, second: { id: 11223344, name: 'Pelotero Tres' }, third: null });
+        // Alta: batea el visitante y defiende el de casa
+        expect(field.offenseTeamId).toBe(feed.gameData.teams.away.id);
+        expect(field.defenseTeamId).toBe(feed.gameData.teams.home.id);
+    });
+
+    it('fuera de vivo no hay terreno', () => {
+        expect(transformGame(fixture('feed-826279')).field).toBeNull();
+    });
+
+    it('el simulador llena las nueve posiciones con la alineación del que fildea', () => {
+        const mock = require('../mock');
+        const today = new Date(Date.now() - 4 * 3600000).toISOString().slice(0, 10);
+        const live = mock.gamesForDay(today).find((game) => game.mode === 'live');
+        const game = transformGame(mock.buildFeed(live));
+        const fielding = game.field.defenseTeamId;
+        expect([live.awayId, live.homeId]).toContain(fielding);
+        expect(game.field.offenseTeamId).toBe(fielding === live.awayId ? live.homeId : live.awayId);
+        expect(Object.values(game.field.defense).every((person) => person && Math.floor(person.id / 1000) === fielding)).toBe(true);
+        expect(new Set(Object.values(game.field.defense).map((person) => person.id)).size).toBe(9);
+        expect(game.field.offense.onDeck?.id).toBeTruthy();
+        expect(game.field.offense.inHole?.id).toBeTruthy();
+    });
+});
+
+describe('juego detenido en el simulador (MLB_MOCK_DELAY)', () => {
+    afterEach(() => {
+        delete process.env.MLB_MOCK_DELAY;
+    });
+
+    it('sigue en vivo pero «Delayed: Rain», congelado y con los minutos de demora', () => {
+        const mock = require('../mock');
+        const today = new Date(Date.now() - 4 * 3600000).toISOString().slice(0, 10);
+        const live = mock.gamesForDay(today).find((game) => game.mode === 'live');
+        process.env.MLB_MOCK_DELAY = 'rain';
+        const feed = mock.buildFeed(live);
+        expect(feed.gameData.status).toMatchObject({ abstractGameState: 'Live', detailedState: 'Delayed: Rain', reason: 'Rain' });
+        const game = transformGame(feed);
+        expect(game.state).toBe('live');
+        expect(game.detailedState).toBe('Delayed: Rain');
+        expect(game.info.delayMin).toBeGreaterThanOrEqual(12);
+        const sim = mock.simulate(live.gamePk, live.awayId, live.homeId);
+        const pitches = feed.liveData.plays.allPlays.reduce((sum, play) => sum + play.playEvents.filter((event) => event.isPitch).length, 0);
+        expect(pitches).toBe(Math.floor(sim.totalPitches * 0.4));
+        process.env.MLB_MOCK_DELAY = 'wet';
+        expect(mock.buildFeed(live).gameData.status.detailedState).toBe('Delayed: Wet Grounds');
+        process.env.MLB_MOCK_DELAY = 'Delayed Start: Rain';
+        expect(mock.buildFeed(live).gameData.status.detailedState).toBe('Delayed Start: Rain');
+        delete process.env.MLB_MOCK_DELAY;
+        expect(mock.buildFeed(live).gameData.status.detailedState).toBe('In Progress');
+    });
+});
+
 describe('grupos del Clásico calculados desde los juegos', () => {
     it('cuenta ganados/perdidos por grupo y desempata por diferencia de carreras', () => {
         const { poolsFromGames } = require('../services/mlbService');

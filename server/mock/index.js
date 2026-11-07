@@ -5,6 +5,18 @@
 
 const PITCH_MS = Number(process.env.MLB_MOCK_PITCH_MS || 6000);
 const BOOT = Date.now();
+
+// Juego detenido: con MLB_MOCK_DELAY el juego en vivo de hoy queda «Delayed: …» como lo manda MLB (abstractGameState
+// sigue «Live») y congelado donde arrancó, sin pitcheos nuevos, para ver en la app el aviso y la lluvia. Valores: rain,
+// wet, lightning, weather, fog, power, other, o el texto entero ("Delayed Start: Rain"). Ejemplo en PowerShell:
+//   $env:MLB_MOCK_DELAY='rain'; npm run dev:mock        (bash: MLB_MOCK_DELAY=rain npm run dev:mock)
+const DELAYS = { rain: 'Delayed: Rain', wet: 'Delayed: Wet Grounds', lightning: 'Delayed: Lightning', weather: 'Delayed: Weather', fog: 'Delayed: Fog', power: 'Delayed: Power', other: 'Delayed: Other' };
+const delayState = () => {
+    const value = String(process.env.MLB_MOCK_DELAY || '').trim();
+    if (!value || value === '0') return null;
+    if (/^delayed/i.test(value)) return value;
+    return DELAYS[value.toLowerCase()] || `Delayed: ${value}`;
+};
 const DAY = 86400000;
 
 const TEAMS = {
@@ -353,8 +365,10 @@ const findGame = (gamePk) => {
 const revealedPitches = (game, sim) => {
     if (game.mode === 'final') return sim.totalPitches;
     if (game.mode === 'preview') return 0;
-    // El juego en vivo arranca ya avanzado (~40 % de los pitcheos) y suma uno cada PITCH_MS
-    return Math.min(sim.totalPitches, Math.floor(sim.totalPitches * 0.4) + Math.floor((Date.now() - BOOT) / PITCH_MS));
+    // El juego en vivo arranca ya avanzado (~40 % de los pitcheos) y suma uno cada PITCH_MS (detenido no avanza)
+    const start = Math.floor(sim.totalPitches * 0.4);
+    if (delayState()) return start;
+    return Math.min(sim.totalPitches, start + Math.floor((Date.now() - BOOT) / PITCH_MS));
 };
 
 // ------------------------------------------------------------------ Feed live
@@ -410,7 +424,14 @@ const buildLinescore = (game, state) => {
         linescore.outs = at.outs;
         const lineup = state.sim.teams[play.batting].hitters;
         const batterIndex = lineup.findIndex((h) => h.id === play.batter.id);
+        const teamOf = (side) => ({ id: side === 'away' ? game.awayId : game.homeId });
+        // Los nueve en el terreno como en MLB: el lanzador y cada pelotero de la alineación en su posición (el DH no fildea)
+        const defenseOf = (side, pitcher) => {
+            const at = (pos) => personRef(state.sim.teams[side].hitters.find((hitter) => hitter.pos === pos));
+            return { pitcher: personRef(pitcher), catcher: at('C'), first: at('1B'), second: at('2B'), third: at('3B'), shortstop: at('SS'), left: at('LF'), center: at('CF'), right: at('RF'), team: teamOf(side) };
+        };
         linescore.offense = {
+            team: teamOf(play.batting),
             batter: personRef(play.batter),
             onDeck: personRef(lineup[(batterIndex + 1) % 9]),
             inHole: personRef(lineup[(batterIndex + 2) % 9]),
@@ -418,7 +439,7 @@ const buildLinescore = (game, state) => {
             second: personRef(at.bases[1]),
             third: personRef(at.bases[2])
         };
-        linescore.defense = { pitcher: personRef(play.pitcher) };
+        linescore.defense = defenseOf(play.fielding, play.pitcher);
         // Pausa entre entradas: «Middle» tras la alta, «End» tras la baja; `offense` pasa al equipo que viene a batear
         const next = complete && play.after.outs >= 3 ? state.sim.plays[state.sim.plays.indexOf(play) + 1] : null;
         if (next) {
@@ -426,12 +447,12 @@ const buildLinescore = (game, state) => {
             const nextLineup = state.sim.teams[next.batting].hitters;
             const nextIndex = nextLineup.findIndex((h) => h.id === next.batter.id);
             linescore.offense = {
-                team: { id: next.batting === 'away' ? game.awayId : game.homeId },
+                team: teamOf(next.batting),
                 batter: personRef(next.batter),
                 onDeck: personRef(nextLineup[(nextIndex + 1) % 9]),
                 inHole: personRef(nextLineup[(nextIndex + 2) % 9])
             };
-            linescore.defense = { pitcher: personRef(next.pitcher) };
+            linescore.defense = defenseOf(next.fielding, next.pitcher);
         }
     } else if (current) {
         linescore.currentInning = current.play.inning;
@@ -445,6 +466,8 @@ const buildLinescore = (game, state) => {
 const status = (mode, finished) => {
     if (mode === 'preview') return { abstractGameState: 'Preview', codedGameState: 'S', detailedState: 'Scheduled', statusCode: 'S' };
     if (finished || mode === 'final') return { abstractGameState: 'Final', codedGameState: 'F', detailedState: 'Final', statusCode: 'F' };
+    const delayed = delayState();
+    if (delayed) return { abstractGameState: 'Live', codedGameState: 'I', detailedState: delayed, statusCode: 'IR', reason: delayed.split(':')[1]?.trim() || 'Other' };
     return { abstractGameState: 'Live', codedGameState: 'I', detailedState: 'In Progress', statusCode: 'I' };
 };
 
@@ -612,7 +635,13 @@ const buildFeed = (game) => {
             gameInfo:
                 game.mode === 'preview'
                     ? {}
-                    : { attendance: 8000 + (game.gamePk % 7) * 650, firstPitch: new Date(game.start).toISOString(), ...(finished ? { gameDurationMinutes: 150 + (game.gamePk % 5) * 9 } : {}) },
+                    : {
+                        attendance: 8000 + (game.gamePk % 7) * 650,
+                        firstPitch: new Date(game.start).toISOString(),
+                        ...(finished ? { gameDurationMinutes: 150 + (game.gamePk % 5) * 9 } : {}),
+                        // Detenido: los minutos de demora corren desde que arrancó el simulador
+                        ...(game.mode === 'live' && !finished && delayState() ? { delayDurationMinutes: 12 + Math.floor((Date.now() - BOOT) / 60000) } : {})
+                    },
             probablePitchers: { away: personRef(sim.teams.away.pitchers[0]), home: personRef(sim.teams.home.pitchers[0]) }
         },
         liveData: {

@@ -4,6 +4,10 @@ const { teamLogo, teamColor, teamColor2, teamAbbrev, teamFlag, findTeam } = requ
 // Las descripciones se dejan en inglés con su código (eventType, call.code, type.code):
 // la app las traduce según el idioma elegido.
 
+// Posiciones de linescore.defense y lo que trae linescore.offense (vista del terreno)
+const FIELD_POSITIONS = ['pitcher', 'catcher', 'first', 'second', 'third', 'shortstop', 'left', 'center', 'right'];
+const FIELD_OFFENSE = ['batter', 'onDeck', 'inHole', 'first', 'second', 'third'];
+
 const IN_PLAY_CODES = new Set(['X', 'D', 'E']);
 const STRIKE_CODES = new Set(['C', 'S', 'W', 'F', 'T', 'L', 'M', 'O', 'Q', 'R', 'A', 'K']);
 
@@ -271,6 +275,22 @@ const transformGame = (feed) => {
         ? [offense.batter, offense.onDeck, offense.inHole].filter((person) => person?.id).map((person) => ({ id: person.id, name: person.fullName || '' }))
         : [];
 
+    // Quién está en el terreno (solo en vivo): los nueve de la defensa en su posición y, a la ofensiva, el bateador, los
+    // dos que le siguen y los corredores. Si MLB no dice el equipo, sale de la entrada (en la pausa, `offense` ya es el
+    // que viene a batear)
+    const defense = linescore.defense || {};
+    const onField = (person) => (person?.id ? { id: person.id, name: person.fullName || nameOf(person.id) } : null);
+    const battingSide = linescore.inningState === 'Middle' ? 'home' : linescore.inningState === 'End' ? 'away' : linescore.isTopInning ? 'away' : 'home';
+    const field =
+        state === 'live'
+            ? {
+                defenseTeamId: defense.team?.id ?? gameData.teams?.[battingSide === 'away' ? 'home' : 'away']?.id ?? null,
+                offenseTeamId: offense.team?.id ?? gameData.teams?.[battingSide]?.id ?? null,
+                defense: Object.fromEntries(FIELD_POSITIONS.map((key) => [key, onField(defense[key])])),
+                offense: Object.fromEntries(FIELD_OFFENSE.map((key) => [key, onField(offense[key])]))
+            }
+            : null;
+
     const absChallengesOf = (challenges) => {
         if (!challenges?.hasChallenges) return null;
         const side = (team) => ({ won: team?.usedSuccessful ?? 0, lost: team?.usedFailed ?? 0, remaining: team?.remaining ?? null });
@@ -486,6 +506,7 @@ const transformGame = (feed) => {
         runners: { first: runner('first'), second: runner('second'), third: runner('third') },
         matchup,
         dueUp: dueUp.length ? { teamId: offense.team?.id ?? null, batters: dueUp } : null,
+        field,
         abs: absChallengesOf(gameData.absChallenges),
         probables: { away: probable('away'), home: probable('home') },
         linescore: (linescore.innings || []).map((inning) => ({
