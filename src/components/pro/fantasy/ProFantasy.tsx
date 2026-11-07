@@ -4,15 +4,17 @@
 import React, { useMemo, useRef, useState, type ComponentRef } from 'react';
 import { Pressable, RefreshControl, ScrollView, View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { BarChart3, ChevronRight, Share2, Users } from 'lucide-react-native';
 import type { LeagueId } from '../../../types';
 import { useSession } from '../../../lib/account';
-import { entryKey, gameStarted, history, pickPoints, playerScore, teamPoints, useFantasyDay, useFantasyStore, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../../lib/fantasy';
+import { dayPoints, entryKey, gameStarted, history, playerScore, rulesOf, useFantasyDay, useFantasyStore, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../../lib/fantasy';
+import type { CountedEntry } from '../../../lib/fantasyCounted';
 import { formatLongDate } from '../../../lib/format';
 import { useFantasyForm, useFantasyStats, useProStandings } from '../../../lib/pro/liga';
-import { startersOf, useFantasyLineups } from '../../../lib/pro/pantallas';
+import { lineupStatuses, useFantasyLineups } from '../../../lib/pro/pantallas';
 import { useColors } from '../../../theme/theme';
 import { alpha, radius, shadow } from '../../../theme/tokens';
 import { ErrorState, OfflineState, Skeleton, Txt, useErrorText } from '../../ui';
@@ -20,6 +22,7 @@ import { AccountCard } from '../../account/AccountCard';
 import { useFanProfile } from '../../fantasy/fans';
 import { shift, useOpenPlayer } from '../../fantasy/shared';
 import { useLocalText } from '../../fantasy/texts';
+import { HowToPlayLink } from '../../fantasy/Help';
 import { ProNote, ProSegmented, ScreenTitle, useNow } from '../kit';
 import { ProFans } from '../fanaticos/ProFans';
 import { fmtPts } from './bits';
@@ -49,14 +52,16 @@ export interface ProFantasyProps {
     tab: FantasyTab;
     onTab: (tab: FantasyTab) => void;
     entry: DayEntry;
+    /** El equipo que cuenta (con el historial de la base): los mismos puntos de la tabla */
+    counted: CountedEntry;
     onOpenFan: OpenFan;
 }
 
+/** Puntos de un día con el equipo que cuenta (el resultado guardado o, si no, effectiveEntry con lo del teléfono) */
 const entryTotals = (day: FantasyDay | undefined, entry: DayEntry | undefined) => {
     if (!day || !entry || (!entry.lineup.length && !Object.keys(entry.picks).length)) return null;
-    const team = entry.result?.team ?? teamPoints(day, entry);
-    const picks = entry.result?.picks ?? pickPoints(day, entry);
-    return { team, picks, total: Math.round((team + picks) * 10) / 10 };
+    if (entry.result) return { team: entry.result.team, picks: entry.result.picks, total: Math.round((entry.result.team + entry.result.picks) * 10) / 10 };
+    return dayPoints(day, entry);
 };
 
 /** «Sábado 17 de octubre» (sin la coma del formato largo) */
@@ -65,7 +70,7 @@ const longDay = (date: string, lang: string) => {
     return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
-export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onDate, today, tab, onTab, entry, onOpenFan }) => {
+export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onDate, today, tab, onTab, entry, counted, onOpenFan }) => {
     const { t, i18n } = useTranslation();
     const lang = i18n.language;
     const colors = useColors();
@@ -107,10 +112,11 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
     const seasonTotals = profile.data?.season ?? { points: Math.round(past.reduce((sum, item) => sum + item.points, 0) * 10) / 10, days: past.length };
     const saveStatus = useSaveStatus(league, day?.date, entry, userId, today);
 
-    const projection = useMemo(() => (day ? projectionOf(day, entry, (id) => scout.rows.get(id)?.ppg ?? null) : { byId: {}, total: 0, known: 0, count: 0 }), [day, entry, scout.rows]);
+    // La proyección del servidor (la misma del Lite y la web), no el promedio de la temporada
+    const projection = useMemo(() => (day ? projectionOf(day, entry) : { byId: {}, total: 0, known: 0, count: 0 }), [day, entry]);
     const forms = useMemo(() => teamFormOf(standingRows(standings.data)), [standings.data]);
-    const starters = useMemo(() => startersOf(lineups.data), [lineups.data]);
-    const lineupGames = useMemo(() => new Set((lineups.data?.games ?? []).filter((game) => game.away || game.home).map((game) => game.gamePk)), [lineups.data]);
+    // Confirmado, Esperado o Banca por las alineaciones (publicadas o la del último juego), si el día no lo dice
+    const lineupStatus = useMemo(() => lineupStatuses(day, lineups.data), [day, lineups.data]);
 
     const [role, setRole] = useState<'B' | 'P'>('B');
     const [replacing, setReplacing] = useState<FantasyPlayer | null>(null);
@@ -133,6 +139,9 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
         goPick();
     };
     const onInfo = (player: FantasyPlayer) => openPlayer(player.id);
+    // Desde «Escoge peloteros» la ficha lleva «Agregar/Quitar» con el mismo día (como el selector del Lite)
+    const router = useRouter();
+    const onPickInfo = (player: FantasyPlayer) => router.push({ pathname: '/jugador/[id]', params: { id: player.id, fantasy: '1', ...(date ? { dia: date } : {}), name: player.name, teamId: player.teamId } });
 
     const dayName = (key: string) => (key === today ? t('games.today') : key < (today ?? '') ? t('games.yesterday') : t('games.tomorrow'));
     const pills = (
@@ -157,6 +166,10 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
             ? { label: `${before.date === prevKey ? `${t('games.yesterday')} · ` : ''}${shortDayName(before.date, lang)}`, ...prevTotals }
             : null;
 
+    // Los puntos del día con el equipo que cuenta (los mismos de la tabla y del Lite)
+    const totals = day ? dayPoints(day, entry, counted.entry) : { team: 0, picks: 0, total: 0 };
+    const captainX = rulesOf(day).captain;
+
     // Compartir: las 6 fotos del día elegido con sus puntos
     const lineupPlayers = day ? entry.lineup.map((id) => day.players.find((player) => player.id === id)).filter((player): player is FantasyPlayer => !!player) : [];
     const shareData: ShareCardData | null =
@@ -167,11 +180,11 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
                   league: t(`leagues.${league}.name`),
                   slots: lineupPlayers.map((player) => {
                       const game = day.games.find((item) => item.gamePk === player.gamePk);
-                      return { id: player.id, name: player.name, teamId: player.teamId, points: game && gameStarted(game, now) ? fmtPts(playerScore(entry, player)) : null, captain: entry.captain === player.id };
+                      return { id: player.id, name: player.name, teamId: player.teamId, points: game && gameStarted(game, now) ? fmtPts(counted.entry.lineup.includes(player.id) ? playerScore(counted.entry, player, captainX) : 0) : null, captain: entry.captain === player.id };
                   }),
-                  total: fmtPts(teamPoints(day, entry) + pickPoints(day, entry)),
+                  total: fmtPts(totals.total),
                   unit: t('pro.fantasy.pts'),
-                  split: t('pro.fantasy.summary.split', { team: fmtPts(teamPoints(day, entry)), picks: fmtPts(pickPoints(day, entry)) }),
+                  split: t('pro.fantasy.summary.split', { team: fmtPts(totals.team), picks: fmtPts(totals.picks) }),
                   rank: rank ? t('pro.fantasy.share.rank', { rank: rank.rank, total: rank.total }) : null,
                   site: SHARE_SITE
               }
@@ -206,6 +219,7 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
                 <ScreenTitle
                     eyebrow={eyebrow}
                     title={t('fantasy.title')}
+                    subtitle={<HowToPlayLink date={date} style={{ marginTop: 2 }} />}
                     actions={
                         <>
                             <Pressable onPress={() => setSheet('season')} accessibilityRole="button" accessibilityLabel={t('pro.fantasy.season.open')} style={({ pressed }) => [iconButton, shadow('card'), { opacity: pressed ? 0.8 : 1 }]}>
@@ -293,8 +307,8 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
                                 day={day}
                                 entry={entry}
                                 dayName={isToday ? t('games.today').toLowerCase() : shortDayName(day.date, lang)}
-                                team={teamPoints(day, entry)}
-                                picks={pickPoints(day, entry)}
+                                team={totals.team}
+                                picks={totals.picks}
                                 projection={projection}
                                 rank={rank}
                                 rankPending={season.isPending}
@@ -303,7 +317,7 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
                                 saveStatus={saveStatus}
                                 onOpenSeason={() => setSheet('season')}
                             />
-                            <TeamGrid day={day} entry={entry} prevDay={before} projection={projection} scout={scout.rows} form={form.data?.players} now={now} onPick={pick} onChange={change} onInfo={onInfo} />
+                            <TeamGrid day={day} entry={entry} counted={counted} prevDay={before} projection={projection} scout={scout.rows} form={form.data?.players} now={now} onPick={pick} onChange={change} onInfo={onInfo} />
                             {isToday && !day.games.some((game) => game.state === 'live') && prevFinished && before && beforeEntry ? <ReplayYesterday day={before} entry={beforeEntry} /> : null}
                             <LiveNow league={league} day={day} entry={entry} userId={userId} />
                             {finished ? (
@@ -326,11 +340,9 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
                                         onCancelReplace={() => setReplacing(null)}
                                         scout={scout}
                                         form={form.data?.players}
-                                        stats={stats.data}
-                                        starters={starters}
-                                        lineupGames={lineupGames}
+                                        lineupStatus={lineupStatus}
                                         now={now}
-                                        onInfo={onInfo}
+                                        onInfo={onPickInfo}
                                     />
                                 </View>
                             )}

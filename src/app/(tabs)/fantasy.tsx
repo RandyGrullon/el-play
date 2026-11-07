@@ -20,8 +20,11 @@ import { FanSearch } from '../../components/fantasy/FanSearch';
 import { useFanProfile } from '../../components/fantasy/fans';
 import { ProFantasy } from '../../components/pro/fantasy/ProFantasy';
 import { useLocalText } from '../../components/fantasy/texts';
+import { HowToPlayLink } from '../../components/fantasy/Help';
+import { useSaveStatus } from '../../components/pro/fantasy/data';
 import { accountEnabled, pushEntry, syncFantasy, useSession } from '../../lib/account';
-import { entryKey, fetchFantasyDay, getStore, history, pickPoints, settleDay, teamPoints, unsettledDays, useEntry, useFantasyDay, useFantasyStore } from '../../lib/fantasy';
+import { dayPoints, entryKey, repairEntry, fetchFantasyDay, getStore, history, settleDay, unsettledDays, useEntry, useFantasyDay, useFantasyStore } from '../../lib/fantasy';
+import { useCountedEntry } from '../../lib/fantasyCounted';
 import { formatLongDate } from '../../lib/format';
 import { useIsPro } from '../../lib/pro';
 import { useLeague } from '../../state/league';
@@ -59,10 +62,18 @@ export default function FantasyScreen() {
     // El Fantasy se juega con cuenta; sin ella se ve la portada para entrar
     const playing = accountEnabled() && !!session;
 
-    // Al terminar el día se guarda el resultado; con cuenta, cada cambio se sube
+    // El equipo que cuenta (con el historial de la base): el mismo número de la tabla y del perfil
+    const counted = useCountedEntry(day, entry);
+    const saveStatus = useSaveStatus(activeLeague, day?.date, entry, session?.user.id, today);
+
+    // Al terminar el día se guarda el resultado (con el equipo que cuenta); con cuenta, cada cambio se sube
     useEffect(() => {
-        if (day) settleDay(day, entry);
-    }, [day, entry]);
+        if (day) settleDay(day, entry, counted.entry);
+    }, [day, entry, counted.entry]);
+    // Un equipo que quedó con más de 6 (un pospuesto con la versión de antes) se arregla y se vuelve a guardar
+    useEffect(() => {
+        if (day && session) repairEntry(day);
+    }, [day, session]);
     useEffect(() => {
         if (session && day && entry.savedAt) pushEntry(day.league, day.date, entry);
     }, [session, day?.league, day?.date, entry.savedAt]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -112,8 +123,9 @@ export default function FantasyScreen() {
     // La temporada la da el servidor (la misma de la tabla y del perfil); mientras carga o sin red, la del teléfono
     const mine = useFanProfile(playing && session ? session.user.id : null, activeLeague);
     const season = mine.data?.season ?? { points: Math.round(past.reduce((sum, d) => sum + d.points, 0) * 10) / 10, days: past.length };
-    const points = day ? teamPoints(day, entry) : 0;
-    const picks = day ? pickPoints(day, entry) : 0;
+    const totals = day ? dayPoints(day, entry, counted.entry) : { team: 0, picks: 0, total: 0 };
+    const points = totals.team;
+    const picks = totals.picks;
     const days = today ? [shift(today, -1), today, shift(today, 1)] : [];
     const dayLabel = (key: string) => (key === today ? t('games.today') : key < (today ?? '') ? t('games.yesterday') : t('games.tomorrow'));
     const offline = !day && query.fetchStatus === 'paused';
@@ -121,7 +133,7 @@ export default function FantasyScreen() {
 
     // PRO (cuenta abierta + modo PRO): la misma partida con más datos; el Lite sigue igual debajo
     if (pro && playing) {
-        return <ProFantasy league={activeLeague} query={query} date={date} onDate={setDate} today={today} tab={tab} onTab={setTab} entry={entry} onOpenFan={(id) => openFan(id)} />;
+        return <ProFantasy league={activeLeague} query={query} date={date} onDate={setDate} today={today} tab={tab} onTab={setTab} entry={entry} counted={counted} onOpenFan={(id) => openFan(id)} />;
     }
 
     return (
@@ -135,6 +147,8 @@ export default function FantasyScreen() {
                         <Title>{t('fantasy.title')}</Title>
                         {pro && <ProBadge />}
                     </Row>
+                    {/* Siempre a la vista, también sin cuenta: la ayuda con las reglas del día que se está viendo */}
+                    <HowToPlayLink date={date} />
                 </View>
                 <Row gap={8}>
                     <Pressable
@@ -195,7 +209,7 @@ export default function FantasyScreen() {
                         <EmptyState title={t('fantasy.noGames')} hint={t('fantasy.noGamesHint')} />
                     ) : day ? (
                         tab === 'team' ? (
-                            <TeamTab day={day} entry={entry} onPick={(role) => setPicker({ role, teamId: null, search: '' })} />
+                            <TeamTab day={day} entry={entry} counted={counted} saveStatus={saveStatus} onPick={(role) => setPicker({ role, teamId: null, search: '' })} />
                         ) : tab === 'picks' ? (
                             <PicksTab day={day} entry={entry} />
                         ) : (

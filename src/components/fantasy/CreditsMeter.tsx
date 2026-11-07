@@ -2,17 +2,20 @@
 import React, { useEffect, useState } from 'react';
 import { Animated, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { RULES, creditsLeft, entryCost, type DayEntry, type FantasyDay } from '../../lib/fantasy';
+import { RULES, creditsLeft, creditsOf, entryCost, type DayEntry, type FantasyDay } from '../../lib/fantasy';
 import { useColors } from '../../theme/theme';
 import { radius } from '../../theme/tokens';
 import { Card, Row, Txt, useReduceMotion } from '../ui';
 import { formatCredits } from './shared';
+import { HelpButton } from './Help';
 
 export const CreditsMeter: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, entry }) => {
     const { t, i18n } = useTranslation();
     const colors = useColors();
     const reduce = useReduceMotion();
-    const budget = day.credits?.budget ?? 0;
+    // Los créditos del día salen de las reglas (null = ese día no hay tope)
+    const credits = creditsOf(day);
+    const budget = credits?.budget ?? 0;
     const spent = entryCost(day, entry);
     const share = budget > 0 ? Math.min(1, spent / budget) : 0;
     // La barra se llena con una transición corta (como la web); con «Reducir movimiento» salta de una vez
@@ -27,24 +30,27 @@ export const CreditsMeter: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ d
         return () => animation.stop();
     }, [fill, share, reduce]);
 
-    if (!day.credits) return null;
+    if (!credits) return null;
     const lang = i18n.language;
     const left = creditsLeft(day, entry) ?? 0;
     const over = left < -1e-9;
     // Le faltan peloteros y lo que queda no alcanza ni para los más baratos: tiene que cambiar a alguien caro
     const missing = Math.max(0, RULES.batters + RULES.pitchers - entry.lineup.length);
-    const short = !over && missing > 0 && left + 1e-9 < missing * day.credits.min;
+    const short = !over && missing > 0 && left + 1e-9 < missing * credits.min;
     const spentText = t('fantasy.credits.spent', { spent: formatCredits(spent, lang), budget: formatCredits(budget, lang) });
     const message = over
         ? t('fantasy.credits.over', { over: formatCredits(-left, lang) })
         : short
-          ? t('fantasy.credits.short', { left: formatCredits(left, lang), count: missing, min: formatCredits(day.credits.min, lang) })
+          ? t('fantasy.credits.short', { left: formatCredits(left, lang), count: missing, min: formatCredits(credits.min, lang) })
           : t('fantasy.credits.left', { left: formatCredits(left, lang) });
 
     return (
         <Card style={{ padding: 14, gap: 8 }}>
-            <Row justify="space-between" align="baseline" gap={12}>
-                <Txt eyebrow>{t('fantasy.credits.label')}</Txt>
+            <Row justify="space-between" align="center" gap={12}>
+                <Row gap={4}>
+                    <Txt eyebrow>{t('fantasy.credits.label')}</Txt>
+                    <HelpButton topic="credits" date={day.date} />
+                </Row>
                 <Txt size={14} weight="bold" tabular>
                     {spentText}
                 </Txt>

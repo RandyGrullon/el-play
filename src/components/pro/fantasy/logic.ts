@@ -3,7 +3,8 @@
 // Los puntos son los de src/lib/fantasy.ts: aquí solo se arman vistas con ellos. Lo de los demás se puntúa con el
 // equipo que cuenta (effectiveEntry) y nunca se muestra antes de que empiece su juego.
 import type { Rival } from '../../../lib/account';
-import { RULES, effectiveEntry, gameStarted, lockTime, perTeamLimit, pickPoints, playerScore, teamPoints, type DayEntry, type FantasyDay, type FantasyLine, type FantasyPlayer } from '../../../lib/fantasy';
+import { RULES, effectiveEntry, gameStarted, lockTime, pickPoints, playerScore, rankRows, teamPoints, type DayEntry, type FantasyDay, type FantasyLine, type FantasyPlayer } from '../../../lib/fantasy';
+import { bestLineup, projectedPoints } from '../../../lib/fantasyBest';
 import type { ProStandingRow, ProStandings } from '../../../types/pro-liga';
 
 export const round1 = (value: number) => Math.round(value * 10) / 10;
@@ -59,35 +60,36 @@ export const partsTotal = (parts: PointPart[]) => round1(parts.reduce((sum, part
 
 // ---------------------------------------------------------------- proyección
 
-/** Lo que se espera de un pelotero: su promedio de puntos por juego (×1.5 si es el capitán) */
-export const projectedPoints = (ppg: number | null | undefined, captain: boolean) => (ppg === null || ppg === undefined || !Number.isFinite(ppg) ? null : round1(ppg * (captain ? RULES.captain : 1)));
+/** Lo que se espera de un pelotero hoy: la proyección del servidor (×1.5 si es el capitán); null si no la hay */
+export const projectedOf = (player: Pick<FantasyPlayer, 'proj'> | undefined, captain: boolean) =>
+    player?.proj === undefined || player.proj === null || !Number.isFinite(player.proj) ? null : round1(player.proj * (captain ? RULES.captain : 1));
 
 export interface Projection {
     byId: Record<number, number | null>;
     total: number;
-    /** Peloteros con promedio conocido */
+    /** Peloteros con proyección */
     known: number;
     /** Peloteros del equipo que están en el día */
     count: number;
 }
 
-/** Proyección del equipo: la suma de los promedios de cada pelotero (con la corona) */
-export const projectionOf = (day: Pick<FantasyDay, 'players'>, entry: Pick<DayEntry, 'lineup' | 'captain'>, ppgOf: (id: number) => number | null | undefined): Projection => {
+/**
+ * Proyección del equipo con la del servidor (`proj`, la misma del Lite y la web): el total es projectedPoints de
+ * fantasyBest (la suma con la corona, redondeada al final), así sale igual en todos lados.
+ */
+export const projectionOf = (day: Pick<FantasyDay, 'players'>, entry: Pick<DayEntry, 'lineup' | 'captain'>): Projection => {
     const byId: Record<number, number | null> = {};
-    let total = 0;
     let known = 0;
     let count = 0;
     for (const id of entry.lineup) {
-        if (!day.players.some((player) => player.id === id)) continue;
+        const player = day.players.find((item) => item.id === id);
+        if (!player) continue;
         count += 1;
-        const value = projectedPoints(ppgOf(id), entry.captain === id);
+        const value = projectedOf(player, entry.captain === id);
         byId[id] = value;
-        if (value !== null) {
-            total += value;
-            known += 1;
-        }
+        if (value !== null) known += 1;
     }
-    return { byId, total: round1(total), known, count };
+    return { byId, total: projectedPoints(day as FantasyDay, entry.lineup, entry.captain), known, count };
 };
 
 // ---------------------------------------------------------------- equipo ideal del día
@@ -100,160 +102,22 @@ export interface IdealTeam {
     pool: number;
 }
 
-const byPoints = (a: FantasyPlayer, b: FantasyPlayer) => b.points - a.points || a.id - b.id;
-const priceTenths = (player: FantasyPlayer) => (Number.isFinite(player.price) ? Math.max(0, Math.round(player.price! * 10)) : 0);
-
-/** Sin créditos: con lanzador y capitán fijos, los bateadores de mayor a menor dentro de los cupos es lo mejor (matroide) */
-const idealGreedy = (pool: FantasyPlayer[], perTeam: number) => {
-    const batters = pool.filter((player) => player.role === 'B').sort(byPoints);
-    const pitchers = pool.filter((player) => player.role === 'P').sort(byPoints);
-    const pitcherOptions: (FantasyPlayer | null)[] = pitchers.length ? pitchers : [null];
-    let best: { players: FantasyPlayer[]; captain: FantasyPlayer | null; total: number } | null = null;
-    for (const pitcher of pitcherOptions) {
-        const captainOptions: (FantasyPlayer | null)[] = [null, ...pool.filter((player) => player.role === 'B' || player === pitcher)];
-        for (const captain of captainOptions) {
-            const chosen: FantasyPlayer[] = [];
-            const count = new Map<number, number>();
-            const take = (player: FantasyPlayer) => {
-                chosen.push(player);
-                count.set(player.teamId, (count.get(player.teamId) ?? 0) + 1);
-            };
-            if (pitcher) take(pitcher);
-            if (captain && captain !== pitcher) {
-                if ((count.get(captain.teamId) ?? 0) >= perTeam) continue;
-                take(captain);
-            }
-            for (const batter of batters) {
-                if (chosen.filter((player) => player.role === 'B').length >= RULES.batters) break;
-                if (chosen.includes(batter) || (count.get(batter.teamId) ?? 0) >= perTeam) continue;
-                take(batter);
-            }
-            const entry = { lineup: chosen.map((player) => player.id), captain: captain?.id ?? null } as DayEntry;
-            const total = round1(chosen.reduce((sum, player) => sum + playerScore(entry, player), 0));
-            if (!best || total > best.total) best = { players: chosen, captain, total };
-        }
-    }
-    return best;
-};
-
-/**
- * Con créditos: mochila por equipos. Estado = (bateadores, lanzador, capitán usado, créditos gastados en décimas);
- * de cada equipo se prueban los grupos de hasta `perTeam` peloteros con o sin capitán. Exacto y rápido (unos
- * 12 000 estados por equipo).
- */
-const idealBudget = (pool: FantasyPlayer[], perTeam: number, budget: number) => {
-    const B = Math.max(0, Math.round(budget * 10));
-    const size = (RULES.batters + 1) * (RULES.pitchers + 1) * 2 * (B + 1);
-    const index = (b: number, p: number, c: number, cost: number) => ((b * (RULES.pitchers + 1) + p) * 2 + c) * (B + 1) + cost;
-    const teams = new Map<number, FantasyPlayer[]>();
-    for (const player of pool) teams.set(player.teamId, [...(teams.get(player.teamId) ?? []), player]);
-
-    let value = new Float64Array(size).fill(-Infinity);
-    value[index(0, 0, 0, 0)] = 0;
-    const steps: { from: Int32Array; option: Int32Array; options: { players: FantasyPlayer[]; captain: FantasyPlayer | null }[] }[] = [];
-
-    for (const players of teams.values()) {
-        // Grupos del equipo (hasta perTeam) con o sin capitán; por cada forma (b, p, c, costo) solo el de más puntos
-        const best = new Map<string, { players: FantasyPlayer[]; captain: FantasyPlayer | null; b: number; p: number; c: number; cost: number; pts: number }>();
-        const consider = (group: FantasyPlayer[]) => {
-            const b = group.filter((player) => player.role === 'B').length;
-            const p = group.length - b;
-            if (b > RULES.batters || p > RULES.pitchers) return;
-            const cost = group.reduce((sum, player) => sum + priceTenths(player), 0);
-            if (cost > B) return;
-            const base = group.reduce((sum, player) => sum + player.points, 0);
-            for (const captain of [null, ...group]) {
-                const pts = base + (captain ? captain.points * (RULES.captain - 1) : 0);
-                const c = captain ? 1 : 0;
-                const key = `${b}-${p}-${c}-${cost}`;
-                const current = best.get(key);
-                if (!current || pts > current.pts) best.set(key, { players: group, captain, b, p, c, cost, pts });
-            }
-        };
-        const pick = (start: number, group: FantasyPlayer[]) => {
-            consider(group);
-            if (group.length >= perTeam) return;
-            for (let i = start; i < players.length; i++) pick(i + 1, [...group, players[i]]);
-        };
-        pick(0, []);
-        const options = [...best.values()];
-        const next = new Float64Array(size).fill(-Infinity);
-        const from = new Int32Array(size).fill(-1);
-        const option = new Int32Array(size).fill(-1);
-        for (let state = 0; state < size; state++) {
-            const current = value[state];
-            if (current === -Infinity) continue;
-            const cost = state % (B + 1);
-            const rest = (state - cost) / (B + 1);
-            const c = rest % 2;
-            const p = ((rest - c) / 2) % (RULES.pitchers + 1);
-            const b = (rest - c - p * 2) / (2 * (RULES.pitchers + 1));
-            for (let o = 0; o < options.length; o++) {
-                const item = options[o];
-                const nb = b + item.b;
-                const np = p + item.p;
-                const nc = c + item.c;
-                const ncost = cost + item.cost;
-                if (nb > RULES.batters || np > RULES.pitchers || nc > 1 || ncost > B) continue;
-                const target = index(nb, np, nc, ncost);
-                const total = current + item.pts;
-                if (total > next[target]) {
-                    next[target] = total;
-                    from[target] = state;
-                    option[target] = o;
-                }
-            }
-        }
-        steps.push({ from, option, options: options.map((item) => ({ players: item.players, captain: item.captain })) });
-        value = next;
-    }
-
-    // El mejor equipo completo (5 + 1); si no alcanza, el más completo que se pueda
-    let end = -1;
-    for (const want of [RULES.batters + RULES.pitchers, RULES.batters, RULES.batters - 1, 3, 2, 1]) {
-        for (let state = 0; state < size; state++) {
-            if (value[state] === -Infinity) continue;
-            const cost = state % (B + 1);
-            const rest = (state - cost) / (B + 1);
-            const c = rest % 2;
-            const p = ((rest - c) / 2) % (RULES.pitchers + 1);
-            const b = (rest - c - p * 2) / (2 * (RULES.pitchers + 1));
-            if (b + p !== want || (want === RULES.batters + RULES.pitchers && (b !== RULES.batters || p !== RULES.pitchers))) continue;
-            if (end < 0 || value[state] > value[end]) end = state;
-        }
-        if (end >= 0) break;
-    }
-    if (end < 0) return null;
-    const players: FantasyPlayer[] = [];
-    let captain: FantasyPlayer | null = null;
-    let state = end;
-    for (let step = steps.length - 1; step >= 0; step--) {
-        const { from, option, options } = steps[step];
-        const chosen = options[option[state]];
-        if (chosen) {
-            players.push(...chosen.players);
-            if (chosen.captain) captain = chosen.captain;
-        }
-        state = from[state];
-        if (state < 0) break;
-    }
-    const entry = { lineup: players.map((player) => player.id), captain: captain?.id ?? null } as DayEntry;
-    return { players, captain, total: round1(players.reduce((sum, player) => sum + playerScore(entry, player), 0)) };
-};
-
 /**
  * El mejor equipo posible con lo que pasó: 5 bateadores y 1 lanzador de los que jugaron, el máximo por equipo del día,
- * los créditos del día (si se juega con créditos) y el capitán ×1.5.
+ * los créditos del día (si se juega con créditos) y el capitán ×1.5. Es el mismo optimizador exacto del Lite y la web
+ * (bestLineup de src/lib/fantasyBest.ts), así el ideal da lo mismo en todos lados.
  */
-export const idealTeam = (day: Pick<FantasyDay, 'players' | 'games' | 'credits'>): IdealTeam | null => {
+export const idealTeam = (day: FantasyDay): IdealTeam | null => {
     const pool = day.players.filter((player) => player.played);
     if (!pool.length) return null;
-    const perTeam = perTeamLimit(day);
-    const best = day.credits ? idealBudget(pool, perTeam, day.credits.budget) : idealGreedy(pool, perTeam);
+    const best = bestLineup(day, { metric: 'points', ignoreLocks: true });
     if (!best) return null;
-    const entry = { lineup: best.players.map((player) => player.id), captain: best.captain?.id ?? null } as DayEntry;
-    const players = [...best.players].sort((a, b) => playerScore(entry, b) - playerScore(entry, a) || a.id - b.id);
-    return { players, captain: best.captain, total: best.total, pool: pool.length };
+    const entry = { lineup: best.lineup, captain: best.captain } as DayEntry;
+    const players = best.lineup
+        .map((id) => day.players.find((player) => player.id === id))
+        .filter((player): player is FantasyPlayer => !!player)
+        .sort((a, b) => playerScore(entry, b) - playerScore(entry, a) || a.id - b.id);
+    return { players, captain: players.find((player) => player.id === best.captain) ?? null, total: best.total, pool: pool.length };
 };
 
 // ---------------------------------------------------------------- tablas: puesto, porcentaje, histograma y movimiento
@@ -287,14 +151,8 @@ export const binIndex = (bins: Bin[], points: number) => bins.findIndex((bin, in
 /** Puestos ganados (positivo) o perdidos (negativo) desde la lectura anterior; null si no había puesto */
 export const movementOf = (rank: number | null | undefined, previous: number | null | undefined) => (rank === null || rank === undefined || previous === null || previous === undefined ? null : previous - rank);
 
-/** Puestos con empates (dos con los mismos puntos comparten el puesto) */
-export const ranked = <T extends { points: number }>(rows: T[]) => {
-    let rank = 0;
-    return rows.map((row, index) => {
-        if (index === 0 || row.points !== rows[index - 1].points) rank = index + 1;
-        return { ...row, rank };
-    });
-};
+/** Puestos con empates (dos con los mismos puntos comparten el puesto): la misma regla del Lite (rankRows), con `rows` ya ordenadas */
+export const ranked = <T extends { points: number }>(rows: T[]) => rankRows(rows);
 
 /** Filas que se muestran de una tabla larga: los 3 primeros y los de alrededor de la tuya; entre los dos, un hueco */
 export const tableWindow = <T>(rows: T[], mine: number, top = 3, around = 1): (T | { gap: number })[] => {

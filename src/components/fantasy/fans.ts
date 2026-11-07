@@ -127,11 +127,15 @@ export const useSeasonRanking = (league: LeagueId, enabled = true, users?: strin
     });
 };
 
-/** Puestos con empates (dos con los mismos puntos comparten el puesto) */
+/**
+ * Puestos con empates (1, 2, 2, 4): dos con los mismos puntos (a la décima, como se muestran) comparten el puesto,
+ * igual que la web. Las filas tienen que venir ordenadas de mayor a menor.
+ */
 export const withRanks = <T extends { points: number }>(rows: T[]) => {
+    const tenths = (points: number) => Math.round(points * 10);
     let rank = 0;
     return rows.map((row, index) => {
-        if (index === 0 || row.points !== rows[index - 1].points) rank = index + 1;
+        if (index === 0 || tenths(row.points) !== tenths(rows[index - 1].points)) rank = index + 1;
         return { ...row, rank };
     });
 };

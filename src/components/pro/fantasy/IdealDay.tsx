@@ -6,7 +6,7 @@ import { Pressable, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { Crown } from 'lucide-react-native';
-import { RULES, perTeamLimit, pickPoints, playerScore, teamPoints, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../../lib/fantasy';
+import { RULES, dayPoints, perTeamLimit, playerScore, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../../lib/fantasy';
 import { useColors } from '../../../theme/theme';
 import { PRO_GRADIENT, PRO_GRADIENT_LINE, alpha, radius, shadow } from '../../../theme/tokens';
 import { PlayerPhoto, Txt } from '../../ui';
@@ -108,8 +108,8 @@ export const IdealDay: React.FC<IdealDayProps> = ({ day, entry, title, dateName,
     const ideal = useMemo(() => idealTeam(day), [day]);
     const mine = entry.lineup.map((id) => day.players.find((player) => player.id === id)).filter((player): player is FantasyPlayer => !!player);
     if (!ideal || !mine.length) return null;
-    const team = teamPoints(day, entry);
-    const picks = pickPoints(day, entry);
+    // Con el equipo que cuenta (el mismo número de la tabla)
+    const { team, picks } = dayPoints(day, entry);
     const share = ideal.total > 0 ? Math.max(0, Math.min(1, team / ideal.total)) : 0;
     const idealEntry = { lineup: ideal.players.map((player) => player.id), captain: ideal.captain?.id ?? null };
     const common = new Set(mine.filter((player) => idealEntry.lineup.includes(player.id)).map((player) => player.id));

@@ -89,6 +89,8 @@ const Navigator: React.FC = () => {
                 <Stack.Screen name="equipo/[id]" options={SWIPE_SCREEN} />
                 <Stack.Screen name="jugador/[id]" options={SWIPE_SCREEN} />
                 <Stack.Screen name="en-vivo" options={SWIPE_SCREEN} />
+                {/* «Cómo se juega» del Fantasy: también se sale deslizando */}
+                <Stack.Screen name="fantasy/ayuda" options={SWIPE_SCREEN} />
                 <Stack.Screen name="privacidad" options={SWIPE_SCREEN} />
                 <Stack.Screen name="auth" options={SWIPE_SCREEN} />
                 <Stack.Screen name="fantasy/fan/[id]" options={SWIPE_SCREEN} />

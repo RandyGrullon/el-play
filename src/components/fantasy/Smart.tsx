@@ -7,7 +7,7 @@ import type { TFunction } from 'i18next';
 import { Clock, Crown, Sparkles, Trophy, Wand2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { accountEnabled } from '../../lib/account';
-import { RULES, applyLineup, gameStarted, isLocked, nextLockAt, teamPoints, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
+import { RULES, applyLineup, budgetOf, gameStarted, isLocked, nextLockAt, playerPostponed, teamPoints, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
 import { bestLineup, projectedPoints } from '../../lib/fantasyBest';
 import { formatTime } from '../../lib/format';
 import { showToast } from '../../lib/toast';
@@ -94,7 +94,8 @@ export const SmartActions: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ d
     const colors = useColors();
     const [open, setOpen] = useState(false);
     const hasProj = day.players.some((player) => player.proj !== undefined);
-    const anyOpen = day.players.some((player) => !isLocked(day, player));
+    // Alguien que todavía se puede escoger (el de un juego pospuesto no)
+    const anyOpen = day.players.some((player) => !isLocked(day, player) && !playerPostponed(day, player));
     if (!hasProj || !anyOpen) return null;
     const missing = RULES.batters + RULES.pitchers - entry.lineup.length;
     const projected = projectedPoints(day, entry.lineup, entry.captain);
@@ -157,7 +158,7 @@ const SuggestSheet: React.FC<{ day: FantasyDay; keep: number[]; captain: number 
                     <>
                         <LineupList day={day} lineup={best.lineup} captain={best.captain} metric="proj" />
                         <Txt size={14} weight="bold">
-                            {t('fantasy.smart.suggestTotal', { pts: formatCredits(best.total, lang), cost: formatCredits(best.cost, lang), budget: formatCredits(day.credits?.budget ?? 0, lang) })}
+                            {t('fantasy.smart.suggestTotal', { pts: formatCredits(best.total, lang), cost: formatCredits(best.cost, lang), budget: formatCredits(budgetOf(day) ?? best.cost, lang) })}
                         </Txt>
                         <Button
                             label={t('fantasy.smart.use')}

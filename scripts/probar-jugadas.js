@@ -996,6 +996,405 @@ it('terminar de irse: rápido si se soltó con impulso, entre 120 y 280 ms', () 
     assert.strictEqual(swipe.swipeOutMs(-50, 0), 120);
 });
 
+// ---------------------------------------------------------------- Fantasy (src/lib/fantasy*.ts)
+// El optimizador es el de la web (fantasyBest.ts) con los casos de su fantasyBest.test.ts; además, el equipo que cuenta
+// (effectiveEntry y «No cuenta»), los puestos compartidos, el selector y los números de la ayuda. Datos de mentira.
+console.log('Fantasy');
+stub('node_modules/react/index.js', 'exports.useEffect = () => {};\nexports.useState = (v) => [typeof v === "function" ? v() : v, () => {}];\nexports.useSyncExternalStore = (s, get) => get();\nexports.useMemo = (f) => f();\n');
+stub('lib/storage.js', 'exports.getItem = () => null;\nexports.setItem = () => {};\nexports.removeItem = () => {};\nexports.onHydrated = () => {};\n');
+const fantasyLib = require(compileTo('lib/fantasy.ts'));
+const { bestLineup, projectedPoints, valueOf } = require(compileTo('lib/fantasyBest.ts'));
+const pickerLib = require(compileTo('lib/fantasyPicker.ts'));
+const helpLib = require(compileTo('lib/fantasyHelp.ts'));
+{
+    const { applyLineup, getStore, replaceStore, setStoreOwner } = fantasyLib;
+    const LATER = '2099-10-20T23:00:00Z';
+    const PAST = '2000-01-01T00:00:00Z';
+    const p = (id, role, teamId, price, proj, extra = {}) => ({ id, name: `Pelotero ${id}`, teamId, gamePk: teamId <= 2 ? 1 : 2, role, pos: role === 'P' ? 'P' : 'SS', starter: true, played: false, line: null, points: 0, price, proj, ...extra });
+    // Dos juegos (4 equipos: máximo 2 por equipo), 50 créditos
+    const dia = (players, firstDate = LATER, extra = {}) => ({
+        league: 'lidom',
+        date: '2099-10-20',
+        teams: { 1: { id: 1, abbrev: 'AAA' }, 2: { id: 2, abbrev: 'BBB' }, 3: { id: 3, abbrev: 'CCC' }, 4: { id: 4, abbrev: 'DDD' } },
+        scoring: { batter: {}, pitcher: {} },
+        credits: { budget: 50, min: 4, max: 12 },
+        games: [
+            { gamePk: 1, date: firstDate, state: 'preview', detailedState: 'Scheduled', startTimeTBD: false, away: { id: 1, abbrev: 'AAA' }, home: { id: 2, abbrev: 'BBB' } },
+            { gamePk: 2, date: LATER, state: 'preview', detailedState: 'Scheduled', startTimeTBD: false, away: { id: 3, abbrev: 'CCC' }, home: { id: 4, abbrev: 'DDD' } }
+        ],
+        players,
+        ...extra
+    });
+
+    it('optimizador: el sugerido maximiza la proyección sin pasarse de los créditos ni del máximo por equipo (fuerza bruta)', () => {
+        const players = [p(1, 'B', 1, 12, 10), p(2, 'B', 1, 12, 9.5), p(3, 'B', 1, 12, 9), p(4, 'B', 2, 8, 7), p(5, 'B', 3, 6, 6), p(6, 'B', 4, 5, 5.5), p(7, 'B', 4, 4, 3), p(8, 'B', 3, 4, 2), p(9, 'P', 2, 10, 12), p(10, 'P', 3, 5, 6)];
+        const best = bestLineup(dia(players), { metric: 'proj' });
+        assert.ok(best.cost <= 50);
+        const chosen = best.lineup.map((id) => players.find((x) => x.id === id));
+        assert.strictEqual(chosen.filter((x) => x.role === 'B').length, 5);
+        assert.strictEqual(chosen.filter((x) => x.role === 'P').length, 1);
+        assert.ok(chosen.filter((x) => x.teamId === 1).length <= 2);
+        const top = chosen.reduce((a, b) => (b.proj > a.proj ? b : a));
+        assert.strictEqual(best.captain, top.id);
+        close(best.total, projectedPoints(dia(players), best.lineup, best.captain), 5);
+        const valid = (ids) => {
+            const list = ids.map((id) => players.find((x) => x.id === id));
+            const teams = new Map();
+            list.forEach((x) => teams.set(x.teamId, (teams.get(x.teamId) ?? 0) + 1));
+            return list.filter((x) => x.role === 'B').length === 5 && list.filter((x) => x.role === 'P').length === 1 && [...teams.values()].every((n) => n <= 2) && list.reduce((s, x) => s + x.price, 0) <= 50;
+        };
+        let bruteBest = 0;
+        const ids = players.map((x) => x.id);
+        const pick = (start, acc) => {
+            if (acc.length === 6) {
+                if (valid(acc)) bruteBest = Math.max(bruteBest, projectedPoints(dia(players), acc, acc.reduce((a, b) => (players.find((x) => x.id === b).proj > players.find((x) => x.id === a).proj ? b : a))));
+                return;
+            }
+            for (let i = start; i < ids.length; i++) pick(i + 1, [...acc, ids[i]]);
+        };
+        pick(0, []);
+        close(best.total, bruteBest, 5);
+    });
+
+    it('optimizador: el capitán cuenta en la búsqueda (una estrella de capitán vale más que un equipo parejo)', () => {
+        const players = [p(1, 'B', 1, 30, 26), p(2, 'B', 2, 8, 7), p(3, 'B', 2, 8, 7), p(4, 'B', 3, 8, 7), p(5, 'B', 3, 8, 7), p(6, 'B', 4, 8, 7), p(7, 'B', 1, 4, 1), p(8, 'B', 2, 4, 1), p(11, 'B', 3, 4, 1), p(12, 'B', 4, 4, 1), p(9, 'P', 4, 4, 2)];
+        const best = bestLineup(dia(players), { metric: 'proj' });
+        assert.strictEqual(best.captain, 1);
+        assert.strictEqual(best.total, 45);
+        assert.deepStrictEqual(best.lineup.sort((a, b) => a - b), [1, 7, 8, 9, 11, 12]);
+        const fixed = bestLineup(dia(players), { metric: 'proj', keep: [2], captain: 2 });
+        assert.strictEqual(fixed.captain, 2);
+        assert.strictEqual(fixed.total, 40.5);
+    });
+
+    it('optimizador: los que se quedan se respetan; sin créditos para completar, null', () => {
+        const players = [p(1, 'B', 1, 12, 10), p(2, 'B', 2, 4, 1), p(3, 'B', 3, 6, 6), p(4, 'B', 4, 5, 5.5), p(5, 'B', 3, 4, 3), p(6, 'B', 4, 4, 2), p(7, 'B', 1, 8, 4), p(9, 'P', 2, 10, 12), p(10, 'P', 3, 5, 6)];
+        const best = bestLineup(dia(players), { metric: 'proj', keep: [2] });
+        assert.ok(best.lineup.includes(2));
+        assert.strictEqual(best.lineup.length, 6);
+        assert.strictEqual(bestLineup(dia([p(1, 'B', 1, 12, 10), p(2, 'B', 2, 12, 9), p(3, 'B', 3, 12, 8), p(4, 'B', 4, 12, 7), p(5, 'B', 1, 12, 6), p(9, 'P', 2, 12, 12)]), { metric: 'proj' }), null);
+    });
+
+    it('optimizador: el ideal del día mira los puntos de verdad aunque los juegos ya hayan empezado', () => {
+        const players = [
+            p(1, 'B', 1, 12, 10, { played: true, points: 2 }),
+            p(2, 'B', 2, 4, 1, { played: true, points: 18 }),
+            p(3, 'B', 1, 6, 6, { played: true, points: 9 }),
+            p(4, 'B', 2, 5, 5.5, { played: true, points: 7 }),
+            p(5, 'B', 3, 4, 3, { played: true, points: 5 }),
+            p(6, 'B', 4, 4, 2, { played: true, points: 4 }),
+            p(7, 'B', 4, 8, 4, { played: false, points: 0 }),
+            p(9, 'P', 3, 10, 12, { played: true, points: 15 })
+        ];
+        const ideal = bestLineup(dia(players, PAST), { metric: 'points', ignoreLocks: true });
+        [2, 3, 4, 5, 6, 9].forEach((id) => assert.ok(ideal.lineup.includes(id), `falta ${id}`));
+        assert.strictEqual(ideal.captain, 2);
+        assert.strictEqual(ideal.total, 18 * 1.5 + 9 + 7 + 5 + 4 + 15);
+    });
+
+    it('optimizador: aunque los de más proyección no quepan en los créditos, mira a los baratos (antes salía «no se puede»)', () => {
+        const stars = [...Array.from({ length: 48 }, (_, i) => p(100 + i, 'B', (i % 4) + 1, 12, 10)), ...Array.from({ length: 21 }, (_, i) => p(300 + i, 'P', (i % 4) + 1, 12, 8))];
+        const cheap = [p(200, 'B', 1, 4, 1), p(201, 'B', 2, 4, 1), p(202, 'B', 3, 4, 1), p(203, 'B', 4, 4, 1), p(400, 'P', 4, 4, 2)];
+        const best = bestLineup(dia([...stars, ...cheap]), { metric: 'proj' });
+        assert.ok(best);
+        assert.strictEqual(best.cost, 48);
+        assert.strictEqual(best.total, 39);
+    });
+
+    it('optimizador: da lo mismo que probar todos los equipos posibles (60 días al azar, con fijos y capitán fijo)', () => {
+        let seed = 20261020;
+        const random = () => {
+            seed = (seed * 1103515245 + 12345) % 2147483648;
+            return seed / 2147483648;
+        };
+        for (let round = 0; round < 60; round++) {
+            const players = [
+                ...Array.from({ length: 12 }, (_, i) => p(i + 1, 'B', (i % 4) + 1, 4 + Math.floor(random() * 17) / 2, Math.floor(random() * 11))),
+                ...Array.from({ length: 4 }, (_, i) => p(i + 21, 'P', i + 1, 4 + Math.floor(random() * 17) / 2, Math.floor(random() * 11)))
+            ];
+            const keep = round % 3 === 0 ? [1 + (round % 12)] : [];
+            const captain = round % 6 === 0 ? keep[0] : null;
+            let brute = null;
+            const candidates = players.filter((x) => x.proj > 0 || keep.includes(x.id));
+            const batters = candidates.filter((x) => x.role === 'B');
+            const pick = (start, acc) => {
+                if (acc.length === 5) {
+                    for (const pitcher of candidates.filter((x) => x.role === 'P')) {
+                        const team = [...acc, pitcher];
+                        if (!keep.every((id) => team.some((x) => x.id === id))) continue;
+                        if (team.reduce((s, x) => s + x.price, 0) > 50) continue;
+                        const counts = new Map();
+                        team.forEach((x) => counts.set(x.teamId, (counts.get(x.teamId) ?? 0) + 1));
+                        if ([...counts.values()].some((n) => n > 2)) continue;
+                        const sum = team.reduce((s, x) => s + x.proj, 0);
+                        const bonus = captain !== null ? players.find((x) => x.id === captain).proj : Math.max(...team.map((x) => x.proj));
+                        brute = Math.max(brute ?? -Infinity, sum + bonus * 0.5);
+                    }
+                    return;
+                }
+                for (let i = start; i < batters.length; i++) pick(i + 1, [...acc, batters[i]]);
+            };
+            pick(0, []);
+            const best = bestLineup(dia(players), { metric: 'proj', keep, captain });
+            assert.strictEqual(best?.total ?? null, brute, `día ${round}`);
+        }
+    });
+
+    it('optimizador: valor = proyección por crédito; sin tope (rules.budget null) no mira los créditos; el pospuesto no se propone', () => {
+        assert.strictEqual(valueOf({ proj: 8.4, price: 12 }), 0.7);
+        assert.strictEqual(valueOf({ proj: undefined, price: 12 }), null);
+        const caros = [p(1, 'B', 1, 12, 10), p(2, 'B', 2, 12, 9), p(3, 'B', 3, 12, 8), p(4, 'B', 4, 12, 7), p(5, 'B', 1, 12, 6), p(9, 'P', 2, 12, 12)];
+        assert.strictEqual(bestLineup(dia(caros, LATER, { rules: { budget: null } }), { metric: 'proj' }).cost, 72);
+        const pospuesto = dia([...caros, p(6, 'B', 3, 4, 30, { status: 'postponed' })], LATER, { rules: { budget: null } });
+        assert.ok(!bestLineup(pospuesto, { metric: 'proj' }).lineup.includes(6));
+    });
+
+    it('usar el equipo sugerido: los cerrados se quedan (y su capitán); entra el resto', () => {
+        setStoreOwner('sugerido-prueba');
+        const players = [p(1, 'B', 1, 12, 10), p(2, 'B', 2, 4, 1), p(3, 'B', 3, 6, 6), p(4, 'B', 4, 5, 5.5), p(9, 'P', 3, 10, 12)];
+        const d = dia(players, PAST);
+        replaceStore({ 'lidom:2099-10-20': { lineup: [1, 4], captain: 1, picks: {}, savedAt: 1 } });
+        applyLineup(d, [2, 3, 9], 9);
+        const saved = getStore()['lidom:2099-10-20'];
+        assert.deepStrictEqual(saved.lineup, [1, 3, 9]);
+        assert.strictEqual(saved.captain, 1);
+        setStoreOwner(null);
+    });
+
+    it('reglas: el máximo por equipo y los créditos salen de rules (null = sin tope); sin rules, los de siempre', () => {
+        const { perTeamLimit, budgetOf, creditsOf, rulesOf, scoringOf } = fantasyLib;
+        assert.strictEqual(perTeamLimit(dia([])), 2);
+        assert.strictEqual(perTeamLimit(dia([], LATER, { rules: { perTeam: 3 } })), 3);
+        assert.strictEqual(perTeamLimit({ games: [{ away: { id: 1 }, home: { id: 2 } }] }), 3);
+        assert.strictEqual(budgetOf(dia([])), 50);
+        assert.strictEqual(budgetOf(dia([], LATER, { rules: { budget: 55 } })), 55);
+        assert.strictEqual(budgetOf(dia([], LATER, { rules: { budget: null } })), null);
+        assert.strictEqual(creditsOf(dia([], LATER, { rules: { budget: null } })), null);
+        assert.deepStrictEqual(creditsOf(dia([], LATER, { rules: { budget: 45, prices: { min: 3, max: 13 } } })), { budget: 45, min: 3, max: 13 });
+        // Las claves del contrato (hbp, strikeout) pasan a las de la app (hitByPitch, strikeOut)
+        const s = scoringOf({ rules: { scoring: { batter: { hbp: 2, strikeout: -1, homeRun: 10 }, pitcher: { strikeout: 2 } } } });
+        assert.deepStrictEqual(s.batter, { hitByPitch: 2, strikeOut: -1, homeRun: 10 });
+        assert.deepStrictEqual(s.pitcher, { strikeOut: 2 });
+        const r = rulesOf(dia([]));
+        partial(r, { perTeam: 2, budget: 50, captain: 1.5, picks: { points: 10 }, prices: { min: 4, max: 12 } });
+        assert.strictEqual(r.scoring.batter.homeRun, 10);
+    });
+
+    it('reglas: un juego pospuesto no cierra a los suyos (se pueden cambiar) ni se pueden agregar; se vuelve a pedir a los 15 min como máximo', () => {
+        const { isLocked, canAdd, fantasyInterval } = fantasyLib;
+        const d = dia([p(1, 'B', 1, 8, 5), p(2, 'B', 3, 8, 5)], PAST);
+        d.games[0] = { ...d.games[0], state: 'final', detailedState: 'Postponed', status: 'postponed' };
+        assert.strictEqual(isLocked(d, d.players[0]), false);
+        // No se cierra nunca: quien lo cambia por otro no se pasa del cupo (igual que la web y el servidor)
+        assert.strictEqual(fantasyLib.lockTime(d.games[0]), Infinity);
+        assert.strictEqual(canAdd(d, { lineup: [], captain: null, picks: {}, savedAt: 0 }, d.players[0]), 'postponed');
+        assert.strictEqual(canAdd(d, { lineup: [], captain: null, picks: {}, savedAt: 0 }, d.players[1]), null);
+        const lejos = dia([], new Date(Date.now() + 5 * 3600000).toISOString());
+        lejos.games = [lejos.games[0]];
+        assert.strictEqual(fantasyInterval(lejos), 15 * 60000);
+    });
+
+    it('equipo que cuenta: el que entró después de que empezó su juego no cuenta; si se pasa del tope, sobra el último', () => {
+        const { effectiveEntry, notCounted, dayPoints } = fantasyLib;
+        const start = Date.parse('2026-11-07T23:00:00Z');
+        const d = dia(
+            [p(12345601, 'B', 1, 12, 5, { played: true, points: 10 }), p(12345602, 'B', 1, 12, 5, { played: true, points: 6 }), p(12345603, 'B', 3, 12, 5, { points: 0 }), p(12345604, 'B', 3, 12, 5), p(12345605, 'P', 4, 10, 5)],
+            '2026-11-07T23:00:00Z'
+        );
+        d.games[0] = { ...d.games[0], state: 'live' };
+        d.games[1] = { ...d.games[1], date: '2099-01-01T00:00:00Z' };
+        // 12345602 entró 5 minutos después de que empezó su juego
+        const entry = {
+            lineup: [12345601, 12345602, 12345603, 12345604, 12345605],
+            captain: 12345601,
+            picks: {},
+            savedAt: start + 300000,
+            history: { v: 1, players: { 12345601: [[start - 3600000, null]], 12345602: [[start + 300000, null]], 12345603: [[start - 3500000, null]], 12345604: [[start - 3400000, null]], 12345605: [[start - 3300000, null]] }, captain: [[12345601, start - 3600000]] }
+        };
+        const counted = effectiveEntry(d, entry);
+        assert.ok(!counted.lineup.includes(12345602));
+        // 12 + 12 + 12 + 10 = 46 de 50: cabe todo lo demás
+        assert.deepStrictEqual(counted.lineup, [12345601, 12345603, 12345604, 12345605]);
+        assert.deepStrictEqual([...notCounted(d, entry, counted, start + 3600000)], [[12345602, 'late']]);
+        partial(dayPoints(d, entry, counted), { team: 15, total: 15 });
+        // Sin historial (lo del teléfono): el orden de la alineación; 12 × 5 = 60 > 50 → el último que entró no cuenta
+        const local = { lineup: [12345601, 12345602, 12345603, 12345604, 12345605], captain: 12345605, picks: {}, savedAt: 1 };
+        const sinHistorial = effectiveEntry(d, local);
+        assert.deepStrictEqual(sinHistorial.lineup, [12345601, 12345602, 12345603, 12345604]);
+        assert.strictEqual(sinHistorial.captain, null);
+        assert.deepStrictEqual([...notCounted(d, local)], [[12345605, 'over']]);
+    });
+
+    it('equipo que cuenta: el de un juego pospuesto no suma ni ocupa cupo, y su pronóstico no cuenta (igual que el servidor)', () => {
+        const { effectiveEntry, notCounted, perTeamLimit } = fantasyLib;
+        const start = Date.parse('2026-11-07T23:00:00Z');
+        const d = dia(
+            [p(12345601, 'B', 1, 12, 5, { status: 'postponed' }), p(12345602, 'B', 3, 12, 5, { played: true, points: 4 }), p(12345603, 'B', 3, 12, 5), p(12345604, 'B', 4, 12, 5), p(12345605, 'B', 4, 12, 5), p(12345606, 'P', 3, 2, 5)],
+            '2026-11-07T23:00:00Z'
+        );
+        d.games[0] = { ...d.games[0], state: 'final', detailedState: 'Postponed', status: 'postponed' };
+        d.games[1] = { ...d.games[1], date: '2026-11-07T20:00:00Z', state: 'live' };
+        // Sin historial: 12 × 5 + 2 = 62 > 50, pero el pospuesto no gasta: 12 × 4 + 2 = 50, cuentan todos los demás
+        const local = { lineup: [12345601, 12345602, 12345603, 12345604, 12345605, 12345606], captain: null, picks: { 1: 1, 2: 3 }, savedAt: 1 };
+        assert.deepStrictEqual(effectiveEntry(d, local).lineup, local.lineup);
+        assert.deepStrictEqual([...notCounted(d, local)], []);
+        // Con historial: el pospuesto no cuenta (ni su pronóstico), aunque se cambie después de su hora
+        const history = { v: 1, players: Object.fromEntries(local.lineup.map((id) => [id, [[start - 4 * 3600000, null]]])), picks: { 1: [[1, start - 4 * 3600000]], 2: [[3, start - 4 * 3600000]] } };
+        const counted = effectiveEntry(d, { ...local, history });
+        assert.deepStrictEqual(counted.lineup, [12345602, 12345603, 12345604, 12345605, 12345606]);
+        assert.deepStrictEqual(counted.picks, { 2: 3 });
+        // Sin rules, el tope por equipo no cuenta los equipos del juego pospuesto (quedan 2 equipos: 3 por equipo)
+        assert.strictEqual(perTeamLimit(d), 3);
+    });
+
+    it('pospuesto en el equipo: deja su lugar libre y agregar al que lo reemplaza lo saca; el que ya no sale se puede quitar', () => {
+        const { canAdd, addPlayer, removeId, entryCost, getStore, replaceStore, setStoreOwner } = fantasyLib;
+        const { slotsLeft } = pickerLib;
+        setStoreOwner('pospuesto-prueba');
+        const d = dia([p(12345601, 'B', 1, 12, 5, { status: 'postponed' }), p(12345602, 'B', 3, 8, 5), p(12345603, 'B', 3, 8, 5), p(12345604, 'B', 4, 8, 5), p(12345605, 'B', 4, 8, 5), p(12345606, 'P', 3, 4, 5), p(12345607, 'B', 4, 8, 5)]);
+        d.games[0] = { ...d.games[0], state: 'final', detailedState: 'Postponed', status: 'postponed' };
+        const saved = { lineup: [12345601, 12345602, 12345603, 12345604, 12345605, 12345606], captain: 12345601, picks: {}, savedAt: 1 };
+        replaceStore({ 'lidom:2099-10-20': saved });
+        // El pospuesto no gasta créditos ni ocupa su cupo de bateador
+        assert.strictEqual(entryCost(d, saved), 36);
+        partial(slotsLeft(d, saved), { batters: 1, pitchers: 0, credits: 14 });
+        assert.strictEqual(canAdd(d, saved, d.players[6]), null);
+        assert.ok(addPlayer(d, saved, d.players[6]));
+        const after = getStore()['lidom:2099-10-20'];
+        assert.deepStrictEqual(after.lineup, [12345602, 12345603, 12345604, 12345605, 12345606, 12345607]);
+        assert.strictEqual(after.captain, null);
+        // Uno que ya no sale en el día (sin juego que lo cierre) se quita por su id
+        replaceStore({ 'lidom:2099-10-20': { ...after, lineup: [...after.lineup.slice(0, 5), 99999999] } });
+        assert.ok(removeId(d, 99999999));
+        assert.ok(!getStore()['lidom:2099-10-20'].lineup.includes(99999999));
+        setStoreOwner(null);
+    });
+
+    it('puestos compartidos en los empates: 1, 2, 2, 4 (también con decimales que no cuadran exactos)', () => {
+        const { rankRows } = fantasyLib;
+        const rows = rankRows([
+            { userId: 'c', points: 15.3 + 10 },
+            { userId: 'a', points: 40 },
+            { userId: 'b', points: 5.3 + 20 },
+            { userId: 'd', points: 12 }
+        ]);
+        assert.deepStrictEqual(rows.map((row) => [row.userId, row.rank]), [['a', 1], ['c', 2], ['b', 2], ['d', 4]]);
+        assert.deepStrictEqual(rankRows([]), []);
+    });
+
+    it('selector: estado, razones y filtros (Disponibles, Me alcanza, Titulares, juego y equipo), igual que la web', () => {
+        const { statusOf, badgeOf, reasonOf, pickerRows, defaultFilters, slotsLeft, matchupOf, pickerOptions, roleFull, isFiltered } = pickerLib;
+        const players = [
+            p(12345678, 'B', 1, 12, 9, { name: 'Pelotero Uno', status: 'confirmed', last5: [3, 5, 8, 2, 12], opp: { id: 2, abbrev: 'BBB', home: false } }),
+            p(12345679, 'B', 1, 6, 4, { name: 'Pelotero Dos', status: 'bench' }),
+            p(12345680, 'B', 2, 5, 6, { name: 'Pelotero Tres', status: 'expected' }),
+            p(12345681, 'B', 3, 11, 3, { name: 'Pelotero Cuatro' }),
+            p(12345682, 'B', 4, 4, 2, { name: 'Pelotero Cinco', starter: false }),
+            p(12345683, 'P', 3, 10, 8, { name: 'Lanzador Uno', status: 'probable' }),
+            p(12345684, 'P', 4, 6, 3, { name: 'Lanzador Dos', rest: true }),
+            p(12345685, 'P', 4, 5, 1, { name: 'Lanzador Tres' })
+        ];
+        const d = dia(players, PAST);
+        d.games[0] = { ...d.games[0], state: 'live' };
+        const vacio = { lineup: [], captain: null, picks: {}, savedAt: 0 };
+        // El del servidor manda; sin él, se saca del día (titular del último juego = Esperado, si no Banca)
+        assert.strictEqual(statusOf(d, players[0]), 'confirmed');
+        assert.strictEqual(badgeOf({ status: 'confirmed', locked: true }), 'started');
+        assert.strictEqual(badgeOf({ status: 'dnp', locked: true }), 'dnp');
+        assert.strictEqual(statusOf(d, players[3]), 'expected');
+        assert.strictEqual(statusOf(d, players[4]), 'bench');
+        assert.strictEqual(statusOf(d, players[5]), 'probable');
+        assert.strictEqual(statusOf(d, players[6]), 'resting');
+        assert.strictEqual(statusOf(d, players[7]), 'bullpen');
+        // En PRO, las alineaciones dicen «Esperado» o «Confirmado» si el día no trae el estado
+        assert.strictEqual(statusOf(d, players[4], Date.now(), 'expected'), 'expected');
+        assert.deepStrictEqual(reasonOf(d, vacio, players[0]), { kind: 'started' });
+        assert.deepStrictEqual(matchupOf(d, players[0]), { team: 'AAA', opp: 'BBB', home: false });
+        assert.deepStrictEqual(matchupOf(d, players[3]), { team: 'CCC', opp: 'DDD', home: false });
+        // 2 bateadores y el lanzador del juego 2 (10 + 11 + 4): quedan 25 créditos
+        const mio = { lineup: [12345683, 12345681, 12345682], captain: null, picks: {}, savedAt: 1 };
+        assert.deepStrictEqual(slotsLeft(d, mio), { batters: 3, pitchers: 0, credits: 25 });
+        assert.deepStrictEqual(reasonOf(d, mio, players[6]), { kind: 'fullP', count: 1 });
+        assert.strictEqual(roleFull(d, mio, 'P'), true);
+        // Disponibles: sin los del juego empezado; los de tu equipo siempre salen
+        const ids = (rows) => rows.map((row) => row.player.id);
+        assert.deepStrictEqual(ids(pickerRows(d, mio, defaultFilters('B'), 'proj')), [12345681, 12345682]);
+        assert.deepStrictEqual(ids(pickerRows(d, mio, { ...defaultFilters('B'), available: false }, 'proj')), [12345678, 12345680, 12345679, 12345681, 12345682]);
+        assert.strictEqual(isFiltered(defaultFilters('B')), false);
+        assert.strictEqual(isFiltered({ ...defaultFilters('B'), teamId: 1 }), true);
+        // Titulares: confirmados, esperados y abridores probables
+        assert.deepStrictEqual(ids(pickerRows(d, vacio, { ...defaultFilters('B'), available: false, starters: true }, 'proj')), [12345678, 12345680, 12345681]);
+        assert.deepStrictEqual(ids(pickerRows(d, vacio, { ...defaultFilters('P'), available: false, starters: true }, 'proj')), [12345683]);
+        // Por juego y por equipo
+        assert.deepStrictEqual(ids(pickerRows(d, vacio, { ...defaultFilters('B'), available: false, gamePk: 2 }, 'proj')), [12345681, 12345682]);
+        assert.deepStrictEqual(ids(pickerRows(d, vacio, { ...defaultFilters('B'), available: false, teamId: 1 }, 'proj')), [12345678, 12345679]);
+        // Me alcanza: con 35 créditos y 30 gastados quedan 5: fuera el de 12 y el de 6 (los míos siempre salen)
+        const caro = { lineup: [12345683, 12345681, 12345682, 12345680], captain: null, picks: {}, savedAt: 1 };
+        d.games[0] = { ...d.games[0], state: 'preview', date: LATER };
+        assert.strictEqual(slotsLeft(d, caro).credits, 20);
+        const apretado = { ...d, credits: { budget: 35, min: 4, max: 12 } };
+        assert.deepStrictEqual(ids(pickerRows(apretado, caro, { ...defaultFilters('B'), available: false, affordable: true }, 'proj')), [12345680, 12345681, 12345682]);
+        // Las razones con sus números
+        const lleno = dia([...players, p(12345690, 'B', 2, 12, 1, { name: 'Pelotero Seis' }), p(12345691, 'B', 2, 4, 1, { name: 'Pelotero Siete' })]);
+        assert.deepStrictEqual(reasonOf(lleno, { lineup: [12345683, 12345681, 12345690, 12345679], captain: null, picks: {}, savedAt: 1 }, players[0]), { kind: 'budget', short: 1 });
+        assert.deepStrictEqual(reasonOf(lleno, { lineup: [12345680, 12345690], captain: null, picks: {}, savedAt: 1 }, lleno.players.find((x) => x.id === 12345691)), { kind: 'team', n: 2, team: 'BBB' });
+        assert.deepStrictEqual(reasonOf(lleno, { lineup: [12345683, 12345681, 12345682, 12345679, 12345680, 12345691], captain: null, picks: {}, savedAt: 1 }, players[0]), { kind: 'fullB', n: 5 });
+        partial(pickerOptions(d), { affordable: true, defaultSort: 'proj' });
+        assert.strictEqual(pickerOptions(dia(players, LATER, { rules: { budget: null } })).affordable, false);
+    });
+
+    it('selector: orden por Proyección, Valor, Precio, Pts/J, Últimos 5 y % elegido (sin dato al final)', () => {
+        const { pickerRows, defaultFilters, pickerOptions } = pickerLib;
+        const players = [
+            p(12345678, 'B', 1, 12, 9, { name: 'Pelotero Uno', last5: [10, 10, 10] }),
+            p(12345679, 'B', 2, 4, 4, { name: 'Pelotero Dos', last5: [1, 2, 3, 4, 5, 20] }),
+            p(12345680, 'B', 3, 8, 6, { name: 'Pelotero Tres' })
+        ];
+        const d = dia(players);
+        const vacio = { lineup: [], captain: null, picks: {}, savedAt: 0 };
+        const order = (sort, extras) => pickerRows(d, vacio, defaultFilters('B'), sort, extras).map((row) => row.player.id);
+        assert.deepStrictEqual(order('proj'), [12345678, 12345680, 12345679]);
+        // Valor: 4/4 = 1, 9/12 = 0.75 y 6/8 = 0.75 (empate: más proyección primero)
+        assert.deepStrictEqual(order('value'), [12345679, 12345678, 12345680]);
+        assert.deepStrictEqual(order('price'), [12345678, 12345680, 12345679]);
+        const ppg = { 12345678: 3, 12345679: 7 };
+        assert.deepStrictEqual(order('ppg', { ppg: (x) => ppg[x.id] }), [12345679, 12345678, 12345680]);
+        // Últimos 5: (2 + 3 + 4 + 5 + 20) / 5 = 6.8 contra 10; sin dato al final
+        assert.deepStrictEqual(order('last5'), [12345678, 12345679, 12345680]);
+        const row = pickerRows(d, vacio, defaultFilters('B'), 'proj').find((r) => r.player.id === 12345679);
+        assert.deepStrictEqual(row.last5, [2, 3, 4, 5, 20]);
+        assert.strictEqual(row.last5Avg, 6.8);
+        const owned = { 12345680: 40, 12345679: 12.5 };
+        assert.deepStrictEqual(order('owned', { owned: (x) => owned[x.id] }), [12345680, 12345679, 12345678]);
+        // El % elegido solo se ofrece cuando ya existe; sin proyección se empieza por Pts/J
+        assert.deepStrictEqual(pickerOptions(d).sorts, ['proj', 'value', 'price', 'ppg', 'last5']);
+        assert.deepStrictEqual(pickerOptions(d, true).sorts, ['proj', 'value', 'price', 'ppg', 'last5', 'owned']);
+        assert.strictEqual(pickerOptions(dia([p(1, 'B', 1, 5, undefined)])).defaultSort, 'ppg');
+    });
+
+    it('ayuda: los números y los ejemplos salen de las reglas del día', () => {
+        const { rulesOf } = fantasyLib;
+        const { helpNumbers, helpExamples, scoringRows, HELP_QUESTIONS, HELP_TOPICS, isHelpQuestion } = helpLib;
+        const r = rulesOf(dia([], LATER, { scoring: { batter: { single: 3, double: 5, triple: 8, homeRun: 10, run: 2, rbi: 2, walk: 2, hitByPitch: 2, stolenBase: 5, strikeOut: -1 }, pitcher: { out: 1, strikeOut: 2, win: 5, save: 5, earnedRun: -2, hit: -0.5, walk: -0.5 } } }));
+        assert.deepStrictEqual(helpNumbers(r), { batters: 5, pitchers: 1, budget: 50, captain: 1.5, picks: 10, perTeam: 2, min: 4, max: 12, past: 3, code: 6 });
+        const ex = helpExamples(r);
+        partial(ex, { solo: { hr: 10, run: 2, rbi: 2, total: 14, captain: 21 }, double: { double: 5, rbi: 2, total: 9 }, pitcher: { ip: 6, outs: 18, outsPts: 18, k: 7, kPts: 14, er: 2, erPts: -4, h: 5, hPts: -2.5, bb: 1, bbPts: -0.5, winPts: 5, total: 30 } });
+        assert.deepStrictEqual(scoringRows(r, 'pitcher').map((row) => row.key), ['out', 'strikeOut', 'win', 'save', 'earnedRun', 'hit', 'walk']);
+        // Los textos de la ayuda son los de la web (hbp y strikeout)
+        assert.deepStrictEqual(scoringRows(r, 'batter').filter((row) => row.key !== row.label).map((row) => row.label), ['hbp', 'strikeout']);
+        assert.strictEqual(scoringRows(r, 'batter').length, 10);
+        // Con otras reglas cambian los números (nada escrito a mano)
+        const otras = rulesOf(dia([], LATER, { rules: { budget: null, perTeam: 3, captain: 2, picks: { points: 15 }, scoring: { batter: { homeRun: 12, run: 1, rbi: 1, double: 4 }, pitcher: { out: 1 } } } }));
+        partial(helpNumbers(otras), { budget: null, perTeam: 3, captain: 2, picks: 15 });
+        partial(helpExamples(otras), { solo: { total: 14, captain: 28 }, double: { total: 6 } });
+        // Precios provisionales (pueden ajustarse una vez antes del día): la ayuda lo dice
+        assert.strictEqual(rulesOf(dia([], LATER, { rules: { prices: { frozen: false } } })).prices.frozen, false);
+        assert.strictEqual(rulesOf(dia([])).prices.frozen, true);
+        assert.strictEqual(HELP_QUESTIONS.length, 15);
+        assert.ok(Object.values(HELP_TOPICS).every(isHelpQuestion));
+    });
+}
+
 fs.rmSync(OUT, { recursive: true, force: true });
 if (failed) {
     console.log(`\n${failed} caso(s) fallaron`);

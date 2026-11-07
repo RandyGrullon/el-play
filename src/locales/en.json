@@ -1107,7 +1107,7 @@
     "codeCopied": "Code copied: send it to your friends",
     "copied": "Summary copied",
     "week": "Champion of the week",
-    "streak": "Longest streak",
+    "streak": "Current streak",
     "pts": "{{pts}} pts in 7 days",
     "days_one": "{{count}} day in a row",
     "days_other": "{{count}} days in a row",
@@ -1814,5 +1814,219 @@
       "batter": "At bat",
       "onDeck": "On deck"
     }
+  },
+  "fantasyHelp": {
+    "open": "How do I play?",
+    "title": "How to play",
+    "lead": "Everything you need to build your team and score.",
+    "jump": "Help sections",
+    "about": "Help about {{topic}}",
+    "topic": {
+      "credits": "credits",
+      "captain": "the captain",
+      "picks": "picks",
+      "table": "the standings"
+    },
+    "steps": {
+      "title": "Steps",
+      "s1_one": "Pick {{batters}} batters and {{count}} pitcher from the day's games.",
+      "s1_other": "Pick {{batters}} batters and {{count}} pitchers from the day's games.",
+      "s2": "You have {{budget}} credits and every player has a price.",
+      "s2NoCap": "No credit cap today: pick whoever you want.",
+      "s3": "Name a captain: his points count ×{{captain}}.",
+      "s4": "In Picks, choose who wins each game: +{{picks}} for every right pick.",
+      "s5": "You score with what they really do on the field. Points update live."
+    },
+    "points": {
+      "title": "Points",
+      "batters": "Batters",
+      "pitchers": "Pitchers",
+      "batter": {
+        "single": "Single",
+        "double": "Double",
+        "triple": "Triple",
+        "homeRun": "Home run",
+        "run": "Run scored",
+        "rbi": "Run batted in",
+        "walk": "Walk",
+        "hbp": "Hit by pitch",
+        "stolenBase": "Stolen base",
+        "strikeout": "Strikeout"
+      },
+      "pitcher": {
+        "out": "Each out",
+        "strikeout": "Strikeout",
+        "win": "Win",
+        "save": "Save",
+        "earnedRun": "Earned run",
+        "hit": "Hit allowed",
+        "walk": "Walk"
+      }
+    },
+    "examples": {
+      "title": "Examples",
+      "soloHr": "Solo home run: {{hr}} + {{run}} (run) + {{rbi}} (RBI) = {{total}}. As captain: {{captain}}.",
+      "double": "Double that drives in two: {{double}} + {{rbi}} + {{rbi}} = {{total}}.",
+      "pitcher": "Pitcher: {{ip}} innings ({{outs}} outs = {{outsPts}}), {{k}} strikeouts ({{kPts}}), {{er}} earned runs ({{erPts}}), {{h}} hits ({{hPts}}), {{bb}} walk ({{bbPts}}) and the win ({{winPts}}) = {{total}}."
+    },
+    "faq": {
+      "title": "Questions",
+      "lock": {
+        "q": "When does my team lock?",
+        "a": "Each player locks when HIS game starts (at the first pitch or the scheduled time, whichever comes first). You can change the others until theirs starts. Every card shows when it locks."
+      },
+      "postponed": {
+        "q": "What if the game is postponed or suspended?",
+        "a": "If it's postponed, that player scores nothing: swap him for someone in a game that hasn't started. If it's suspended, what was played counts, and the rest counts when it resumes and ends."
+      },
+      "noPlay": {
+        "q": "What if my player doesn't play?",
+        "a": "He scores 0 and there are no automatic swaps. Before his game you'll see “Confirmed” once he's in the lineup, “Expected” if he started the previous game and “Bench” if not; for pitchers, “Probable starter”, “Resting” or “Bullpen”."
+      },
+      "prices": {
+        "q": "How are prices set?",
+        "a": "From points per game this season and the {{past}} before it (the current one weighs more), compared with others in the same role. They go from {{min}} to {{max}} credits, are set when the day starts and don't change until the next day. The ↑↓ arrow shows how much it went up or down.",
+        "aProvisional": "From points per game this season and the {{past}} before it (the current one weighs more), compared with others in the same role. They go from {{min}} to {{max}} credits. This day's prices may still adjust once before it starts; after that they're fixed until the next day. The ↑↓ arrow shows how much it went up or down."
+      },
+      "cantPick": {
+        "q": "Why can't I pick a player?",
+        "a": "Because his game already started, you already have {{perTeam}} from his team, you can't afford him, you already filled your batters or pitcher, or his game was postponed. The list says why next to each one."
+      },
+      "perTeam": {
+        "q": "How many can I have from the same team?",
+        "a": "Up to {{perTeam}}. On days with few games the cap goes up."
+      },
+      "doubleheader": {
+        "q": "What about doubleheaders?",
+        "a": "Both games count, and he locks when the first one starts."
+      },
+      "captain": {
+        "q": "How does the captain work?",
+        "a": "His points count ×{{captain}}, negative ones too. You can change him as long as neither the current captain's game nor the new one's has started."
+      },
+      "picks": {
+        "q": "What are picks?",
+        "a": "You choose who wins each game: +{{picks}} if you're right, 0 if not. They lock when each game starts."
+      },
+      "win": {
+        "q": "How do I win?",
+        "a": "Day: your team plus your picks. Season: the sum of all your days. Ties share the spot."
+      },
+      "changeAfter": {
+        "q": "Can I change my team after a game starts to win?",
+        "a": "No. Each game counts with the team you had when it started, and if a change puts you over the cap, the last ones you added don't count."
+      },
+      "visibility": {
+        "q": "Can others see my team?",
+        "a": "They only see your players once their game has started."
+      },
+      "leagues": {
+        "q": "What are private leagues?",
+        "a": "You create a league, share its {{code}}-letter code and compete only with your friends. You're always in the overall standings too."
+      },
+      "projection": {
+        "q": "What are Projection and Value?",
+        "a": "Projection: the points we expect from him today, based on his average and whether he'll play. Value: projection per credit. “Fill” and “Suggested team” use the projection."
+      },
+      "account": {
+        "q": "Do I need an account?",
+        "a": "Yes, to save your team and appear in the standings. It's free."
+      }
+    },
+    "rules": {
+      "roster_one": "{{batters}} batters + {{count}} pitcher",
+      "roster_other": "{{batters}} batters + {{count}} pitchers",
+      "perTeam": "Max {{n}} per team",
+      "captain": "Captain ×{{x}}",
+      "budget": "{{budget}} credits",
+      "noCap": "No credit cap",
+      "lock": "Each player locks when his game starts."
+    },
+    "picker": {
+      "need_one": "You need {{what}}",
+      "need_other": "You need {{what}}",
+      "needB_one": "{{count}} batter",
+      "needB_other": "{{count}} batters",
+      "needP_one": "{{count}} pitcher",
+      "needP_other": "{{count}} pitchers",
+      "needBoth": "{{b}} and {{p}}",
+      "full": "Your team is complete",
+      "credits": "{{left}} credits",
+      "over": "{{over}} credits over",
+      "noCap": "no credit cap",
+      "filters": "Filters",
+      "available": "Available",
+      "affordable": "Affordable",
+      "starters": "Starters",
+      "byGame": "Filter by game",
+      "allGames": "All games",
+      "byTeam": "Filter by team",
+      "allTeams": "All teams",
+      "sort": "Sort by",
+      "sortProj": "Projection",
+      "sortValue": "Value",
+      "sortPrice": "Price",
+      "sortPpg": "Pts/G",
+      "sortLast5": "Last 5",
+      "sortOwned": "% picked",
+      "vs": "{{team}} vs {{opp}}",
+      "at": "{{team}} @ {{opp}}",
+      "proj": "Proj. {{pts}}",
+      "value": "Value {{v}}",
+      "owned": "{{pct}}% picked",
+      "ppg": "{{ppg}} pts/G",
+      "last5": "Last 5: {{list}}",
+      "last5None": "No recent games",
+      "priceUp": "Up {{delta}} since the last game day",
+      "priceDown": "Down {{delta}} since the last game day",
+      "seasonBatter": "{{avg}} · {{ops}} OPS · {{hr}} HR",
+      "seasonPitcher": "{{era}} ERA · {{whip}} WHIP · {{k}} K",
+      "count_one": "{{count}} player",
+      "count_other": "{{count}} players",
+      "empty": "No players with those filters.",
+      "emptyAvailable": "Nobody available with those filters. Turn off “Available” to see everyone.",
+      "fullHint": "To change one, remove him from your team and pick another.",
+      "clearFilters": "Clear filters"
+    },
+    "reason": {
+      "locked": "His game already started",
+      "postponed": "Game postponed",
+      "team": "You already have {{n}} from {{team}}",
+      "budget": "You're {{short}} credits short",
+      "fullB": "You already have your {{n}} batters",
+      "fullP_one": "You already have your pitcher",
+      "fullP_other": "You already have your {{count}} pitchers",
+      "already": "Already on your team"
+    },
+    "status": {
+      "confirmed": "Confirmed",
+      "expected": "Expected",
+      "bench": "Bench",
+      "probable": "Probable starter",
+      "bullpen": "Bullpen",
+      "resting": "Resting",
+      "postponed": "Postponed",
+      "dnp": "Didn't play",
+      "started": "Already started"
+    },
+    "card": {
+      "locksAt": "Locks {{time}}",
+      "locksTbd": "Locks when his game starts",
+      "postponed": "Postponed: swap him",
+      "dnp": "Didn't play",
+      "notCountingOver": "Doesn't count: you went over the cap",
+      "notCountingLate": "Doesn't count: you added him after his game started",
+      "missing": "No longer in today's games: swap him",
+      "missingName": "Player no longer playing today"
+    },
+    "save": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "offline": "Offline: it'll save when you're back",
+      "error": "Couldn't save",
+      "retry": "Retry",
+      "local": "Saved in this browser"
+    },
+    "demo": "Test mode (development only): your team is saved in this browser and doesn't appear in the standings."
   }
 }

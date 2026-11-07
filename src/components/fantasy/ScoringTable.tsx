@@ -2,15 +2,21 @@
 import React from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { RULES, type FantasyDay } from '../../lib/fantasy';
+import { SCORING_ORDER, creditsOf, rulesOf, type FantasyDay } from '../../lib/fantasy';
 import { useColors } from '../../theme/theme';
 import { Card, Row, Txt } from '../ui';
 
 export const ScoringTable: React.FC<{ day: FantasyDay }> = ({ day }) => {
     const { t } = useTranslation();
     const colors = useColors();
+    // Todo de las reglas del día (rules), con el orden de la ayuda
+    const rules = rulesOf(day);
+    const credits = creditsOf(day);
     const rows = (group: 'batter' | 'pitcher') =>
-        Object.entries(day.scoring[group]).map(([key, value], index) => (
+        SCORING_ORDER[group]
+            .filter((key) => typeof rules.scoring[group][key] === 'number')
+            .map((key) => [key, rules.scoring[group][key]] as const)
+            .map(([key, value], index) => (
             <Row key={`${group}-${key}`} justify="space-between" gap={12} style={{ paddingVertical: 6, borderTopWidth: index ? 1 : 0, borderTopColor: colors.line }}>
                 <Txt size={14} style={{ flex: 1 }}>
                     {t(`fantasy.scoring.${group}.${key}`)}
@@ -34,14 +40,14 @@ export const ScoringTable: React.FC<{ day: FantasyDay }> = ({ day }) => {
                 </Txt>
                 {rows('pitcher')}
                 <Txt size={12} tone="muted" style={{ marginTop: 12 }}>
-                    {t('fantasy.captainRule', { x: RULES.captain })}
+                    {t('fantasy.captainRule', { x: rules.captain })}
                 </Txt>
                 <Txt size={12} tone="muted" style={{ marginTop: 4 }}>
-                    {t('fantasy.pickRule', { pts: RULES.pick })}
+                    {t('fantasy.pickRule', { pts: rules.picks.points })}
                 </Txt>
-                {day.credits && (
+                {credits && (
                     <Txt size={12} tone="muted" style={{ marginTop: 4 }}>
-                        {t('fantasy.credits.rule', { budget: day.credits.budget, min: day.credits.min, max: day.credits.max })}
+                        {t('fantasy.credits.rule', { budget: credits.budget, min: credits.min, max: credits.max })}
                     </Txt>
                 )}
             </View>

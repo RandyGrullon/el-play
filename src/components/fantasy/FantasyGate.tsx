@@ -1,29 +1,38 @@
-// Portada del Fantasy sin cuenta: los 3 pasos, la tarjeta para entrar, los que más suman hoy (o quién juega) y las reglas
+// Portada del Fantasy sin cuenta: los 3 pasos (con los números de las reglas del día), «¿Cómo se juega?», la tarjeta
+// para entrar, los que más suman hoy (o quién juega) y las reglas
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Crown, Sparkles, Trophy, Users } from 'lucide-react-native';
-import { RULES, type FantasyDay } from '../../lib/fantasy';
+import { rulesOf, type FantasyDay } from '../../lib/fantasy';
 import { formatTime } from '../../lib/format';
 import { useColors } from '../../theme/theme';
 import { radius, shadow } from '../../theme/tokens';
 import { Card, Gradient, PlayerPhoto, Row, Skeleton, TeamLogo, Txt } from '../ui';
 import { TeamLink, teamTextLink } from '../stats/common';
 import { AccountCard } from '../account/AccountCard';
-import { ScoringTable } from './ScoringTable';
-import { RulesToggle, lineText, teamOf, useOpenPlayer } from './shared';
+import { RulesToggle, formatCredits, lineText, teamOf, useOpenPlayer } from './shared';
+import { HowToPlayButton } from './Help';
 
 export const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ day, loading }) => {
     const { t, i18n } = useTranslation();
     const colors = useColors();
     const openPlayer = useOpenPlayer();
-    const [rules, setRules] = useState(false);
     const started = !!day?.games.some((game) => game.state !== 'preview');
     const top = day && started ? day.players.filter((p) => p.played).sort((a, b) => b.points - a.points).slice(0, 5) : [];
+    // Los números son los de las reglas del día (el tope por equipo y los créditos cambian según los juegos)
+    const rules = rulesOf(day);
+    const lang = i18n.language;
     const steps = [
-        { Icon: Users, text: t('fantasy.gate.step1', { batters: RULES.batters, perTeam: RULES.perTeam, budget: RULES.budget }) },
-        { Icon: Crown, text: t('fantasy.gate.step2', { x: RULES.captain }) },
-        { Icon: Trophy, text: t('fantasy.gate.step3', { pts: RULES.pick }) }
+        {
+            Icon: Users,
+            text:
+                rules.budget === null
+                    ? `${t('fantasyHelp.steps.s1', { batters: rules.roster.batters, count: rules.roster.pitchers })} ${t('fantasyHelp.steps.s2NoCap')}`
+                    : t('fantasy.gate.step1', { batters: rules.roster.batters, perTeam: rules.perTeam, budget: formatCredits(rules.budget, lang) })
+        },
+        { Icon: Crown, text: t('fantasy.gate.step2', { x: formatCredits(rules.captain, lang) }) },
+        { Icon: Trophy, text: t('fantasy.gate.step3', { pts: rules.picks.points }) }
     ];
 
     return (
@@ -54,6 +63,7 @@ export const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ 
                             </Row>
                         ))}
                     </View>
+                    <HowToPlayButton date={day?.date} tone="onGradient" style={{ alignSelf: 'flex-start', marginTop: 16 }} />
                 </Gradient>
             </View>
 
@@ -130,8 +140,7 @@ export const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ 
 
             {day && (
                 <>
-                    <RulesToggle open={rules} onToggle={() => setRules((v) => !v)} />
-                    {rules && <ScoringTable day={day} />}
+                    <RulesToggle date={day.date} />
                 </>
             )}
         </>
