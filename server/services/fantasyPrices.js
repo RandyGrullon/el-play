@@ -7,7 +7,7 @@ const { cached } = require('../utils/cache');
 // temporada completa más las 3 anteriores de la liga, cada una con menos peso), comparado con los de su rol: así no
 // cambia durante el día y se puede volver a calcular igual para los días pasados.
 
-const CREDITS = { budget: 50, min: 4, max: 12, unknown: 5 };
+const CREDITS = { budget: 50, min: 4, max: 12, step: 0.5, unknown: 5 };
 // Desde este día se juega con créditos (los días anteriores se puntúan como antes)
 const CREDITS_FROM = '2026-10-17';
 // Temporadas anteriores que cuentan y su peso: la pasada vale la mitad, la de antes un cuarto y la otra un octavo.
@@ -23,7 +23,12 @@ const MIN_PLAYERS = 20;
 // nunca lanza; el que abrió hace 5 o 6 días abre la mitad de las veces y el que abrió hace más, una de cada cuatro; un
 // relevista lanza en 3 de cada 10 juegos y el que no ha salido en esos días, mucho menos. `pitcher` es para el lanzador
 // sin ese dato (en LIDOM lanza en 1 de cada 4 juegos). Sin historia: la mitad del «promedio bajo».
+// Cuando se sabe (alineación anunciada, abridor probable o el juego ya empezó), el que batea o abre juega seguro: ×1.
+// El de un juego pospuesto no juega ese día: ×0.
 const PROJECTION = {
+    confirmed: 1,
+    probable: 1,
+    postponed: 0,
     starter: 0.85,
     bench: 0.3,
     pitcher: 0.25,
@@ -47,7 +52,7 @@ const seasonOfDay = (leagueKey, date) => {
 };
 const seasonStart = (leagueKey, season) => (leagueKey === 'lidom' ? `${season}-09-01` : `${season}-01-01`);
 
-const roundHalf = (value) => Math.round(value * 2) / 2;
+const roundHalf = (value) => Math.round(value / CREDITS.step) * CREDITS.step;
 
 const outsOf = (s = {}) => {
     if (typeof s.outs === 'number') return s.outs;
@@ -110,6 +115,50 @@ const rateTable = (weighted) => {
 /** Solo los precios (id → precio) */
 const priceTable = (weighted) => rateTable(weighted).prices;
 
+// ".287" como lo escribe MLB (sin el cero de delante); 1.034 queda igual
+const rate3 = (value) => (Number.isFinite(value) ? value : 0).toFixed(3).replace(/^0(?=\.)/, '');
+
+/**
+ * Línea de la temporada de cada pelotero con los splits de la temporada actual hasta el día anterior: bateador
+ * { avg, ops, hr, g } y lanzador { era, whip, k, g }. Un pelotero que cambió de equipo trae un split por equipo: se
+ * suman los conteos y los promedios salen de ahí.
+ */
+const seasonLines = (splits, group) => {
+    const sums = new Map();
+    for (const split of splits || []) {
+        const id = split?.player?.id;
+        const stat = split?.stat;
+        if (!id || !stat) continue;
+        const sum = sums.get(id) || { g: 0, ab: 0, h: 0, d: 0, t: 0, hr: 0, bb: 0, hbp: 0, sf: 0, outs: 0, er: 0, k: 0 };
+        sum.g += group === 'pitching' ? (stat.gamesPitched ?? stat.gamesPlayed ?? 0) : (stat.gamesPlayed ?? 0);
+        sum.ab += stat.atBats ?? 0;
+        sum.h += stat.hits ?? 0;
+        sum.d += stat.doubles ?? 0;
+        sum.t += stat.triples ?? 0;
+        sum.hr += stat.homeRuns ?? 0;
+        sum.bb += stat.baseOnBalls ?? 0;
+        sum.hbp += stat.hitByPitch ?? 0;
+        sum.sf += stat.sacFlies ?? 0;
+        sum.outs += group === 'pitching' ? outsOf(stat) : 0;
+        sum.er += stat.earnedRuns ?? 0;
+        sum.k += stat.strikeOuts ?? 0;
+        sums.set(id, sum);
+    }
+    const lines = new Map();
+    for (const [id, s] of sums) {
+        if (!s.g) continue;
+        if (group === 'pitching') {
+            lines.set(id, { era: s.outs ? ((s.er * 27) / s.outs).toFixed(2) : '-.--', whip: s.outs ? (((s.h + s.bb) * 3) / s.outs).toFixed(2) : '-.--', k: s.k, g: s.g });
+        } else {
+            const onBase = s.ab + s.bb + s.hbp + s.sf;
+            const obp = onBase ? (s.h + s.bb + s.hbp) / onBase : 0;
+            const slg = s.ab ? (s.h + s.d + 2 * s.t + 3 * s.hr) / s.ab : 0;
+            lines.set(id, { avg: rate3(s.ab ? s.h / s.ab : 0), ops: rate3(obp + slg), hr: s.hr, g: s.g });
+        }
+    }
+    return lines;
+};
+
 /** Una temporada pasada completa de la liga (ya no cambia: una semana en caché) */
 const pastSeason = (league, season, group) =>
     cached(`fantasy_past_${league.id}_${season}_${group}`, 7 * 86400, () => statsOf(league, { stats: 'season', group, season }), { staleSec: 7 * 86400 });
@@ -117,20 +166,30 @@ const pastSeason = (league, season, group) =>
 const statsOf = (league, params) => http.mlbGet(`${MLB_API_BASE}/stats`, { gameType: 'R', leagueId: league.leagueId, playerPool: 'ALL', limit: 2000, ...params }).then((data) => data?.stats?.[0]?.splits || []);
 
 /**
- * Precios del día para una liga: { budget, prices: { B: Map, P: Map } } o null si no hay datos suficientes
- * (entonces ese día no se juega con créditos). `scoring` trae batterPoints y pitcherPoints (de fantasy.js).
+ * Está fijo: los datos llegan hasta el día anterior y ese día ya pasó (sus juegos terminaron). Entonces volver a
+ * calcularlo da lo mismo y se guarda una semana.
  */
-const dayPrices = (leagueKey, date, scoring) => {
+const isSettled = (league, date, end) => end === shiftDay(date, -1) && end < todayIn(league.timeZone);
+
+/**
+ * Precios del día para una liga: { budget, prices: { B, P }, ppg, prior, season, through, frozen } o null si no hay
+ * datos suficientes (entonces ese día no se juega con créditos). `scoring` trae batterPoints y pitcherPoints (de
+ * fantasy.js). Solo usa datos de antes del día: `through` es el último día con todos sus juegos terminados (fantasyDay
+ * lo sabe por el calendario; por defecto, el día anterior). Mientras falte algún juego de antes (p. ej. los de mañana
+ * con los de hoy en curso), el precio es provisional (`frozen: false`) y no cambia con cada jugada: usa lo de hasta
+ * `through` y se recalcula cuando ese juego termina. Desde ahí queda fijo: no cambia durante el día.
+ */
+const dayPrices = (leagueKey, date, scoring, { through } = {}) => {
     const league = LEAGUES[leagueKey] || LEAGUES.lidom;
-    const today = todayIn(league.timeZone);
+    const yesterday = shiftDay(date, -1);
+    const end = through && through < yesterday ? through : yesterday;
+    const frozen = isSettled(league, date, end);
     return cached(
-        `fantasy_prices_${league.id}_${date}`,
-        // Un día pasado ya no cambia; el de hoy y los de mañana, cada 6 h (el de mañana depende de los juegos de hoy)
-        date < today ? 7 * 86400 : 6 * 3600,
+        `fantasy_prices_${league.id}_${date}_${end}`,
+        frozen ? 7 * 86400 : 15 * 60,
         async () => {
             const season = seasonOfDay(league.id, date);
             const start = seasonStart(league.id, season);
-            const end = shiftDay(date, -1);
             const range = (group) => (end >= start ? statsOf(league, { stats: 'byDateRange', group, season, startDate: start, endDate: end }) : Promise.resolve([]));
             const [hitNow, pitchNow, ...past] = await Promise.all([
                 range('hitting'),
@@ -148,20 +207,27 @@ const dayPrices = (leagueKey, date, scoring) => {
                 budget: CREDITS.budget,
                 prices: { B: [...batters.prices], P: [...pitchers.prices] },
                 ppg: { B: [...batters.ppg], P: [...pitchers.ppg] },
-                prior: { B: batters.prior, P: pitchers.prior }
+                prior: { B: batters.prior, P: pitchers.prior },
+                season: { B: [...seasonLines(hitNow, 'hitting')], P: [...seasonLines(pitchNow, 'pitching')] },
+                through: end,
+                frozen
             };
         },
-        { staleSec: 6 * 3600 }
+        { staleSec: frozen ? 7 * 86400 : 6 * 3600 }
     );
 };
 
 /**
- * Qué factor de PROJECTION le toca a un pelotero de un juego por empezar. Bateador: titular o suplente (estuvo o no en
- * la alineación del último juego de su equipo). Lanzador: `rest` (abrió el último juego) o, con sus salidas de los 10
- * días anteriores (`outings` y `startedAgo`, de fantasyDay), si le toca abrir, descansa o es relevista.
+ * Qué factor de PROJECTION le toca a un pelotero ese día. Con `status` (de fantasyDay): el bateador de la alineación
+ * anunciada (o del juego ya empezado) y el abridor probable (o el que abrió) juegan seguro; el de un juego pospuesto,
+ * no. Si no, bateador: titular o suplente (estuvo o no en la alineación del último juego de su equipo). Lanzador:
+ * `rest` (abrió el último juego) o, con sus salidas de los 10 días anteriores (`outings` y `startedAgo`), si le toca
+ * abrir, descansa o es relevista.
  */
 const projectionKey = (player) => {
-    if (player.role !== 'P') return player.starter ? 'starter' : 'bench';
+    if (player.status === 'postponed') return 'postponed';
+    if (player.role !== 'P') return player.status === 'confirmed' ? 'confirmed' : player.starter ? 'starter' : 'bench';
+    if (player.status === 'probable') return 'probable';
     if (player.rest) return 'rest';
     if (player.outings === undefined) return 'pitcher';
     if (player.startedAgo !== undefined) return player.startedAgo <= 4 ? 'resting' : player.startedAgo <= 6 ? 'due' : 'late';
@@ -178,7 +244,8 @@ const projectionOf = (table, player, factors = PROJECTION) => {
     const list = table?.ppg?.[role];
     const known = Array.isArray(list) ? list.find(([id]) => id === player.id) : null;
     const base = known ? known[1] : (table?.prior?.[role] ?? 0) * factors.unknown;
-    return Math.round(base * factors[projectionKey(player)] * 10) / 10;
+    const key = projectionKey(player);
+    return Math.round(base * (factors[key] ?? PROJECTION[key]) * 10) / 10;
 };
 
-module.exports = { CREDITS, CREDITS_FROM, PAST_WEIGHTS, PRIOR_GAMES, PRIOR_PERCENTILE, PROJECTION, dayPrices, priceTable, rateTable, tableOf, seasonOfDay, projectionKey, projectionOf };
+module.exports = { CREDITS, CREDITS_FROM, PAST_WEIGHTS, PRIOR_GAMES, PRIOR_PERCENTILE, PROJECTION, dayPrices, priceTable, rateTable, tableOf, seasonLines, seasonOfDay, projectionKey, projectionOf };
