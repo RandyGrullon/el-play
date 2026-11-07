@@ -1,6 +1,8 @@
 // «Mi equipo» del Fantasy PRO: tarjetas en 2 columnas con banda del color del equipo (hora y rival antes del juego,
 // «AL BATE» o «LANZANDO» en vivo con el mini diamante), proyección o puntos reales con su desglose, capitán, «Cambiar»
-// y, los días con créditos, el precio de cada uno y la barra de créditos.
+// y, los días con créditos, el precio de cada uno y la barra de créditos. Como en el Lite y la web: la hora de cierre
+// («Cierra 7:30 p. m.») hasta que empieza su juego, cómo llega al juego, los avisos «Pospuesto: cámbialo», «No jugó» y
+// «No cuenta: …» y los puntos del equipo que cuenta.
 import React, { useEffect, useMemo } from 'react';
 import { AccessibilityInfo, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -8,12 +10,16 @@ import { ArrowLeftRight, Crown, Plus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { inningName } from '../../../lib/baseball';
 import { formatTime } from '../../../lib/format';
-import { RULES, creditsLeft, entryCost, gameStarted, perTeamLimit, playerScore, setCaptain, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer } from '../../../lib/fantasy';
+import { RULES, creditsLeft, creditsOf, entryCost, gameStarted, perTeamLimit, playerPostponed, playerScore, rulesOf, setCaptain, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer, type NotCounted } from '../../../lib/fantasy';
+import type { CountedEntry } from '../../../lib/fantasyCounted';
+import { statusOf } from '../../../lib/fantasyPicker';
 import type { PlayerRow } from '../../../lib/stats';
 import { useColors } from '../../../theme/theme';
 import { alpha, radius, shadow } from '../../../theme/tokens';
 import { PlayerPhoto, Txt } from '../../ui';
 import { formatCredits, lineText } from '../../fantasy/shared';
+import { CardWarning, StatusBadge, lockText } from '../../fantasy/PlayerBits';
+import { HelpButton } from '../../fantasy/Help';
 import { Chip, Enter, Flash, GrowBar, ModuleHeader, teamInk, useChipInk, useProColors } from '../kit';
 import { FloatChip, LockMark, MiniDiamond, Num, PartChip, PartChips, PulseFrame, diamondLabel, fmtPts, fmtSignedPts, useScoreChange, type T } from './bits';
 import { partsTotal, pointParts, surname, type Projection } from './logic';
@@ -28,6 +34,8 @@ export interface FormItem {
 interface TeamGridProps {
     day: FantasyDay;
     entry: DayEntry;
+    /** El equipo que cuenta y los que no cuentan (con el historial de la base) */
+    counted: CountedEntry;
     /** El día anterior (para «Ayer +5» o «Ayer: no jugó») */
     prevDay?: FantasyDay;
     projection: Projection;
@@ -51,10 +59,12 @@ const matchText = (game: FantasyGame, teamId: number, t: T) => {
 /** De dos en dos (las filas de la cuadrícula) */
 const pairs = <V,>(list: V[]) => Array.from({ length: Math.ceil(list.length / 2) }, (_, index) => list.slice(index * 2, index * 2 + 2));
 
-export const TeamGrid: React.FC<TeamGridProps> = ({ day, entry, prevDay, projection, scout, form, now, onPick, onChange, onInfo }) => {
-    const { t } = useTranslation();
+export const TeamGrid: React.FC<TeamGridProps> = ({ day, entry, counted, prevDay, projection, scout, form, now, onPick, onChange, onInfo }) => {
+    const { t, i18n } = useTranslation();
     const colors = useColors();
     const goldInk = colors.gold;
+    const credits = creditsOf(day);
+    const rules = rulesOf(day);
     const chosen = entry.lineup.map((id) => day.players.find((player) => player.id === id)).filter((player): player is FantasyPlayer => !!player);
     const batters = chosen.filter((player) => player.role === 'B');
     const pitchers = chosen.filter((player) => player.role === 'P');
@@ -71,14 +81,17 @@ export const TeamGrid: React.FC<TeamGridProps> = ({ day, entry, prevDay, project
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                 <Chip>{t('pro.fantasy.team.rule1', { batters: RULES.batters })}</Chip>
                 <Chip>{t('pro.fantasy.team.rule2', { n: perTeamLimit(day) })}</Chip>
-                {day.credits ? <Chip tone="accent">{t('pro.fantasy.credits.chip', { budget: day.credits.budget })}</Chip> : null}
-                <Chip icon={<Crown size={12} color={goldInk} />} style={{ backgroundColor: alpha(goldInk, 0.14) }}>
-                    <Txt size={12} weight="bold" color={goldInk} numberOfLines={1}>
-                        {t('pro.fantasy.team.rule3', { x: RULES.captain })}
-                    </Txt>
-                </Chip>
+                {credits ? <Chip tone="accent">{t('pro.fantasy.credits.chip', { budget: formatCredits(credits.budget, i18n.language) })}</Chip> : null}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <Chip icon={<Crown size={12} color={goldInk} />} style={{ backgroundColor: alpha(goldInk, 0.14) }}>
+                        <Txt size={12} weight="bold" color={goldInk} numberOfLines={1}>
+                            {t('pro.fantasy.team.rule3', { x: formatCredits(rules.captain, i18n.language) })}
+                        </Txt>
+                    </Chip>
+                    <HelpButton topic="captain" date={day.date} />
+                </View>
             </View>
-            {day.credits ? <CreditsBar day={day} entry={entry} /> : null}
+            {credits ? <CreditsBar day={day} entry={entry} /> : null}
             <View style={{ gap: 10 }}>
                 {pairs(slots).map((row, rowIndex) => (
                     <View key={rowIndex} style={{ flexDirection: 'row', gap: 10, alignItems: 'stretch' }}>
@@ -90,7 +103,7 @@ export const TeamGrid: React.FC<TeamGridProps> = ({ day, entry, prevDay, project
                                 </Enter>
                             ) : (
                                 <Enter key={slot.id} index={index} style={{ flex: 1, flexBasis: 0 }}>
-                                    <PlayerCard day={day} entry={entry} player={slot} prevDay={prevDay} projected={projection.byId[slot.id] ?? null} row={scout.get(slot.id)} form={form?.[slot.id]} now={now} onChange={onChange} onInfo={onInfo} />
+                                    <PlayerCard day={day} entry={entry} counted={counted.entry} notCounted={counted.notCounted.get(slot.id)} player={slot} prevDay={prevDay} projected={projection.byId[slot.id] ?? null} row={scout.get(slot.id)} form={form?.[slot.id]} now={now} onChange={onChange} onInfo={onInfo} />
                                 </Enter>
                             );
                         })}
@@ -138,25 +151,29 @@ export const CreditsBar: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day
     const { t, i18n } = useTranslation();
     const colors = useColors();
     const pro = useProColors();
-    if (!day.credits) return null;
+    const credits = creditsOf(day);
+    if (!credits) return null;
     const lang = i18n.language;
-    const budget = day.credits.budget;
+    const budget = credits.budget;
     const spent = entryCost(day, entry);
     const left = creditsLeft(day, entry) ?? 0;
     const over = left < -1e-9;
     // Le faltan peloteros y lo que queda no alcanza ni para los más baratos: tiene que cambiar a alguien caro
     const missing = Math.max(0, RULES.batters + RULES.pitchers - entry.lineup.length);
-    const short = !over && missing > 0 && left + 1e-9 < missing * day.credits.min;
+    const short = !over && missing > 0 && left + 1e-9 < missing * credits.min;
     const spentText = t('fantasy.credits.spent', { spent: formatCredits(spent, lang), budget: formatCredits(budget, lang) });
     const message = over
         ? t('fantasy.credits.over', { over: formatCredits(-left, lang) })
         : short
-          ? t('fantasy.credits.short', { left: formatCredits(left, lang), count: missing, min: formatCredits(day.credits.min, lang) })
+          ? t('fantasy.credits.short', { left: formatCredits(left, lang), count: missing, min: formatCredits(credits.min, lang) })
           : t('fantasy.credits.left', { left: formatCredits(left, lang) });
     return (
         <View style={[{ gap: 8, borderRadius: radius.tile, backgroundColor: colors.surface, paddingHorizontal: 14, paddingVertical: 12 }, shadow('card')]}>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-                <Txt eyebrow>{t('fantasy.credits.label')}</Txt>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Txt eyebrow>{t('fantasy.credits.label')}</Txt>
+                    <HelpButton topic="credits" date={day.date} />
+                </View>
                 <Txt size={14} weight="bold" tabular>
                     {spentText}
                 </Txt>
@@ -175,6 +192,9 @@ export const CreditsBar: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day
 interface PlayerCardProps {
     day: FantasyDay;
     entry: DayEntry;
+    /** El equipo que cuenta (sin él, el mismo equipo) y por qué este no cuenta */
+    counted?: DayEntry;
+    notCounted?: NotCounted;
     player: FantasyPlayer;
     prevDay?: FantasyDay;
     projected: number | null;
@@ -187,7 +207,7 @@ interface PlayerCardProps {
     readOnly?: boolean;
 }
 
-export const PlayerCard: React.FC<PlayerCardProps> = ({ day, entry, player, prevDay, projected, row, form, now, onChange, onInfo, readOnly = false }) => {
+export const PlayerCard: React.FC<PlayerCardProps> = ({ day, entry, counted = entry, notCounted, player, prevDay, projected, row, form, now, onChange, onInfo, readOnly = false }) => {
     const { t, i18n } = useTranslation();
     const lang = i18n.language;
     const colors = useColors();
@@ -197,7 +217,19 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ day, entry, player, prev
     const game = gameOf(day, player);
     const started = !!game && gameStarted(game, now);
     const captain = entry.captain === player.id;
-    const score = playerScore(entry, player);
+    const postponed = playerPostponed(day, player);
+    const status = statusOf(day, player, now);
+    // Sus puntos en el equipo que cuenta (con la corona que cuenta); si no cuenta, sus puntos tachados
+    const counts = counted.lineup.includes(player.id);
+    const score = counts ? playerScore(counted, player, rulesOf(day).captain) : player.points;
+    const warning = postponed
+        ? { text: t('fantasyHelp.card.postponed'), tone: 'down' as const }
+        : notCounted
+          ? { text: t(notCounted === 'late' ? 'fantasyHelp.card.notCountingLate' : 'fantasyHelp.card.notCountingOver'), tone: 'down' as const }
+          : status === 'dnp'
+            ? { text: t('fantasyHelp.card.dnp'), tone: 'muted' as const }
+            : null;
+    const badge = status && status !== 'started' && status !== 'dnp' && status !== 'postponed' ? status : null;
     const parts = useMemo(() => pointParts(player, day.scoring), [player, day.scoring]);
     const line = lineText(player, t);
     const color = team?.color ?? '#64748b';
@@ -205,7 +237,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ day, entry, player, prev
     const live = game?.state === 'live' ? game.live : null;
     const batting = !!live && live.batter?.id === player.id;
     const pitching = !!live && live.pitcher?.id === player.id;
-    const price = day.credits && player.price !== undefined ? formatCredits(player.price, lang) : null;
+    const price = creditsOf(day) && player.price !== undefined ? formatCredits(player.price, lang) : null;
     const upChip = useChipInk('up');
 
     // Chip flotante cuando suben (o bajan) sus puntos entre lecturas; el lector lo oye una vez
@@ -221,8 +253,11 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ day, entry, player, prev
     // Banda: hora y rival antes del juego; en vivo, al bate, lanzando o la entrada; al final, el marcador
     let band = '';
     let bandLabel = '';
-    if (game && !started) {
-        band = `${formatTime(game.date, lang)} · ${matchText(game, player.teamId, t)}`;
+    if (game && postponed) {
+        band = `${t('fantasyHelp.status.postponed')} · ${matchText(game, player.teamId, t)}`;
+        bandLabel = t('fantasyHelp.card.postponed');
+    } else if (game && !started) {
+        band = `${lockText(day, player, t, lang, now) ?? formatTime(game.date, lang)} · ${matchText(game, player.teamId, t)}`;
         bandLabel = t('pro.fantasy.card.openUntil', { time: formatTime(game.date, lang) });
     } else if (game && live) {
         band = batting
@@ -284,12 +319,20 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ day, entry, player, prev
                     </Txt>
                 </View>
             </Pressable>
+            {(badge || warning) && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, paddingHorizontal: 10, paddingTop: 8 }}>
+                    {badge ? <StatusBadge status={badge} /> : null}
+                    {warning ? <CardWarning text={warning.text} tone={warning.tone} /> : null}
+                </View>
+            )}
 
             {started ? (
                 <View style={{ flex: 1, paddingHorizontal: 10, paddingTop: 10, paddingBottom: 12, gap: 6 }}>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 6 }}>
                         <Flash value={score} tone={score >= 0 ? 'up' : 'down'}>
-                            <Num size={28}>{fmtPts(score)}</Num>
+                            <Num size={28} color={counts ? undefined : colors.faint} style={counts ? undefined : { textDecorationLine: 'line-through' }}>
+                                {fmtPts(score)}
+                            </Num>
                         </Flash>
                         <Txt size={10} weight="extrabold" tone="muted" style={{ letterSpacing: 0.8 }}>
                             {t('pro.fantasy.card.pts')}
