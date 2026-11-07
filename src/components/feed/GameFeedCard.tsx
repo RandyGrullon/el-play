@@ -17,7 +17,8 @@ import { PlayerLink } from '../ui/PlayerLink';
 import { CardLink, OVER_CARD } from '../ui/CardLink';
 import { withNodes } from '../ui/TextLinks';
 import { slot } from '../../lib/links';
-import { Bases, OutsDots } from '../game/Bases';
+import { OutsDots } from '../game/Bases';
+import { FieldButton } from '../field/FieldView';
 import { DelayPill } from '../game/Delay';
 import { useNow } from '../../hooks/useNow';
 
@@ -58,7 +59,7 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                 )}
                 {!between && live.inning ? (
                     <>
-                        <Bases runners={live.runners} size={26} color={(live.isTop ? game.away : game.home).color} />
+                        <FieldButton gamePk={game.gamePk} runners={live.runners} size={26} color={(live.isTop ? game.away : game.home).color} className={OVER_CARD} />
                         <OutsDots outs={live.outs} />
                         <span className="text-sm font-semibold text-muted tabular-nums">{live.balls}-{live.strikes}</span>
                         {live.batter && !delay && (

@@ -15,6 +15,19 @@ interface BottomSheetProps {
 // Hojas abiertas, de la de abajo a la de arriba: Escape cierra solo la de arriba (una hoja puede abrir otra encima)
 const openSheets: object[] = [];
 
+/** Otra capa encima de las hojas (la vista del terreno): mientras esté, Escape no cierra la hoja de abajo */
+export const pushModalLayer = () => {
+    const self = {};
+    openSheets.push(self);
+    return {
+        isTop: () => openSheets[openSheets.length - 1] === self,
+        remove: () => {
+            const index = openSheets.indexOf(self);
+            if (index >= 0) openSheets.splice(index, 1);
+        }
+    };
+};
+
 // Hoja que sube desde abajo (en escritorio, panel centrado). Cierra con la X, tocando fuera o con Escape.
 export const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, title, children, tall = false }) => {
     const { t } = useTranslation();

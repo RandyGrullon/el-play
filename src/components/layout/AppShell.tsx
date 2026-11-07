@@ -17,7 +17,7 @@ import { withNodes } from '../ui/TextLinks';
 import { slot } from '../../lib/links';
 import { teamDisplayName } from '../../lib/teams';
 import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../ui/States';
-import { Bases } from '../game/Bases';
+import { FieldButton, FieldViewProvider } from '../field/FieldView';
 import { OfflineBanner } from './OfflineBanner';
 import { UpdateToast } from './UpdateToast';
 import { Toast } from './Toast';
@@ -168,7 +168,7 @@ const LiveSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onC
                                             <span className="block truncate text-xs text-muted">{formatShortDate(game.date, i18n.language)}</span>
                                         )}
                                     </span>
-                                    {playing && !between && <Bases runners={playing.runners} size={24} color={(playing.isTop ? game.away : game.home).color} className="shrink-0" />}
+                                    {playing && !between && <FieldButton gamePk={game.gamePk} runners={playing.runners} size={24} color={(playing.isTop ? game.away : game.home).color} className={OVER_CARD} onLeave={onClose} />}
                                     {delay && (playing || game.state === 'preview') ? (
                                         <DelayPill delay={delay} />
                                     ) : (
@@ -205,8 +205,10 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
         window.scrollTo(0, 0);
     }, [location.pathname]);
 
-    // En la página de un juego la barra no estorba el contenido de abajo
+    // En la página de un juego la barra no estorba el contenido de abajo. El terreno (tocar el diamante de un juego en
+    // vivo) se abre desde cualquier página, también desde la hoja de En vivo
     return (
+        <FieldViewProvider>
         <div className="min-h-screen pb-[calc(96px+env(safe-area-inset-bottom))]">
             <OfflineBanner />
             <main className="mx-auto max-w-3xl">
@@ -223,5 +225,6 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
             <FantasyWatcher />
             <AlertsWatcher />
         </div>
+        </FieldViewProvider>
     );
 };

@@ -36,7 +36,8 @@ import { uniformColors } from '../components/game/BatterFigure';
 import { Matchup } from '../components/game/Matchup';
 import { PlayByPlay } from '../components/game/PlayByPlay';
 import { BoxScore } from '../components/game/BoxScore';
-import { Bases, OutsDots } from '../components/game/Bases';
+import { OutsDots } from '../components/game/Bases';
+import { FieldButton } from '../components/field/FieldView';
 import { DelayBanner } from '../components/game/Delay';
 import { RainOverlay } from '../components/game/RainOverlay';
 import { BottomSheet } from '../components/ui/BottomSheet';
@@ -104,7 +105,7 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
         <>
             <div className="relative z-10 -mt-5 flex gap-3 px-4">
                 <div className="flex flex-1 items-center justify-around gap-2 rounded-[24px] bg-surface px-3 py-3.5 shadow-float">
-                    <Bases runners={game.runners} size={48} color={batting.color} />
+                    <FieldButton gamePk={game.gamePk} runners={game.runners} size={48} color={batting.color} />
                     <div className="text-center">
                         <div className="whitespace-nowrap text-[28px] font-extrabold leading-none tabular-nums">{between ? '—' : `${game.count.balls}-${game.count.strikes}`}</div>
                         <OutsDots outs={game.count.outs} className="mt-1.5" />
