@@ -17,8 +17,10 @@ npm test           # pruebas de la API (con datos reales guardados en server/tes
 npm run build
 ```
 
-`WEB_PORT`, `API_PORT`/`PORT` cambian los puertos. En modo simulado hay siempre un juego en vivo que avanza
-un pitcheo cada 6 s (`MLB_MOCK_PITCH_MS`), uno terminado y uno por empezar; los nombres son inventados.
+`WEB_PORT`, `API_PORT`/`PORT` cambian los puertos. En modo simulado hoy hay una doble cartelera (el primero
+terminado y el segundo en vivo, que avanza un pitcheo cada 6 s: `MLB_MOCK_PITCH_MS`), uno por empezar (el de casa
+ya publicó su alineación, el visitante no; con abridores probables) y uno pospuesto por lluvia; los nombres son
+inventados. Los abridores rotan entre cuatro y el receptor titular descansa uno de cada tres días.
 Con `MLB_MOCK_DELAY=rain` (o `wet`, `lightning`, `weather`, `fog`, `power`) el juego en vivo queda detenido y congelado.
 
 ## Cómo se obtienen los datos
@@ -31,6 +33,7 @@ Con `MLB_MOCK_DELAY=rain` (o `wet`, `lightning`, `weather`, `fog`, `power`) el j
 | Respuesta | Solo lo que usa la app (~90 KB de un feed de ~1 MB), con todos los pitcheos de cada turno: ubicación, velocidad, tipo y resultado. |
 | App (`src/lib/polling.ts`) | Consulta según el estado real del juego (`abstractGameState`): en vivo cada ~5 s, antes del juego cada vez más seguido según se acerca la hora, terminado nunca. |
 | Temporada | Se pide a `/league/{id}`; si la nueva aún no empieza, posiciones y líderes muestran la anterior marcada. |
+| Fantasy (`server/services/fantasy.js`) | `GET /api/v2/fantasy` arma el día: juegos (los pospuestos siguen, con `status`) y peloteros con sus puntos, si juegan (`status`), rival (`opp`), últimos 5 (`last5`), temporada (`season`) y precio. El precio sale solo de lo de antes del día, así no cambia mientras se juega (`priceDelta` contra el día de juego anterior). `rules` trae el tope por equipo y los créditos de ese día, los mismos con los que se puntúa. |
 
 Las rutas `/api/v2/*` son las de la app actual; `/api/*` mantiene el formato anterior para la PWA vieja.
 
