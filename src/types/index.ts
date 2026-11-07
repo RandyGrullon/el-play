@@ -245,6 +245,8 @@ export interface GameDetail {
     } | null;
     /** Pausa entre entradas: los tres que le toca batear al equipo que viene (`teamId`), si MLB los da */
     dueUp?: { teamId: number | null; batters: PersonRef[] } | null;
+    /** Quién está en el terreno (solo en vivo): los nueve de la defensa y el bateador, los que siguen y los corredores */
+    field?: GameField | null;
     /** Retos del ABS de cada equipo (ganados, perdidos, los que le quedan) y quién está retando ahora */
     abs?: { away: AbsCount; home: AbsCount; challenging: number | null } | null;
     probables: { away: Decision | null; home: Decision | null };
@@ -261,6 +263,13 @@ export interface GameDetail {
     /** Hora del último pitcheo o acción (ISO) */
     lastPlayAt?: string | null;
     updatedAt: string | null;
+}
+
+export interface GameField {
+    defenseTeamId: number | null;
+    offenseTeamId: number | null;
+    defense: Record<'pitcher' | 'catcher' | 'first' | 'second' | 'third' | 'shortstop' | 'left' | 'center' | 'right', PersonRef | null>;
+    offense: Record<'batter' | 'onDeck' | 'inHole' | 'first' | 'second' | 'third', PersonRef | null>;
 }
 
 export interface GameInfo {

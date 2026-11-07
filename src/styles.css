@@ -25,6 +25,8 @@
     --zone-bg: 20 21 26;
     --nav: 20 21 26;
     --nav-ink: 154 157 176;
+    /* Juego detenido (lluvia): azul frío */
+    --rain: 3 105 161;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -47,6 +49,7 @@
         --zone-bg: 226 232 240;
         --nav: 32 35 44;
         --nav-ink: 154 157 176;
+        --rain: 125 196 240;
     }
 }
 
@@ -69,6 +72,7 @@
     --zone-bg: 226 232 240;
     --nav: 32 35 44;
     --nav-ink: 154 157 176;
+    --rain: 125 196 240;
 }
 
 /* Paneles claros dentro del tema oscuro (zona de strikes sobre blanco en el resumen) */
@@ -447,3 +451,14 @@ html.text-large body {
 .cmp-bar { display: flex; height: 8px; overflow: hidden; border-radius: 9999px; background: rgb(var(--raised)); }
 .cmp-bar > span { display: block; height: 100%; transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .cmp-bar > span + span { margin-left: 2px; }
+
+/* ---------- Juego detenido por lluvia: velo y gotas a pantalla completa (components/game/RainOverlay.tsx) ---------- */
+.rain-overlay {
+    position: fixed; inset: 0; z-index: 40; pointer-events: none; transition: opacity 0.6s ease;
+    --rain-drop: 52 92 140;
+    background: linear-gradient(180deg, rgb(28 62 108 / 0.1), rgb(28 62 108 / 0.2));
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .rain-overlay { --rain-drop: 196 220 250; background: linear-gradient(180deg, rgb(8 24 48 / 0.26), rgb(8 24 48 / 0.4)); }
+}
+:root[data-theme='dark'] .rain-overlay { --rain-drop: 196 220 250; background: linear-gradient(180deg, rgb(8 24 48 / 0.26), rgb(8 24 48 / 0.4)); }

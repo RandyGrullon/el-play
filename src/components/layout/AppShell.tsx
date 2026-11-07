@@ -5,7 +5,8 @@ import { Home, Menu, Radio, Sparkles, BarChart3 } from 'lucide-react';
 import { useLeague } from '../../store/LeagueContext';
 import { usePrefetchGame, useSchedule } from '../../lib/queries';
 import { formatShortDate, formatTime } from '../../lib/format';
-import { inningName } from '../../lib/baseball';
+import { delayOf, inningName } from '../../lib/baseball';
+import { DelayPill } from '../game/Delay';
 import { useNow } from '../../hooks/useNow';
 import { BottomSheet } from '../ui/BottomSheet';
 import { TeamLogo } from '../ui/TeamLogo';
@@ -123,6 +124,9 @@ const LiveSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onC
                         {list.map((game) => {
                             const playing = game.state === 'live' ? game.live : null;
                             const between = playing?.inningState === 'Middle' || playing?.inningState === 'End';
+                            // Detenido (lluvia…): la pastilla azul y, abajo, en qué entrada se paró
+                            const delay = delayOf(game.detailedState);
+                            const inning = playing ? inningName({ n: playing.inning, isTop: playing.isTop, state: playing.inningState }, i18n.language, true) : '';
                             const warm = () => {
                                 prefetch(game.gamePk).catch(() => undefined);
                             };
@@ -144,7 +148,11 @@ const LiveSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onC
                                         <span className="block truncate font-bold">
                                             {team('away')} {game.away.score ?? ''} <span className="text-muted">·</span> {team('home')} {game.home.score ?? ''}
                                         </span>
-                                        {playing ? (
+                                        {playing && delay ? (
+                                            !delay.start && playing.inning ? (
+                                                <span className="block truncate text-xs text-muted">{t('delay.stoppedAt', { inning: inningName({ n: playing.inning, isTop: playing.isTop, state: playing.inningState }, i18n.language) })}</span>
+                                            ) : null
+                                        ) : playing ? (
                                             playing.batter && (
                                                 <span className="block truncate text-xs text-muted">
                                                     {withNodes(t('card.batting', { name: slot('name') }), {
@@ -161,10 +169,14 @@ const LiveSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onC
                                         )}
                                     </span>
                                     {playing && !between && <Bases runners={playing.runners} size={24} color={(playing.isTop ? game.away : game.home).color} className="shrink-0" />}
-                                    <span className={`pill shrink-0 ${playing ? 'bg-live text-white' : 'bg-raised text-muted'}`}>
-                                        {playing && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />}
-                                        {playing ? inningName({ n: playing.inning, isTop: playing.isTop, state: playing.inningState }, i18n.language, true) : formatTime(game.date, i18n.language)}
-                                    </span>
+                                    {delay && (playing || game.state === 'preview') ? (
+                                        <DelayPill delay={delay} />
+                                    ) : (
+                                        <span className={`pill shrink-0 ${playing ? 'bg-live text-white' : 'bg-raised text-muted'}`}>
+                                            {playing && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />}
+                                            {playing ? inning : formatTime(game.date, i18n.language)}
+                                        </span>
+                                    )}
                                     {logo('home')}
                                 </li>
                             );

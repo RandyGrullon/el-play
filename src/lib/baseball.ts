@@ -320,6 +320,33 @@ export const weatherTemp = (temp: string | null | undefined, lang: string) => {
     return isEs(lang) ? `${Math.round(celsius)} °C` : `${Math.round(value <= 45 ? (celsius * 9) / 5 + 32 : value)} °F`;
 };
 
+export type DelayReason = 'rain' | 'wet' | 'lightning' | 'weather' | 'fog' | 'power' | 'other';
+export interface Delay {
+    reason: DelayReason;
+    /** El juego todavía no empezaba («Delayed Start») */
+    start: boolean;
+}
+
+const DELAY_REASONS: [RegExp, DelayReason][] = [
+    [/wet/i, 'wet'],
+    [/rain/i, 'rain'],
+    [/lightning/i, 'lightning'],
+    [/weather/i, 'weather'],
+    [/fog/i, 'fog'],
+    [/power/i, 'power']
+];
+
+/** Juego detenido o con el inicio demorado y por qué («Delayed: Rain», «Delayed Start: Wet Grounds»…); si no, null */
+export const delayOf = (detailedState: string | null | undefined): Delay | null => {
+    const match = /^\s*delayed(\s+start)?\b\s*:?\s*(.*)$/i.exec(detailedState ?? '');
+    if (!match) return null;
+    const reason = DELAY_REASONS.find(([pattern]) => pattern.test(match[2]))?.[1] ?? 'other';
+    return { reason, start: !!match[1] };
+};
+
+/** Con lluvia o el terreno mojado la página del juego pone a llover */
+export const isRainy = (delay: Delay | null | undefined) => delay?.reason === 'rain' || delay?.reason === 'wet';
+
 export const isNotPlayed = (detailedState: string) => /postponed|cancel/i.test(detailedState);
 
 /** Suspendido: el servidor lo manda como programado, con la fecha de la reanudación si ya la hay */

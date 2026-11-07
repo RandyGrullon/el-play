@@ -7,12 +7,13 @@ import type { GameDetail, ScheduleGame, TopPerformer } from '../types';
 import { findScheduledGame, useGame } from '../lib/queries';
 import { ApiError } from '../lib/api';
 import { alertsAvailable, useAlertToggle } from '../hooks/useAlertToggle';
-import { atBatForZone, inningBreak, isNotPlayed, weatherName, weatherTemp } from '../lib/baseball';
+import { atBatForZone, delayOf, inningBreak, isNotPlayed, isRainy, weatherName, weatherTemp } from '../lib/baseball';
 import { formatCountdown, formatShortDate, formatTime, surname } from '../lib/format';
 import { teamDisplayName } from '../lib/teams';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { useNow } from '../hooks/useNow';
 import { useBack } from '../hooks/useBack';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import { useLeague } from '../store/LeagueContext';
 import { usePreferences } from '../store/preferences';
 import { useShare } from '../share/ShareSheet';
@@ -36,6 +37,8 @@ import { Matchup } from '../components/game/Matchup';
 import { PlayByPlay } from '../components/game/PlayByPlay';
 import { BoxScore } from '../components/game/BoxScore';
 import { Bases, OutsDots } from '../components/game/Bases';
+import { DelayBanner } from '../components/game/Delay';
+import { RainOverlay } from '../components/game/RainOverlay';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
 import { PlayerLink } from '../components/ui/PlayerLink';
@@ -86,7 +89,7 @@ const ActionButton: React.FC<{ icon: React.ReactNode; label: string; onClick: ()
 );
 
 // En vivo (diseño D2): situación + mini zona flotando sobre la cabecera, cronología tipo chat
-const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onShare: () => void }> = ({ game, open, onShare }) => {
+const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onShare: () => void; notice?: React.ReactNode }> = ({ game, open, onShare, notice }) => {
     const { t } = useTranslation();
     const { atBat } = atBatForZone(game);
     const batting = game.inning?.isTop ? game.away : game.home;
@@ -144,6 +147,7 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
             )}
 
             <div className="space-y-3 px-4 pt-4 empty:hidden">
+                {notice}
                 <StaleNotice game={game} />
                 <NoHitterBanner game={game} />
             </div>
@@ -210,7 +214,7 @@ const FinalView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSh
     );
 };
 
-const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game, onShare }) => {
+const PreviewView: React.FC<{ game: GameDetail; onShare: () => void; notice?: React.ReactNode }> = ({ game, onShare, notice }) => {
     const { t, i18n } = useTranslation();
     const { subscribedGames } = usePreferences();
     const toggleAlert = useAlertToggle();
@@ -223,6 +227,7 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
 
     return (
         <div className="space-y-3 px-4 pt-4">
+            {notice}
             {!notPlayed && <WinProbabilityCard game={game} />}
 
             <section className="card p-4" aria-label={t('preview.probables')}>
@@ -310,6 +315,24 @@ const PreviewView: React.FC<{ game: GameDetail; onShare: () => void }> = ({ game
 };
 
 
+// «Quitar lluvia» vale para ese juego mientras dure la sesión (sessionStorage puede no existir o lanzar)
+const rainKey = (gamePk: string | undefined) => `el-play-rain-off-${gamePk ?? ''}`;
+const readRainOff = (gamePk: string | undefined) => {
+    try {
+        return sessionStorage.getItem(rainKey(gamePk)) === '1';
+    } catch {
+        return false;
+    }
+};
+const writeRainOff = (gamePk: string | undefined, off: boolean) => {
+    try {
+        if (off) sessionStorage.setItem(rainKey(gamePk), '1');
+        else sessionStorage.removeItem(rainKey(gamePk));
+    } catch {
+        /* sin almacenamiento: dura mientras la página esté abierta */
+    }
+};
+
 /** Una lectura que llega más de 45 s después de la anterior trae jugadas viejas (red lenta, pantalla bloqueada) */
 const STALE_READ_MS = 45 * 1000;
 export const GamePage: React.FC = () => {
@@ -325,7 +348,10 @@ export const GamePage: React.FC = () => {
     const [sheet, setSheet] = useState<Sheet>(null);
     const { trackGameView } = useAnalytics();
     const tracked = useRef<string | null>(null);
-    const { animationMode, favoriteTeamId } = usePreferences();
+    const { animationMode, favoriteTeamId, playAnimations } = usePreferences();
+    const reducedMotion = useReducedMotion();
+    const [rainOff, setRainOff] = useState(() => readRainOff(gamePk));
+    useEffect(() => setRainOff(readRainOff(gamePk)), [gamePk]);
     const previous = useRef<GameDetail | null>(null);
     const shown = useRef(new Set<string>());
     const [plays, setPlays] = useState<PlayEvent[]>([]);
@@ -395,6 +421,15 @@ export const GamePage: React.FC = () => {
     // Juego que no existe o enlace roto: se dice claro y se ofrece volver (antes salía una previa vacía)
     const notFoundCode = !game && query.error instanceof ApiError && ['game_not_found', 'invalid_game'].includes(query.error.code) ? query.error.code : null;
     const notPlayed = !!game && isNotPlayed(game.detailedState);
+    // Detenido (lluvia…) o con el inicio demorado: aviso bajo la cabecera y, con lluvia, a llover en toda la pantalla
+    // (no con las animaciones apagadas ni si el sistema pide menos movimiento)
+    const delay = game && game.state !== 'final' && !notPlayed ? delayOf(game.detailedState) : null;
+    const canRain = !!delay && isRainy(delay) && playAnimations && !reducedMotion;
+    const toggleRain = () => {
+        writeRainOff(gamePk, !rainOff);
+        setRainOff(!rainOff);
+    };
+    const delayNotice = game && delay ? <DelayBanner game={game} delay={delay} rain={canRain ? { on: !rainOff, toggle: toggleRain } : null} /> : null;
 
     return (
         <PullToRefresh onRefresh={async () => { await query.refetch(); }}>
@@ -418,13 +453,15 @@ export const GamePage: React.FC = () => {
                     <Skeleton className="h-[260px] rounded-card" />
                 </div>
             ) : game.state === 'live' ? (
-                <LiveView game={game} open={setSheet} onShare={shareGame} />
+                <LiveView game={game} open={setSheet} onShare={shareGame} notice={delayNotice} />
             ) : game.state === 'final' && !notPlayed ? (
                 // MLB da los pospuestos y cancelados como «final»: van con la previa (sin resumen ni marcador 0 - 0)
                 <FinalView game={game} open={setSheet} onShare={shareGame} onSharePerformer={sharePerformer} />
             ) : (
-                <PreviewView game={game} onShare={shareGame} />
+                <PreviewView game={game} onShare={shareGame} notice={delayNotice} />
             )}
+
+            <RainOverlay active={canRain && !rainOff} />
 
             {plays[0] && <PlayAnimation key={plays[0].key} event={plays[0]} onDone={() => setPlays((queue) => queue.slice(1))} />}
 
