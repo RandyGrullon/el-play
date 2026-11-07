@@ -1,6 +1,8 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronLeft, ChevronRight, Play, Square, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronDown, ChevronLeft, ChevronRight, Maximize2, Play, Square, X } from 'lucide-react';
 import type { GameDetail } from '../../types';
 import { eventName, inningName, pitchTypeName } from '../../lib/baseball';
 import { parkFor, polar, wallAt } from '../../lib/flight';
@@ -30,7 +32,7 @@ import {
 } from '../../lib/spray';
 import { usePreferences } from '../../store/preferences';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { BottomSheet } from '../ui/BottomSheet';
+import { BottomSheet, pushModalLayer } from '../ui/BottomSheet';
 import { Segmented } from '../ui/Segmented';
 import { PlayerLink } from '../ui/PlayerLink';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
@@ -38,6 +40,19 @@ import { GlowDef, ParkDrawing, ResultMarker } from '../spray/ParkDrawing';
 
 // Mapa de batazos sobre el parque de verdad del juego (en pies): cada bola con su vuelo desde home y dónde cayó,
 // filtros que se combinan (equipo, resultado, tipo y bateador), la ficha de la bola tocada, «Repetir» y los números de lo filtrado.
+// «Ampliar» lo abre a pantalla completa con los mismos controles (filtros, vista y bola tocada compartidos con la tarjeta).
+
+type SprayMode = 'balls' | 'zones' | 'heat';
+
+/** Lo que comparten la tarjeta y la copia a pantalla completa */
+interface SprayShared {
+    filters: SprayFilters;
+    setFilters: (filters: SprayFilters) => void;
+    mode: SprayMode;
+    setMode: (mode: SprayMode) => void;
+    selected: number | null;
+    setSelected: (key: number | null) => void;
+}
 
 const RESULTS: SprayResult[] = ['single', 'double', 'triple', 'hr', 'error', 'out'];
 const TRAJS: SprayFilters['traj'][] = ['all', 'ground', 'line', 'fly', 'popup'];
@@ -67,19 +82,34 @@ const animateBall = (node: Element | null, delay: number, duration: number) => {
     return out;
 };
 
+/** El mapa en su tarjeta y, con «Ampliar», a pantalla completa (se cierra con la X, Escape o «atrás») */
 export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
+    const { t } = useTranslation();
+    const [filters, setFilters] = useState<SprayFilters>(DEFAULT_FILTERS);
+    const [mode, setMode] = useState<SprayMode>('balls');
+    const [selected, setSelected] = useState<number | null>(null);
+    const [open, setOpen] = useState(false);
+    const shared: SprayShared = { filters, setFilters, mode, setMode, selected, setSelected };
+    return (
+        <>
+            <SprayBody game={game} shared={shared} onExpand={() => setOpen(true)} />
+            {open && <SprayDialog label={t('spray.title')} onClose={() => setOpen(false)}>{(close) => <SprayBody game={game} shared={shared} big onClose={close} />}</SprayDialog>}
+        </>
+    );
+};
+
+const SprayBody: React.FC<{ game: GameDetail; shared: SprayShared; big?: boolean; onExpand?: () => void; onClose?: () => void }> = ({ game, shared, big = false, onExpand, onClose }) => {
     const { t, i18n } = useTranslation();
     const lang = i18n.language;
-    const glow = `${useId().replace(/:/g, '')}-glow`;
+    const uid = useId().replace(/:/g, '');
+    const glow = `${uid}-glow`;
     const { playAnimations } = usePreferences();
     const reduced = useReducedMotion();
     const motion = playAnimations && !reduced;
     const park = useMemo(() => parkFor(game.venue), [game.venue]);
     const view = useMemo(() => fieldViewBox(park), [park]);
     const all = useMemo(() => sprayBalls(game.atBats, park), [game.atBats, park]);
-    const [filters, setFilters] = useState<SprayFilters>(DEFAULT_FILTERS);
-    const [mode, setMode] = useState<'balls' | 'zones' | 'heat'>('balls');
-    const [selected, setSelected] = useState<number | null>(null);
+    const { filters, setFilters, mode, setMode, selected, setSelected } = shared;
     const [picking, setPicking] = useState(false);
     const balls = useMemo(() => filterBalls(all, filters), [all, filters]);
     const batters = useMemo(() => sprayBatters(all, filters.team), [all, filters.team]);
@@ -183,12 +213,12 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
     const filterAria = (group: 'team' | 'result' | 'type', label: string) => `${t(`spray.filters.${group}`)}: ${label}`;
 
     return (
-        <section className="card overflow-hidden" aria-labelledby="spray-title">
+        <section className="card overflow-hidden" aria-labelledby={`${uid}-title`}>
             <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line/10 px-4 py-3">
-                <h2 id="spray-title" className="eyebrow">
+                <h2 id={`${uid}-title`} className="eyebrow">
                     {t('spray.title')}
                 </h2>
-                <Segmented<'balls' | 'zones' | 'heat'>
+                <Segmented<SprayMode>
                     size="sm"
                     label={t('spray.views.label')}
                     value={mode}
@@ -203,16 +233,24 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                         { value: 'heat', label: t('spray.views.heat') }
                     ]}
                 />
-                <button
-                    type="button"
-                    onClick={replay}
-                    aria-pressed={replaying}
-                    disabled={!balls.length || mode !== 'balls'}
-                    className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-raised px-3 text-xs font-bold text-ink disabled:opacity-40"
-                >
-                    {replaying ? <Square className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                    {replaying ? t('spray.stop') : t('spray.replay')}
-                </button>
+                {big ? (
+                    <button type="button" data-close onClick={onClose} aria-label={t('common.close')} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-raised text-ink">
+                        <X className="h-[18px] w-[18px]" />
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (replaying) stopReplay();
+                            onExpand?.();
+                        }}
+                        aria-haspopup="dialog"
+                        className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full bg-raised px-3 text-xs font-bold text-ink"
+                    >
+                        <Maximize2 className="h-3.5 w-3.5" />
+                        {t('spray.expand')}
+                    </button>
+                )}
             </header>
 
             <div className="flex items-center gap-2 overflow-x-auto px-4 pt-3 scrollbar-none" role="group" aria-label={t('spray.filters.label')}>
@@ -301,7 +339,7 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                 <svg
                     ref={svgRef}
                     viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
-                    className="mx-auto h-auto w-full max-w-[520px] select-none rounded-2xl"
+                    className={`mx-auto h-auto w-full select-none rounded-2xl ${big ? 'max-w-[900px]' : 'max-w-[520px]'}`}
                     style={{ background: 'var(--fld-foul)' }}
                     role="group"
                     aria-label={t('spray.aria', { count: balls.length })}
@@ -358,12 +396,36 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                 ))}
             </ol>
 
-            <div className="px-4 pb-4 pt-2">
-                {replaying && tick ? (
-                    <p className="text-center text-sm font-bold" aria-live="polite">
-                        {inningName({ n: tick.atBat.inning, isTop: tick.atBat.top }, lang)} · {tick.atBat.batter.name} · <span style={{ color: tick.result === 'out' ? undefined : SPRAY_RESULT_COLORS[tick.result] }}>{eventName(tick.atBat, lang) || resultLabel(tick.result)}</span>
-                    </p>
-                ) : current && mode === 'balls' ? (
+            <div className="space-y-3 px-4 pb-4 pt-2.5">
+                {mode === 'balls' && (
+                    <div className="flex items-center gap-2.5">
+                        <button
+                            type="button"
+                            onClick={replay}
+                            aria-pressed={replaying}
+                            disabled={!balls.length}
+                            className={`inline-flex min-h-[34px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold disabled:opacity-40 ${replaying ? 'bg-ink text-bg' : 'bg-raised text-ink'}`}
+                        >
+                            {replaying ? <Square className="h-3.5 w-3.5" fill="currentColor" /> : <Play className="h-3.5 w-3.5" fill="currentColor" />}
+                            {replaying ? t('spray.stop') : t('spray.replay')}
+                        </button>
+                        <p className="min-w-0 flex-1 truncate text-[13px] font-semibold" aria-live="polite">
+                            {replaying && tick && (
+                                <>
+                                    {inningName({ n: tick.atBat.inning, isTop: tick.atBat.top }, lang)} · {tick.atBat.batter.name} ·{' '}
+                                    <span className="font-extrabold" style={{ color: tick.result === 'out' ? undefined : SPRAY_RESULT_COLORS[tick.result] }}>
+                                        {eventName(tick.atBat, lang) || resultLabel(tick.result)}
+                                    </span>
+                                    <span className="ml-1.5 text-xs font-normal text-muted tabular-nums">
+                                        {balls.findIndex((ball) => ball.key === tick.key) + 1}/{balls.length}
+                                    </span>
+                                </>
+                            )}
+                        </p>
+                    </div>
+                )}
+
+                {current && mode === 'balls' ? (
                     <DetailCard ball={current} position={index} total={balls.length} onStep={(delta) => select(balls[(index + delta + balls.length) % balls.length].key)} />
                 ) : (
                     <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] text-muted">
@@ -383,6 +445,113 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                 <StatsStrip stats={stats} hasEv={hasEv} />
             </div>
         </section>
+    );
+};
+
+const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Pantalla completa: entrada en el historial («atrás» cierra), Escape (si es la capa de arriba), foco atrapado adentro
+ * y la página de atrás quieta. Un enlace de adentro (un pelotero) reemplaza la entrada en vez de apilar otra.
+ */
+const SprayDialog: React.FC<{ label: string; onClose: () => void; children: (close: () => void) => React.ReactNode }> = ({ label, onClose, children }) => {
+    const navigate = useNavigate();
+    const root = useRef<HTMLDivElement>(null);
+    const token = useRef(`spray-${Math.random().toString(36).slice(2)}`);
+    const pushed = useRef(false);
+    const done = useRef(false);
+    const onCloseRef = useRef(onClose);
+    onCloseRef.current = onClose;
+    const finish = useCallback(() => {
+        if (done.current) return;
+        done.current = true;
+        onCloseRef.current();
+    }, []);
+    // ¿La entrada de arriba del historial sigue siendo la nuestra?
+    const ours = () => pushed.current && window.history.state?.elPlaySpray === token.current;
+
+    const requestClose = useCallback(() => {
+        if (ours()) {
+            window.history.back();
+            // Por si el navegador no avisa del «atrás»
+            window.setTimeout(finish, 450);
+            return;
+        }
+        finish();
+    }, [finish]);
+    const requestCloseRef = useRef(requestClose);
+    requestCloseRef.current = requestClose;
+
+    useEffect(() => {
+        try {
+            if (window.history.state?.elPlaySpray !== token.current) window.history.pushState({ ...(window.history.state || {}), elPlaySpray: token.current }, '');
+            pushed.current = true;
+        } catch {
+            pushed.current = false;
+        }
+        const onPop = () => {
+            if (pushed.current && window.history.state?.elPlaySpray !== token.current) {
+                pushed.current = false;
+                finish();
+            }
+        };
+        window.addEventListener('popstate', onPop);
+        return () => window.removeEventListener('popstate', onPop);
+    }, [finish]);
+
+    useEffect(() => {
+        const layer = pushModalLayer();
+        const previous = document.activeElement as HTMLElement | null;
+        root.current?.querySelector<HTMLElement>('[data-close]')?.focus({ preventScroll: true });
+        const overflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        const onKey = (event: KeyboardEvent) => {
+            if (!layer.isTop() || !root.current) return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                requestCloseRef.current();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const items = Array.from(root.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((item) => item.getAttribute('aria-hidden') !== 'true' && item.getClientRects().length > 0);
+            if (!items.length) return;
+            const first = items[0];
+            const last = items[items.length - 1];
+            const active = document.activeElement;
+            if (event.shiftKey && (active === first || !root.current.contains(active))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (active === last || !root.current.contains(active))) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener('keydown', onKey);
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            layer.remove();
+            document.body.style.overflow = overflow;
+            if (previous?.isConnected) previous.focus({ preventScroll: true });
+        };
+    }, []);
+
+    const onLink = (event: React.MouseEvent<HTMLDivElement>) => {
+        const link = (event.target as Element).closest?.('a[href]') as HTMLAnchorElement | null;
+        if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.target === '_blank') return;
+        const url = new URL(link.href, window.location.href);
+        if (url.origin !== window.location.origin) return;
+        event.preventDefault();
+        const replace = ours();
+        pushed.current = false;
+        finish();
+        navigate(`${url.pathname}${url.search}${url.hash}`, { replace });
+    };
+
+    return createPortal(
+        <div ref={root} className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-bg motion-safe:animate-fade-up" role="dialog" aria-modal="true" aria-label={label} onClickCapture={onLink}>
+            <div className="mx-auto w-full max-w-[940px] px-2 pb-[calc(24px+env(safe-area-inset-bottom))] pt-[calc(8px+env(safe-area-inset-top))] sm:px-4">{children(requestClose)}</div>
+        </div>,
+        document.body
     );
 };
 
