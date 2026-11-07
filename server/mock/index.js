@@ -647,10 +647,12 @@ const buildBoxscore = (game, state) => {
         for (const hitter of team.hitters) batting[hitter.id] = { plateAppearances: 0, atBats: 0, runs: 0, hits: 0, doubles: 0, triples: 0, rbi: 0, baseOnBalls: 0, strikeOuts: 0, homeRuns: 0, sacFlies: 0 };
         for (const { play, events, complete } of state.plays) {
             if (play.fielding === side) {
-                const p = (pitching[play.pitcher.id] = pitching[play.pitcher.id] || { outs: 0, hits: 0, runs: 0, earnedRuns: 0, baseOnBalls: 0, strikeOuts: 0, homeRuns: 0, numberOfPitches: 0, strikes: 0 });
+                const p = (pitching[play.pitcher.id] = pitching[play.pitcher.id] || { battersFaced: 0, outs: 0, hits: 0, runs: 0, earnedRuns: 0, baseOnBalls: 0, strikeOuts: 0, homeRuns: 0, numberOfPitches: 0, strikes: 0 });
                 p.numberOfPitches += events.length;
                 p.strikes += events.filter((e) => e.details.isStrike).length;
                 if (!complete) continue;
+                // Apariciones y bateadores enfrentados: con esto el fantasy sabe quién jugó
+                p.battersFaced += 1;
                 if (play.isOut) p.outs += 1;
                 if (['single', 'double', 'triple', 'home_run'].includes(play.eventType)) p.hits += 1;
                 if (play.eventType === 'home_run') p.homeRuns += 1;
@@ -882,6 +884,50 @@ const schedule = (params = {}) => {
     return { dates };
 };
 
+/** Carreras, récords por situación y récord esperado de una fila simulada (lo que el PRO muestra en Posiciones) */
+const standingExtras = (row) => {
+    const random = rng(row.id * 211);
+    const games = row.wins + row.losses;
+    const split = (type, share) => {
+        const w = Math.round(row.wins * share);
+        const l = Math.round(row.losses * share);
+        return { type, wins: w, losses: l, pct: w + l ? (w / (w + l)).toFixed(3).replace(/^0/, '') : '.000' };
+    };
+    const home = 0.45 + random() * 0.1;
+    const left = 0.25 + random() * 0.1;
+    const day = 0.2 + random() * 0.1;
+    const close = 0.25 + random() * 0.1;
+    const extra = 0.05 + random() * 0.05;
+    const winners = 0.4 + random() * 0.2;
+    const runsScored = Math.round(games * (4 + random() * 1.5));
+    const runsAllowed = Math.max(0, runsScored - Math.round((row.wins - row.losses) * (1.5 + random())));
+    const expectedWins = Math.round((games * runsScored ** 1.83) / (runsScored ** 1.83 + runsAllowed ** 1.83 || 1));
+    return {
+        runsScored,
+        runsAllowed,
+        runDifferential: runsScored - runsAllowed,
+        records: {
+            splitRecords: [
+                { type: 'lastTen', wins: row.lastWins, losses: 10 - row.lastWins },
+                split('home', home),
+                split('away', 1 - home),
+                split('left', left),
+                split('right', 1 - left),
+                split('leftHome', left * home),
+                split('leftAway', left * (1 - home)),
+                split('rightHome', (1 - left) * home),
+                split('rightAway', (1 - left) * (1 - home)),
+                split('day', day),
+                split('night', 1 - day),
+                split('oneRun', close),
+                split('extraInning', extra),
+                split('winners', winners)
+            ],
+            expectedRecords: [{ type: 'xWinLoss', wins: expectedWins, losses: games - expectedWins }]
+        }
+    };
+};
+
 const standings = (params = {}) => {
     if (Number(params.leagueId) !== 131 || params.standingsTypes !== 'regularSeason') return { records: [] };
     const rows = TEAM_IDS.map((id) => {
@@ -903,7 +949,9 @@ const standings = (params = {}) => {
                 winningPercentage: (row.wins / (row.wins + row.losses)).toFixed(3).replace(/^0/, ''),
                 gamesBack: index === 0 ? '-' : String(((leader.wins - row.wins + (row.losses - leader.losses)) / 2).toFixed(1)).replace('.0', ''),
                 streak: { streakCode: row.streak },
-                records: { splitRecords: [{ type: 'lastTen', wins: row.lastWins, losses: 10 - row.lastWins }] }
+                ...standingExtras(row),
+                eliminationNumber: '-',
+                clinched: false
             }))
         }]
     };
@@ -1234,7 +1282,27 @@ const get = async (url, params = {}) => {
     if ((match = path.match(/^\/people\/(\d+)\/stats$/))) return personStats(match[1], params);
     if (path === '/transactions') return transactions(params);
     if ((match = path.match(/^\/league\/(\d+)$/))) {
-        return { leagues: [{ id: Number(match[1]), season: String(new Date().getUTCFullYear()), numGames: 50 }] };
+        const year = new Date().getUTCFullYear();
+        // LIDOM simulada: la regular empezó el 16 de octubre (el simulador tiene juegos todos los días)
+        const dates =
+            Number(match[1]) === 131
+                ? {
+                      seasonDateInfo: {
+                          seasonId: String(year),
+                          seasonStartDate: `${year}-10-01`,
+                          regularSeasonStartDate: `${year}-10-16`,
+                          regularSeasonEndDate: `${year}-12-20`,
+                          postSeasonStartDate: `${year}-12-23`,
+                          postSeasonEndDate: `${year + 1}-01-31`,
+                          seasonEndDate: `${year + 1}-01-31`,
+                          offSeasonEndDate: `${year + 1}-09-30`,
+                          qualifierPlateAppearances: 2.7,
+                          qualifierOutsPitched: 2.4
+                      },
+                      seasonState: 'inseason'
+                  }
+                : {};
+        return { leagues: [{ id: Number(match[1]), season: String(year), numGames: 50, ...dates }] };
     }
     throw Object.assign(new Error(`mock: ruta sin simular ${path}`), { response: { status: 404 } });
 };
