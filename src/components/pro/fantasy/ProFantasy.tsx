@@ -107,7 +107,8 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
     const seasonTotals = profile.data?.season ?? { points: Math.round(past.reduce((sum, item) => sum + item.points, 0) * 10) / 10, days: past.length };
     const saveStatus = useSaveStatus(league, day?.date, entry, userId, today);
 
-    const projection = useMemo(() => (day ? projectionOf(day, entry, (id) => scout.rows.get(id)?.ppg ?? null) : { byId: {}, total: 0, known: 0, count: 0 }), [day, entry, scout.rows]);
+    // La proyección del servidor (la misma del Lite y la web), no el promedio de la temporada
+    const projection = useMemo(() => (day ? projectionOf(day, entry) : { byId: {}, total: 0, known: 0, count: 0 }), [day, entry]);
     const forms = useMemo(() => teamFormOf(standingRows(standings.data)), [standings.data]);
     const starters = useMemo(() => startersOf(lineups.data), [lineups.data]);
     const lineupGames = useMemo(() => new Set((lineups.data?.games ?? []).filter((game) => game.away || game.home).map((game) => game.gamePk)), [lineups.data]);
