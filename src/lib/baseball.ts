@@ -317,6 +317,36 @@ export const weatherTemp = (temp: string | null | undefined, lang: string) => {
     return isEs(lang) ? `${Math.round(celsius)} °C` : `${Math.round(value <= 45 ? (celsius * 9) / 5 + 32 : value)} °F`;
 };
 
+export type DelayReason = 'rain' | 'wet' | 'lightning' | 'weather' | 'fog' | 'power' | 'other';
+
+export interface Delay {
+    reason: DelayReason;
+    /** Todavía no empezaba («Delayed Start»); si no, se detuvo con el juego en marcha */
+    start: boolean;
+}
+
+// El motivo viene después de los dos puntos («Delayed: Rain», «Delayed Start: Wet Grounds»)
+const DELAY_REASONS: [RegExp, DelayReason][] = [
+    [/wet/i, 'wet'],
+    [/rain/i, 'rain'],
+    [/lightning/i, 'lightning'],
+    [/fog/i, 'fog'],
+    [/power/i, 'power'],
+    [/weather/i, 'weather']
+];
+
+/** Juego detenido o con el inicio demorado, y por qué; null si no lo está */
+export const delayOf = (detailedState: string | null | undefined): Delay | null => {
+    const match = /^\s*Delayed(\s+Start)?\b\s*:?\s*(.*)$/i.exec(detailedState ?? '');
+    if (!match) return null;
+    const detail = match[2];
+    const reason = DELAY_REASONS.find(([pattern]) => pattern.test(detail))?.[1] ?? 'other';
+    return { reason, start: !!match[1] };
+};
+
+/** La lluvia en pantalla va con lluvia y con el terreno mojado */
+export const isRainDelay = (delay: Delay | null | undefined) => delay?.reason === 'rain' || delay?.reason === 'wet';
+
 export const isNotPlayed = (detailedState: string) => /postponed|cancel/i.test(detailedState);
 
 /** Suspendido: el servidor lo manda como programado, con la fecha de la reanudación si ya la hay */

@@ -1684,5 +1684,41 @@
     "aria": "Games over .500 today: {{teams}}",
     "pick": "Highlight a team",
     "previous": "No games yet this season: this is last season's race."
+  },
+  "delay": {
+    "short": "Delayed",
+    "shortStart": "Delayed start",
+    "reason": {
+      "rain": "Rain",
+      "wet": "Wet grounds",
+      "lightning": "Lightning",
+      "weather": "Weather",
+      "fog": "Fog",
+      "power": "Power outage",
+      "other": ""
+    },
+    "title": {
+      "rain": "Game delayed by rain",
+      "wet": "Game delayed: wet grounds",
+      "lightning": "Game delayed by lightning",
+      "weather": "Game delayed by weather",
+      "fog": "Game delayed by fog",
+      "power": "Game delayed: power outage",
+      "other": "Game delayed"
+    },
+    "titleStart": {
+      "rain": "Start delayed by rain",
+      "wet": "Start delayed: wet grounds",
+      "lightning": "Start delayed by lightning",
+      "weather": "Start delayed by weather",
+      "fog": "Start delayed by fog",
+      "power": "Start delayed: power outage",
+      "other": "Start delayed"
+    },
+    "stoppedAt": "Stopped at: {{inning}}",
+    "minutes_one": "{{count}} min delay",
+    "minutes_other": "{{count}} min delay",
+    "hideRain": "Hide rain",
+    "showRain": "Show rain"
   }
 }

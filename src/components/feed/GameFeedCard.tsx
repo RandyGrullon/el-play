@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Bell, BellRing, Share2, Star } from 'lucide-react-native';
 import type { ScheduleGame, ScheduleTeam } from '../../types';
-import { finalLabel, inningName, isOnHold, isSuspended, stateName } from '../../lib/baseball';
+import { delayOf, finalLabel, inningName, isOnHold, isSuspended, stateName } from '../../lib/baseball';
 import { formatCountdown, formatTime } from '../../lib/format';
 import { usePrefetchGame } from '../../lib/queries';
 import { teamDisplayName } from '../../lib/teams';
@@ -14,6 +14,7 @@ import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Card, Row, Skeleton, TeamLogo, Txt } from '../ui';
 import { Bases, OutsDots } from '../game/Bases';
+import { DelayPill } from '../game/Delay';
 import { TeamLink, playerTextLink } from '../stats/common';
 import { PulseDot } from './PulseDot';
 import { alertsAvailable, useAlertToggle } from './alerts';
@@ -37,6 +38,9 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
     const colors = useColors();
     const live = game.live!;
     const between = live.inningState === 'Middle' || live.inningState === 'End';
+    // Detenido (lluvia…): la pastilla azul con la entrada en que se paró, en vez de la roja
+    const delay = delayOf(game.detailedState);
+    const inning = live.inning ? inningName({ n: live.inning, isTop: live.isTop, state: live.inningState }, i18n.language, true) : null;
     const half = (team: ScheduleTeam, align: 'start' | 'end') => {
         const ink = inkOn(team.color);
         return (
@@ -64,7 +68,11 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                 {half(game.home, 'end')}
             </View>
             <Row gap={12} style={{ backgroundColor: colors.surface, paddingHorizontal: 16, paddingVertical: 12 }}>
-                <LivePill label={live.inning ? inningName({ n: live.inning, isTop: live.isTop, state: live.inningState }, i18n.language, true) : stateName(game.detailedState, i18n.language)} />
+                {delay ? (
+                    <DelayPill delay={delay} suffix={inning} />
+                ) : (
+                    <LivePill label={inning ?? stateName(game.detailedState, i18n.language)} />
+                )}
                 {!between && live.inning ? (
                     <>
                         <Bases runners={live.runners} size={26} color={(live.isTop ? game.away : game.home).color} />
@@ -72,13 +80,14 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                         <Txt size={14} weight="semibold" tone="muted" tabular>
                             {live.balls}-{live.strikes}
                         </Txt>
-                        {live.batter && (
+                        {/* Detenido: nadie está bateando */}
+                        {!delay && live.batter && (
                             <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} style={{ flex: 1, textAlign: 'right' }} {...playerTextLink(live.batter)}>
                                 {t('card.batting', { name: live.batter.name })}
                             </Txt>
                         )}
                     </>
-                ) : (
+                ) : delay ? null : (
                     <Txt size={14} weight="semibold" tone="muted">
                         {t('game.betweenInnings')}
                     </Txt>
@@ -136,6 +145,8 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame; onShare?: (game: Sched
         prefetch(game.gamePk).catch(() => undefined);
     };
     const label = `${teamDisplayName(game.away, i18n.language)} ${game.away.score ?? ''} · ${teamDisplayName(game.home, i18n.language)} ${game.home.score ?? ''}`;
+    // Inicio demorado (sigue «programado»): se dice al lado de la hora
+    const delay = game.state === 'preview' && !notPlayed ? delayOf(game.detailedState) : null;
 
     if (game.state === 'live' && game.live) {
         return (
@@ -194,6 +205,7 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame; onShare?: (game: Sched
                                 </Txt>,
                                 colors.raised
                             )}
+                    {delay ? <DelayPill delay={delay} /> : null}
                     {/* Suspendido con fecha nueva: sale programado en esa fecha, pero se dice */}
                     {game.state === 'preview' && !notPlayed && isSuspended(game.detailedState)
                         ? pill(

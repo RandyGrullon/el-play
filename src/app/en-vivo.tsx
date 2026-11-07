@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Radio, X } from 'lucide-react-native';
 import type { ScheduleGame } from '../types';
-import { inningName } from '../lib/baseball';
+import { delayOf, inningName } from '../lib/baseball';
 import { formatShortDate, formatTime } from '../lib/format';
 import { usePrefetchGame, useSchedule } from '../lib/queries';
 import { useLeague } from '../state/league';
@@ -13,6 +13,7 @@ import { useColors } from '../theme/theme';
 import { radius, shadow } from '../theme/tokens';
 import { ErrorState, OfflineState, Row, Skeleton, TeamLogo, Txt, useErrorText } from '../components/ui';
 import { Bases } from '../components/game/Bases';
+import { DelayIcon, delayPillText, useRainTone } from '../components/game/Delay';
 import { PulseDot } from '../components/feed/PulseDot';
 import { waitingForNetwork } from '../components/feed/DayChips';
 import { useNow } from '../components/feed/useNow';
@@ -34,6 +35,7 @@ export default function LiveGamesScreen() {
     const schedule = useSchedule(activeLeague);
     const prefetch = usePrefetchGame();
     const now = useNow();
+    const rain = useRainTone();
     const games = schedule.data?.games ?? [];
     const live = games.filter((game) => game.state === 'live');
     const next = games
@@ -47,6 +49,8 @@ export default function LiveGamesScreen() {
 
     const row = (game: ScheduleGame) => {
         const isLive = game.state === 'live' && game.live;
+        // Detenido: la pastilla en azul de lluvia con la entrada y, debajo de las siglas, por qué
+        const delay = isLive ? delayOf(game.detailedState) : null;
         return (
             <Pressable
                 key={game.gamePk}
@@ -67,7 +71,11 @@ export default function LiveGamesScreen() {
                         </Txt>{' '}
                         <Text {...teamTextLink(game.home.id)}>{game.home.abbrev}</Text> {game.home.score ?? ''}
                     </Txt>
-                    {isLive && game.live?.batter ? (
+                    {delay ? (
+                        <Txt size={12} weight="bold" color={rain.ink} numberOfLines={1}>
+                            {delayPillText(t, delay)}
+                        </Txt>
+                    ) : isLive && game.live?.batter ? (
                         <Txt size={12} tone="muted" numberOfLines={1} {...playerTextLink(game.live.batter)}>
                             {t('card.batting', { name: game.live.batter.name })}
                         </Txt>
@@ -78,9 +86,9 @@ export default function LiveGamesScreen() {
                     ) : null}
                 </View>
                 {isLive && game.live && game.live.inningState !== 'Middle' && game.live.inningState !== 'End' && <Bases runners={game.live.runners} size={24} color={(game.live.isTop ? game.away : game.home).color} />}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: isLive ? colors.live : colors.raised }}>
-                    {isLive && <PulseDot color="#fff" />}
-                    <Txt size={12} weight="bold" color={isLive ? '#fff' : colors.muted}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: delay ? rain.soft : isLive ? colors.live : colors.raised }}>
+                    {delay ? <DelayIcon reason={delay.reason} size={12} color={rain.ink} /> : isLive && <PulseDot color="#fff" />}
+                    <Txt size={12} weight="bold" color={delay ? rain.ink : isLive ? '#fff' : colors.muted}>
                         {isLive && game.live ? inningName({ n: game.live.inning, isTop: game.live.isTop, state: game.live.inningState }, i18n.language, true) : formatTime(game.date, i18n.language)}
                     </Txt>
                 </View>

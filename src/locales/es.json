@@ -1684,5 +1684,41 @@
     "aria": "Juegos sobre .500 hoy: {{teams}}",
     "pick": "Resaltar un equipo",
     "previous": "Todavía no hay juegos de la temporada nueva: esta es la pasada."
+  },
+  "delay": {
+    "short": "Detenido",
+    "shortStart": "Inicio demorado",
+    "reason": {
+      "rain": "Lluvia",
+      "wet": "Terreno mojado",
+      "lightning": "Tormenta eléctrica",
+      "weather": "Clima",
+      "fog": "Niebla",
+      "power": "Sin luz",
+      "other": ""
+    },
+    "title": {
+      "rain": "Juego detenido por lluvia",
+      "wet": "Juego detenido por terreno mojado",
+      "lightning": "Juego detenido por tormenta eléctrica",
+      "weather": "Juego detenido por el clima",
+      "fog": "Juego detenido por niebla",
+      "power": "Juego detenido: sin luz",
+      "other": "Juego detenido"
+    },
+    "titleStart": {
+      "rain": "Inicio demorado por lluvia",
+      "wet": "Inicio demorado por terreno mojado",
+      "lightning": "Inicio demorado por tormenta eléctrica",
+      "weather": "Inicio demorado por el clima",
+      "fog": "Inicio demorado por niebla",
+      "power": "Inicio demorado: sin luz",
+      "other": "Inicio demorado"
+    },
+    "stoppedAt": "Se detuvo en: {{inning}}",
+    "minutes_one": "{{count}} min de demora",
+    "minutes_other": "{{count}} min de demora",
+    "hideRain": "Quitar lluvia",
+    "showRain": "Ver lluvia"
   }
 }

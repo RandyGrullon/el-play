@@ -8,10 +8,11 @@ import { ArrowLeft, Bell, BellRing, CircleCheck, CloudSun, ListOrdered, MapPin, 
 import type { GameDetail, TopPerformer } from '../../types';
 import { findScheduledGame, useGame } from '../../lib/queries';
 import { ApiError } from '../../lib/api';
-import { atBatForZone, inningBreak, isNotPlayed, weatherName, weatherTemp } from '../../lib/baseball';
+import { atBatForZone, delayOf, inningBreak, isNotPlayed, isRainDelay, weatherName, weatherTemp } from '../../lib/baseball';
 import { formatCountdown, formatShortDate, formatTime, lastName } from '../../lib/format';
 import { STALE_READ_MS, forMode, playsSince, queuePlays, type PlayEvent } from '../../lib/playEvents';
 import { useIsPro } from '../../lib/pro';
+import { useMotion } from '../../lib/motion';
 import { teamDisplayName } from '../../lib/teams';
 import { toggleFollow, useFollow, useFollowSync } from '../../lib/follow';
 import { showToast } from '../../lib/toast';
@@ -26,6 +27,8 @@ import { Timeline } from '../../components/gamecast/Timeline';
 import { StoryRecap } from '../../components/gamecast/StoryRecap';
 import { PlayAnimation } from '../../components/gamecast/PlayAnimation';
 import { Bases, OutsDots } from '../../components/game/Bases';
+import { DelayBanner } from '../../components/game/Delay';
+import { RainOverlay, useRainToggle } from '../../components/game/RainOverlay';
 import { StrikeZone } from '../../components/game/StrikeZone';
 import { StrikeZonePanel } from '../../components/game/StrikeZonePanel';
 import { uniformColors } from '../../components/game/BatterFigure';
@@ -150,7 +153,7 @@ const FollowButton: React.FC<{ game: GameDetail }> = ({ game }) => {
 };
 
 // En vivo: situación + mini zona flotando sobre la cabecera, cronología tipo chat, mapa de batazos y botones
-const LiveView: React.FC<{ game: GameDetail; open: (sheet: SheetName) => void; onShare: () => void }> = ({ game, open, onShare }) => {
+const LiveView: React.FC<{ game: GameDetail; open: (sheet: SheetName) => void; onShare: () => void; banner?: React.ReactNode }> = ({ game, open, onShare, banner }) => {
     const { t } = useTranslation();
     const colors = useColors();
     const { atBat } = atBatForZone(game);
@@ -214,6 +217,8 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: SheetName) => void; o
             <FollowButton game={game} />
 
             <View style={{ gap: 12, paddingHorizontal: 16, paddingTop: 12 }}>
+                {/* Detenido (lluvia, tormenta…): por qué, desde qué entrada y cuánto lleva */}
+                {banner}
                 <StaleNotice game={game} />
                 <NoHitterBanner game={game} />
                 <LineScore game={game} />
@@ -394,6 +399,12 @@ export default function GameScreen() {
     const { share, sheet: shareSheet } = useShare();
     const [sheet, setSheet] = useState<SheetName>(null);
     const { animationMode, favoriteTeamId } = usePreferences();
+    const motion = useMotion();
+    // Juego detenido o con el inicio demorado: el aviso bajo la cabecera y, si es por lluvia, la lluvia en la pantalla
+    const delay = game && game.state !== 'final' ? delayOf(game.detailedState) : null;
+    const [rainHidden, toggleRain] = useRainToggle(Number(gamePk) || null);
+    const rainy = isRainDelay(delay) && motion.animate;
+    const rainOn = rainy && !rainHidden;
     // Modo PRO (cuenta abierta + PRO en «Más»): debajo de la misma cabecera va el juego PRO; el Lite queda igual
     const pro = useIsPro();
     // PRO: el scroll va en un shared value para la barra de mando y las pestañas pegadas (el Lite usa Screen igual que antes)
@@ -456,6 +467,9 @@ export default function GameScreen() {
     const notFoundCode = !game && query.error instanceof ApiError && ['game_not_found', 'invalid_game'].includes(query.error.code) ? query.error.code : null;
     const title = game ? `${game.away.abbrev} ${game.away.runs}-${game.home.runs} ${game.home.abbrev} · El Play` : 'El Play';
     const notPlayed = !!game && isNotPlayed(game.detailedState);
+    const banner = game && delay ? <DelayBanner delay={delay} inning={game.inning} minutes={game.info?.delayMin} rain={rainy ? { on: rainOn, toggle: toggleRain } : null} /> : null;
+    // El Lite en vivo lo lleva con los avisos (bajo el conteo, que se monta sobre la cabecera); los demás, bajo la cabecera
+    const bannerUnderHero = banner && (pro || game?.state !== 'live') ? <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>{banner}</View> : null;
 
     let body: React.ReactNode;
     if (notFoundCode) {
@@ -504,7 +518,7 @@ export default function GameScreen() {
             </View>
         );
     } else if (pro) body = <ProGame game={game} onShare={shareGame} onSharePerformer={sharePerformer} fetchedAt={readAt} follow={<FollowButton game={game} />} />;
-    else if (game.state === 'live') body = <LiveView game={game} open={setSheet} onShare={shareGame} />;
+    else if (game.state === 'live') body = <LiveView game={game} open={setSheet} onShare={shareGame} banner={banner} />;
     // MLB da los pospuestos y cancelados como «final»: van con la previa (sin resumen ni marcador 0 - 0)
     else if (game.state === 'final' && !notPlayed) body = <FinalView game={game} open={setSheet} onShare={shareGame} onSharePerformer={sharePerformer} />;
     else body = <PreviewView game={game} onShare={shareGame} />;
@@ -528,11 +542,13 @@ export default function GameScreen() {
                         ) : (
                             hero
                         )}
+                        {bannerUnderHero}
                         {body}
                     </ProGameScroll>
                 ) : (
                     <Screen padded={false} onRefresh={() => query.refetch()} contentStyle={contentStyle}>
                         {hero}
+                        {bannerUnderHero}
                         {body}
                     </Screen>
                 )}
@@ -557,6 +573,8 @@ export default function GameScreen() {
                     </>
                 )}
                 {shareSheet}
+                {/* Lluvia sobre toda la pantalla (no se toca) */}
+                <RainOverlay active={rainOn} />
             </View>
         </ProScrollProvider>
     );

@@ -29,7 +29,7 @@ fs.writeFileSync(path.join(OUT, 'pro.js'), 'exports.proActive = () => false;\n')
 const { camera, flightMs, flightOf, gamedayToFeet, groundAt, heightAt, parkFor, wallAt, wallCrossing } = require(path.join(OUT, 'flight.js'));
 const { basesOf, legsOf, runnerPaths, walkPaths } = require(path.join(OUT, 'runners.js'));
 const { forMode, leadChange, newPlayEvents } = require(path.join(OUT, 'playEvents.js'));
-const { isOnHold } = require(path.join(OUT, 'baseball.js'));
+const { delayOf, isOnHold, isRainDelay } = require(path.join(OUT, 'baseball.js'));
 const { gameInterval } = require(path.join(OUT, 'polling.js'));
 const alertsLib = require(path.join(OUT, 'gameAlerts.js'));
 
@@ -385,6 +385,29 @@ it('suspendido: con fecha nueva se espera como programado; sin ella, en espera c
     assert.strictEqual(isOnHold({ detailedState: 'Suspended', date: at(-180) }, NOW), true);
     assert.strictEqual(isOnHold({ detailedState: 'Postponed', date: at(60) }, NOW), true);
     assert.strictEqual(isOnHold({ detailedState: 'Scheduled', date: at(-180) }, NOW), false);
+});
+
+console.log('juegos detenidos (lluvia, tormenta…)');
+
+it('detenido: el motivo de «Delayed: …» y si es el inicio; lo demás no es demora', () => {
+    assert.deepStrictEqual(delayOf('Delayed: Rain'), { reason: 'rain', start: false });
+    assert.deepStrictEqual(delayOf('Delayed Start: Rain'), { reason: 'rain', start: true });
+    assert.deepStrictEqual(delayOf('Delayed: Wet Grounds'), { reason: 'wet', start: false });
+    assert.deepStrictEqual(delayOf('Delayed Start: Wet Grounds'), { reason: 'wet', start: true });
+    assert.deepStrictEqual(delayOf('Delayed: Lightning'), { reason: 'lightning', start: false });
+    assert.deepStrictEqual(delayOf('Delayed: Weather'), { reason: 'weather', start: false });
+    assert.deepStrictEqual(delayOf('Delayed: Fog'), { reason: 'fog', start: false });
+    assert.deepStrictEqual(delayOf('Delayed: Power'), { reason: 'power', start: false });
+    // Cualquier otra demora es «other», con o sin motivo
+    assert.deepStrictEqual(delayOf('Delayed: Injury'), { reason: 'other', start: false });
+    assert.deepStrictEqual(delayOf('Delayed'), { reason: 'other', start: false });
+    assert.deepStrictEqual(delayOf('Delayed Start'), { reason: 'other', start: true });
+    ['In Progress', 'Suspended: Rain', 'Postponed', 'Final', 'Scheduled', '', null, undefined].forEach((state) => assert.strictEqual(delayOf(state), null, String(state)));
+    // La lluvia en pantalla: solo con lluvia o terreno mojado
+    assert.strictEqual(isRainDelay(delayOf('Delayed: Rain')), true);
+    assert.strictEqual(isRainDelay(delayOf('Delayed Start: Wet Grounds')), true);
+    assert.strictEqual(isRainDelay(delayOf('Delayed: Lightning')), false);
+    assert.strictEqual(isRainDelay(null), false);
 });
 
 console.log('avisos de los juegos y del Fantasy');

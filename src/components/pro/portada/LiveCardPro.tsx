@@ -7,11 +7,11 @@ import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay,
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { CloudRain, ShieldCheck, Zap } from 'lucide-react-native';
+import { ShieldCheck, Zap } from 'lucide-react-native';
 import type { ScheduleTeam } from '../../../types';
 import type { ScheduleGamePro } from '../../../types/pro-juego';
 import type { PortadaGame } from '../../../lib/pro/pantallas';
-import { inningName, stateName } from '../../../lib/baseball';
+import { delayOf, inningName, stateName } from '../../../lib/baseball';
 import { usePrefetchGame } from '../../../lib/queries';
 import { teamDisplayName } from '../../../lib/teams';
 import { useColors } from '../../../theme/theme';
@@ -23,6 +23,7 @@ import { ProbBar, ProbStrip } from './ProbCharts';
 import { teamFill } from './logic';
 import { MoreLink, PhotoWithLogo, useInk, useLineText } from './shared';
 import { PlayerLink, TeamLink, playerTextLink } from '../../stats/common';
+import { DelayIcon, delayPillText, useRainTone } from '../../game/Delay';
 
 interface LiveCardProps {
     game: ScheduleGamePro;
@@ -172,7 +173,8 @@ export const LiveCardPro: React.FC<LiveCardProps> = ({ game, summary, loading = 
     const home = { id: game.home.id, abbrev: game.home.abbrev, name: teamDisplayName(game.home, lang), color: game.home.color };
     const teamOf = (id: number | null | undefined) => (id === game.away.id ? game.away : id === game.home.id ? game.home : null);
     const li = winProb?.last?.li ?? null;
-    const delayed = /delay/i.test(game.detailedState);
+    const delay = delayOf(game.detailedState);
+    const rain = useRainTone();
     const pitcher = duel?.pitcher ?? (live.pitcher ? { ...live.pitcher, teamId: live.isTop ? game.home.id : game.away.id, hand: null, line: null } : null);
     const batter = duel?.batter ?? (live.batter ? { ...live.batter, teamId: live.isTop ? game.away.id : game.home.id, side: null, line: null } : null);
     const onDeck = duel?.onDeck ?? live.onDeck ?? null;
@@ -210,10 +212,9 @@ export const LiveCardPro: React.FC<LiveCardProps> = ({ game, summary, loading = 
         const color = ink.tone('warn');
         chips.push(<Badge key="nohit" icon={<ShieldCheck size={14} color={color} />} text={t(game.flags.perfectGame ? 'pro.portada.live.perfect' : 'pro.portada.live.noHitter')} color={color} background={alpha(pro.warn, 0.16)} />);
     }
-    if (delayed) {
-        const color = ink.tone('inplay');
-        const text = game.reason ? t('pro.portada.live.delayReason', { reason: /rain/i.test(game.reason) ? t('pro.portada.reason.rain') : game.reason }) : stateName(game.detailedState, lang);
-        chips.push(<Badge key="delay" icon={<CloudRain size={14} color={color} />} text={text} color={color} background={alpha(colors.inplay, 0.15)} />);
+    if (delay) {
+        // «Detenido · Lluvia», en el azul de lluvia como en el Lite
+        chips.push(<Badge key="delay" icon={<DelayIcon reason={delay.reason} size={14} color={rain.ink} />} text={delayPillText(t, delay)} color={rain.ink} background={rain.soft} />);
     }
     const temp = summary?.weather?.tempC;
 

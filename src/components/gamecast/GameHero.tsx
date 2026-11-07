@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Share2, Star } from 'lucide-react-native';
 import type { GameDetail, GameState, ScheduleGame, TeamBase } from '../../types';
-import { finalLabel, inningName, isOnHold, isSuspended, stateName } from '../../lib/baseball';
+import { delayOf, finalLabel, inningName, isOnHold, isSuspended, stateName } from '../../lib/baseball';
 import { formatCountdown, formatShortDate, formatTime } from '../../lib/format';
 import { teamDisplayName } from '../../lib/teams';
 import { usePreferences } from '../../state/preferences';
@@ -16,6 +16,7 @@ import { ProBadge, Txt } from '../ui';
 import { teamTextLink } from '../stats/common';
 import { Odometer, PlusOne } from '../pro/kit';
 import { PulseDot } from '../feed/PulseDot';
+import { DelayIcon, delayPillText, useRainTone } from '../game/Delay';
 import { useNow } from '../feed/useNow';
 
 export interface HeroModel {
@@ -123,6 +124,9 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
     const notPlayed = isOnHold(model, now);
     const showScores = model.state !== 'preview' && !notPlayed;
     const startsIn = model.date ? new Date(model.date).getTime() - now : 0;
+    // Detenido (lluvia, tormenta…): la pastilla de arriba lo dice en azul de lluvia en vez de «En vivo»
+    const delay = model.state !== 'final' && !notPlayed ? delayOf(model.detailedState) : null;
+    const rain = useRainTone();
 
     let status: string;
     if (notPlayed) status = stateName(model.detailedState, i18n.language);
@@ -136,6 +140,9 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
         if (isSuspended(model.detailedState)) status = `${t('card.rescheduled')} · ${status}`;
     }
     if (model.state === 'preview' && startsIn > 0 && !notPlayed) status += ` · ${formatCountdown(startsIn, i18n.language)}`;
+    if (delay) status = delayPillText(t, delay);
+    const pillColor = delay ? rain.solid : model.state === 'live' ? colors.live : 'rgba(255,255,255,0.9)';
+    const pillInk = delay || model.state === 'live' ? '#fff' : '#14151a';
 
     const half = (team: HeroModel['away'], align: 'start' | 'end') => {
         const ink = inkOn(team.color);
@@ -197,9 +204,9 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
             {model.state === 'live' && !notPlayed && model.inning?.n ? <InningBadge inning={model.inning} /> : null}
             {/* Estado en el centro, entre los dos botones */}
             <View pointerEvents="none" style={{ position: 'absolute', left: 64, right: 64, top: insets.top + 18, alignItems: 'center' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: model.state === 'live' ? colors.live : 'rgba(255,255,255,0.9)', maxWidth: '100%' }}>
-                    {model.state === 'live' && <PulseDot color="#fff" />}
-                    <Txt size={13} weight="bold" color={model.state === 'live' ? '#fff' : '#14151a'} numberOfLines={1} style={{ flexShrink: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: pillColor, maxWidth: '100%' }}>
+                    {delay ? <DelayIcon reason={delay.reason} size={14} color="#fff" /> : model.state === 'live' && <PulseDot color="#fff" />}
+                    <Txt size={13} weight="bold" color={pillInk} numberOfLines={1} style={{ flexShrink: 1 }}>
                         {status}
                     </Txt>
                     {pro && <ProBadge />}
