@@ -282,7 +282,7 @@ const SprayBody: React.FC<{ game: GameDetail; shared: SprayShared; big?: boolean
             <div className="flex items-center gap-2 overflow-x-auto px-4 pt-3 scrollbar-none" role="group" aria-label={t('spray.filters.label')}>
                 <Segmented<SprayFilters['team']>
                     size="sm"
-                    className="shrink-0"
+                    className="shrink-0 !max-w-none"
                     label={t('spray.filters.team')}
                     value={filters.team}
                     onChange={(value) => changeFilters(withTeam(all, filters, value))}
@@ -294,7 +294,7 @@ const SprayBody: React.FC<{ game: GameDetail; shared: SprayShared; big?: boolean
                 />
                 <Segmented<SprayFilters['result']>
                     size="sm"
-                    className="shrink-0"
+                    className="shrink-0 !max-w-none"
                     label={t('spray.filters.result')}
                     value={filters.result}
                     onChange={(value) => setFilter('result', value)}
@@ -302,7 +302,7 @@ const SprayBody: React.FC<{ game: GameDetail; shared: SprayShared; big?: boolean
                 />
                 <Segmented<SprayFilters['traj']>
                     size="sm"
-                    className="shrink-0"
+                    className="shrink-0 !max-w-none"
                     label={t('spray.filters.type')}
                     value={filters.traj}
                     onChange={(value) => setFilter('traj', value)}
