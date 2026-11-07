@@ -12,7 +12,15 @@ import { arsenal, type BattedKind } from '../../lib/baseball';
 import { useColors } from '../../theme/theme';
 import { alpha, radius, shadow } from '../../theme/tokens';
 import { Card, Segmented, Skeleton, Txt } from '../ui';
-import { FIELD_VIEW, FIELD_VIEWBOX, FieldBackdrop, fieldPoint } from '../game/SprayChart';
+import { RESULT_COLORS } from '../game/spray/SprayMap';
+import { SprayField, sprayViewOf } from '../game/spray/SprayField';
+import { gamedayToFeet, parkFor } from '../../lib/flight';
+import { resultOf } from '../../lib/spray';
+import { useTheme } from '../../theme/theme';
+
+// Parque genérico: sus batazos son de varios estadios
+const PARK = parkFor(null);
+const VIEW = sprayViewOf(PARK);
 import { CellText, FrozenTable, HeadText, type FrozenColumn } from './FrozenTable';
 import { leagueFromPlayers, poolKindFor, poolOf } from '../pro/estadisticas/logic';
 import { percentileRowsOf } from '../pro/ficha/model';
@@ -265,6 +273,7 @@ export const RecentPitches: React.FC<{ player: PlayerDetail; league: LeagueId }>
     const { t, i18n } = useTranslation();
     const colors = useColors();
     const query = usePlayerPitches(player.id, league, player.season);
+    const { isDark } = useTheme();
     const [view, setView] = useState<RecentView>('spray');
     const pitcher = player.role === 'P';
     const pitches = useMemo(() => query.data?.pitches ?? [], [query.data]);
@@ -276,7 +285,6 @@ export const RecentPitches: React.FC<{ player: PlayerDetail; league: LeagueId }>
     if (!query.data || !pitches.length) return null;
 
     const title = t('playerMore.recent', { count: query.data.games });
-    const tint: Record<BattedKind, string> = { hr: colors.live, hit: colors.accent, out: colors.muted };
     const count = (kind: BattedKind) => balls.filter((ball) => ball.kind === kind).length;
 
     return (
@@ -295,12 +303,25 @@ export const RecentPitches: React.FC<{ player: PlayerDetail; league: LeagueId }>
                 {view === 'spray' &&
                     (balls.length ? (
                         <View style={{ gap: 4 }}>
-                            <View style={{ width: '100%', maxWidth: 360, alignSelf: 'center', aspectRatio: FIELD_VIEW.w / FIELD_VIEW.h }} accessible accessibilityRole="image" accessibilityLabel={t('spray.aria', { count: balls.length })}>
-                                <Svg width="100%" height="100%" viewBox={FIELD_VIEWBOX}>
-                                    <FieldBackdrop />
-                                    {balls.map((ball) => {
-                                        const [cx, cy] = fieldPoint(ball.x, ball.y);
-                                        return <Circle key={ball.key} cx={cx} cy={cy} r={ball.kind === 'hr' ? 4.6 : 3.8} fill={tint[ball.kind]} stroke={colors.surface} strokeWidth={1.1} />;
+                            <View style={{ width: '100%', maxWidth: 360, alignSelf: 'center', aspectRatio: VIEW.w / VIEW.h, borderRadius: radius.tile, overflow: 'hidden' }} accessible accessibilityRole="image" accessibilityLabel={t('spray.aria', { count: balls.length })}>
+                                <Svg width="100%" height="100%" viewBox={`${VIEW.x} ${VIEW.y} ${VIEW.w} ${VIEW.h}`}>
+                                    <SprayField park={PARK} view={VIEW} dark={isDark} u={VIEW.w / 340} />
+                                    {pitches.map((pitch, index) => {
+                                        if (!pitch.hit || typeof pitch.hit.x !== 'number' || typeof pitch.hit.y !== 'number') return null;
+                                        const spot = gamedayToFeet(pitch.hit.x, pitch.hit.y);
+                                        const result = resultOf(pitch.event);
+                                        const u = VIEW.w / 340;
+                                        return (
+                                            <Circle
+                                                key={index}
+                                                cx={spot.x}
+                                                cy={-spot.y}
+                                                r={(result === 'hr' ? 5.2 : 4.4) * u}
+                                                fill={result === 'out' ? 'rgba(255,255,255,0.18)' : RESULT_COLORS[result]}
+                                                stroke={result === 'out' ? '#ffffff' : 'rgba(0,0,0,0.45)'}
+                                                strokeWidth={(result === 'out' ? 1.8 : 1) * u}
+                                            />
+                                        );
                                     })}
                                 </Svg>
                             </View>
