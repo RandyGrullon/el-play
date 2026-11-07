@@ -5,7 +5,8 @@ import { Home, Menu, Radio, Sparkles, BarChart3 } from 'lucide-react';
 import { useLeague } from '../../store/LeagueContext';
 import { usePrefetchGame, useSchedule } from '../../lib/queries';
 import { formatShortDate, formatTime } from '../../lib/format';
-import { inningName } from '../../lib/baseball';
+import { delayOf, inningName } from '../../lib/baseball';
+import { DelayPill } from '../game/Delay';
 import { useNow } from '../../hooks/useNow';
 import { BottomSheet } from '../ui/BottomSheet';
 import { TeamLogo } from '../ui/TeamLogo';
@@ -16,7 +17,7 @@ import { withNodes } from '../ui/TextLinks';
 import { slot } from '../../lib/links';
 import { teamDisplayName } from '../../lib/teams';
 import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../ui/States';
-import { Bases } from '../game/Bases';
+import { FieldButton, FieldViewProvider } from '../field/FieldView';
 import { OfflineBanner } from './OfflineBanner';
 import { UpdateToast } from './UpdateToast';
 import { Toast } from './Toast';
@@ -123,6 +124,9 @@ const LiveSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onC
                         {list.map((game) => {
                             const playing = game.state === 'live' ? game.live : null;
                             const between = playing?.inningState === 'Middle' || playing?.inningState === 'End';
+                            // Detenido (lluvia…): la pastilla azul y, abajo, en qué entrada se paró
+                            const delay = delayOf(game.detailedState);
+                            const inning = playing ? inningName({ n: playing.inning, isTop: playing.isTop, state: playing.inningState }, i18n.language, true) : '';
                             const warm = () => {
                                 prefetch(game.gamePk).catch(() => undefined);
                             };
@@ -144,7 +148,11 @@ const LiveSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onC
                                         <span className="block truncate font-bold">
                                             {team('away')} {game.away.score ?? ''} <span className="text-muted">·</span> {team('home')} {game.home.score ?? ''}
                                         </span>
-                                        {playing ? (
+                                        {playing && delay ? (
+                                            !delay.start && playing.inning ? (
+                                                <span className="block truncate text-xs text-muted">{t('delay.stoppedAt', { inning: inningName({ n: playing.inning, isTop: playing.isTop, state: playing.inningState }, i18n.language) })}</span>
+                                            ) : null
+                                        ) : playing ? (
                                             playing.batter && (
                                                 <span className="block truncate text-xs text-muted">
                                                     {withNodes(t('card.batting', { name: slot('name') }), {
@@ -160,11 +168,15 @@ const LiveSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onC
                                             <span className="block truncate text-xs text-muted">{formatShortDate(game.date, i18n.language)}</span>
                                         )}
                                     </span>
-                                    {playing && !between && <Bases runners={playing.runners} size={24} color={(playing.isTop ? game.away : game.home).color} className="shrink-0" />}
-                                    <span className={`pill shrink-0 ${playing ? 'bg-live text-white' : 'bg-raised text-muted'}`}>
-                                        {playing && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />}
-                                        {playing ? inningName({ n: playing.inning, isTop: playing.isTop, state: playing.inningState }, i18n.language, true) : formatTime(game.date, i18n.language)}
-                                    </span>
+                                    {playing && !between && <FieldButton gamePk={game.gamePk} runners={playing.runners} size={24} color={(playing.isTop ? game.away : game.home).color} className={OVER_CARD} onLeave={onClose} />}
+                                    {delay && (playing || game.state === 'preview') ? (
+                                        <DelayPill delay={delay} />
+                                    ) : (
+                                        <span className={`pill shrink-0 ${playing ? 'bg-live text-white' : 'bg-raised text-muted'}`}>
+                                            {playing && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />}
+                                            {playing ? inning : formatTime(game.date, i18n.language)}
+                                        </span>
+                                    )}
                                     {logo('home')}
                                 </li>
                             );
@@ -193,8 +205,10 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
         window.scrollTo(0, 0);
     }, [location.pathname]);
 
-    // En la página de un juego la barra no estorba el contenido de abajo
+    // En la página de un juego la barra no estorba el contenido de abajo. El terreno (tocar el diamante de un juego en
+    // vivo) se abre desde cualquier página, también desde la hoja de En vivo
     return (
+        <FieldViewProvider>
         <div className="min-h-screen pb-[calc(96px+env(safe-area-inset-bottom))]">
             <OfflineBanner />
             <main className="mx-auto max-w-3xl">
@@ -211,5 +225,6 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
             <FantasyWatcher />
             <AlertsWatcher />
         </div>
+        </FieldViewProvider>
     );
 };

@@ -19,6 +19,7 @@ npm run build
 
 `WEB_PORT`, `API_PORT`/`PORT` cambian los puertos. En modo simulado hay siempre un juego en vivo que avanza
 un pitcheo cada 6 s (`MLB_MOCK_PITCH_MS`), uno terminado y uno por empezar; los nombres son inventados.
+Con `MLB_MOCK_DELAY=rain` (o `wet`, `lightning`, `weather`, `fog`, `power`) el juego en vivo queda detenido y congelado.
 
 ## Cómo se obtienen los datos
 

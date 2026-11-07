@@ -73,4 +73,16 @@ describe('GameFeedCard', () => {
         expect(screen.getByRole('link', { name: 'Pelotero Tres' }).getAttribute('href')).toBe('/jugador/11223344');
         expect(document.querySelector('a a')).toBeNull();
     });
+
+    it('detenido por lluvia: la pastilla azul con la entrada en que se paró y sin bateador', () => {
+        renderCard({
+            ...final,
+            state: 'live',
+            detailedState: 'Delayed: Rain',
+            decisions: null,
+            live: { inning: 5, ordinal: '5th', isTop: true, inningState: 'Top', balls: 1, strikes: 2, outs: 1, runners: { first: true, second: false, third: false }, batter: { id: 11223344, name: 'Pelotero Tres' }, pitcher: { id: 87654321, name: 'Pelotero Dos' } }
+        });
+        expect(screen.getByText('Detenido · Lluvia · ▲ 5')).toBeTruthy();
+        expect(screen.queryByRole('link', { name: 'Pelotero Tres' })).toBeNull();
+    });
 });

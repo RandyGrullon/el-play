@@ -21,6 +21,7 @@ export default {
                 inplay: token('inplay'),
                 hbp: token('hbp'),
                 gold: token('gold'),
+                rain: token('rain'),
                 nav: token('nav'),
                 'nav-ink': token('nav-ink')
             },

@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bell, BellRing, Share2, Star } from 'lucide-react';
 import type { ScheduleGame, ScheduleTeam } from '../../types';
-import { finalLabel, inningName, isOnHold, isSuspended, stateName } from '../../lib/baseball';
+import { delayOf, finalLabel, inningName, isOnHold, isSuspended, stateName } from '../../lib/baseball';
 import { formatCountdown, formatTime } from '../../lib/format';
 import { usePrefetchGame } from '../../lib/queries';
 import { teamDisplayName } from '../../lib/teams';
@@ -17,7 +17,9 @@ import { PlayerLink } from '../ui/PlayerLink';
 import { CardLink, OVER_CARD } from '../ui/CardLink';
 import { withNodes } from '../ui/TextLinks';
 import { slot } from '../../lib/links';
-import { Bases, OutsDots } from '../game/Bases';
+import { OutsDots } from '../game/Bases';
+import { FieldButton } from '../field/FieldView';
+import { DelayPill } from '../game/Delay';
 import { useNow } from '../../hooks/useNow';
 
 const inkOn = (hex: string) => {
@@ -31,6 +33,9 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
     const { t, i18n } = useTranslation();
     const live = game.live!;
     const between = live.inningState === 'Middle' || live.inningState === 'End';
+    // Detenido (lluvia…): la pastilla azul con la entrada en que se paró, en vez de la roja; nadie está bateando
+    const delay = delayOf(game.detailedState);
+    const inning = live.inning ? inningName({ n: live.inning, isTop: live.isTop, state: live.inningState }, i18n.language, true) : '';
     const half = (team: ScheduleTeam, align: 'start' | 'end') => (
         <div className={`flex min-w-0 flex-1 flex-col justify-center px-4 py-4 ${align === 'end' ? 'items-end text-right' : ''}`} style={{ backgroundColor: team.color, color: inkOn(team.color) }}>
             <TeamLink id={team.id} className={`${OVER_CARD} max-w-full truncate text-[15px] font-bold`}>
@@ -44,16 +49,20 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
         <>
             <div className="flex">{half(game.away, 'start')}{half(game.home, 'end')}</div>
             <div className="flex min-w-0 items-center gap-3 bg-surface px-4 py-3">
-                <span className="pill shrink-0 bg-live text-white">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-                    {live.inning ? inningName({ n: live.inning, isTop: live.isTop, state: live.inningState }, i18n.language, true) : stateName(game.detailedState, i18n.language)}
-                </span>
+                {delay ? (
+                    <DelayPill delay={delay} suffix={inning} />
+                ) : (
+                    <span className="pill shrink-0 bg-live text-white">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                        {inning || stateName(game.detailedState, i18n.language)}
+                    </span>
+                )}
                 {!between && live.inning ? (
                     <>
-                        <Bases runners={live.runners} size={26} color={(live.isTop ? game.away : game.home).color} />
+                        <FieldButton gamePk={game.gamePk} runners={live.runners} size={26} color={(live.isTop ? game.away : game.home).color} className={OVER_CARD} />
                         <OutsDots outs={live.outs} />
                         <span className="text-sm font-semibold text-muted tabular-nums">{live.balls}-{live.strikes}</span>
-                        {live.batter && (
+                        {live.batter && !delay && (
                             <span className="ml-auto min-w-0 truncate text-xs font-semibold text-muted">
                                 {withNodes(t('card.batting', { name: slot('name') }), {
                                     name: (
@@ -65,7 +74,7 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                             </span>
                         )}
                     </>
-                ) : (
+                ) : delay ? null : (
                     <span className="text-sm font-semibold text-muted">{t('game.betweenInnings')}</span>
                 )}
             </div>
@@ -102,6 +111,8 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
     const toggleAlert = useAlertToggle();
     const notPlayed = isOnHold(game);
     const final = game.state === 'final';
+    // Inicio demorado (lluvia antes del primer lanzamiento)
+    const previewDelay = game.state === 'preview' ? delayOf(game.detailedState) : null;
     const subscribed = subscribedGames.includes(game.gamePk);
     // La cuenta regresiva avanza sola (cada 30 s) en todo juego por empezar: así sale también la del que entra en las
     // 6 horas con la página abierta (antes solo corría si ya faltaban menos de 6 horas al pintar la tarjeta)
@@ -155,6 +166,7 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                     </span>
                 )}
                 {game.state === 'preview' && !notPlayed && isSuspended(game.detailedState) && <span className="pill shrink-0 bg-accent/10 text-accent-ink">{t('card.rescheduled')}</span>}
+                {game.state === 'preview' && !notPlayed && previewDelay && <DelayPill delay={previewDelay} />}
                 {game.doubleheader?.game && <span className="pill shrink-0 bg-accent/10 text-accent-ink">{t('card.doubleheader', { n: game.doubleheader.game })}</span>}
                 {game.description && game.gameType !== 'R' && <span className="truncate text-xs text-muted">{game.description}</span>}
                 <span className="ml-auto flex items-center gap-1">

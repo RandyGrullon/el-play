@@ -1775,5 +1775,69 @@
   "ads": {
     "label": "Advertisement",
     "sponsored": "Sponsored"
+  },
+  "delay": {
+    "short": "Delayed",
+    "shortStart": "Delayed start",
+    "reason": {
+      "rain": "Rain",
+      "wet": "Wet grounds",
+      "lightning": "Lightning",
+      "weather": "Weather",
+      "fog": "Fog",
+      "power": "Power outage",
+      "other": ""
+    },
+    "title": {
+      "rain": "Game delayed by rain",
+      "wet": "Game delayed: wet grounds",
+      "lightning": "Game delayed by lightning",
+      "weather": "Game delayed by weather",
+      "fog": "Game delayed by fog",
+      "power": "Game delayed: power outage",
+      "other": "Game delayed"
+    },
+    "titleStart": {
+      "rain": "Start delayed by rain",
+      "wet": "Start delayed: wet grounds",
+      "lightning": "Start delayed by lightning",
+      "weather": "Start delayed by weather",
+      "fog": "Start delayed by fog",
+      "power": "Start delayed: power outage",
+      "other": "Start delayed"
+    },
+    "stoppedAt": "Stopped at: {{inning}}",
+    "minutes_one": "{{count}} min delay",
+    "minutes_other": "{{count}} min delay",
+    "hideRain": "Hide rain",
+    "showRain": "Show rain"
+  },
+  "field": {
+    "open": "See the field",
+    "title": "The field",
+    "defense": "Defense: {{team}}",
+    "offense": "At bat: {{team}}",
+    "between": "Between innings: {{team}} take the field like this",
+    "empty": "No lineup on the field yet",
+    "loading": "Loading the field…",
+    "count": "Balls and strikes",
+    "atBat": "At bat",
+    "onDeck": "On deck",
+    "pos": {
+      "pitcher": "Pitcher",
+      "catcher": "Catcher",
+      "first": "First base",
+      "second": "Second base",
+      "third": "Third base",
+      "shortstop": "Shortstop",
+      "left": "Left field",
+      "center": "Center field",
+      "right": "Right field",
+      "runner1": "Runner on first",
+      "runner2": "Runner on second",
+      "runner3": "Runner on third",
+      "batter": "At bat",
+      "onDeck": "On deck"
+    }
   }
 }

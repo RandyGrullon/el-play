@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Share2, Star } from 'lucide-react';
 import type { GameState, TeamBase } from '../../types';
-import { finalLabel, inningName, isOnHold, isSuspended, stateName } from '../../lib/baseball';
+import { delayOf, finalLabel, inningName, isOnHold, isSuspended, stateName } from '../../lib/baseball';
+import { DelayPill } from '../game/Delay';
 import { formatCountdown, formatShortDate, formatTime } from '../../lib/format';
 import { teamDisplayName } from '../../lib/teams';
 import { usePreferences } from '../../store/preferences';
@@ -61,6 +62,8 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
     const now = useNow();
     const notPlayed = isOnHold(model, now);
     const showScores = model.state !== 'preview' && !notPlayed;
+    // Detenido (lluvia…) o con el inicio demorado: la pastilla de arriba pasa a azul y dice por qué
+    const delay = model.state !== 'final' && !notPlayed ? delayOf(model.detailedState) : null;
 
     let status: string;
     if (notPlayed) status = stateName(model.detailedState, i18n.language);
@@ -118,11 +121,15 @@ export const GameHero: React.FC<{ model: HeroModel; onShare?: () => void }> = ({
                     <Share2 className="h-5 w-5" />
                 </button>
             )}
-            <span className={`pill absolute left-1/2 top-[18px] -translate-x-1/2 whitespace-nowrap px-3.5 py-1.5 text-[13px] ${model.state === 'live' ? 'bg-live text-white' : 'bg-white/90 text-[#14151a]'}`}>
-                {model.state === 'live' && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />}
-                {status}
-                {model.state === 'preview' && startsIn > 0 && !notPlayed ? ` · ${formatCountdown(startsIn, i18n.language)}` : ''}
-            </span>
+            {delay ? (
+                <DelayPill delay={delay} solid className="absolute left-1/2 top-[18px] -translate-x-1/2 px-3.5 py-1.5 text-[13px]" />
+            ) : (
+                <span className={`pill absolute left-1/2 top-[18px] -translate-x-1/2 whitespace-nowrap px-3.5 py-1.5 text-[13px] ${model.state === 'live' ? 'bg-live text-white' : 'bg-white/90 text-[#14151a]'}`}>
+                    {model.state === 'live' && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />}
+                    {status}
+                    {model.state === 'preview' && startsIn > 0 && !notPlayed ? ` · ${formatCountdown(startsIn, i18n.language)}` : ''}
+                </span>
+            )}
             {model.state === 'live' && !notPlayed && model.inning?.n ? <InningBadge inning={model.inning} /> : null}
         </section>
     );

@@ -13,6 +13,7 @@ import { qualifies, usePlayers, type PlayerRow, type PlayersData } from '../lib/
 import { TEAM_SORTS, leagueRank, recordOf, useTeamStats, type TeamGroup, type TeamRow, type TeamSort } from '../lib/teamStats';
 import { nextGame, standingOf, summarize, teamResults, useTeamGames, versusAll, type Split, type TeamResult } from '../lib/team';
 import { pythagorean } from '../lib/advanced';
+import { delayOf } from '../lib/baseball';
 import { formatShortDate, formatTime, localeFor, seasonLabel } from '../lib/format';
 import { showToast } from '../lib/toast';
 import { useNow } from '../hooks/useNow';
@@ -26,6 +27,7 @@ import { Segmented } from '../components/ui/Segmented';
 import { ErrorState, OfflineState, Skeleton, waitingForNetwork } from '../components/ui/States';
 import { ActionDial } from '../components/ui/ActionDial';
 import { GameFeedCard } from '../components/feed/GameFeedCard';
+import { delayTitle } from '../components/game/Delay';
 import { TransactionsCard } from '../components/stats/Transactions';
 import { TeamCompareSheet } from '../components/compare/CompareSheet';
 
@@ -76,6 +78,8 @@ export const TeamPage: React.FC = () => {
     const fromGames = games.map((game) => (game.home.id === teamId ? game.home : game.away)).find(Boolean);
     const team = row ?? (standing ? { ...standing.row.team } : null) ?? fromGames ?? null;
     const upcoming = nextGame(games, now);
+    // Detenido (lluvia…) o con el inicio demorado: el título lo dice
+    const upcomingDelay = upcoming && upcoming.state !== 'final' ? delayOf(upcoming.detailedState) : null;
 
     if (!teamId) return null;
     if (!team) {
@@ -154,7 +158,7 @@ export const TeamPage: React.FC = () => {
             {upcoming && (
                 <section className="px-4" aria-labelledby="team-next">
                     <h2 id="team-next" className="eyebrow mb-2">
-                        {upcoming.state === 'live' ? t('team.playingNow') : t('team.nextGame')}
+                        {upcomingDelay ? delayTitle(t, upcomingDelay) : upcoming.state === 'live' ? t('team.playingNow') : t('team.nextGame')}
                     </h2>
                     <GameFeedCard game={upcoming} />
                 </section>
