@@ -12,7 +12,10 @@ export interface BreakdownItem {
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
 
-/** Cada cosa que hizo, cuántas veces y cuánto vale (con la tabla de puntos del día) */
+// La tabla de antes decía hitByPitch y strikeOut; las reglas v2, hbp y strikeout
+const ALIASES: Record<string, string> = { hbp: 'hitByPitch', strikeout: 'strikeOut' };
+
+/** Cada cosa que hizo, cuántas veces y cuánto vale (con la tabla de puntos del día); las llaves son las de las reglas v2 */
 export const pointsBreakdown = (player: FantasyPlayer, scoring: { batter: Record<string, number>; pitcher: Record<string, number> }): BreakdownItem[] => {
     const line = player.line as Record<string, number | string> | null;
     if (!line || !player.played) return [];
@@ -21,7 +24,7 @@ export const pointsBreakdown = (player: FantasyPlayer, scoring: { batter: Record
         player.role === 'P'
             ? [
                   ['out', n('outs')],
-                  ['strikeOut', n('k')],
+                  ['strikeout', n('k')],
                   ['win', n('w')],
                   ['save', n('sv')],
                   ['earnedRun', n('er')],
@@ -36,12 +39,13 @@ export const pointsBreakdown = (player: FantasyPlayer, scoring: { batter: Record
                   ['run', n('r')],
                   ['rbi', n('rbi')],
                   ['walk', n('bb')],
-                  ['hitByPitch', n('hbp')],
+                  ['hbp', n('hbp')],
                   ['stolenBase', n('sb')],
-                  ['strikeOut', n('k')]
+                  ['strikeout', n('k')]
               ];
     const table = player.role === 'P' ? scoring.pitcher : scoring.batter;
-    return counts.filter(([key, count]) => count > 0 && typeof table[key] === 'number').map(([key, count]) => ({ key, count, each: table[key], total: round1(count * table[key]) }));
+    const each = (key: string) => (typeof table[key] === 'number' ? table[key] : table[ALIASES[key]]);
+    return counts.filter(([key, count]) => count > 0 && typeof each(key) === 'number').map(([key, count]) => ({ key, count, each: each(key), total: round1(count * each(key)) }));
 };
 
 // ---------------------------------------------------------------- logros

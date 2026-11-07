@@ -2,7 +2,7 @@
 // sugerido antes de los juegos (con las proyecciones) y el ideal del día (con los puntos de verdad), como el «optimal
 // lineup» de los fantasy. Búsqueda con poda (ramificación y acotamiento) que ya cuenta al capitán ×1,5: exacta para
 // los tamaños de LIDOM.
-import { RULES, isLocked, perTeamLimit, type FantasyDay, type FantasyPlayer } from './fantasy';
+import { isLocked, isPostponed, rulesOf, type FantasyDay, type FantasyPlayer } from './fantasy';
 
 export interface BestLineup {
     lineup: number[];
@@ -27,8 +27,6 @@ interface Options {
 const value = (player: FantasyPlayer, metric: Options['metric']) => (metric === 'proj' ? player.proj ?? 0 : player.points);
 const priceOf = (player: FantasyPlayer) => (Number.isFinite(player.price) ? player.price! : 0);
 const round1 = (n: number) => Math.round(n * 10) / 10;
-// Lo que suma el capitán además de sus puntos (la mitad otra vez)
-const BONUS = RULES.captain - 1;
 
 const NODE_LIMIT = 400000;
 
@@ -58,15 +56,20 @@ export const bestLineup = (day: FantasyDay, options: Options): BestLineup | null
     const { metric, ignoreLocks = false, now = Date.now() } = options;
     const byId = new Map(day.players.map((player) => [player.id, player]));
     const kept = (options.keep ?? []).map((id) => byId.get(id)).filter((player): player is FantasyPlayer => !!player);
-    const budget = day.credits ? day.credits.budget : Infinity;
-    const perTeam = perTeamLimit(day);
+    const rules = rulesOf(day);
+    const budget = rules.budget ?? Infinity;
+    const perTeam = rules.perTeam;
+    // Lo que suma el capitán además de sus puntos (la mitad otra vez)
+    const BONUS = rules.captain - 1;
     const keptIds = new Set(kept.map((player) => player.id));
-    const needB = RULES.batters - kept.filter((player) => player.role === 'B').length;
-    const needP = RULES.pitchers - kept.filter((player) => player.role === 'P').length;
+    const needB = rules.batters - kept.filter((player) => player.role === 'B').length;
+    const needP = rules.pitchers - kept.filter((player) => player.role === 'P').length;
     if (needB < 0 || needP < 0) return null;
     const fixed = options.captain !== undefined && options.captain !== null && keptIds.has(options.captain) ? byId.get(options.captain)! : null;
 
-    const usable = (player: FantasyPlayer) => !keptIds.has(player.id) && (ignoreLocks || !isLocked(day, player, now)) && (metric === 'points' ? player.played : true) && value(player, metric) > 0;
+    // Un pospuesto no suma: nunca entra en el sugerido ni en el ideal
+    const usable = (player: FantasyPlayer) =>
+        !keptIds.has(player.id) && !isPostponed(day, player) && (ignoreLocks || !isLocked(day, player, now)) && (metric === 'points' ? player.played : true) && value(player, metric) > 0;
     const sorted = (role: 'B' | 'P', depth: number) =>
         frontier(
             day.players.filter((player) => player.role === role && usable(player)),
@@ -74,8 +77,8 @@ export const bestLineup = (day: FantasyDay, options: Options): BestLineup | null
             metric
         ).sort((a, b) => value(b, metric) - value(a, metric) || priceOf(a) - priceOf(b));
     // En el equipo caben a lo sumo min(máximo por equipo, cupos del rol) de un mismo equipo y rol
-    const batters = sorted('B', Math.min(perTeam, RULES.batters));
-    const pitchers = sorted('P', Math.min(perTeam, RULES.pitchers));
+    const batters = sorted('B', Math.min(perTeam, rules.batters));
+    const pitchers = sorted('P', Math.min(perTeam, rules.pitchers));
 
     const keptCost = kept.reduce((sum, player) => sum + priceOf(player), 0);
     const keptValue = kept.reduce((sum, player) => sum + value(player, metric), 0);
@@ -171,15 +174,17 @@ export const bestLineup = (day: FantasyDay, options: Options): BestLineup | null
     };
 };
 
-/** Proyección de un equipo (capitán ×1,5) */
-export const projectedPoints = (day: FantasyDay, lineup: number[], captain: number | null) =>
-    round1(
+/** Proyección de un equipo (capitán ×1,5); un pospuesto no suma */
+export const projectedPoints = (day: FantasyDay, lineup: number[], captain: number | null) => {
+    const times = rulesOf(day).captain;
+    return round1(
         lineup.reduce((sum, id) => {
             const player = day.players.find((p) => p.id === id);
-            if (!player) return sum;
-            return sum + (player.proj ?? 0) * (captain === id ? RULES.captain : 1);
+            if (!player || isPostponed(day, player)) return sum;
+            return sum + (player.proj ?? 0) * (captain === id ? times : 1);
         }, 0)
     );
+};
 
 /** Puntos por crédito (el «valor» de los fantasy): cuánto se espera por cada crédito que cuesta */
 export const valueOf = (player: Pick<FantasyPlayer, 'proj' | 'price'>) => (player.proj !== undefined && player.price ? Math.round((player.proj / player.price) * 100) / 100 : null);

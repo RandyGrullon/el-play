@@ -1,11 +1,11 @@
-// Una liga privada del Fantasy: su código para invitar, el campeón de la semana, la racha más larga, compartir el
-// resumen del día y salir de la liga.
+// Una liga privada del Fantasy: su código para invitar, el campeón de la semana, la racha actual más larga, compartir
+// el resumen del día y salir de la liga.
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, Flame, LogOut, Share2, Trophy } from 'lucide-react';
 import type { LeagueId } from '../../types';
 import { leaveLeague, type PrivateLeague } from '../../lib/account';
-import { useSeasonRanking } from '../../lib/fans';
+import { useSeasonRanking, withRanks } from '../../lib/fans';
 import { showToast } from '../../lib/toast';
 import { fanLabel } from './FanProfile';
 
@@ -16,7 +16,7 @@ export const LeagueSummary: React.FC<{
     fantasyLeague: LeagueId;
     dayName: string;
     ownId: string;
-    /** La tabla del día dentro de la liga (ya ordenada) */
+    /** La tabla del día dentro de la liga (ya ordenada; los empates comparten el puesto) */
     day: { userId: string; name: string | null; points: number }[];
     onLeft: () => void;
 }> = ({ league, fantasyLeague, dayName, ownId, day, onLeft }) => {
@@ -38,7 +38,9 @@ export const LeagueSummary: React.FC<{
     };
 
     const share = async () => {
-        const lines = day.slice(0, 10).map((row, index) => `${index + 1}. ${label(row.userId, row.name)} · ${round(row.points)}`);
+        const lines = withRanks(day)
+            .slice(0, 10)
+            .map((row) => `${row.rank}. ${label(row.userId, row.name)} · ${round(row.points)}`);
         const text = [
             t('leagueSummary.shareTitle', { league: league.name, day: dayName }),
             ...lines,

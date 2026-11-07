@@ -1714,7 +1714,7 @@
     "codeCopied": "Código copiado: pásaselo a tus panas",
     "copied": "Resumen copiado",
     "week": "Campeón de la semana",
-    "streak": "Racha más larga",
+    "streak": "Racha actual",
     "pts": "{{pts}} pts en 7 días",
     "days_one": "{{count}} día seguido",
     "days_other": "{{count}} días seguidos",
@@ -1730,6 +1730,220 @@
     "title": "Tu equipo del Fantasy",
     "gain": "{{name}} +{{pts}}",
     "total": "tu equipo va con {{pts}}"
+  },
+  "fantasyHelp": {
+    "open": "¿Cómo se juega?",
+    "title": "Cómo se juega",
+    "lead": "Todo lo que necesitas para armar tu equipo y sumar.",
+    "jump": "Secciones de la ayuda",
+    "about": "Ayuda sobre {{topic}}",
+    "topic": {
+      "credits": "los créditos",
+      "captain": "el capitán",
+      "picks": "los pronósticos",
+      "table": "la tabla"
+    },
+    "steps": {
+      "title": "Pasos",
+      "s1_one": "Escoge {{batters}} bateadores y {{count}} lanzador de los juegos del día.",
+      "s1_other": "Escoge {{batters}} bateadores y {{count}} lanzadores de los juegos del día.",
+      "s2": "Tienes {{budget}} créditos y cada pelotero tiene su precio.",
+      "s2NoCap": "Hoy no hay tope de créditos: escoge a quien quieras.",
+      "s3": "Nombra un capitán: sus puntos valen ×{{captain}}.",
+      "s4": "En Pronósticos, escoge quién gana cada juego: +{{picks}} por cada acierto.",
+      "s5": "Sumas con lo que hagan de verdad en el terreno. Los puntos se actualizan en vivo."
+    },
+    "points": {
+      "title": "Puntos",
+      "batters": "Bateadores",
+      "pitchers": "Lanzadores",
+      "batter": {
+        "single": "Sencillo",
+        "double": "Doble",
+        "triple": "Triple",
+        "homeRun": "Jonrón",
+        "run": "Carrera anotada",
+        "rbi": "Carrera impulsada",
+        "walk": "Base por bolas",
+        "hbp": "Golpeado",
+        "stolenBase": "Base robada",
+        "strikeout": "Ponche"
+      },
+      "pitcher": {
+        "out": "Cada out",
+        "strikeout": "Ponche",
+        "win": "Victoria",
+        "save": "Salvado",
+        "earnedRun": "Carrera limpia",
+        "hit": "Hit permitido",
+        "walk": "Base por bolas"
+      }
+    },
+    "examples": {
+      "title": "Ejemplos",
+      "soloHr": "Jonrón solitario: {{hr}} + {{run}} (carrera) + {{rbi}} (impulsada) = {{total}}. De capitán: {{captain}}.",
+      "double": "Doble que impulsa a dos: {{double}} + {{rbi}} + {{rbi}} = {{total}}.",
+      "pitcher": "Lanzador: {{ip}} entradas ({{outs}} outs = {{outsPts}}), {{k}} ponches ({{kPts}}), {{er}} carreras limpias ({{erPts}}), {{h}} hits ({{hPts}}), {{bb}} base por bolas ({{bbPts}}) y gana ({{winPts}}) = {{total}}."
+    },
+    "faq": {
+      "title": "Preguntas",
+      "lock": {
+        "q": "¿Cuándo se cierra mi equipo?",
+        "a": "Cada pelotero se cierra cuando empieza SU juego (al primer lanzamiento o a la hora programada, lo que pase primero). A los demás los puedes cambiar hasta que empiece el suyo. En cada tarjeta ves a qué hora se cierra."
+      },
+      "postponed": {
+        "q": "¿Qué pasa si posponen o suspenden el juego?",
+        "a": "Si lo posponen, ese pelotero no suma: cámbialo por otro de un juego que no haya empezado. Si lo suspenden, cuenta lo que se jugó y el resto cuando se reanude y termine."
+      },
+      "noPlay": {
+        "q": "¿Y si mi pelotero no juega?",
+        "a": "Suma 0 y no hay cambio automático. Antes de su juego verás «Confirmado» cuando salga en la alineación, «Esperado» si fue titular en el juego anterior y «Banca» si no; en lanzadores, «Abridor probable», «Descansando» o «Bullpen»."
+      },
+      "prices": {
+        "q": "¿Cómo se ponen los precios?",
+        "a": "Por los puntos por juego de esta temporada y las {{past}} anteriores (la actual pesa más), comparado con los demás de su mismo rol. Van de {{min}} a {{max}} créditos, se fijan al empezar el día y no cambian hasta el día siguiente. La flecha ↑↓ dice cuánto subió o bajó.",
+        "aProvisional": "Por los puntos por juego de esta temporada y las {{past}} anteriores (la actual pesa más), comparado con los demás de su mismo rol. Van de {{min}} a {{max}} créditos. Los de este día todavía pueden ajustarse una vez antes de que empiece; después quedan fijos hasta el día siguiente. La flecha ↑↓ dice cuánto subió o bajó."
+      },
+      "cantPick": {
+        "q": "¿Por qué no puedo escoger a un pelotero?",
+        "a": "Porque su juego ya empezó, porque ya tienes {{perTeam}} de su equipo, porque no te alcanzan los créditos, porque ya completaste bateadores o lanzador, o porque su juego fue pospuesto. En la lista lo dice al lado de cada uno."
+      },
+      "perTeam": {
+        "q": "¿Cuántos puedo tener del mismo equipo?",
+        "a": "Hasta {{perTeam}}. Los días con pocos juegos el tope sube."
+      },
+      "doubleheader": {
+        "q": "¿Y la doble cartelera?",
+        "a": "Suman los dos juegos y se cierra al empezar el primero."
+      },
+      "captain": {
+        "q": "¿Cómo funciona el capitán?",
+        "a": "Sus puntos valen ×{{captain}}, también los negativos. Lo puedes cambiar mientras no hayan empezado ni el juego del capitán actual ni el del nuevo."
+      },
+      "picks": {
+        "q": "¿Qué son los pronósticos?",
+        "a": "Escoges quién gana cada juego: +{{picks}} si aciertas, 0 si no. Se cierran al empezar cada juego."
+      },
+      "win": {
+        "q": "¿Cómo se gana?",
+        "a": "Día: tu equipo más tus pronósticos. Temporada: la suma de todos tus días. Si hay empate, comparten el puesto."
+      },
+      "changeAfter": {
+        "q": "¿Puedo cambiar el equipo después de que empiece un juego para ganar?",
+        "a": "No. Cada juego se cuenta con el equipo que tenías cuando empezó, y si un cambio te pasa del tope, no cuentan los últimos que agregaste."
+      },
+      "visibility": {
+        "q": "¿Los demás ven mi equipo?",
+        "a": "Solo ven a tus peloteros cuando su juego ya empezó."
+      },
+      "leagues": {
+        "q": "¿Qué son las ligas privadas?",
+        "a": "Creas una liga, compartes su código de {{code}} letras y compites solo con tus amigos. También estás siempre en la tabla general."
+      },
+      "projection": {
+        "q": "¿Qué son Proyección y Valor?",
+        "a": "Proyección: los puntos que esperamos de él hoy, según su promedio y si va a jugar. Valor: proyección por cada crédito. «Completar» y «Equipo sugerido» usan la proyección."
+      },
+      "account": {
+        "q": "¿Necesito cuenta?",
+        "a": "Sí, para guardar tu equipo y salir en la tabla. Es gratis."
+      }
+    },
+    "rules": {
+      "roster_one": "{{batters}} bateadores + {{count}} lanzador",
+      "roster_other": "{{batters}} bateadores + {{count}} lanzadores",
+      "perTeam": "Máx. {{n}} por equipo",
+      "captain": "Capitán ×{{x}}",
+      "budget": "{{budget}} créditos",
+      "noCap": "Sin tope de créditos",
+      "lock": "Cada pelotero se cierra cuando empieza su juego."
+    },
+    "picker": {
+      "need_one": "Te falta {{what}}",
+      "need_other": "Te faltan {{what}}",
+      "needB_one": "{{count}} bateador",
+      "needB_other": "{{count}} bateadores",
+      "needP_one": "{{count}} lanzador",
+      "needP_other": "{{count}} lanzadores",
+      "needBoth": "{{b}} y {{p}}",
+      "full": "Tu equipo está completo",
+      "credits": "{{left}} créditos",
+      "over": "te pasaste por {{over}} créditos",
+      "noCap": "sin tope de créditos",
+      "filters": "Filtros",
+      "available": "Disponibles",
+      "affordable": "Me alcanza",
+      "starters": "Titulares",
+      "byGame": "Filtrar por juego",
+      "allGames": "Todos los juegos",
+      "byTeam": "Filtrar por equipo",
+      "allTeams": "Todos los equipos",
+      "sort": "Ordenar por",
+      "sortProj": "Proyección",
+      "sortValue": "Valor",
+      "sortPrice": "Precio",
+      "sortPpg": "Pts/J",
+      "sortLast5": "Últimos 5",
+      "sortOwned": "% elegido",
+      "vs": "{{team}} vs {{opp}}",
+      "at": "{{team}} @ {{opp}}",
+      "proj": "Proy. {{pts}}",
+      "value": "Valor {{v}}",
+      "owned": "{{pct}} % elegido",
+      "ppg": "{{ppg}} pts/J",
+      "last5": "Últimos 5: {{list}}",
+      "last5None": "Sin juegos recientes",
+      "priceUp": "Subió {{delta}} desde el último día de juego",
+      "priceDown": "Bajó {{delta}} desde el último día de juego",
+      "seasonBatter": "{{avg}} · {{ops}} OPS · {{hr}} HR",
+      "seasonPitcher": "{{era}} EFE · {{whip}} WHIP · {{k}} K",
+      "count_one": "{{count}} pelotero",
+      "count_other": "{{count}} peloteros",
+      "empty": "No hay peloteros con esos filtros.",
+      "emptyAvailable": "Nadie disponible con esos filtros. Apaga «Disponibles» para ver a todos.",
+      "fullHint": "Para cambiar a uno, quítalo de tu equipo y escoge otro.",
+      "clearFilters": "Quitar filtros"
+    },
+    "reason": {
+      "locked": "Su juego ya empezó",
+      "postponed": "Juego pospuesto",
+      "team": "Ya tienes {{n}} de {{team}}",
+      "budget": "Te faltan {{short}} créditos",
+      "fullB": "Ya tienes tus {{n}} bateadores",
+      "fullP_one": "Ya tienes tu lanzador",
+      "fullP_other": "Ya tienes tus {{count}} lanzadores",
+      "already": "Ya está en tu equipo"
+    },
+    "status": {
+      "confirmed": "Confirmado",
+      "expected": "Esperado",
+      "bench": "Banca",
+      "probable": "Abridor probable",
+      "bullpen": "Bullpen",
+      "resting": "Descansando",
+      "postponed": "Pospuesto",
+      "dnp": "No jugó",
+      "started": "Ya empezó"
+    },
+    "card": {
+      "locksAt": "Cierra {{time}}",
+      "locksTbd": "Cierra al empezar su juego",
+      "postponed": "Pospuesto: cámbialo",
+      "dnp": "No jugó",
+      "notCountingOver": "No cuenta: te pasaste del tope",
+      "notCountingLate": "No cuenta: lo agregaste después de que empezó su juego",
+      "missing": "Ya no sale en los juegos de hoy: cámbialo",
+      "missingName": "Pelotero que ya no juega hoy"
+    },
+    "save": {
+      "saving": "Guardando…",
+      "saved": "Guardado",
+      "offline": "Sin conexión: se guarda al volver",
+      "error": "No se pudo guardar",
+      "retry": "Reintentar",
+      "local": "Guardado en este navegador"
+    },
+    "demo": "Modo de prueba (solo en desarrollo): tu equipo se guarda en este navegador y no sale en la tabla."
   },
   "alertsMore": {
     "title": "Avisos",
