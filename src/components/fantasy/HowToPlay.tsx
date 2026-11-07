@@ -4,8 +4,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { BottomSheet } from '../ui/BottomSheet';
-import { rulesOf, type FantasyDay } from '../../lib/fantasy';
-import { HELP_FAQ, HELP_SECTIONS, helpAnswerValues, helpExamples, helpSteps, scoringRows, type HelpQuestion, type HelpTopic } from '../../lib/fantasyHelp';
+import type { FantasyDay } from '../../lib/fantasy';
+import { HELP_FAQ, HELP_SECTIONS, helpAnswerValues, helpExamples, helpRules, helpSteps, scoringRows, type HelpQuestion, type HelpTopic } from '../../lib/fantasyHelp';
 import { credits, signed } from './fantasyUi';
 
 const anchor = (topic: HelpTopic) => `fantasy-help-${topic}`;
@@ -14,7 +14,7 @@ const isQuestion = (topic: HelpTopic | null | undefined): topic is HelpQuestion 
 export const HowToPlay: React.FC<{ day?: FantasyDay; topic?: HelpTopic | null; onClose: () => void }> = ({ day, topic, onClose }) => {
     const { t, i18n } = useTranslation();
     const lang = i18n.language;
-    const rules = useMemo(() => rulesOf(day), [day]);
+    const rules = useMemo(() => helpRules(day), [day]);
     const [open, setOpen] = useState<Set<HelpQuestion>>(() => new Set(isQuestion(topic) ? [topic] : []));
     const n = (value: number) => credits(value, lang);
 

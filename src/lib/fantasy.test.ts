@@ -33,7 +33,7 @@ import {
     type FantasyPlayer
 } from './fantasy';
 import { bestLineup } from './fantasyBest';
-import { HELP_FAQ, helpAnswerValues, helpExamples, helpSteps, scoringRows } from './fantasyHelp';
+import { HELP_FAQ, helpAnswerValues, helpExamples, helpRules, helpSteps, scoringRows } from './fantasyHelp';
 import { defaultFilters, last5Average, opponentOf, pickerGames, pickerRows, reasonDetail, seasonLineOf, sortValue, statusOf } from './fantasyPicker';
 import { getSaveStatus, resetSaveStatus, retrySave, saveEntry } from './fantasySave';
 import { withRanks } from './fans';
@@ -377,6 +377,9 @@ describe('«Cómo se juega» con las reglas del día', () => {
         expect(helpSteps(v2)[1]).toEqual({ key: 's2NoCap', values: {} });
         expect(helpAnswerValues(v2)).toMatchObject({ prices: { past: 2, min: 3, max: 15 }, cantPick: { perTeam: 3 }, perTeam: { perTeam: 3 }, leagues: { code: 6 } });
         expect(helpAnswerValues(rulesOf(day)).prices).toEqual({ past: 3, min: 4, max: 12 });
+        // Sin día (cargando o sin red) no se dice «hoy no hay tope»: se usan las de siempre
+        expect(helpSteps(helpRules(undefined))[1]).toEqual({ key: 's2', values: { budget: 50 } });
+        expect(helpRules(makeDay([], GAMES(), { credits: undefined })).budget).toBeNull();
     });
 
     it('los ejemplos salen de la tabla de puntos: 14 (21 de capitán), 9 y 30', () => {

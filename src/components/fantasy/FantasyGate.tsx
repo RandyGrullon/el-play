@@ -11,8 +11,8 @@ import { Skeleton } from '../ui/States';
 import { formatTime } from '../../lib/format';
 import { playerPath } from '../../lib/links';
 import { withRanks } from '../../lib/fans';
-import { helpSteps } from '../../lib/fantasyHelp';
-import { lineText, rulesOf, type FantasyDay } from '../../lib/fantasy';
+import { helpRules, helpSteps } from '../../lib/fantasyHelp';
+import { lineText, type FantasyDay } from '../../lib/fantasy';
 import { credits, useOpenHelp } from './fantasyUi';
 
 const STEP_ICONS = { s1: Users, s2: Coins, s2NoCap: Coins, s3: Crown, s4: Trophy, s5: Radio };
@@ -20,7 +20,7 @@ const STEP_ICONS = { s1: Users, s2: Coins, s2NoCap: Coins, s3: Crown, s4: Trophy
 export const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ day, loading }) => {
     const { t, i18n } = useTranslation();
     const openHelp = useOpenHelp();
-    const rules = rulesOf(day);
+    const rules = helpRules(day);
     const started = !!day?.games.some((game) => game.state !== 'preview');
     const top = withRanks(day && started ? day.players.filter((p) => p.played).sort((a, b) => b.points - a.points).slice(0, 5) : []);
     // Los mismos pasos de «Cómo se juega», con los números del día

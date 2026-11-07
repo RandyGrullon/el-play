@@ -349,8 +349,11 @@ export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role
 
     return (
         <section className="space-y-3" aria-label={t('fantasy.myTeam')}>
-            <div className="flex items-start justify-between gap-3">
-                <RulesStrip day={day} />
+            {/* Si el estado del guardado no cabe al lado de las reglas, baja a la línea siguiente */}
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+                <div className="min-w-0 flex-1 basis-[220px]">
+                    <RulesStrip day={day} />
+                </div>
                 <SaveStatus day={day} />
             </div>
             <LockNotice day={day} entry={entry} now={now} />
@@ -434,15 +437,18 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; counted: DayEntry
                         <p className="flex items-center gap-1.5 font-extrabold">
                             {captain && <Crown className="h-4 w-4 shrink-0 text-gold" aria-label={t('fantasy.captain')} />}
                             <span className="truncate">{player.name}</span>
-                            {!locked && status && status !== 'postponed' && <StatusBadge status={status} />}
                         </p>
-                        <p className="truncate text-xs font-semibold text-muted">
-                            <TeamLink id={team?.id} className={OVER_CARD}>
-                                {team?.abbrev}
-                            </TeamLink>
-                            {opp ? ` ${opp.home ? 'vs' : '@'} ${opp.abbrev}` : ''} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')}
-                            {locked ? ` · ${gameStatus(day, player.gamePk, lang, t)}` : ''}
-                            {rules.budget !== null && player.price !== undefined ? ` · ${t('fantasy.credits.price', { price: credits(player.price, lang) })}` : ''}
+                        <p className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-muted">
+                            {/* Antes de su juego: Confirmado / Esperado / Banca / Abridor probable / Bullpen / Descansando */}
+                            {!locked && status && status !== 'postponed' && status !== 'dnp' && <StatusBadge status={status} />}
+                            <span className="truncate">
+                                <TeamLink id={team?.id} className={OVER_CARD}>
+                                    {team?.abbrev}
+                                </TeamLink>
+                                {opp ? ` ${opp.home ? 'vs' : '@'} ${opp.abbrev}` : ''} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')}
+                                {locked ? ` · ${gameStatus(day, player.gamePk, lang, t)}` : ''}
+                                {rules.budget !== null && player.price !== undefined ? ` · ${t('fantasy.credits.price', { price: credits(player.price, lang) })}` : ''}
+                            </span>
                         </p>
                         {warning ? (
                             <p className={warningClass}>

@@ -1,6 +1,6 @@
 // «Cómo se juega»: el contenido de la ayuda armado con las reglas del día (rules). Ningún número está escrito a mano:
 // los pasos, la tabla de puntos, los ejemplos y las respuestas salen de rulesOf(day). Mismo orden en la web y en la app.
-import type { DayRules, FantasyScoring } from './fantasy';
+import { RULES, rulesOf, type DayRules, type FantasyDay, type FantasyScoring } from './fantasy';
 
 /** Las preguntas, en el orden en que salen */
 export const HELP_FAQ = ['lock', 'postponed', 'noPlay', 'prices', 'cantPick', 'perTeam', 'doubleheader', 'captain', 'picks', 'win', 'changeAfter', 'visibility', 'leagues', 'projection', 'account'] as const;
@@ -17,6 +17,12 @@ export const isHelpTopic = (value: unknown): value is HelpTopic => (HELP_FAQ as 
 export const LEAGUE_CODE_LENGTH = 6;
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
+
+/**
+ * Las reglas para la ayuda: las del día y, sin día (cargando o sin red), las de siempre con su presupuesto (un día sin
+ * datos no es un día sin tope de créditos).
+ */
+export const helpRules = (day: FantasyDay | null | undefined): DayRules => (day ? rulesOf(day) : { ...rulesOf(null), budget: RULES.budget });
 
 export interface HelpStep {
     key: 's1' | 's2' | 's2NoCap' | 's3' | 's4' | 's5';
