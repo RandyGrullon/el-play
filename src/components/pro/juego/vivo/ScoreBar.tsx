@@ -12,10 +12,12 @@ import { Bases } from '../../../game/Bases';
 import { MOTION_EASE, MOTION_MS, Odometer, PlusOne, UpdatedAgo, teamInk, useChanged, useMotion } from '../../kit';
 import { CountDots, isBetween } from './parts';
 import { useProScroll } from './scroll';
+import { BasesButton, useOpenField } from '../../../game/field/launcher';
 
 // Barra de mando del juego en vivo PRO: al bajar, la cabecera se va y esto queda fijo arriba (las dos franjas de
 // color con el marcador tipo odómetro y el «+1» al anotar, el mini diamante, la entrada, el conteo y los puntos de
-// bolas, strikes y outs, y «hace 3 s»). Repite lo que dice la cabecera: es solo visual (oculta para el lector).
+// bolas, strikes y outs, y «hace 3 s»). Repite lo que dice la cabecera: es solo visual (oculta para el lector); solo
+// el mini diamante se toca (abre el terreno), lo demás deja pasar los toques al scroll de abajo.
 // También el destello de la mitad de la cabecera que anota (HeroPulse).
 
 const BAR_H = 56;
@@ -65,19 +67,26 @@ export const ProScoreBar: React.FC<{ game: GameDetail; fetchedAt?: number }> = (
 
     const batting = game.inning?.isTop ? game.away : game.home;
     const between = isBetween(game);
+    const openField = useOpenField();
     return (
         <Animated.View
-            pointerEvents="none"
+            pointerEvents="box-none"
             importantForAccessibility="no-hide-descendants"
             accessibilityElementsHidden
             style={[{ position: 'absolute', left: 0, right: 0, top: 0, zIndex: 30, paddingTop: insets.top + 8, paddingHorizontal: 12 }, style]}
         >
-            <View style={[{ height: BAR_H, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', borderRadius: radius.tile, backgroundColor: colors.surface, borderWidth: 1, borderColor: alpha(colors.line, 0.1) }, shadow('float')]}>
-                <ScoreSide team={game.away} align="start" />
-                <ScoreSide team={game.home} align="end" />
-                <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 6 }}>
-                    <Bases runners={between ? { first: false, second: false, third: false } : { first: !!game.runners.first, second: !!game.runners.second, third: !!game.runners.third }} size={28} color={batting.color} />
-                    <View style={{ alignItems: 'center' }}>
+            <View pointerEvents="box-none" style={[{ height: BAR_H, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', borderRadius: radius.tile, backgroundColor: colors.surface, borderWidth: 1, borderColor: alpha(colors.line, 0.1) }, shadow('float')]}>
+                <View pointerEvents="none" style={{ height: '100%' }}>
+                    <ScoreSide team={game.away} align="start" />
+                </View>
+                <View pointerEvents="none" style={{ height: '100%' }}>
+                    <ScoreSide team={game.home} align="end" />
+                </View>
+                <View pointerEvents="box-none" style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 6 }}>
+                    <BasesButton onOpen={openField} hitSlop={6}>
+                        <Bases runners={between ? { first: false, second: false, third: false } : { first: !!game.runners.first, second: !!game.runners.second, third: !!game.runners.third }} size={28} color={batting.color} />
+                    </BasesButton>
+                    <View pointerEvents="none" style={{ alignItems: 'center' }}>
                         <Txt size={12} weight="extrabold" numberOfLines={1}>
                             {game.inning ? inningName(game.inning, i18n.language, true) : ''}
                         </Txt>
@@ -85,10 +94,14 @@ export const ProScoreBar: React.FC<{ game: GameDetail; fetchedAt?: number }> = (
                             {between ? '—' : `${game.count.balls}-${game.count.strikes}`}
                         </Txt>
                     </View>
-                    {!between && width >= 350 && <CountDots balls={game.count.balls} strikes={game.count.strikes} outs={game.count.outs} size={7} style={{ gap: 2 }} />}
+                    {!between && width >= 350 && (
+                        <View pointerEvents="none">
+                            <CountDots balls={game.count.balls} strikes={game.count.strikes} outs={game.count.outs} size={7} style={{ gap: 2 }} />
+                        </View>
+                    )}
                 </View>
                 {width >= 380 && (
-                    <View style={{ paddingRight: 10 }}>
+                    <View pointerEvents="none" style={{ paddingRight: 10 }}>
                         <UpdatedAgo at={fetchedAt || game.updatedAt} variant="short" />
                     </View>
                 )}

@@ -29,6 +29,7 @@ import { PlayAnimation } from '../../components/gamecast/PlayAnimation';
 import { Bases, OutsDots } from '../../components/game/Bases';
 import { DelayBanner } from '../../components/game/Delay';
 import { RainOverlay, useRainToggle } from '../../components/game/RainOverlay';
+import { BasesButton, FieldLauncherProvider, useFieldLauncher, useOpenField } from '../../components/game/field/launcher';
 import { StrikeZone } from '../../components/game/StrikeZone';
 import { StrikeZonePanel } from '../../components/game/StrikeZonePanel';
 import { uniformColors } from '../../components/game/BatterFigure';
@@ -156,6 +157,8 @@ const FollowButton: React.FC<{ game: GameDetail }> = ({ game }) => {
 const LiveView: React.FC<{ game: GameDetail; open: (sheet: SheetName) => void; onShare: () => void; banner?: React.ReactNode }> = ({ game, open, onShare, banner }) => {
     const { t } = useTranslation();
     const colors = useColors();
+    // Tocar las bases abre el terreno con los que están en juego
+    const openField = useOpenField();
     const { atBat } = atBatForZone(game);
     const batting = game.inning?.isTop ? game.away : game.home;
     const between = game.inning?.state === 'Middle' || game.inning?.state === 'End';
@@ -172,7 +175,9 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: SheetName) => void; o
                     style={[{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', gap: narrow ? 6 : 8, borderRadius: 24, backgroundColor: colors.surface, paddingHorizontal: narrow ? 8 : 12, paddingVertical: 14 }, shadow('float')]}
                     accessibilityLabel={t('game.countAria', { balls: game.count.balls, strikes: game.count.strikes, outs: game.count.outs })}
                 >
-                    <Bases runners={game.runners} size={narrow ? 38 : 48} color={batting.color} />
+                    <BasesButton onOpen={openField}>
+                        <Bases runners={game.runners} size={narrow ? 38 : 48} color={batting.color} />
+                    </BasesButton>
                     <View style={{ alignItems: 'center' }}>
                         <Txt size={narrow ? 24 : 28} weight="extrabold" tabular style={{ lineHeight: 30 }}>
                             {between ? '—' : `${game.count.balls}-${game.count.strikes}`}
@@ -405,6 +410,8 @@ export default function GameScreen() {
     const [rainHidden, toggleRain] = useRainToggle(Number(gamePk) || null);
     const rainy = isRainDelay(delay) && motion.animate;
     const rainOn = rainy && !rainHidden;
+    // Tocar las bases (en vivo) abre el terreno
+    const field = useFieldLauncher(game?.gamePk);
     // Modo PRO (cuenta abierta + PRO en «Más»): debajo de la misma cabecera va el juego PRO; el Lite queda igual
     const pro = useIsPro();
     // PRO: el scroll va en un shared value para la barra de mando y las pestañas pegadas (el Lite usa Screen igual que antes)
@@ -529,53 +536,56 @@ export default function GameScreen() {
 
     return (
         <ProScrollProvider value={scrollState}>
-            <View style={{ flex: 1, backgroundColor: colors.bg }}>
-                <Stack.Screen options={{ title }} />
-                {pro ? (
-                    <ProGameScroll state={scrollState} onRefresh={() => query.refetch()} contentStyle={contentStyle}>
-                        {/* En vivo, la mitad del equipo que anota destella sobre la cabecera de siempre */}
-                        {liveGame && hero ? (
-                            <View>
-                                {hero}
-                                <HeroPulse game={liveGame} />
-                            </View>
-                        ) : (
-                            hero
-                        )}
-                        {bannerUnderHero}
-                        {body}
-                    </ProGameScroll>
-                ) : (
-                    <Screen padded={false} onRefresh={() => query.refetch()} contentStyle={contentStyle}>
-                        {hero}
-                        {bannerUnderHero}
-                        {body}
-                    </Screen>
-                )}
-                {pro && liveGame && <ProScoreBar game={liveGame} fetchedAt={readAt} />}
+            <FieldLauncherProvider open={liveGame ? field.open : null}>
+                <View style={{ flex: 1, backgroundColor: colors.bg }}>
+                    <Stack.Screen options={{ title }} />
+                    {pro ? (
+                        <ProGameScroll state={scrollState} onRefresh={() => query.refetch()} contentStyle={contentStyle}>
+                            {/* En vivo, la mitad del equipo que anota destella sobre la cabecera de siempre */}
+                            {liveGame && hero ? (
+                                <View>
+                                    {hero}
+                                    <HeroPulse game={liveGame} />
+                                </View>
+                            ) : (
+                                hero
+                            )}
+                            {bannerUnderHero}
+                            {body}
+                        </ProGameScroll>
+                    ) : (
+                        <Screen padded={false} onRefresh={() => query.refetch()} contentStyle={contentStyle}>
+                            {hero}
+                            {bannerUnderHero}
+                            {body}
+                        </Screen>
+                    )}
+                    {pro && liveGame && <ProScoreBar game={liveGame} fetchedAt={readAt} />}
 
-                {plays[0] && <PlayAnimation key={plays[0].key} event={plays[0]} onDone={() => setPlays((queue) => queue.slice(1))} />}
+                    {plays[0] && <PlayAnimation key={plays[0].key} event={plays[0]} onDone={() => setPlays((queue) => queue.slice(1))} />}
 
-                {game && (
-                    <>
-                        <Sheet open={sheet === 'zone'} onClose={() => setSheet(null)} title={t('zone.title')}>
-                            <StrikeZonePanel game={game} />
-                            {/* En la pausa entre entradas el duelo es el del último out: la zona ya dice a quién le toca */}
-                            {!inningBreak(game) && <Matchup game={game} />}
-                        </Sheet>
-                        {/* La lista lleva su propio desplazamiento: así el encabezado de cada media entrada se queda pegado arriba */}
-                        <Sheet open={sheet === 'plays'} onClose={() => setSheet(null)} title={t('plays.title')} scroll={false}>
-                            <PlayByPlay game={game} fill />
-                        </Sheet>
-                        <Sheet open={sheet === 'box'} onClose={() => setSheet(null)} title={t('game.tabs.box')}>
-                            <BoxScore game={game} />
-                        </Sheet>
-                    </>
-                )}
-                {shareSheet}
-                {/* Lluvia sobre toda la pantalla (no se toca) */}
-                <RainOverlay active={rainOn} />
-            </View>
+                    {game && (
+                        <>
+                            <Sheet open={sheet === 'zone'} onClose={() => setSheet(null)} title={t('zone.title')}>
+                                <StrikeZonePanel game={game} />
+                                {/* En la pausa entre entradas el duelo es el del último out: la zona ya dice a quién le toca */}
+                                {!inningBreak(game) && <Matchup game={game} />}
+                            </Sheet>
+                            {/* La lista lleva su propio desplazamiento: así el encabezado de cada media entrada se queda pegado arriba */}
+                            <Sheet open={sheet === 'plays'} onClose={() => setSheet(null)} title={t('plays.title')} scroll={false}>
+                                <PlayByPlay game={game} fill />
+                            </Sheet>
+                            <Sheet open={sheet === 'box'} onClose={() => setSheet(null)} title={t('game.tabs.box')}>
+                                <BoxScore game={game} />
+                            </Sheet>
+                        </>
+                    )}
+                    {shareSheet}
+                    {/* Lluvia sobre toda la pantalla (no se toca) y el terreno al tocar las bases */}
+                    <RainOverlay active={rainOn} />
+                    {field.element}
+                </View>
+            </FieldLauncherProvider>
         </ProScrollProvider>
     );
 }

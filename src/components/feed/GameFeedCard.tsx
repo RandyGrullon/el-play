@@ -15,6 +15,7 @@ import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
 import { Card, Row, Skeleton, TeamLogo, Txt } from '../ui';
 import { Bases, OutsDots } from '../game/Bases';
 import { DelayPill } from '../game/Delay';
+import { BasesButton, useFieldLauncher, type OpenField } from '../game/field/launcher';
 import { TeamLink, playerTextLink } from '../stats/common';
 import { PulseDot } from './PulseDot';
 import { alertsAvailable, useAlertToggle } from './alerts';
@@ -32,8 +33,8 @@ const LivePill: React.FC<{ label: string }> = ({ label }) => {
     );
 };
 
-// Juego en vivo: dos mitades con el color de cada equipo y el marcador en grande
-const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
+// Juego en vivo: dos mitades con el color de cada equipo y el marcador en grande. Las bases abren el terreno.
+const LiveCard: React.FC<{ game: ScheduleGame; openField: OpenField }> = ({ game, openField }) => {
     const { t, i18n } = useTranslation();
     const colors = useColors();
     const live = game.live!;
@@ -75,7 +76,9 @@ const LiveCard: React.FC<{ game: ScheduleGame }> = ({ game }) => {
                 )}
                 {!between && live.inning ? (
                     <>
-                        <Bases runners={live.runners} size={26} color={(live.isTop ? game.away : game.home).color} />
+                        <BasesButton onOpen={openField} gamePk={game.gamePk}>
+                            <Bases runners={live.runners} size={26} color={(live.isTop ? game.away : game.home).color} />
+                        </BasesButton>
                         <OutsDots outs={live.outs} />
                         <Txt size={14} weight="semibold" tone="muted" tabular>
                             {live.balls}-{live.strikes}
@@ -145,14 +148,19 @@ export const GameFeedCard: React.FC<{ game: ScheduleGame; onShare?: (game: Sched
         prefetch(game.gamePk).catch(() => undefined);
     };
     const label = `${teamDisplayName(game.away, i18n.language)} ${game.away.score ?? ''} · ${teamDisplayName(game.home, i18n.language)} ${game.home.score ?? ''}`;
+    // El terreno va fuera del Pressable de la tarjeta: en la web los toques del Modal subirían hasta él y abrirían el juego
+    const field = useFieldLauncher(game.gamePk);
     // Inicio demorado (sigue «programado»): se dice al lado de la hora
     const delay = game.state === 'preview' && !notPlayed ? delayOf(game.detailedState) : null;
 
     if (game.state === 'live' && game.live) {
         return (
-            <Pressable onPress={open} onPressIn={warm} onHoverIn={warm} accessibilityRole="link" accessibilityLabel={label} style={({ pressed }) => [{ borderRadius: radius.card, overflow: 'hidden', opacity: pressed ? 0.92 : 1 }, shadow('float')]}>
-                <LiveCard game={game} />
-            </Pressable>
+            <>
+                <Pressable onPress={open} onPressIn={warm} onHoverIn={warm} accessibilityRole="link" accessibilityLabel={label} style={({ pressed }) => [{ borderRadius: radius.card, overflow: 'hidden', opacity: pressed ? 0.92 : 1 }, shadow('float')]}>
+                    <LiveCard game={game} openField={field.open} />
+                </Pressable>
+                {field.element}
+            </>
         );
     }
 

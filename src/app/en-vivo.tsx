@@ -14,6 +14,7 @@ import { radius, shadow } from '../theme/tokens';
 import { ErrorState, OfflineState, Row, Skeleton, TeamLogo, Txt, useErrorText } from '../components/ui';
 import { Bases } from '../components/game/Bases';
 import { DelayIcon, delayPillText, useRainTone } from '../components/game/Delay';
+import { BasesButton, useFieldLauncher } from '../components/game/field/launcher';
 import { PulseDot } from '../components/feed/PulseDot';
 import { waitingForNetwork } from '../components/feed/DayChips';
 import { useNow } from '../components/feed/useNow';
@@ -36,6 +37,8 @@ export default function LiveGamesScreen() {
     const prefetch = usePrefetchGame();
     const now = useNow();
     const rain = useRainTone();
+    // Las bases de cada fila abren el terreno (el Modal va fuera de las filas, que también se tocan)
+    const field = useFieldLauncher();
     const games = schedule.data?.games ?? [];
     const live = games.filter((game) => game.state === 'live');
     const next = games
@@ -85,7 +88,11 @@ export default function LiveGamesScreen() {
                         </Txt>
                     ) : null}
                 </View>
-                {isLive && game.live && game.live.inningState !== 'Middle' && game.live.inningState !== 'End' && <Bases runners={game.live.runners} size={24} color={(game.live.isTop ? game.away : game.home).color} />}
+                {isLive && game.live && game.live.inningState !== 'Middle' && game.live.inningState !== 'End' && (
+                    <BasesButton onOpen={field.open} gamePk={game.gamePk}>
+                        <Bases runners={game.live.runners} size={24} color={(game.live.isTop ? game.away : game.home).color} />
+                    </BasesButton>
+                )}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: delay ? rain.soft : isLive ? colors.live : colors.raised }}>
                     {delay ? <DelayIcon reason={delay.reason} size={12} color={rain.ink} /> : isLive && <PulseDot color="#fff" />}
                     <Txt size={12} weight="bold" color={delay ? rain.ink : isLive ? '#fff' : colors.muted}>
@@ -135,6 +142,7 @@ export default function LiveGamesScreen() {
                     </>
                 )}
             </ScrollView>
+            {field.element}
         </View>
     );
 }

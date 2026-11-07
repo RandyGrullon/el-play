@@ -1720,5 +1720,35 @@
     "minutes_other": "{{count}} min delay",
     "hideRain": "Hide rain",
     "showRain": "Show rain"
+  },
+  "field": {
+    "open": "See the field",
+    "title": "The field",
+    "titleAria": "The field: {{away}} {{awayRuns}}, {{home}} {{homeRuns}}",
+    "close": "Close the field",
+    "defense": "Defense: {{team}}",
+    "offense": "At bat: {{team}}",
+    "between": "Between innings: {{team}} take the field like this",
+    "empty": "No lineup on the field yet",
+    "loading": "Loading the field…",
+    "count": "Balls and strikes",
+    "atBat": "At bat",
+    "onDeck": "On deck",
+    "pos": {
+      "pitcher": "Pitcher",
+      "catcher": "Catcher",
+      "first": "First base",
+      "second": "Second base",
+      "third": "Third base",
+      "shortstop": "Shortstop",
+      "left": "Left field",
+      "center": "Center field",
+      "right": "Right field",
+      "runner1": "Runner on first",
+      "runner2": "Runner on second",
+      "runner3": "Runner on third",
+      "batter": "At bat",
+      "onDeck": "On deck"
+    }
   }
 }

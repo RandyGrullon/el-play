@@ -1720,5 +1720,35 @@
     "minutes_other": "{{count}} min de demora",
     "hideRain": "Quitar lluvia",
     "showRain": "Ver lluvia"
+  },
+  "field": {
+    "open": "Ver el terreno",
+    "title": "El terreno",
+    "titleAria": "El terreno: {{away}} {{awayRuns}}, {{home}} {{homeRuns}}",
+    "close": "Cerrar el terreno",
+    "defense": "Defensa: {{team}}",
+    "offense": "Al bate: {{team}}",
+    "between": "Entre entradas: así sale a la defensa {{team}}",
+    "empty": "Todavía no hay alineación en el terreno",
+    "loading": "Cargando el terreno…",
+    "count": "Bolas y strikes",
+    "atBat": "Al bate",
+    "onDeck": "En espera",
+    "pos": {
+      "pitcher": "Pitcher",
+      "catcher": "Receptor",
+      "first": "Primera base",
+      "second": "Segunda base",
+      "third": "Tercera base",
+      "shortstop": "Campocorto",
+      "left": "Jardinero izquierdo",
+      "center": "Jardinero central",
+      "right": "Jardinero derecho",
+      "runner1": "Corredor en primera",
+      "runner2": "Corredor en segunda",
+      "runner3": "Corredor en tercera",
+      "batter": "Al bate",
+      "onDeck": "En espera"
+    }
   }
 }

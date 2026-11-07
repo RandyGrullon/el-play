@@ -22,7 +22,7 @@ const compile = (name) => {
     const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } });
     fs.writeFileSync(path.join(OUT, `${name}.js`), outputText);
 };
-['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts'].forEach(compile);
+['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts', 'field'].forEach(compile);
 // playEvents usa el modo PRO de la cuenta (React Native): aquí siempre Lite
 fs.writeFileSync(path.join(OUT, 'pro.js'), 'exports.proActive = () => false;\n');
 
@@ -30,6 +30,7 @@ const { camera, flightMs, flightOf, gamedayToFeet, groundAt, heightAt, parkFor, 
 const { basesOf, legsOf, runnerPaths, walkPaths } = require(path.join(OUT, 'runners.js'));
 const { forMode, leadChange, newPlayEvents } = require(path.join(OUT, 'playEvents.js'));
 const { delayOf, isOnHold, isRainDelay } = require(path.join(OUT, 'baseball.js'));
+const { batterBox, fieldModel } = require(path.join(OUT, 'field.js'));
 const { gameInterval } = require(path.join(OUT, 'polling.js'));
 const alertsLib = require(path.join(OUT, 'gameAlerts.js'));
 
@@ -409,6 +410,100 @@ it('detenido: el motivo de «Delayed: …» y si es el inicio; lo demás no es d
     assert.strictEqual(isRainDelay(delayOf('Delayed: Lightning')), false);
     assert.strictEqual(isRainDelay(null), false);
 });
+
+console.log('el terreno: quién va en cada lugar');
+{
+    const persona = (id, name) => ({ id, name });
+    const visitante = { id: 9001, name: 'Equipo Uno' };
+    const local = { id: 9002, name: 'Equipo Dos' };
+    const defensa = {
+        pitcher: persona(12345601, 'Pelotero Uno'),
+        catcher: persona(12345602, 'Pelotero Dos'),
+        first: persona(12345603, 'Pelotero Tres'),
+        second: persona(12345604, 'Pelotero Cuatro'),
+        third: persona(12345605, 'Pelotero Cinco'),
+        shortstop: persona(12345606, 'Pelotero Seis'),
+        left: persona(12345607, 'Pelotero Siete'),
+        center: persona(12345608, 'Pelotero Ocho'),
+        right: persona(12345609, 'Pelotero Nueve')
+    };
+    const juego = (extra) => ({
+        away: visitante,
+        home: local,
+        inning: { n: 7, isTop: true, state: 'Top' },
+        runners: { first: null, second: null, third: null },
+        matchup: { batter: { id: 87654321, name: 'Bateador Uno', side: 'L' }, pitcher: { id: 12345601, name: 'Pelotero Uno' }, onDeck: null },
+        ...extra
+    });
+    const campo = {
+        defenseTeamId: 9002,
+        offenseTeamId: 9001,
+        defense: defensa,
+        offense: { batter: persona(87654321, 'Bateador Uno'), onDeck: persona(87654322, 'Bateador Dos'), inHole: persona(87654323, 'Bateador Tres'), first: persona(87654324, 'Corredor Uno'), second: null, third: persona(87654325, 'Corredor Tres') }
+    };
+
+    it('con `field`: los nueve en orden (lanzador, receptor, cuadro, jardines), los corredores, el bateador y el que espera', () => {
+        const modelo = fieldModel(juego({ field: campo }));
+        assert.strictEqual(modelo.source, 'field');
+        assert.strictEqual(modelo.hasDefense, true);
+        assert.strictEqual(modelo.between, false);
+        assert.deepStrictEqual(modelo.faces.map((face) => face.key), ['pitcher', 'catcher', 'first', 'second', 'shortstop', 'third', 'left', 'center', 'right', 'runner-first', 'runner-third', 'batter', 'onDeck']);
+        assert.deepStrictEqual(modelo.faces.map((face) => face.order), modelo.faces.map((_, index) => index));
+        assert.deepStrictEqual(modelo.faces.slice(0, 9).map((face) => face.tag), ['P', 'C', '1B', '2B', 'SS', '3B', 'LF', 'CF', 'RF']);
+        // Aros: la defensa en el color del que fildea; corredores, bateador y el que espera en el del que batea
+        assert.ok(modelo.faces.filter((face) => face.role === 'defense').every((face) => face.teamId === 9002));
+        assert.ok(modelo.faces.filter((face) => face.role !== 'defense').every((face) => face.teamId === 9001));
+        const corredor = modelo.faces.find((face) => face.key === 'runner-first');
+        partial(corredor, { role: 'runner', tag: '1B', size: 'sm', person: { id: 87654324, name: 'Corredor Uno' } });
+        // Al lado de su base, no encima (la base se sigue viendo)
+        assert.ok(Math.hypot(corredor.x - 68.4, corredor.y - 71.6) > 5);
+        // Zurdo: del lado de primera (a la derecha del plato); el que espera, más chico, en el círculo del visitante (tercera)
+        const bateador = modelo.faces.find((face) => face.key === 'batter');
+        assert.ok(bateador.x > 50);
+        partial(modelo.faces.find((face) => face.key === 'onDeck'), { size: 'xs', tag: 'onDeck', person: { id: 87654322 } });
+        assert.ok(modelo.faces.find((face) => face.key === 'onDeck').x < 50);
+        // Todas las caras dentro del dibujo (100 × 112)
+        assert.ok(modelo.faces.every((face) => face.x > 0 && face.x < 100 && face.y > 0 && face.y < 112));
+    });
+
+    it('la caja de bateo: derecho (o sin saber) a la izquierda del plato, zurdo a la derecha, ambidiestro contra la mano del lanzador', () => {
+        assert.strictEqual(batterBox('R'), 'left');
+        assert.strictEqual(batterBox(null), 'left');
+        assert.strictEqual(batterBox('L'), 'right');
+        assert.strictEqual(batterBox('S', 'R'), 'right');
+        assert.strictEqual(batterBox('S', 'L'), 'left');
+        // Si el bateador no es el del duelo, no se sabe de qué lado batea: la caja de los derechos
+        const otro = fieldModel(juego({ field: { ...campo, offense: { ...campo.offense, batter: persona(11223344, 'Bateador Otro') } } }));
+        assert.ok(otro.faces.find((face) => face.key === 'batter').x < 50);
+    });
+
+    it('entre entradas: sin corredores, con la defensa que sale y el que abre; sin defensa lo dice', () => {
+        const pausa = fieldModel(juego({ inning: { n: 7, isTop: true, state: 'Middle' }, field: { ...campo, defenseTeamId: 9001, offenseTeamId: 9002 } }));
+        assert.strictEqual(pausa.between, true);
+        assert.strictEqual(pausa.defenseTeamId, 9001);
+        assert.ok(!pausa.faces.some((face) => face.role === 'runner'));
+        assert.ok(pausa.faces.some((face) => face.key === 'batter'));
+        const vacio = fieldModel(juego({ field: { defenseTeamId: 9002, offenseTeamId: 9001, defense: {}, offense: {} } }));
+        assert.strictEqual(vacio.hasDefense, false);
+        assert.deepStrictEqual(vacio.faces, []);
+    });
+
+    it('sin `field`: los extras PRO; sin ellos, los corredores y el duelo del juego; nombres vacíos no salen', () => {
+        const conPro = fieldModel(juego({}), { defense: { ...defensa, teamId: 9002 }, offense: { batter: persona(87654321, 'Bateador Uno'), onDeck: null, first: null, second: persona(87654326, 'Corredor Dos'), third: null, teamId: 9001 } });
+        assert.strictEqual(conPro.source, 'pro');
+        assert.strictEqual(conPro.defenseTeamId, 9002);
+        assert.deepStrictEqual(conPro.faces.filter((face) => face.role === 'runner').map((face) => face.key), ['runner-second']);
+        const solo = fieldModel(juego({ field: undefined, runners: { first: persona(87654324, 'Corredor Uno'), second: null, third: null } }));
+        assert.strictEqual(solo.source, 'none');
+        assert.strictEqual(solo.hasDefense, false);
+        // En la alta batea el visitante: la defensa es el de casa
+        assert.strictEqual(solo.defenseTeamId, 9002);
+        assert.strictEqual(solo.offenseTeamId, 9001);
+        assert.deepStrictEqual(solo.faces.map((face) => face.key), ['runner-first', 'batter']);
+        const sinNombre = fieldModel(juego({ field: { ...campo, defense: { ...defensa, pitcher: persona(12345601, '') } } }));
+        assert.ok(!sinNombre.faces.some((face) => face.key === 'pitcher'));
+    });
+}
 
 console.log('avisos de los juegos y del Fantasy');
 

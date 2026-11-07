@@ -24,6 +24,10 @@ import { teamFill } from './logic';
 import { MoreLink, PhotoWithLogo, useInk, useLineText } from './shared';
 import { PlayerLink, TeamLink, playerTextLink } from '../../stats/common';
 import { DelayIcon, delayPillText, useRainTone } from '../../game/Delay';
+import { BasesButton, useFieldLauncher } from '../../game/field/launcher';
+
+// Primera y tercera del diamante de la tarjeta (38 × 28, bases en x 9 y 29, y 18): de ahí crece el terreno
+const DIAMOND_ANCHOR = { span: 20 / 38, y: 18 / 28 };
 
 interface LiveCardProps {
     game: ScheduleGamePro;
@@ -175,6 +179,8 @@ export const LiveCardPro: React.FC<LiveCardProps> = ({ game, summary, loading = 
     const li = winProb?.last?.li ?? null;
     const delay = delayOf(game.detailedState);
     const rain = useRainTone();
+    // Las bases abren el terreno (el Modal va fuera del Pressable de las mitades)
+    const field = useFieldLauncher(game.gamePk);
     const pitcher = duel?.pitcher ?? (live.pitcher ? { ...live.pitcher, teamId: live.isTop ? game.home.id : game.away.id, hand: null, line: null } : null);
     const batter = duel?.batter ?? (live.batter ? { ...live.batter, teamId: live.isTop ? game.away.id : game.home.id, side: null, line: null } : null);
     const onDeck = duel?.onDeck ?? live.onDeck ?? null;
@@ -237,7 +243,9 @@ export const LiveCardPro: React.FC<LiveCardProps> = ({ game, summary, loading = 
                 </View>
                 {!between && live.inning ? (
                     <>
-                        <Diamond runners={live.runners} />
+                        <BasesButton onOpen={field.open} anchor={DIAMOND_ANCHOR}>
+                            <Diamond runners={live.runners} />
+                        </BasesButton>
                         <Outs outs={live.outs} />
                         <View accessible accessibilityRole="text" accessibilityLabel={t('pro.portada.live.count', { balls: live.balls, strikes: live.strikes })} style={{ flexShrink: 0 }}>
                             <Txt condensed size={20} tabular>{`${live.balls}-${live.strikes}`}</Txt>
@@ -362,6 +370,7 @@ export const LiveCardPro: React.FC<LiveCardProps> = ({ game, summary, loading = 
                     <MoreLink>{t('pro.portada.live.see')}</MoreLink>
                 </Pressable>
             </View>
+            {field.element}
         </View>
     );
 };

@@ -15,6 +15,10 @@ import { SpringUp, absLine } from '../zona/PitchCard';
 import { countBefore, hbView, pitchItems, typeMix } from './logic';
 import { CountDots, RunnerDiamond, absOf, callText, fmtInches, fmtMph, heightText, isBetween, ordinal, placeText } from './parts';
 import { LinkedNames, playerTextLink } from '../../../stats/common';
+import { BasesButton, useOpenField } from '../../../game/field/launcher';
+
+// Primera y tercera del diamante grande (viewBox 100 × 78, bases en x 18 y 82, y 50): de ahí crece el terreno
+const RUNNER_DIAMOND_ANCHOR = { span: 64 / 100, y: 50 / 78 };
 
 // Situación PRO: diamante grande con los corredores, el conteo y los outs; la zona con el bateador uniformado y
 // los pitcheos del turno del color de su tipo; la lista del turno y la ficha del último pitcheo (o del elegido),
@@ -48,6 +52,8 @@ export const SituationBlock: React.FC<SituationBlockProps> = ({ game, pro, onOpe
     const { width, onLayout } = useElementWidth(340);
     const narrow = width < 300;
     const twoCols = width >= 320;
+    // Tocar el diamante abre el terreno con los que están en juego
+    const openField = useOpenField();
     const reviews = (pro?.plays ?? []).flatMap((play) => play.pitches.filter((pitch) => absOf(pitch)).map((pitch) => ({ play, pitch })));
 
     const zoneLink = (
@@ -64,7 +70,9 @@ export const SituationBlock: React.FC<SituationBlockProps> = ({ game, pro, onOpe
     return (
         <ProSection title={t('pro.kit.game.situation')} aside={zoneLink} bodyStyle={{ gap: 12 }}>
             <View onLayout={onLayout} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <RunnerDiamond runners={between ? { first: null, second: null, third: null } : game.runners} color={batting.color} size={narrow ? 104 : 128} />
+                <BasesButton onOpen={openField} anchor={RUNNER_DIAMOND_ANCHOR}>
+                    <RunnerDiamond runners={between ? { first: null, second: null, third: null } : game.runners} color={batting.color} size={narrow ? 104 : 128} />
+                </BasesButton>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <View style={{ alignItems: 'center' }}>
                         <Txt condensed size={narrow ? 42 : 52} tabular style={{ lineHeight: narrow ? 42 : 52 }}>
