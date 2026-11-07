@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AtBat, Pitch } from '../types';
 import { parkFor, wallAt } from './flight';
-import { directionOf, entryStagger, filterBalls, flightPath, replayStep, resultOf, sprayBalls, sprayStats, trajOf, zoneOf, DEFAULT_FILTERS, ENTRY_TOTAL_MS } from './spray';
+import { directionOf, entryStagger, filterBalls, flightPath, replayStep, resultOf, sprayBalls, sprayStats, trajOf, zoneOf, zoneStats, DEFAULT_FILTERS, ENTRY_TOTAL_MS } from './spray';
 
 const pitch = (hit?: Pitch['hit']): Pitch => ({ n: 1, x: null, z: null, top: null, bot: null, r: 'inplay', code: 'X', call: '', type: 'SL', typeDesc: 'Slider', mph: 86, spin: null, zone: null, b: 0, s: 0, hit });
 const atBat = (i: number, event: string, top: boolean, hit: Pitch['hit'], side = 'R', hand = 'R') =>
@@ -57,6 +57,7 @@ describe('mapa de batazos: lógica', () => {
         expect(zoneOf(balls[2])).toBe('IF');
         expect(zoneOf(balls[0])).toBe('CF');
         expect(zoneOf(balls[1])).toBe('LF');
+        expect(zoneStats(balls).find((row) => row.zone === 'IF')).toEqual({ zone: 'IF', count: 2, hits: 0, pct: 50 });
         // Zurdo al left = contrario; ambidiestro contra zurdo batea a la derecha: al right-center (10°) es centro
         expect(directionOf(balls[1])).toBe('oppo');
         expect(directionOf(balls[2])).toBe('oppo');

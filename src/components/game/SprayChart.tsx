@@ -3,14 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, Play, Square } from 'lucide-react';
 import type { GameDetail } from '../../types';
 import { eventName, inningName, pitchTypeName } from '../../lib/baseball';
-import { parkFor } from '../../lib/flight';
+import { parkFor, polar, wallAt } from '../../lib/flight';
 import {
     DEFAULT_FILTERS,
     ENTRY_FLIGHT_MS,
     SPRAY_RESULT_COLORS,
     entryStagger,
+    ZONES,
     fieldViewBox,
     filterBalls,
+    zoneStats,
     flightPath,
     markerRadius,
     pathD,
@@ -70,6 +72,7 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
     const view = useMemo(() => fieldViewBox(park), [park]);
     const all = useMemo(() => sprayBalls(game.atBats, park), [game.atBats, park]);
     const [filters, setFilters] = useState<SprayFilters>(DEFAULT_FILTERS);
+    const [mode, setMode] = useState<'balls' | 'zones'>('balls');
     const [selected, setSelected] = useState<number | null>(null);
     const balls = useMemo(() => filterBalls(all, filters), [all, filters]);
     const stats = useMemo(() => sprayStats(balls), [balls]);
@@ -174,11 +177,25 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                 <h2 id="spray-title" className="eyebrow">
                     {t('spray.title')}
                 </h2>
+                <Segmented<'balls' | 'zones'>
+                    size="sm"
+                    label={t('spray.views.label')}
+                    value={mode}
+                    onChange={(value) => {
+                        if (replaying) stopReplay();
+                        setSelected(null);
+                        setMode(value);
+                    }}
+                    options={[
+                        { value: 'balls', label: t('spray.views.balls') },
+                        { value: 'zones', label: t('spray.views.zones') }
+                    ]}
+                />
                 <button
                     type="button"
                     onClick={replay}
                     aria-pressed={replaying}
-                    disabled={!balls.length}
+                    disabled={!balls.length || mode !== 'balls'}
                     className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-raised px-3 text-xs font-bold text-ink disabled:opacity-40"
                 >
                     {replaying ? <Square className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
@@ -223,7 +240,8 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                 >
                     <GlowDef id={glow} />
                     <ParkDrawing park={park} />
-                    <g style={entered ? undefined : { opacity: 0 }}>
+                    {mode === 'zones' && <ZonesLayer balls={balls} park={park} />}
+                    <g style={entered ? (mode === 'balls' ? undefined : { display: 'none' }) : { opacity: 0 }}>
                         {geo.map((item) => {
                             const active = item.ball.key === selected;
                             const color = SPRAY_RESULT_COLORS[item.ball.result];
@@ -276,7 +294,7 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                     <p className="text-center text-sm font-bold" aria-live="polite">
                         {inningName({ n: tick.atBat.inning, isTop: tick.atBat.top }, lang)} · {tick.atBat.batter.name} · <span style={{ color: tick.result === 'out' ? undefined : SPRAY_RESULT_COLORS[tick.result] }}>{eventName(tick.atBat, lang) || resultLabel(tick.result)}</span>
                     </p>
-                ) : current ? (
+                ) : current && mode === 'balls' ? (
                     <DetailCard ball={current} position={index} total={balls.length} onStep={(delta) => select(balls[(index + delta + balls.length) % balls.length].key)} />
                 ) : (
                     <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] text-muted">
@@ -412,5 +430,41 @@ const StatsStrip: React.FC<{ stats: ReturnType<typeof sprayStats>; hasEv: boolea
                 ])}
             {!hasEv && <p className="text-[11px] text-faint">{t('spray.noEv')}</p>}
         </div>
+    );
+};
+
+const wedge = (park: ReturnType<typeof parkFor>, from: number, to: number, inner: number) => {
+    const outer: string[] = [];
+    for (let deg = from; deg <= to + 0.001; deg += 1.5) {
+        const p = svgPoint(polar(deg, wallAt(park, deg)));
+        outer.push(`${p.x.toFixed(1)} ${p.y.toFixed(1)}`);
+    }
+    const a = svgPoint(polar(to, inner));
+    const b = svgPoint(polar(from, inner));
+    return `M${outer.join(' L')} L${a.x.toFixed(1)} ${a.y.toFixed(1)} A${inner} ${inner} 0 0 0 ${b.x.toFixed(1)} ${b.y.toFixed(1)} Z`;
+};
+
+const ZonesLayer: React.FC<{ balls: SprayBall[]; park: ReturnType<typeof parkFor> }> = ({ balls, park }) => {
+    const { t } = useTranslation();
+    const rows = useMemo(() => zoneStats(balls), [balls]);
+    const top = Math.max(1, ...rows.map((row) => row.count));
+    const l = svgPoint(polar(-45, 150));
+    const r = svgPoint(polar(45, 150));
+    return (
+        <g>
+            {rows.map((row) => {
+                const from = -45 + (ZONES.indexOf(row.zone) - 1) * 18;
+                const d = row.zone === 'IF' ? `M0 0 L${l.x} ${l.y} A150 150 0 0 1 ${r.x} ${r.y} Z` : wedge(park, from, from + 18, 150);
+                const mid = row.zone === 'IF' ? svgPoint(polar(0, 100)) : svgPoint(polar(from + 9, (150 + wallAt(park, from + 9)) / 2));
+                return (
+                    <g key={row.zone}>
+                        <path d={d} fill={`rgb(220 38 38 / ${(0.08 + 0.62 * (row.count / top)).toFixed(2)})`} stroke="#ffffff" strokeOpacity={0.7} strokeWidth={1.5} />
+                        <text x={mid.x} y={mid.y} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize={14} fontWeight={800} style={{ paintOrder: 'stroke', stroke: 'rgb(0 0 0 / 0.45)', strokeWidth: 3 }}>
+                            {t('spray.zoneLabel', { count: row.count, pct: row.pct, hits: row.hits })}
+                        </text>
+                    </g>
+                );
+            })}
+        </g>
     );
 };

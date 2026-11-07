@@ -235,3 +235,12 @@ export const fieldViewBox = (park: Park) => {
     const top = Math.max(park.center, park.leftCenter, park.rightCenter) + 52;
     return { x: -half, y: -top, w: half * 2, h: top + 26 };
 };
+
+export const ZONES: SprayZone[] = ['IF', 'LF', 'LCF', 'CF', 'RCF', 'RF'];
+
+/** Cuántas bolas (y hits) cayeron en cada zona y su parte del total */
+export const zoneStats = (balls: SprayBall[]) =>
+    ZONES.map((zone) => {
+        const inside = balls.filter((ball) => zoneOf(ball) === zone);
+        return { zone, count: inside.length, hits: inside.filter((ball) => isHit(ball.result)).length, pct: pctOf(inside.length, balls.length) };
+    });

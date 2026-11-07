@@ -746,7 +746,14 @@
       "pull": "Halado",
       "center": "Centro",
       "oppo": "Contrario"
-    }
+    },
+    "views": {
+      "label": "Vista del mapa",
+      "balls": "Batazos",
+      "zones": "Zonas",
+      "heat": "Calor"
+    },
+    "zoneLabel": "{{count}} · {{pct}}% · {{hits}} H"
   },
   "anim": {
     "single": "HIT",

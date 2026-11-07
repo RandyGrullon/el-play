@@ -746,7 +746,14 @@
       "pull": "Pull",
       "center": "Center",
       "oppo": "Opposite"
-    }
+    },
+    "views": {
+      "label": "Map view",
+      "balls": "Batted balls",
+      "zones": "Zones",
+      "heat": "Heat"
+    },
+    "zoneLabel": "{{count}} · {{pct}}% · {{hits}} H"
   },
   "anim": {
     "single": "SINGLE",
