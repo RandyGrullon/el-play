@@ -8,7 +8,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Crown, Lock, Plus, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { RULES, budgetOf, isLocked, playerPostponed, playerScore, removePlayer, rulesOf, setCaptain, type DayEntry, type FantasyDay, type FantasyPlayer, type NotCounted } from '../../lib/fantasy';
+import { RULES, budgetOf, isLocked, scoringOf, playerPostponed, playerScore, removePlayer, rulesOf, setCaptain, type DayEntry, type FantasyDay, type FantasyPlayer, type NotCounted } from '../../lib/fantasy';
 import type { CountedEntry } from '../../lib/fantasyCounted';
 import { statusOf } from '../../lib/fantasyPicker';
 import { useColors } from '../../theme/theme';
@@ -119,7 +119,7 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; counted: DayEntry
     const small = { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' } as const;
     // De dónde salen sus puntos (solo si ya jugó)
     const [breakdown, setBreakdown] = useState(false);
-    const parts = player.played ? pointParts(player, day.scoring) : [];
+    const parts = player.played ? pointParts(player, scoringOf(day)) : [];
     // Sus puntos en el equipo que cuenta (con la corona que cuenta); si no cuenta, sus puntos tachados
     const counts = counted.lineup.includes(player.id);
     const score = formatCredits(counts ? playerScore(counted, player, rulesOf(day).captain) : player.points, lang);

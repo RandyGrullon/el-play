@@ -7,7 +7,7 @@ import { ChevronDown, Crown, Lock, Sparkles, User } from 'lucide-react-native';
 import type { LeagueId } from '../../types';
 import { useSession } from '../../lib/account';
 import { achievements } from '../../lib/fantasyExtras';
-import { RULES, effectiveEntry, entryKey, gameStarted, isLocked, pickPoints, pickResult, playerScore, teamPoints, useFantasyDay, useFantasyStore, type DayEntry, type FantasyPlayer } from '../../lib/fantasy';
+import { effectiveEntry, rulesOf, entryKey, gameStarted, isLocked, pickPoints, pickResult, playerScore, teamPoints, useFantasyDay, useFantasyStore, type DayEntry, type FantasyPlayer } from '../../lib/fantasy';
 import { formatTime, localeFor, seasonLabel, todayKey } from '../../lib/format';
 import { useColors } from '../../theme/theme';
 import { alpha, inkOn, radius, shadow } from '../../theme/tokens';
@@ -421,7 +421,7 @@ const DayDetail: React.FC<DayDetailProps> = ({ userId, league, own, fanDay, date
                                     </Txt>
                                     {result === 'win' && (
                                         <Txt size={11} weight="extrabold" color={colors.ball}>
-                                            +{RULES.pick}
+                                            +{rulesOf(day).picks.points}
                                         </Txt>
                                     )}
                                     {result === 'loss' && (

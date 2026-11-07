@@ -10,7 +10,7 @@ import { ArrowLeftRight, Crown, Plus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { inningName } from '../../../lib/baseball';
 import { formatTime } from '../../../lib/format';
-import { RULES, creditsLeft, creditsOf, entryCost, gameStarted, perTeamLimit, playerPostponed, playerScore, rulesOf, setCaptain, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer, type NotCounted } from '../../../lib/fantasy';
+import { RULES, creditsLeft, creditsOf, scoringOf, entryCost, gameStarted, perTeamLimit, playerPostponed, playerScore, rulesOf, setCaptain, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer, type NotCounted } from '../../../lib/fantasy';
 import type { CountedEntry } from '../../../lib/fantasyCounted';
 import { statusOf } from '../../../lib/fantasyPicker';
 import type { PlayerRow } from '../../../lib/stats';
@@ -231,7 +231,8 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ day, entry, counted = en
             : null;
     // Cómo llega a su juego, hasta que empieza (después se ven sus puntos)
     const badge = !started && status && status !== 'dnp' && status !== 'postponed' ? status : null;
-    const parts = useMemo(() => pointParts(player, day.scoring), [player, day.scoring]);
+    // Con las claves de la app aunque las reglas nuevas las manden de otra forma (hbp, strikeout)
+    const parts = useMemo(() => pointParts(player, scoringOf(day)), [player, day]);
     const line = lineText(player, t);
     const color = team?.color ?? '#64748b';
     const ink = teamInk(color);
