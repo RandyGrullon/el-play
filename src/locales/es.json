@@ -688,7 +688,7 @@
     "homeRuns_other": "{{count}} jonrones",
     "outs_one": "{{count}} sin hit",
     "outs_other": "{{count}} sin hit",
-    "tap": "Toca un punto",
+    "tap": "Toca un batazo",
     "feet": "{{ft}} pies",
     "traj": {
       "ground_ball": "Rodado",
@@ -703,7 +703,57 @@
       "soft": "suave",
       "medium": "medio",
       "hard": "fuerte"
-    }
+    },
+    "replay": "Repetir",
+    "stop": "Detener",
+    "resultFilter": "Resultado",
+    "all": "Todo",
+    "onlyHits": "Hits",
+    "onlyHr": "Jonrones",
+    "onlyOuts": "Outs",
+    "empty": "Ningún batazo con estos filtros",
+    "list": "Lista de batazos",
+    "noEv": "Este estadio no mide la velocidad de salida",
+    "result": {
+      "single": "Sencillo",
+      "double": "Doble",
+      "triple": "Triple",
+      "hr": "Jonrón",
+      "error": "Error",
+      "out": "Out"
+    },
+    "card": {
+      "ev": "Vel. de salida",
+      "la": "Ángulo",
+      "dist": "Distancia",
+      "type": "Tipo",
+      "hard": "Contacto",
+      "hardHit": "Batazo fuerte",
+      "prev": "Batazo anterior",
+      "next": "Batazo siguiente",
+      "position": "{{n}} de {{total}}"
+    },
+    "stats": {
+      "inPlay": "En juego",
+      "hits": "Hits",
+      "hr": "Jonrones",
+      "hardPct": "Batazo fuerte",
+      "avgEv": "Vel. salida prom.",
+      "avgLa": "Ángulo prom.",
+      "longest": "Más largo",
+      "types": "Tipo de batazo",
+      "dirs": "Dirección",
+      "pull": "Halado",
+      "center": "Centro",
+      "oppo": "Contrario"
+    },
+    "views": {
+      "label": "Vista del mapa",
+      "balls": "Batazos",
+      "zones": "Zonas",
+      "heat": "Calor"
+    },
+    "zoneLabel": "{{count}} · {{pct}}% · {{hits}} H"
   },
   "anim": {
     "single": "HIT",

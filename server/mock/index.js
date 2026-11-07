@@ -85,6 +85,78 @@ const roster = (teamId) => {
     return value;
 };
 
+
+// Batazo coherente para el mapa (tipo, ángulo, velocidad, distancia y dónde cayó en el parque de casa). Va con su propio
+// generador para no cambiar el resto del juego simulado. Julián Javier no mide la salida (sin ev/la/dist) y
+// en los demás uno de cada ~14 batazos tampoco trae la medición.
+const PARK_MEASURES = { 'Estadio Quisqueya': [335, 411], 'Estadio Cibao': [335, 385], 'Estadio Tetelo Vargas': [330, 385] };
+const NO_TRACKING = /juli[aá]n javier/i;
+const wallFeet = (venue, deg) => {
+    const [line, center] = PARK_MEASURES[venue] || [325, 400];
+    const alley = line + (center - line) * 0.62;
+    const a = Math.min(45, Math.abs(deg));
+    const [a1, d1, a2, d2] = a <= 22.5 ? [0, center, 22.5, alley] : [22.5, alley, 45, line];
+    const p = (a - a1) / (a2 - a1);
+    return d1 + (d2 - d1) * (1 - Math.cos(p * Math.PI)) / 2;
+};
+const battedData = (random, eventType, label, batter, venue) => {
+    const pullSign = batter.bats === 'L' ? 1 : -1;
+    // Más hacia el lado halado; los rodados de out y los globitos se quedan en el cuadro
+    const angle = Math.max(-44, Math.min(44, between(random, -44, 44) * 0.85 + pullSign * between(random, 0, 14)));
+    let traj;
+    let la;
+    let feet;
+    let ev;
+    if (eventType === 'home_run') {
+        traj = 'fly_ball';
+        la = Math.round(between(random, 22, 36));
+        ev = between(random, 100, 113);
+        feet = wallFeet(venue, angle) + between(random, 12, 48);
+    } else if (eventType === 'field_error') {
+        traj = random() < 0.7 ? 'ground_ball' : 'line_drive';
+        la = traj === 'ground_ball' ? Math.round(between(random, -12, 6)) : Math.round(between(random, 10, 18));
+        ev = between(random, 78, 100);
+        feet = between(random, 85, 140);
+    } else if (eventType === 'single') {
+        const r = random();
+        traj = r < 0.4 ? 'ground_ball' : r < 0.85 ? 'line_drive' : 'fly_ball';
+        la = traj === 'ground_ball' ? Math.round(between(random, -8, 8)) : traj === 'line_drive' ? Math.round(between(random, 9, 22)) : Math.round(between(random, 26, 40));
+        ev = between(random, 84, 106);
+        feet = traj === 'ground_ball' ? between(random, 150, 215) : between(random, 175, 265);
+    } else if (eventType === 'double' || eventType === 'triple') {
+        traj = random() < 0.55 ? 'line_drive' : 'fly_ball';
+        la = traj === 'line_drive' ? Math.round(between(random, 12, 24)) : Math.round(between(random, 24, 34));
+        ev = between(random, 95, 110);
+        feet = Math.min(wallFeet(venue, angle) - 6, between(random, 275, 390));
+    } else if (label === 'Groundout') {
+        traj = 'ground_ball';
+        la = Math.round(between(random, -14, 8));
+        ev = between(random, 70, 104);
+        feet = between(random, 80, 145);
+    } else if (label === 'Lineout') {
+        traj = 'line_drive';
+        la = Math.round(between(random, 8, 22));
+        ev = between(random, 85, 108);
+        feet = between(random, 110, 290);
+    } else if (random() < 0.28) {
+        traj = 'popup';
+        la = Math.round(between(random, 52, 72));
+        ev = between(random, 65, 85);
+        feet = between(random, 70, 165);
+    } else {
+        traj = 'fly_ball';
+        la = Math.round(between(random, 25, 45));
+        ev = between(random, 82, 104);
+        feet = Math.min(wallFeet(venue, angle) - 8, between(random, 230, 385));
+    }
+    const a = (angle * Math.PI) / 180;
+    const d = feet / 2.5;
+    const hardness = ev >= 95 ? 'hard' : ev >= 80 ? 'medium' : 'soft';
+    const data = { coordinates: { coordX: round(125.42 + d * Math.sin(a), 2), coordY: round(198.27 - d * Math.cos(a), 2) }, trajectory: traj, hardness };
+    if (NO_TRACKING.test(venue || '') || random() < 0.07) return data;
+    return { launchSpeed: round(ev, 1), launchAngle: la, totalDistance: Math.round(feet), ...data };
+};
+
 // ------------------------------------------------------------------ Simulación de un juego
 
 const simCache = new Map();
@@ -93,6 +165,8 @@ const simulate = (gamePk, awayId, homeId) => {
     const key = `${gamePk}`;
     if (simCache.has(key)) return simCache.get(key);
     const random = rng(gamePk);
+    const hitRandom = rng(gamePk * 31 + 7);
+    const venue = TEAMS[homeId]?.venue;
     const teams = { away: roster(awayId), home: roster(homeId) };
     const lineupIndex = { away: 0, home: 0 };
     const pitcherState = { away: { index: 0, count: 0 }, home: { index: 0, count: 0 } };
@@ -290,6 +364,17 @@ const simulate = (gamePk, awayId, homeId) => {
                     last.hitData = { launchSpeed: round(between(random, 70, 102), 1), launchAngle: Math.round(between(random, -10, 45)), totalDistance: Math.round(between(random, 20, 340)), ...where };
                 }
                 if (eventType !== 'field_out') rbi = scorers.length;
+                // Algún rodado se le escapa a la defensa: error (el bateador llega a primera)
+                if (label === 'Groundout' && hitRandom() < 0.1) {
+                    eventType = 'field_error';
+                    label = 'Field Error';
+                    description = `${batter.fullName} reaches on a fielding error by shortstop.`;
+                    outs -= 1;
+                    isOut = false;
+                    advance(1, ref);
+                    rbi = 0;
+                }
+                last.hitData = battedData(hitRandom, eventType, label, batter, venue);
             }
 
             score[batting] += scorers.length;

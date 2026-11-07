@@ -688,7 +688,7 @@
     "homeRuns_other": "{{count}} home runs",
     "outs_one": "{{count}} no hit",
     "outs_other": "{{count}} no hit",
-    "tap": "Tap a dot",
+    "tap": "Tap a batted ball",
     "feet": "{{ft}} ft",
     "traj": {
       "ground_ball": "Grounder",
@@ -703,7 +703,57 @@
       "soft": "soft",
       "medium": "medium",
       "hard": "hard"
-    }
+    },
+    "replay": "Replay",
+    "stop": "Stop",
+    "resultFilter": "Result",
+    "all": "All",
+    "onlyHits": "Hits",
+    "onlyHr": "Home runs",
+    "onlyOuts": "Outs",
+    "empty": "No batted balls with these filters",
+    "list": "Batted ball list",
+    "noEv": "This ballpark does not measure exit velocity",
+    "result": {
+      "single": "Single",
+      "double": "Double",
+      "triple": "Triple",
+      "hr": "Home run",
+      "error": "Error",
+      "out": "Out"
+    },
+    "card": {
+      "ev": "Exit velo",
+      "la": "Launch angle",
+      "dist": "Distance",
+      "type": "Type",
+      "hard": "Contact",
+      "hardHit": "Hard-hit",
+      "prev": "Previous batted ball",
+      "next": "Next batted ball",
+      "position": "{{n}} of {{total}}"
+    },
+    "stats": {
+      "inPlay": "In play",
+      "hits": "Hits",
+      "hr": "Home runs",
+      "hardPct": "Hard-hit",
+      "avgEv": "Avg exit velo",
+      "avgLa": "Avg launch angle",
+      "longest": "Longest",
+      "types": "Batted ball type",
+      "dirs": "Direction",
+      "pull": "Pull",
+      "center": "Center",
+      "oppo": "Opposite"
+    },
+    "views": {
+      "label": "Map view",
+      "balls": "Batted balls",
+      "zones": "Zones",
+      "heat": "Heat"
+    },
+    "zoneLabel": "{{count}} · {{pct}}% · {{hits}} H"
   },
   "anim": {
     "single": "SINGLE",
