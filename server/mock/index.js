@@ -765,7 +765,34 @@ const buildFeed = (game) => {
         }
         return list;
     };
+    // Recorrido de los corredores y del bateador (como liveData.plays.allPlays[].runners): quién anotó, quién fue out
+    const BASES = ['1B', '2B', '3B'];
+    const runnersOf = (play) => {
+        const endOf = (person) => {
+            if (play.scorers.some((s) => s.id === person.id)) return 'score';
+            const at = play.after.bases.findIndex((b) => b && b.id === person.id);
+            return at >= 0 ? BASES[at] : null;
+        };
+        const entry = (person, originBase, end, out) => ({
+            movement: { originBase, start: originBase, end: out ? null : end, isOut: !!out, ...(out ? { outBase: '1B', outNumber: play.after.outs } : {}) },
+            details: {
+                runner: personRef(person),
+                eventType: play.eventType,
+                isScoringEvent: end === 'score' && !out,
+                earned: end === 'score' && !out,
+                rbi: end === 'score' && !out && play.rbi > 0,
+                responsiblePitcher: end === 'score' && !out ? personRef(play.pitcher) : null
+            }
+        });
+        const list = play.before.bases
+            .map((person, index) => (person ? { person, origin: BASES[index], end: endOf(person) } : null))
+            .filter((item) => item && item.end !== item.origin)
+            .map((item) => entry(item.person, item.origin, item.end, false));
+        list.unshift(entry(play.batter, null, endOf(play.batter), play.isOut));
+        return list;
+    };
     const allPlays = plays.map(({ play, events, complete }, index) => ({
+        runners: complete ? runnersOf(play) : [],
         result: complete
             ? { type: 'atBat', event: play.label, eventType: play.eventType, description: play.description, rbi: play.rbi, awayScore: play.after.away, homeScore: play.after.home, isOut: play.isOut }
             : { type: 'atBat', awayScore: play.before.away, homeScore: play.before.home },
