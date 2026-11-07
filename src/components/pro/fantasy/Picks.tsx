@@ -6,7 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { Check, Info, Lock, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { formatTime } from '../../../lib/format';
-import { RULES, gameStarted, pickResult, setPick, type DayEntry, type FantasyDay, type FantasyGame } from '../../../lib/fantasy';
+import { gameStarted, isPostponed, pickResult, rulesOf, setPick, type DayEntry, type FantasyDay, type FantasyGame } from '../../../lib/fantasy';
+import { HelpButton } from '../../fantasy/Help';
 import type { FantasyDayStats } from '../../../types/pro-liga';
 import { useColors } from '../../../theme/theme';
 import { alpha, radius, shadow } from '../../../theme/tokens';
@@ -44,13 +45,23 @@ export const Picks: React.FC<PicksProps> = ({ day, entry, prevDay, prevEntry, pr
 
     return (
         <View style={{ gap: 12 }}>
-            <ModuleHeader title={t('fantasy.picks')} aside={t('pro.fantasy.picks.perHit', { pts: RULES.pick })} />
+            <ModuleHeader
+                title={
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 }}>
+                        <Txt eyebrow accessibilityRole="header" numberOfLines={1} style={{ flexShrink: 1, lineHeight: 16 }}>
+                            {t('fantasy.picks')}
+                        </Txt>
+                        <HelpButton topic="picks" date={day.date} />
+                    </View>
+                }
+                aside={t('pro.fantasy.picks.perHit', { pts: rulesOf(day).picks.points })}
+            />
             {prevGames.length > 0 && prevDone > 0 && (
                 <View style={[{ gap: 10, borderRadius: radius.tile, backgroundColor: colors.surface, padding: 12 }, shadow('card')]}>
                     <Txt size={12} weight="bold">
                         {`${t('pro.fantasy.picks.yesterday', { won: prevWins, count: prevDone })} · `}
                         <Txt size={12} weight="bold" color={pro.up}>
-                            +{prevWins * RULES.pick}
+                            +{prevWins * rulesOf(prevDay).picks.points}
                         </Txt>
                         <Txt size={12} weight="medium" tone="muted">
                             {` · ${t('pro.fantasy.picks.yesterdayOf', { day: prevName })}`}
@@ -161,7 +172,10 @@ const GameCard: React.FC<{ day: FantasyDay; game: FantasyGame; entry: DayEntry; 
     const pro = useProColors();
     const { setNode, onLayout, seen } = useInView();
     const pick = entry.picks[game.gamePk];
-    const locked = gameStarted(game, now);
+    const points = rulesOf(day).picks.points;
+    // El pospuesto no se juega: no se puede pronosticar
+    const postponed = isPostponed(game);
+    const locked = gameStarted(game, now) || postponed;
     const result = pickResult(game, entry);
     const away = forms.get(game.away.id);
     const home = forms.get(game.home.id);
@@ -171,7 +185,7 @@ const GameCard: React.FC<{ day: FantasyDay; game: FantasyGame; entry: DayEntry; 
     const homePct = fans?.picks?.[game.home.id]?.pct ?? null;
     const picked = pick === game.away.id ? game.away : pick === game.home.id ? game.home : null;
     const status =
-        game.state === 'final' ? t('fantasy.final') : game.state === 'live' ? t('fantasy.liveNow') : picked ? t('pro.fantasy.picks.yourPick', { team: picked.abbrev }) : locked ? t('fantasy.noPick') : t('pro.fantasy.picks.tap');
+        postponed ? t('fantasyHelp.status.postponed') : game.state === 'final' ? t('fantasy.final') : game.state === 'live' ? t('fantasy.liveNow') : picked ? t('pro.fantasy.picks.yourPick', { team: picked.abbrev }) : locked ? t('fantasy.noPick') : t('pro.fantasy.picks.tap');
     const hasForms = !!away || !!home;
 
     return (
@@ -191,7 +205,7 @@ const GameCard: React.FC<{ day: FantasyDay; game: FantasyGame; entry: DayEntry; 
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                     {result === 'win' && (
                         <Txt size={11} weight="bold" color={pro.up}>
-                            +{RULES.pick}
+                            +{points}
                         </Txt>
                     )}
                     {result === 'loss' && (
@@ -217,7 +231,7 @@ const GameCard: React.FC<{ day: FantasyDay; game: FantasyGame; entry: DayEntry; 
                             }}
                             accessibilityRole="button"
                             accessibilityState={{ selected: chosen, disabled: locked }}
-                            accessibilityLabel={`${side.name}${game.state === 'preview' ? `, ${index === 0 ? t('pro.fantasy.picks.away') : t('pro.fantasy.picks.home')} · ${t('pro.fantasy.picks.wins', { pts: RULES.pick })}` : ''}`}
+                            accessibilityLabel={`${side.name}${game.state === 'preview' ? `, ${index === 0 ? t('pro.fantasy.picks.away') : t('pro.fantasy.picks.home')} · ${t('pro.fantasy.picks.wins', { pts: points })}` : ''}`}
                             style={({ pressed }) => [
                                 { flex: 1, flexBasis: 0, minWidth: 0, minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: radius.tile, borderWidth: 2, paddingHorizontal: 10, paddingVertical: 8, opacity: locked && !chosen ? 0.6 : pressed ? 0.85 : 1 },
                                 chosen ? { borderColor: side.color, backgroundColor: alpha(side.color, 0.16) } : { borderColor: 'transparent', backgroundColor: colors.raised }
@@ -229,7 +243,7 @@ const GameCard: React.FC<{ day: FantasyDay; game: FantasyGame; entry: DayEntry; 
                                     {side.abbrev}
                                 </Txt>
                                 <Txt size={11} tone="muted" style={{ lineHeight: 14 }}>
-                                    {game.state === 'preview' ? `${index === 0 ? t('pro.fantasy.picks.away') : t('pro.fantasy.picks.home')} · ${t('pro.fantasy.picks.wins', { pts: RULES.pick })}` : t('pro.fantasy.picks.runs', { count: side.score ?? 0 })}
+                                    {game.state === 'preview' ? `${index === 0 ? t('pro.fantasy.picks.away') : t('pro.fantasy.picks.home')} · ${t('pro.fantasy.picks.wins', { pts: points })}` : t('pro.fantasy.picks.runs', { count: side.score ?? 0 })}
                                 </Txt>
                             </View>
                             {locked && chosen && (

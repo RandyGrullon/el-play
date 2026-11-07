@@ -16,6 +16,7 @@ import { PRO_GRADIENT, PRO_GRADIENT_DIAGONAL, alpha, radius, shadow } from '../.
 import { ErrorState, OfflineState, Skeleton, Txt, useErrorText } from '../../ui';
 import { FanAvatar, useFanLabel } from '../../fantasy/FanSearch';
 import { useLocalText } from '../../fantasy/texts';
+import { HelpButton } from '../../fantasy/Help';
 import { ChipButton, ChipRow, CountUp, MOTION_EASE, MOTION_MS, ModuleHeader, ProNote, StatTile, useChartBox, useMotion, useProColors, useReorder } from '../kit';
 import { MoveMark, Num, fmtPts, ordinal } from './bits';
 import { useDayRivals, useSeasonTable, type LeagueInfo } from './data';
@@ -307,7 +308,16 @@ export const TablePro: React.FC<TableProProps> = ({ league, day, userId, leagues
             <ScopeChips scope={scope} onScope={setScope} leagues={leagues} onOpenLeagues={onOpenLeagues} />
 
             <View style={{ gap: 12 }}>
-                <ModuleHeader title={t('pro.fantasy.table.title')} aside={lastDate ? t('pro.fantasy.table.dayN', { n: general.data?.daily.length ?? 0, day: dayName }) : undefined} />
+                <ModuleHeader
+                    title={
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 }}>
+                            <Txt eyebrow accessibilityRole="header" numberOfLines={1} style={{ flexShrink: 1, lineHeight: 16 }}>
+                                {t('pro.fantasy.table.title')}
+                            </Txt>
+                            <HelpButton topic="table" date={day.date} />
+                        </View>
+                    }
+                    aside={lastDate ? t('pro.fantasy.table.dayN', { n: general.data?.daily.length ?? 0, day: dayName }) : undefined} />
                 {seasonOffline ? (
                     <OfflineState />
                 ) : season.isPending ? (
