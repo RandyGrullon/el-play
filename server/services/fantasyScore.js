@@ -43,12 +43,18 @@ const valueAt = (changes, at) => {
 const spanAt = (spans, at) =>
     (Array.isArray(spans) ? spans : []).find((span) => Array.isArray(span) && Number(span[0]) < at && (span[1] === null || span[1] === undefined || Number(span[1]) >= at));
 
+/** Juego pospuesto o cancelado: sigue en el día, pero sus peloteros no suman ni ocupan cupo */
+const isPostponedGame = (game) => game?.status === 'postponed' || /^(Postponed|Cancelled)/i.test(game?.detailedState || '');
+/** Pelotero de un juego pospuesto: cuenta como si no estuviera en el día */
+const isPostponedPlayer = (player) => player?.status === 'postponed';
+
 /**
  * Máximo por equipo del día: 2, salvo que haya pocos equipos jugando. Con un solo juego (Serie Final, eliminatorias,
  * final de la Serie del Caribe) dos equipos no alcanzan para 6 peloteros con 2 cada uno: sube a 3. Igual en la app.
+ * Los juegos pospuestos no cuentan (sus equipos no juegan ese día).
  */
 const perTeamLimit = (day) => {
-    const teams = new Set((day?.games ?? []).flatMap((game) => [game.away?.id, game.home?.id]).filter(Boolean)).size;
+    const teams = new Set((day?.games ?? []).filter((game) => !isPostponedGame(game)).flatMap((game) => [game.away?.id, game.home?.id]).filter(Boolean)).size;
     return teams ? Math.max(RULES.perTeam, Math.ceil((RULES.batters + RULES.pitchers) / teams)) : RULES.perTeam;
 };
 
@@ -72,6 +78,7 @@ const fits = (kept, player, budget, perTeam) => {
  * (el primero que se cerró: cambiarlo después no vale) y cada pronóstico como estaba al empezar su juego.
  * Si alguien se pasa de los cupos o del presupuesto (quitó a uno ya cerrado para meter a otro, o los precios
  * cambiaron), sobran los que entraron de último. Sin historial (filas de antes del arreglo) cuenta el orden de la alineación.
+ * Un pelotero de un juego pospuesto (o que ya no está en el día) no suma ni ocupa cupo: se puede cambiar cuando sea.
  */
 const effectiveEntry = (day, entry) => {
     const history = entry?.history;
@@ -83,7 +90,7 @@ const effectiveEntry = (day, entry) => {
         const lineup = [];
         for (const id of entry.lineup) {
             const player = day.players.find((p) => p.id === id);
-            if (!player) lineup.push(id);
+            if (!player || isPostponedPlayer(player)) lineup.push(id);
             else if (fits(kept, player, budget, perTeamLimit(day))) {
                 kept.push(player);
                 lineup.push(id);
@@ -96,7 +103,7 @@ const effectiveEntry = (day, entry) => {
     const counted = [];
     for (const [key, spans] of Object.entries(history.players)) {
         const player = day.players.find((p) => String(p.id) === key);
-        if (!player) continue;
+        if (!player || isPostponedPlayer(player)) continue;
         const lock = locks.get(String(player.gamePk)) ?? Infinity;
         const span = spanAt(spans, lock);
         if (span) counted.push({ player, lock, added: Number(span[0]) });
@@ -110,7 +117,7 @@ const effectiveEntry = (day, entry) => {
     const lineup = kept.map((item) => item.player.id).sort((a, b) => order(a) - order(b));
     const captains = kept.filter((item) => valueAt(history.captain, item.lock) === item.player.id).sort((a, b) => a.lock - b.lock);
     const picks = {};
-    for (const game of day.games) {
+    for (const game of day.games.filter((g) => !isPostponedGame(g))) {
         const pick = valueAt(history.picks?.[game.gamePk], locks.get(String(game.gamePk)));
         if (pick) picks[game.gamePk] = pick;
     }
@@ -139,8 +146,8 @@ const pickPoints = (day, entry) =>
         return !!pick && !!winner && winner === pick;
     }).length * RULES.pick;
 
-/** Al menos un juego del día empezó (antes de eso el día cuenta 0) */
-const dayStarted = (day) => day.games.some((game) => game.state !== 'preview');
+/** Al menos un juego del día empezó (antes de eso el día cuenta 0). Uno pospuesto no empezó aunque venga «final» */
+const dayStarted = (day) => day.games.some((game) => game.state !== 'preview' && !isPostponedGame(game));
 
 /** Resultado de un fanático en un día del fantasy (`day` es lo que devuelve fantasyDay), con el equipo que cuenta */
 const dayResult = (day, saved) => {
@@ -160,4 +167,4 @@ const dayResult = (day, saved) => {
     };
 };
 
-module.exports = { RULES, round1, toEntry, lockTime, perTeamLimit, entryCost, effectiveEntry, hasPlay, playerScore, teamPoints, pickPoints, dayStarted, dayResult };
+module.exports = { RULES, round1, toEntry, lockTime, isPostponedGame, isPostponedPlayer, perTeamLimit, budgetOf, entryCost, effectiveEntry, hasPlay, playerScore, teamPoints, pickPoints, dayStarted, dayResult };
