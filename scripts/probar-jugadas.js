@@ -1318,6 +1318,9 @@ const helpLib = require(compileTo('lib/fantasyHelp.ts'));
         const otras = rulesOf(dia([], LATER, { rules: { budget: null, perTeam: 3, captain: 2, picks: { points: 15 }, scoring: { batter: { homeRun: 12, run: 1, rbi: 1, double: 4 }, pitcher: { out: 1 } } } }));
         partial(helpNumbers(otras), { budget: null, perTeam: 3, captain: 2, picks: 15 });
         partial(helpExamples(otras), { solo: { total: 14, captain: 28 }, double: { total: 6 } });
+        // Precios provisionales (pueden ajustarse una vez antes del día): la ayuda lo dice
+        assert.strictEqual(rulesOf(dia([], LATER, { rules: { prices: { frozen: false } } })).prices.frozen, false);
+        assert.strictEqual(rulesOf(dia([])).prices.frozen, true);
         assert.strictEqual(HELP_QUESTIONS.length, 15);
         assert.ok(Object.values(HELP_TOPICS).every(isHelpQuestion));
     });

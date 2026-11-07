@@ -55,8 +55,9 @@ export const HelpCenter: React.FC<{ rules: FantasyRules; initial?: HelpQuestion 
             return next;
         });
 
+    // Con los precios del día todavía provisionales (rules.prices.frozen = false) se dice que pueden ajustarse una vez
     const answer = (question: HelpQuestion) =>
-        t(`fantasyHelp.faq.${question}.a`, {
+        t(question === 'prices' && !rules.prices.frozen ? 'fantasyHelp.faq.prices.aProvisional' : `fantasyHelp.faq.${question}.a`, {
             perTeam: n.perTeam,
             captain: num(n.captain),
             picks: n.picks,
