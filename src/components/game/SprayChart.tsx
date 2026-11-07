@@ -520,8 +520,12 @@ const SprayDialog: React.FC<{ label: string; onClose: () => void; children: (clo
     // ¿La entrada de arriba del historial sigue siendo la nuestra?
     const ours = () => pushed.current && window.history.state?.elPlaySpray === token.current;
 
+    const leaving = useRef(false);
     const requestClose = useCallback(() => {
+        // Una sola vez: dos toques rápidos no deben volver dos veces atrás (y salir del juego)
+        if (done.current || leaving.current) return;
         if (ours()) {
+            leaving.current = true;
             window.history.back();
             // Por si el navegador no avisa del «atrás»
             window.setTimeout(finish, 450);

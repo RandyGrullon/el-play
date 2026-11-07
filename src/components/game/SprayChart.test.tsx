@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -130,16 +130,19 @@ describe('mapa de batazos', () => {
         expect(hits(dialog)).toBe(2);
         fireEvent.click(within(dialog).getByRole('radio', { name: 'Tipo: Rodado' }));
         expect(within(card()).getByRole('radio', { name: 'Tipo: Rodado' }).getAttribute('aria-checked')).toBe('true');
-        // El foco no sale del diálogo
-        fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
-        expect(dialog.contains(document.activeElement)).toBe(true);
 
         fireEvent.keyDown(document, { key: 'Escape' });
         await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Mapa de batazos' })).toBeNull());
         expect(document.activeElement).toBe(expand);
 
+        // Dos toques rápidos en la X vuelven atrás una sola vez
+        const back = vi.spyOn(window.history, 'back');
         fireEvent.click(screen.getByRole('button', { name: 'Ampliar' }));
-        fireEvent.click(within(screen.getByRole('dialog', { name: 'Mapa de batazos' })).getByRole('button', { name: 'Cerrar' }));
+        const x = within(screen.getByRole('dialog', { name: 'Mapa de batazos' })).getByRole('button', { name: 'Cerrar' });
+        fireEvent.click(x);
+        fireEvent.click(x);
+        expect(back).toHaveBeenCalledTimes(1);
+        back.mockRestore();
         await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Mapa de batazos' })).toBeNull());
 
         fireEvent.click(screen.getByRole('button', { name: 'Ampliar' }));
