@@ -25,7 +25,7 @@ const hasPlayed = (player: FantasyPlayer) =>
  * último juego, y si sí, esperado (confirmado con su juego ya empezado). Igual que la web.
  */
 export const statusOf = (day: FantasyDay, player: FantasyPlayer, now = Date.now(), hint?: PlayerStatus | null): PlayerStatus | null => {
-    if (player.status) return player.status;
+    if (player.status) return player.status === 'probable' && player.estimated ? 'rotation' : player.status;
     if (playerPostponed(day, player)) return 'postponed';
     const game = gameOf(day, player);
     if (!game) return null;
@@ -45,8 +45,8 @@ export const statusOf = (day: FantasyDay, player: FantasyPlayer, now = Date.now(
 /** La etiqueta que se ve en la lista: pospuesto y «No jugó» siempre; con su juego empezado, «Ya empezó» */
 export const badgeOf = (row: Pick<PickRow, 'status' | 'locked'>): BadgeStatus | null => (row.status === 'dnp' || row.status === 'postponed' ? row.status : row.locked ? 'started' : row.status);
 
-/** Va de titular: confirmado o esperado en la alineación, o abridor probable */
-export const isStarterStatus = (status: BadgeStatus | null) => status === 'confirmed' || status === 'expected' || status === 'probable';
+/** Va de titular: confirmado o esperado en la alineación, abridor probable o le toca abrir por la rotación */
+export const isStarterStatus = (status: BadgeStatus | null) => status === 'confirmed' || status === 'expected' || status === 'probable' || status === 'rotation';
 
 /** Por qué no se puede agregar, con lo que hace falta para el texto («Ya tienes 2 de LIC», «Te faltan 1.5 créditos») */
 export type PickReason = { kind: 'started' } | { kind: 'postponed' } | { kind: 'fullB'; n: number } | { kind: 'fullP'; count: number } | { kind: 'team'; n: number; team: string } | { kind: 'budget'; short: number };

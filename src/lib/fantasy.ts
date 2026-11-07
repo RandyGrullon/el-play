@@ -18,7 +18,8 @@ export interface FantasyLine {
  * bateador confirmado en la alineación del día, esperado (abrió el último juego) o en la banca; lanzador abridor
  * probable, descansando (abrió hace 4 días o menos) o en el bullpen; pospuesto, o no jugó (su juego terminó sin él).
  */
-export type PlayerStatus = 'confirmed' | 'expected' | 'bench' | 'probable' | 'bullpen' | 'resting' | 'postponed' | 'dnp';
+// «rotation» no viene del servidor: es el «probable» estimado por la rotación (estimated), con su propia etiqueta
+export type PlayerStatus = 'confirmed' | 'expected' | 'bench' | 'probable' | 'rotation' | 'bullpen' | 'resting' | 'postponed' | 'dnp';
 
 /** Números cortos de la temporada (el servidor nuevo): bateador avg/ops/hr, lanzador era/whip/k */
 export interface FantasySeasonLine {
@@ -56,6 +57,8 @@ export interface FantasyPlayer {
     /** Rival del día (home: juega en casa) */
     opp?: { id: number; abbrev: string; home: boolean } | null;
     status?: PlayerStatus;
+    /** Abridor estimado por la rotación (la liga no lo anunció): el servidor lo manda con status «probable» */
+    estimated?: boolean;
     /** Puntos de fantasy de sus últimos 5 juegos, del más viejo al más nuevo (pueden ser menos) */
     last5?: number[];
     season?: FantasySeasonLine | null;

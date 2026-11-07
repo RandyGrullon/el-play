@@ -1881,7 +1881,7 @@
       },
       "noPlay": {
         "q": "What if my player doesn't play?",
-        "a": "He scores 0 and there are no automatic swaps. Before his game you'll see “Confirmed” once he's in the lineup, “Expected” if he started the previous game and “Bench” if not; for pitchers, “Probable starter”, “Resting” or “Bullpen”."
+        "a": "He scores 0 and there are no automatic swaps. Before his game you'll see “Confirmed” once he's in the lineup, “Expected” if he started the previous game and “Bench” if not; for pitchers, “Probable starter” (announced by his team), “Due to start” (his turn in the rotation, when nothing is announced), “Resting” or “Bullpen”."
       },
       "prices": {
         "q": "How are prices set?",
@@ -2003,6 +2003,7 @@
       "expected": "Expected",
       "bench": "Bench",
       "probable": "Probable starter",
+      "rotation": "Due to start",
       "bullpen": "Bullpen",
       "resting": "Resting",
       "postponed": "Postponed",

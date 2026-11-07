@@ -1306,6 +1306,11 @@ const helpLib = require(compileTo('lib/fantasyHelp.ts'));
         assert.strictEqual(statusOf(d, players[5]), 'probable');
         assert.strictEqual(statusOf(d, players[6]), 'resting');
         assert.strictEqual(statusOf(d, players[7]), 'bullpen');
+        // Le toca abrir: el servidor manda «probable» con estimated (la liga no lo anunció) y cuenta como titular
+        const estimado = { ...players[7], id: 12345678, name: 'Pelotero Uno', status: 'probable', estimated: true };
+        assert.strictEqual(statusOf(d, estimado), 'rotation');
+        assert.strictEqual(pickerLib.isStarterStatus('rotation'), true);
+        assert.strictEqual(statusOf(d, { ...estimado, estimated: undefined }), 'probable');
         // En PRO, las alineaciones dicen «Esperado» o «Confirmado» si el día no trae el estado
         assert.strictEqual(statusOf(d, players[4], Date.now(), 'expected'), 'expected');
         assert.deepStrictEqual(reasonOf(d, vacio, players[0]), { kind: 'started' });

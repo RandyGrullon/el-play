@@ -99,7 +99,7 @@ export const lockText = (day: FantasyDay, player: FantasyPlayer, t: TFunction, l
 // ---------------------------------------------------------------- piezas
 
 type Tone = 'up' | 'accent' | 'muted' | 'warn' | 'down';
-const TONES: Record<BadgeStatus, Tone> = { confirmed: 'up', probable: 'up', expected: 'accent', bench: 'muted', bullpen: 'muted', resting: 'warn', postponed: 'down', dnp: 'muted', started: 'muted' };
+const TONES: Record<BadgeStatus, Tone> = { confirmed: 'up', probable: 'up', rotation: 'accent', expected: 'accent', bench: 'muted', bullpen: 'muted', resting: 'warn', postponed: 'down', dnp: 'muted', started: 'muted' };
 
 const useTone = (tone: Tone) => {
     const colors = useColors();
