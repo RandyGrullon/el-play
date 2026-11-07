@@ -405,3 +405,31 @@ describe('fantasy del día: precios fijos y la flecha ↑↓', () => {
         expect(fantasy.previousGameDay([at('2026-10-18', 'final'), at('2026-10-19', 'postponed')], '2026-10-20')).toBe('2026-10-18');
     });
 });
+
+describe('fantasy del día con el simulador (MLB_MOCK)', () => {
+    afterEach(() => {
+        delete process.env.MLB_MOCK;
+    });
+
+    it('hoy: doble cartelera, uno por empezar con la alineación de casa anunciada, uno pospuesto, y todos los campos nuevos', async () => {
+        process.env.MLB_MOCK = '1';
+        const day = await fantasy.fantasyDay('lidom');
+        expect(day.games.map((g) => g.status).sort()).toEqual(['final', 'live', 'postponed', 'scheduled']);
+        expect(day.games.filter((g) => g.doubleheader).length).toBe(2);
+        const statuses = new Set(day.players.map((p) => p.status));
+        for (const status of ['confirmed', 'expected', 'bench', 'probable', 'resting', 'bullpen', 'postponed']) expect(statuses.has(status)).toBe(true);
+        const preview = day.games.find((g) => g.status === 'scheduled');
+        expect(preview.probables.away).toBeTypeOf('number');
+        expect(day.players.filter((p) => p.gamePk === preview.gamePk && p.teamId === preview.home.id).some((p) => p.status === 'confirmed')).toBe(true);
+        expect(day.players.filter((p) => p.gamePk === preview.gamePk && p.teamId === preview.away.id).some((p) => p.status === 'expected')).toBe(true);
+        expect(day.players.some((p) => p.priceDelta !== null && p.priceDelta !== 0)).toBe(true);
+        expect(day.players.filter((p) => p.role === 'B').some((p) => p.season?.avg && p.season.hr >= 0)).toBe(true);
+        expect(day.players.filter((p) => p.role === 'P').some((p) => p.season?.era)).toBe(true);
+        expect(day.players.some((p) => p.last5.length === 5)).toBe(true);
+        expect(day.rules.budget).toBe(50);
+        // Ayer todo terminó: el que no jugó sale «dnp»
+        const yesterday = new Date(Date.now() - 28 * 3600000).toISOString().slice(0, 10);
+        const before = await fantasy.fantasyDay('lidom', yesterday);
+        expect(before.players.some((p) => p.status === 'dnp')).toBe(true);
+    });
+});
