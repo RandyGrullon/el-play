@@ -25,9 +25,9 @@ import { SprayBallArt } from './SprayBalls';
 // tocar y las cifras de lo filtrado. La lógica está en src/lib/spray.ts.
 
 /** Color de la marca de cada resultado (sobre la grama) y el de su texto (sobre la tarjeta) */
-export const RESULT_COLORS: Record<SprayResult, string> = { single: '#38bdf8', double: '#facc15', triple: '#fb923c', hr: '#ff3b5c', out: '#ffffff', error: '#c084fc' };
+export const RESULT_COLORS: Record<SprayResult, string> = { single: '#3b82f6', double: '#a855f7', triple: '#facc15', hr: '#ef4444', out: '#ffffff', error: '#fb923c' };
 const RESULT_INK_LIGHT: Record<SprayResult, string> = { single: '#0369a1', double: '#a16207', triple: '#c2410c', hr: '#e11d48', out: '#6b6f7b', error: '#7e22ce' };
-const RESULT_INK_DARK: Record<SprayResult, string> = { single: '#38bdf8', double: '#facc15', triple: '#fb923c', hr: '#ff4d6a', out: '#9a9db0', error: '#c084fc' };
+const RESULT_INK_DARK: Record<SprayResult, string> = { single: '#60a5fa', double: '#c084fc', triple: '#facc15', hr: '#f87171', out: '#9a9db0', error: '#fb923c' };
 const RESULTS: SprayResult[] = ['single', 'double', 'triple', 'hr', 'out', 'error'];
 
 type SprayMode = 'balls' | 'zones' | 'heat';
