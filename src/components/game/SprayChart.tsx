@@ -342,7 +342,7 @@ const SprayBody: React.FC<{ game: GameDetail; shared: SprayShared; big?: boolean
                     className={`mx-auto h-auto w-full select-none rounded-2xl ${big ? 'max-w-[900px]' : 'max-w-[520px]'}`}
                     style={{ background: 'var(--fld-foul)' }}
                     role="group"
-                    aria-label={t('spray.aria', { count: balls.length })}
+                    aria-label={mode === 'heat' ? t('spray.heatAria', { count: balls.length }) : mode === 'zones' ? t('spray.zonesAria', { count: balls.length }) : t('spray.aria', { count: balls.length })}
                 >
                     <GlowDef id={glow} />
                     <ParkDrawing park={park} />
@@ -427,6 +427,8 @@ const SprayBody: React.FC<{ game: GameDetail; shared: SprayShared; big?: boolean
 
                 {current && mode === 'balls' ? (
                     <DetailCard ball={current} position={index} total={balls.length} onStep={(delta) => select(balls[(index + delta + balls.length) % balls.length].key)} />
+                ) : mode !== 'balls' ? (
+                    <RampLegend color={mode === 'zones' ? zoneFill : heatColor} />
                 ) : (
                     <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] text-muted">
                         {present.map((result) => (
@@ -671,6 +673,25 @@ const StatsStrip: React.FC<{ stats: ReturnType<typeof sprayStats>; hasEv: boolea
     );
 };
 
+/** Sombra de la zona según su parte de la que más tiene (0 a 1) */
+const zoneFill = (share: number) => `rgb(220 38 38 / ${(0.08 + 0.62 * share).toFixed(2)})`;
+
+/** «Menos ▭▭▭▭▭▭ Más»: la escala de la sombra (Zonas) o del calor, sobre la grama como en el mapa */
+const RampLegend: React.FC<{ color: (value: number) => string }> = ({ color }) => {
+    const { t } = useTranslation();
+    return (
+        <p className="fld flex items-center justify-center gap-2 text-[11px] font-semibold text-muted">
+            <span>{t('spray.less')}</span>
+            <span className="flex gap-1" aria-hidden="true">
+                {[0, 1, 2, 3, 4, 5].map((step) => (
+                    <span key={step} className="h-2 w-[18px] rounded-full" style={{ background: `linear-gradient(${color(step / 5)}, ${color(step / 5)}), var(--fld-g1)` }} />
+                ))}
+            </span>
+            <span>{t('spray.more')}</span>
+        </p>
+    );
+};
+
 const wedge = (park: ReturnType<typeof parkFor>, from: number, to: number, inner: number) => {
     const outer: string[] = [];
     for (let deg = from; deg <= to + 0.001; deg += 1.5) {
@@ -696,7 +717,7 @@ const ZonesLayer: React.FC<{ balls: SprayBall[]; park: ReturnType<typeof parkFor
                 const mid = row.zone === 'IF' ? svgPoint(polar(0, 100)) : svgPoint(polar(from + 9, (150 + wallAt(park, from + 9)) / 2));
                 return (
                     <g key={row.zone}>
-                        <path d={d} fill={`rgb(220 38 38 / ${(0.08 + 0.62 * (row.count / top)).toFixed(2)})`} stroke="#ffffff" strokeOpacity={0.7} strokeWidth={1.5} />
+                        <path d={d} fill={zoneFill(row.count / top)} stroke="#ffffff" strokeOpacity={0.7} strokeWidth={1.5} />
                         <text x={mid.x} y={mid.y} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize={14} fontWeight={800} style={{ paintOrder: 'stroke', stroke: 'rgb(0 0 0 / 0.45)', strokeWidth: 3 }}>
                             {t('spray.zoneLabel', { count: row.count, pct: row.pct, hits: row.hits })}
                         </text>
