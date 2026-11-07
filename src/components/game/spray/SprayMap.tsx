@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, ClipPath, Defs, G, Polygon, RadialGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { Easing, cancelAnimation, useAnimatedReaction, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, ChevronRight, Play, Square, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Maximize2, Play, Square, X } from 'lucide-react-native';
 import type { GameDetail } from '../../../types';
 import { eventName, inningName, pitchTypeName } from '../../../lib/baseball';
 import { parkFor } from '../../../lib/flight';
@@ -130,7 +131,7 @@ const MixBar: React.FC<{ parts: { label: string; share: number; color: string }[
     </View>
 );
 
-export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
+const SprayBody: React.FC<{ game: GameDetail; big?: boolean; onExpand?: () => void; onClose?: () => void }> = ({ game, big, onExpand, onClose }) => {
     const { t, i18n } = useTranslation();
     const lang = i18n.language;
     const colors = useColors();
@@ -256,7 +257,7 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
         select(null);
     };
 
-    const boxWidth = width || Math.min(screen - 32, 520);
+    const boxWidth = width || Math.min(screen - 32, big ? 900 : 520);
     const u = view.w / boxWidth;
     const ink = isDark ? RESULT_INK_DARK : RESULT_INK_LIGHT;
     const feet = (ft: number) => t('spray.feet', { ft });
@@ -321,6 +322,18 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                         { value: 'heat', label: t('spray.views.heat') }
                     ]}
                 />
+                {big ? (
+                    <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={t('common.close')} style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.raised }}>
+                        <X size={18} color={colors.ink} />
+                    </Pressable>
+                ) : (
+                    <Pressable onPress={onExpand} accessibilityRole="button" accessibilityLabel={t('spray.expand')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 6, height: 32, paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: colors.raised, opacity: pressed ? 0.8 : 1 })}>
+                        <Maximize2 size={14} color={colors.ink} />
+                        <Txt size={12} weight="bold">
+                            {t('spray.expand')}
+                        </Txt>
+                    </Pressable>
+                )}
             </Row>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, gap: 6 }} accessibilityLabel={t('spray.filters.label')}>
@@ -394,7 +407,7 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                         setWidth(Math.round(event.nativeEvent.layout.width));
                         look();
                     }}
-                    style={{ width: '100%', maxWidth: 520, aspectRatio: view.w / view.h, borderRadius: radius.tile, overflow: 'hidden' }}
+                    style={{ width: '100%', maxWidth: big ? 900 : 520, aspectRatio: view.w / view.h, borderRadius: radius.tile, overflow: 'hidden' }}
                     accessibilityLabel={mode === 'heat' ? t('spray.heatAria', { count: balls.length }) : mode === 'zones' ? t('spray.zonesAria', { count: balls.length }) : t('spray.aria', { count: balls.length })}
                 >
                     <Svg width="100%" height="100%" viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}>
@@ -641,5 +654,22 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                 )}
             </View>
         </Card>
+    );
+};
+
+/** El mapa en su tarjeta y, con «Ampliar», a pantalla completa (se cierra con la X o con atrás en Android) */
+export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
+    const [open, setOpen] = useState(false);
+    const colors = useColors();
+    const insets = useSafeAreaInsets();
+    return (
+        <>
+            <SprayBody game={game} onExpand={() => setOpen(true)} />
+            <Modal visible={open} animationType="fade" presentationStyle="fullScreen" onRequestClose={() => setOpen(false)}>
+                <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24, paddingHorizontal: 8 }}>
+                    {open && <SprayBody game={game} big onClose={() => setOpen(false)} />}
+                </ScrollView>
+            </Modal>
+        </>
     );
 };
