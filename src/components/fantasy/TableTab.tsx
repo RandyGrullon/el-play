@@ -5,13 +5,14 @@ import { ScrollView, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { createLeague, dayEntries, joinLeague, myLeagues, useSession } from '../../lib/account';
-import { effectiveEntry, pickPoints, teamPoints, type FantasyDay } from '../../lib/fantasy';
+import { dayPoints, effectiveEntry, rankRows, type FantasyDay } from '../../lib/fantasy';
 import { Card, Row, Segmented, Skeleton, Txt } from '../ui';
 import { AccountCard } from '../account/AccountCard';
 import { Field, FieldButton } from '../account/Field';
 import { FanRow, SeasonTable } from './FanSearch';
 import { LeagueSummary } from './LeagueSummary';
 import { useLocalText } from './texts';
+import { HelpButton } from './Help';
 
 export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (userId: string) => void }> = ({ day, dayName, onOpenFan }) => {
     const { t } = useTranslation();
@@ -43,11 +44,14 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (
 
     if (!session) return null;
 
-    // Cada equipo como estaba al empezar cada juego (lo cambiado después no cuenta)
-    const ranking = (rivals || [])
-        .map((rival) => ({ ...rival, entry: effectiveEntry(day, rival.entry) }))
-        .map((rival) => ({ ...rival, points: teamPoints(day, rival.entry) + pickPoints(day, rival.entry) }))
-        .sort((a, b) => b.points - a.points);
+    // Cada equipo como estaba al empezar cada juego (lo cambiado después no cuenta); los empates comparten el puesto
+    const ranking = rankRows(
+        (rivals || []).map((rival) => {
+            const entry = effectiveEntry(day, rival.entry);
+            return { ...rival, entry, points: dayPoints(day, rival.entry, entry).total };
+        }),
+        (a, b) => a.userId.localeCompare(b.userId)
+    );
 
     const create = async () => {
         if (!name.trim() || busy) return;
@@ -94,6 +98,7 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (
                 {leagues.length > 0 && (
                     <Segmented<string> small value={scope} onChange={setScope} options={[{ value: 'all', label: t('fantasy.everyone') }, ...leagues.map((l) => ({ value: l.id, label: l.name }))]} />
                 )}
+                <HelpButton topic="table" date={day.date} style={{ alignSelf: 'center' }} />
             </ScrollView>
             {period === 'season' ? (
                 <SeasonTable league={day.league} members={scope === 'all' ? undefined : members} onOpen={onOpenFan} />
@@ -107,7 +112,7 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (
                         </View>
                     ) : ranking.length ? (
                         ranking.map((row, index) => (
-                            <FanRow key={row.userId} first={index === 0} userId={row.userId} name={row.name} own={row.userId === session.user.id} onOpen={onOpenFan} rank={index + 1} points={row.points} />
+                            <FanRow key={row.userId} first={index === 0} userId={row.userId} name={row.name} own={row.userId === session.user.id} onOpen={onOpenFan} rank={row.rank} points={row.points} />
                         ))
                     ) : (
                         <Txt size={14} tone="muted" center style={{ paddingHorizontal: 16, paddingVertical: 24 }}>
@@ -122,7 +127,7 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (
                     fantasyLeague={day.league}
                     dayName={dayName}
                     ownId={session.user.id}
-                    day={ranking.map((row) => ({ userId: row.userId, name: row.name, points: row.points }))}
+                    day={ranking.map((row) => ({ userId: row.userId, name: row.name, points: row.points, rank: row.rank }))}
                     onLeft={() => {
                         setScope('all');
                         load();

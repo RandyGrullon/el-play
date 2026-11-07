@@ -43,8 +43,8 @@ export const LeagueSummary: React.FC<{
     fantasyLeague: LeagueId;
     dayName: string;
     ownId: string;
-    /** La tabla del día dentro de la liga (ya ordenada) */
-    day: { userId: string; name: string | null; points: number }[];
+    /** La tabla del día dentro de la liga (ya ordenada, con los puestos compartidos en los empates) */
+    day: { userId: string; name: string | null; points: number; rank?: number }[];
     onLeft: () => void;
 }> = ({ league, fantasyLeague, dayName, ownId, day, onLeft }) => {
     const { t, i18n } = useTranslation();
@@ -70,7 +70,7 @@ export const LeagueSummary: React.FC<{
     };
 
     const share = () => {
-        const lines = day.slice(0, 10).map((row, index) => `${index + 1}. ${label(row.userId, row.name)} · ${round(row.points)}`);
+        const lines = day.slice(0, 10).map((row, index) => `${row.rank ?? index + 1}. ${label(row.userId, row.name)} · ${round(row.points)}`);
         const text = [
             t('leagueSummary.shareTitle', { league: league.name, day: dayName }),
             ...lines,

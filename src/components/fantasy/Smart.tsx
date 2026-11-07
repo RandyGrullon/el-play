@@ -7,7 +7,7 @@ import type { TFunction } from 'i18next';
 import { Clock, Crown, Sparkles, Trophy, Wand2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { accountEnabled } from '../../lib/account';
-import { RULES, applyLineup, gameStarted, isLocked, nextLockAt, teamPoints, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
+import { RULES, applyLineup, budgetOf, gameStarted, isLocked, nextLockAt, teamPoints, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
 import { bestLineup, projectedPoints } from '../../lib/fantasyBest';
 import { formatTime } from '../../lib/format';
 import { showToast } from '../../lib/toast';
@@ -157,7 +157,7 @@ const SuggestSheet: React.FC<{ day: FantasyDay; keep: number[]; captain: number 
                     <>
                         <LineupList day={day} lineup={best.lineup} captain={best.captain} metric="proj" />
                         <Txt size={14} weight="bold">
-                            {t('fantasy.smart.suggestTotal', { pts: formatCredits(best.total, lang), cost: formatCredits(best.cost, lang), budget: formatCredits(day.credits?.budget ?? 0, lang) })}
+                            {t('fantasy.smart.suggestTotal', { pts: formatCredits(best.total, lang), cost: formatCredits(best.cost, lang), budget: formatCredits(budgetOf(day) ?? best.cost, lang) })}
                         </Txt>
                         <Button
                             label={t('fantasy.smart.use')}

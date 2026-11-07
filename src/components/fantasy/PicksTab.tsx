@@ -1,40 +1,46 @@
-// «Pronósticos»: escoger quién gana cada juego antes de que empiece (+10 por acierto)
+// «Pronósticos»: escoger quién gana cada juego antes de que empiece (+10 por acierto, o lo que digan las reglas del día)
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Lock } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { RULES, gameStarted, pickResult, setPick, type DayEntry, type FantasyDay } from '../../lib/fantasy';
+import { gameStarted, isPostponed, pickResult, rulesOf, setPick, type DayEntry, type FantasyDay } from '../../lib/fantasy';
 import { formatTime } from '../../lib/format';
 import { useColors } from '../../theme/theme';
 import { inkOn, radius } from '../../theme/tokens';
 import { Card, Row, TeamLogo, Txt } from '../ui';
 import { formatCredits } from './shared';
 import { useOwners } from './Smart';
+import { HelpButton } from './Help';
 
 export const PicksTab: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, entry }) => {
     const { t, i18n } = useTranslation();
     const colors = useColors();
     const owners = useOwners(day);
+    const pick = rulesOf(day).picks.points;
     return (
         <View style={{ gap: 10 }} accessibilityLabel={t('fantasy.picks')}>
-            <Txt size={14} tone="muted">
-                {t('fantasy.picksHint', { pts: RULES.pick })}
-            </Txt>
+            <Row gap={6} align="flex-start">
+                <Txt size={14} tone="muted" style={{ flex: 1 }}>
+                    {t('fantasy.picksHint', { pts: pick })}
+                </Txt>
+                <HelpButton topic="picks" date={day.date} />
+            </Row>
             {day.games.map((game) => {
-                const pick = entry.picks[game.gamePk];
+                const chosenId = entry.picks[game.gamePk];
                 const result = pickResult(game, entry);
-                // Se cierra al empezar el juego o al llegar su hora (lo que pase primero)
-                const locked = gameStarted(game);
+                // Se cierra al empezar el juego o al llegar su hora (lo que pase primero); el pospuesto no se juega
+                const postponed = isPostponed(game);
+                const locked = gameStarted(game) || postponed;
                 return (
                     <Card key={game.gamePk} style={{ padding: 12, gap: 8 }}>
                         <Row justify="space-between">
                             <Txt size={12} weight="semibold" tone="muted">
-                                {game.state === 'preview' ? formatTime(game.date, i18n.language) : game.state === 'final' ? t('fantasy.final') : t('fantasy.liveNow')}
+                                {postponed ? t('fantasyHelp.status.postponed') : game.state === 'preview' ? formatTime(game.date, i18n.language) : game.state === 'final' ? t('fantasy.final') : t('fantasy.liveNow')}
                             </Txt>
                             {result === 'win' && (
                                 <Txt size={12} weight="extrabold" color={colors.ball}>
-                                    +{RULES.pick}
+                                    +{pick}
                                 </Txt>
                             )}
                             {result === 'loss' && (
@@ -42,7 +48,7 @@ export const PicksTab: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, 
                                     0
                                 </Txt>
                             )}
-                            {locked && !pick && (
+                            {locked && !postponed && !chosenId && (
                                 <Txt size={12} weight="semibold" tone="muted">
                                     {t('fantasy.noPick')}
                                 </Txt>
@@ -50,7 +56,7 @@ export const PicksTab: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, 
                         </Row>
                         <Row gap={8}>
                             {[game.away, game.home].map((side) => {
-                                const chosen = pick === side.id;
+                                const chosen = chosenId === side.id;
                                 const ink = chosen ? inkOn(side.color) : colors.ink;
                                 return (
                                     <Pressable
