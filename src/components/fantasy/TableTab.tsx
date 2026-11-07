@@ -35,7 +35,14 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: O
         load();
     }, [session?.user.id, day.date, scope]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (!session) return <p className="card p-4 text-sm text-muted">{t('fantasyHelp.demo')}</p>;
+    // Solo en el modo de prueba (sin cuenta): no hay tabla, pero la ayuda sí
+    if (!session)
+        return (
+            <div className="flex items-start gap-2">
+                <p className="card flex-1 p-4 text-sm text-muted">{t('fantasyHelp.demo')}</p>
+                <HelpButton topic="table" />
+            </div>
+        );
 
     // Cada equipo como estaba al empezar cada juego (lo cambiado después no cuenta); los empates comparten el puesto
     const ranking = withRanks(
