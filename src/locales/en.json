@@ -678,7 +678,6 @@
   },
   "spray": {
     "title": "Spray chart",
-    "filter": "Batting team",
     "both": "Both",
     "aria_one": "Chart with {{count}} batted ball",
     "aria_other": "Chart with {{count}} batted balls",
@@ -706,11 +705,6 @@
     },
     "replay": "Replay",
     "stop": "Stop",
-    "resultFilter": "Result",
-    "all": "All",
-    "onlyHits": "Hits",
-    "onlyHr": "Home runs",
-    "onlyOuts": "Outs",
     "empty": "No batted balls with these filters",
     "list": "Batted ball list",
     "noEv": "This ballpark does not measure exit velocity",
@@ -753,7 +747,33 @@
       "zones": "Zones",
       "heat": "Heat"
     },
-    "zoneLabel": "{{count}} · {{pct}}% · {{hits}} H"
+    "zoneLabel": "{{count}} · {{pct}}% · {{hits}} H",
+    "filters": {
+      "label": "Map filters",
+      "team": "Team",
+      "result": "Result",
+      "type": "Type",
+      "all": "All",
+      "hits": "Hits",
+      "hr": "Home runs",
+      "outs": "Outs"
+    },
+    "kind": {
+      "ground": "Grounder",
+      "line": "Liner",
+      "fly": "Fly ball",
+      "popup": "Pop-up"
+    },
+    "less": "Less",
+    "more": "More",
+    "heatAria": "Heat map with {{count}} batted balls",
+    "zonesAria": "Zones with {{count}} batted balls",
+    "expand": "Expand",
+    "batter": "Batter",
+    "pickBatter": "Pick a batter",
+    "clearBatter": "Clear the batter",
+    "ballsCount_one": "{{count}} batted ball",
+    "ballsCount_other": "{{count}} batted balls"
   },
   "anim": {
     "single": "SINGLE",

@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, ChevronRight, Play, Square } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Play, Square, X } from 'lucide-react';
 import type { GameDetail } from '../../types';
 import { eventName, inningName, pitchTypeName } from '../../lib/baseball';
 import { parkFor, polar, wallAt } from '../../lib/flight';
@@ -20,23 +20,27 @@ import {
     pathD,
     replayStep,
     sprayBalls,
+    sprayBatters,
     sprayStats,
     svgPoint,
+    withTeam,
     type SprayBall,
     type SprayFilters,
     type SprayResult
 } from '../../lib/spray';
 import { usePreferences } from '../../store/preferences';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { BottomSheet } from '../ui/BottomSheet';
 import { Segmented } from '../ui/Segmented';
 import { PlayerLink } from '../ui/PlayerLink';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
 import { GlowDef, ParkDrawing, ResultMarker } from '../spray/ParkDrawing';
 
 // Mapa de batazos sobre el parque de verdad del juego (en pies): cada bola con su vuelo desde home y dónde cayó,
-// filtros por equipo y resultado, la ficha de la bola tocada, «Repetir» y los números de lo filtrado.
+// filtros que se combinan (equipo, resultado, tipo y bateador), la ficha de la bola tocada, «Repetir» y los números de lo filtrado.
 
 const RESULTS: SprayResult[] = ['single', 'double', 'triple', 'hr', 'error', 'out'];
+const TRAJS: SprayFilters['traj'][] = ['all', 'ground', 'line', 'fly', 'popup'];
 const TEXT_ON: Record<SprayResult, string> = { single: '#ffffff', double: '#ffffff', triple: '#14151a', hr: '#ffffff', error: '#14151a', out: '' };
 
 interface Geo {
@@ -76,7 +80,9 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
     const [filters, setFilters] = useState<SprayFilters>(DEFAULT_FILTERS);
     const [mode, setMode] = useState<'balls' | 'zones' | 'heat'>('balls');
     const [selected, setSelected] = useState<number | null>(null);
+    const [picking, setPicking] = useState(false);
     const balls = useMemo(() => filterBalls(all, filters), [all, filters]);
+    const batters = useMemo(() => sprayBatters(all, filters.team), [all, filters.team]);
     const stats = useMemo(() => sprayStats(balls), [balls]);
     const hasEv = useMemo(() => all.some((ball) => ball.ev != null), [all]);
     const geo = useMemo<Geo[]>(
@@ -156,11 +162,12 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
         if (key !== null && motion) animateBall(nodes.current.get(key) ?? null, 0, ENTRY_FLIGHT_MS);
     };
 
-    const setFilter = <K extends keyof SprayFilters>(key: K, value: SprayFilters[K]) => {
+    const changeFilters = (next: SprayFilters) => {
         if (replaying) stopReplay();
         setSelected(null);
-        setFilters((current) => ({ ...current, [key]: value }));
+        setFilters(next);
     };
+    const setFilter = <K extends keyof SprayFilters>(key: K, value: SprayFilters[K]) => changeFilters({ ...filters, [key]: value });
 
     if (!all.length) return null;
 
@@ -172,6 +179,8 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
     const index = selected !== null ? balls.findIndex((ball) => ball.key === selected) : -1;
     const current = index >= 0 ? balls[index] : null;
     const present = RESULTS.filter((result) => balls.some((ball) => ball.result === result));
+    const batterName = filters.batter !== null ? (all.find((ball) => ball.atBat.batter.id === filters.batter)?.atBat.batter.name ?? '') : '';
+    const filterAria = (group: 'team' | 'result' | 'type', label: string) => `${t(`spray.filters.${group}`)}: ${label}`;
 
     return (
         <section className="card overflow-hidden" aria-labelledby="spray-title">
@@ -206,31 +215,87 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                 </button>
             </header>
 
-            <div className="flex gap-2 overflow-x-auto px-4 pt-3 scrollbar-none">
+            <div className="flex items-center gap-2 overflow-x-auto px-4 pt-3 scrollbar-none" role="group" aria-label={t('spray.filters.label')}>
                 <Segmented<SprayFilters['team']>
                     size="sm"
-                    label={t('spray.filter')}
+                    className="shrink-0"
+                    label={t('spray.filters.team')}
                     value={filters.team}
-                    onChange={(value) => setFilter('team', value)}
+                    onChange={(value) => changeFilters(withTeam(all, filters, value))}
                     options={[
-                        { value: 'all', label: t('spray.both') },
-                        { value: 'away', label: game.away.abbrev },
-                        { value: 'home', label: game.home.abbrev }
+                        { value: 'all', label: t('spray.both'), aria: filterAria('team', t('spray.both')) },
+                        { value: 'away', label: game.away.abbrev, aria: filterAria('team', game.away.name) },
+                        { value: 'home', label: game.home.abbrev, aria: filterAria('team', game.home.name) }
                     ]}
                 />
                 <Segmented<SprayFilters['result']>
                     size="sm"
-                    label={t('spray.resultFilter')}
+                    className="shrink-0"
+                    label={t('spray.filters.result')}
                     value={filters.result}
                     onChange={(value) => setFilter('result', value)}
-                    options={[
-                        { value: 'all', label: t('spray.all') },
-                        { value: 'hits', label: t('spray.onlyHits') },
-                        { value: 'hr', label: t('spray.onlyHr') },
-                        { value: 'outs', label: t('spray.onlyOuts') }
-                    ]}
+                    options={(['all', 'hits', 'hr', 'outs'] as const).map((value) => ({ value, label: t(`spray.filters.${value}`), aria: filterAria('result', t(`spray.filters.${value}`)) }))}
                 />
+                <Segmented<SprayFilters['traj']>
+                    size="sm"
+                    className="shrink-0"
+                    label={t('spray.filters.type')}
+                    value={filters.traj}
+                    onChange={(value) => setFilter('traj', value)}
+                    options={TRAJS.map((value) => {
+                        const label = value === 'all' ? t('spray.filters.all') : t(`spray.kind.${value}`);
+                        return { value, label, aria: filterAria('type', label) };
+                    })}
+                />
+                <div className="flex shrink-0 items-center gap-1">
+                    <button
+                        type="button"
+                        onClick={() => setPicking(true)}
+                        aria-haspopup="dialog"
+                        aria-label={filters.batter !== null ? `${t('spray.batter')}: ${batterName}` : t('spray.pickBatter')}
+                        className={`inline-flex min-h-10 max-w-[180px] items-center gap-1 rounded-full px-4 text-xs font-semibold transition-colors ${filters.batter !== null ? 'bg-ink text-bg' : 'bg-raised text-muted hover:text-ink'}`}
+                    >
+                        <span className="truncate">{filters.batter !== null ? batterName : t('spray.batter')}</span>
+                        {filters.batter === null && <ChevronDown className="h-3.5 w-3.5 shrink-0" />}
+                    </button>
+                    {filters.batter !== null && (
+                        <button type="button" onClick={() => setFilter('batter', null)} aria-label={t('spray.clearBatter')} className="flex h-10 w-10 items-center justify-center rounded-full bg-raised text-ink">
+                            <X className="h-3.5 w-3.5" />
+                        </button>
+                    )}
+                </div>
             </div>
+
+            <BottomSheet open={picking} onClose={() => setPicking(false)} title={t('spray.pickBatter')}>
+                <ul className="space-y-1">
+                    {batters.map((row) => {
+                        const team = game[row.side];
+                        const active = filters.batter === row.id;
+                        const count = t('spray.ballsCount', { count: row.count });
+                        return (
+                            <li key={row.id}>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPicking(false);
+                                        setFilter('batter', row.id);
+                                    }}
+                                    aria-pressed={active}
+                                    aria-label={`${row.name}, ${team.abbrev}, ${count}`}
+                                    className={`flex w-full items-center gap-3 rounded-2xl p-2 text-left transition-colors ${active ? 'bg-accent/15' : 'hover:bg-raised'}`}
+                                >
+                                    <PlayerPhoto personId={row.id} name={row.name} size={44} team={team} />
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-[15px] font-bold">{row.name}</span>
+                                        <span className="block text-[13px] text-muted">{team.abbrev}</span>
+                                    </span>
+                                    <span className="shrink-0 text-[13px] font-semibold text-muted">{count}</span>
+                                </button>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </BottomSheet>
 
             <div className="fld relative px-3 pt-3">
                 <svg

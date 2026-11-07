@@ -678,7 +678,6 @@
   },
   "spray": {
     "title": "Mapa de batazos",
-    "filter": "Equipo al bate",
     "both": "Ambos",
     "aria_one": "Mapa con {{count}} batazo",
     "aria_other": "Mapa con {{count}} batazos",
@@ -706,11 +705,6 @@
     },
     "replay": "Repetir",
     "stop": "Detener",
-    "resultFilter": "Resultado",
-    "all": "Todo",
-    "onlyHits": "Hits",
-    "onlyHr": "Jonrones",
-    "onlyOuts": "Outs",
     "empty": "Ningún batazo con estos filtros",
     "list": "Lista de batazos",
     "noEv": "Este estadio no mide la velocidad de salida",
@@ -753,7 +747,33 @@
       "zones": "Zonas",
       "heat": "Calor"
     },
-    "zoneLabel": "{{count}} · {{pct}}% · {{hits}} H"
+    "zoneLabel": "{{count}} · {{pct}}% · {{hits}} H",
+    "filters": {
+      "label": "Filtros del mapa",
+      "team": "Equipo",
+      "result": "Resultado",
+      "type": "Tipo",
+      "all": "Todo",
+      "hits": "Hits",
+      "hr": "Jonrones",
+      "outs": "Outs"
+    },
+    "kind": {
+      "ground": "Rodado",
+      "line": "Línea",
+      "fly": "Elevado",
+      "popup": "Globito"
+    },
+    "less": "Menos",
+    "more": "Más",
+    "heatAria": "Mapa de calor con {{count}} batazos",
+    "zonesAria": "Zonas con {{count}} batazos",
+    "expand": "Ampliar",
+    "batter": "Bateador",
+    "pickBatter": "Escoge un bateador",
+    "clearBatter": "Quitar el bateador",
+    "ballsCount_one": "{{count}} batazo",
+    "ballsCount_other": "{{count}} batazos"
   },
   "anim": {
     "single": "HIT",
