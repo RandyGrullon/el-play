@@ -74,6 +74,8 @@ const App: React.FC = () => (
                             <Route path="/lideres" element={<LeadersPage />} />
                             <Route path="/mas" element={<MorePage />} />
                             <Route path="/fantasy" element={<FantasyPage />} />
+                            {/* «Cómo se juega» se abre sobre el Fantasy (?ayuda=…): así se puede compartir el enlace */}
+                            <Route path="/fantasy/ayuda" element={<Navigate to="/fantasy?ayuda=steps" replace />} />
                             <Route path="/estadisticas" element={<StatsPage />} />
                             <Route path="/equipo/:teamId" element={<TeamPage />} />
                             <Route path="/jugador/:playerId" element={<PlayerPage />} />
