@@ -67,6 +67,24 @@ interface Geo {
     bounces: { x: number; y: number }[];
 }
 
+/** Ancho en pantalla de un elemento (0 hasta medirlo) */
+const useWidth = (node: Element | null) => {
+    const [width, setWidth] = useState(0);
+    useEffect(() => {
+        if (!node) return;
+        const measure = () => setWidth(Math.round(node.getBoundingClientRect().width));
+        measure();
+        if (typeof ResizeObserver === 'undefined') {
+            window.addEventListener('resize', measure);
+            return () => window.removeEventListener('resize', measure);
+        }
+        const observer = new ResizeObserver(measure);
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [node]);
+    return width;
+};
+
 const animateBall = (node: Element | null, delay: number, duration: number) => {
     if (!node || typeof (node as HTMLElement).animate !== 'function') return [];
     const out: Animation[] = [];
@@ -125,7 +143,15 @@ const SprayBody: React.FC<{ game: GameDetail; shared: SprayShared; big?: boolean
         [balls]
     );
 
-    const svgRef = useRef<SVGSVGElement>(null);
+    const svgRef = useRef<SVGSVGElement | null>(null);
+    const [svgNode, setSvgNode] = useState<SVGSVGElement | null>(null);
+    const attachSvg = useCallback((node: SVGSVGElement | null) => {
+        svgRef.current = node;
+        setSvgNode(node);
+    }, []);
+    // El círculo que se toca mide ~26 px en pantalla (en pies depende del ancho del dibujo), nunca menos de 16 pies
+    const width = useWidth(svgNode);
+    const hitRadius = Math.max(16, (13 * view.w) / (width || (big ? 900 : 520)));
     const nodes = useRef(new Map<number, SVGGElement>());
     const running = useRef<Animation[]>([]);
     const [entered, setEntered] = useState(!motion);
@@ -337,7 +363,7 @@ const SprayBody: React.FC<{ game: GameDetail; shared: SprayShared; big?: boolean
 
             <div className="fld relative px-3 pt-3">
                 <svg
-                    ref={svgRef}
+                    ref={attachSvg}
                     viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
                     className={`mx-auto h-auto w-full select-none rounded-2xl ${big ? 'max-w-[900px]' : 'max-w-[520px]'}`}
                     style={{ background: 'var(--fld-foul)' }}
@@ -349,42 +375,64 @@ const SprayBody: React.FC<{ game: GameDetail; shared: SprayShared; big?: boolean
                     {mode === 'zones' && <ZonesLayer balls={balls} park={park} />}
                     {mode === 'heat' && <HeatLayer balls={balls} box={view} park={park} />}
                     <g style={entered ? (mode === 'balls' ? undefined : { display: 'none' }) : { opacity: 0 }}>
-                        {geo.map((item) => {
-                            const active = item.ball.key === selected;
-                            const color = SPRAY_RESULT_COLORS[item.ball.result];
-                            return (
-                                <g
-                                    key={item.ball.key}
-                                    ref={(node) => {
-                                        if (node) nodes.current.set(item.ball.key, node);
-                                        else nodes.current.delete(item.ball.key);
-                                    }}
-                                    role="button"
-                                    tabIndex={0}
-                                    aria-label={labelOf(item.ball)}
-                                    aria-pressed={active}
-                                    onClick={() => select(active ? null : item.ball.key)}
-                                    onKeyDown={(event) => {
-                                        if (event.key === 'Enter' || event.key === ' ') {
-                                            event.preventDefault();
-                                            select(active ? null : item.ball.key);
-                                        }
-                                    }}
-                                    style={{ cursor: 'pointer', opacity: selected !== null && !active ? 0.22 : 1, transition: 'opacity .2s' }}
-                                >
-                                    <path data-path d={item.d} pathLength={1} strokeDasharray="1" fill="none" stroke={color} strokeOpacity={active ? 0.95 : 0.42} strokeWidth={active ? 3.2 : 2.2} strokeLinecap="round" />
-                                    {item.bounces.map((point, n) => (
-                                        <circle key={n} data-bounce cx={point.x} cy={point.y} r={2.4} fill={color} fillOpacity={0.7} />
-                                    ))}
-                                    <circle cx={item.x} cy={item.y} r={16} fill="transparent" />
-                                    <circle data-ripple cx={item.x} cy={item.y} r={item.r} fill="none" stroke={color} strokeWidth={2} opacity={0} style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
-                                    <g data-marker style={{ transformBox: 'fill-box', transformOrigin: 'center' }}>
-                                        {active && <circle cx={item.x} cy={item.y} r={item.r + 5} fill="none" stroke="#ffffff" strokeWidth={2} />}
-                                        <ResultMarker result={item.ball.result} x={item.x} y={item.y} r={item.r} glowId={glow} />
+                        {/* El dibujo (vuelo, piques, marca) no recibe toques: el vuelo de una bola no tapa la marca de otra */}
+                        <g pointerEvents="none">
+                            {geo.map((item) => {
+                                const active = item.ball.key === selected;
+                                const color = SPRAY_RESULT_COLORS[item.ball.result];
+                                return (
+                                    <g
+                                        key={item.ball.key}
+                                        ref={(node) => {
+                                            if (node) nodes.current.set(item.ball.key, node);
+                                            else nodes.current.delete(item.ball.key);
+                                        }}
+                                        style={{ opacity: selected !== null && !active ? 0.22 : 1, transition: 'opacity .2s' }}
+                                    >
+                                        <path data-path d={item.d} pathLength={1} strokeDasharray="1" fill="none" stroke={color} strokeOpacity={active ? 0.95 : 0.42} strokeWidth={active ? 3.2 : 2.2} strokeLinecap="round" pointerEvents="none" />
+                                        {item.bounces.map((point, n) => (
+                                            <circle key={n} data-bounce cx={point.x} cy={point.y} r={2.4} fill={color} fillOpacity={0.7} />
+                                        ))}
+                                        <circle data-ripple cx={item.x} cy={item.y} r={item.r} fill="none" stroke={color} strokeWidth={2} opacity={0} style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+                                        <g data-marker style={{ transformBox: 'fill-box', transformOrigin: 'center' }}>
+                                            {active && <circle cx={item.x} cy={item.y} r={item.r + 5} fill="none" stroke="#ffffff" strokeWidth={2} />}
+                                            <ResultMarker result={item.ball.result} x={item.x} y={item.y} r={item.r} glowId={glow} />
+                                        </g>
                                     </g>
-                                </g>
-                            );
-                        })}
+                                );
+                            })}
+                        </g>
+                        {/* Encima de todo, el círculo que se toca (≈ 26 px en pantalla, como en la app), centrado en la marca */}
+                        <g>
+                            {geo.map((item) => {
+                                const active = item.ball.key === selected;
+                                return (
+                                    <circle
+                                        key={item.ball.key}
+                                        data-hit
+                                        cx={item.x}
+                                        cy={item.y}
+                                        r={hitRadius}
+                                        fill="transparent"
+                                        stroke="transparent"
+                                        strokeWidth={2.5}
+                                        pointerEvents="all"
+                                        className="cursor-pointer outline-none focus-visible:stroke-white"
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-label={labelOf(item.ball)}
+                                        aria-pressed={active}
+                                        onClick={() => select(active ? null : item.ball.key)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                                event.preventDefault();
+                                                select(active ? null : item.ball.key);
+                                            }
+                                        }}
+                                    />
+                                );
+                            })}
+                        </g>
                     </g>
                 </svg>
                 {!balls.length && <p className="absolute inset-x-0 top-1/2 text-center text-sm font-bold text-white">{t('spray.empty')}</p>}
