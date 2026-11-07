@@ -9,6 +9,11 @@ const round1 = (value: number) => Math.round(value * 10) / 10;
 export const HELP_QUESTIONS = ['lock', 'postponed', 'noPlay', 'prices', 'cantPick', 'perTeam', 'doubleheader', 'captain', 'picks', 'win', 'changeAfter', 'visibility', 'leagues', 'projection', 'account'] as const;
 export type HelpQuestion = (typeof HELP_QUESTIONS)[number];
 
+/** Las partes de la ayuda (para saltar a una: «Cómo se cuentan los puntos» abre en Puntos) */
+export const HELP_SECTIONS = ['steps', 'points', 'examples', 'faq'] as const;
+export type HelpSection = (typeof HELP_SECTIONS)[number];
+export const isHelpSection = (value: unknown): value is HelpSection => typeof value === 'string' && (HELP_SECTIONS as readonly string[]).includes(value);
+
 /** Los «?» de cada parte abren la ayuda en su pregunta (fantasyHelp.topic.<parte> dice de qué es la ayuda) */
 export const HELP_TOPICS = { credits: 'prices', captain: 'captain', picks: 'picks', table: 'win' } as const satisfies Record<string, HelpQuestion>;
 export type HelpTopic = keyof typeof HELP_TOPICS;

@@ -3,6 +3,7 @@ import React, { useCallback } from 'react';
 import { Pressable } from 'react-native';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
 import { Info } from 'lucide-react-native';
 import { inningName } from '../../lib/baseball';
 import { formatTime } from '../../lib/format';
@@ -62,12 +63,14 @@ export const teamOf = (day: FantasyDay | undefined, player: FantasyPlayer): Logo
 /** Abre la ficha del pelotero (la pantalla /jugador/[id]); desde una hoja, la cierra primero */
 export const useOpenPlayer = () => useCallback((id: number) => openPlayer({ id }), []);
 
-/** «Cómo se cuentan los puntos» (abre o cierra la tabla de puntos) */
-export const RulesToggle: React.FC<{ open: boolean; onToggle: () => void }> = ({ open, onToggle }) => {
+/** «Cómo se cuentan los puntos»: abre la ayuda en Puntos (como la web), con las reglas del día `date` */
+export const RulesToggle: React.FC<{ date?: string }> = ({ date }) => {
     const { t } = useTranslation();
     const colors = useColors();
+    const router = useRouter();
+    const onToggle = () => router.push({ pathname: '/fantasy/ayuda', params: { q: 'points', ...(date ? { dia: date } : {}) } });
     return (
-        <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded: open }} hitSlop={6} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start' }}>
+        <Pressable onPress={onToggle} accessibilityRole="button" hitSlop={6} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start' }}>
             <Info size={16} color={colors.accentInk} />
             <Txt size={14} weight="semibold" tone="accentInk">
                 {t('fantasy.howPoints')}

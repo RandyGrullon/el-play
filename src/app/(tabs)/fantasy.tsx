@@ -20,7 +20,7 @@ import { FanSearch } from '../../components/fantasy/FanSearch';
 import { useFanProfile } from '../../components/fantasy/fans';
 import { ProFantasy } from '../../components/pro/fantasy/ProFantasy';
 import { useLocalText } from '../../components/fantasy/texts';
-import { HowToPlayButton } from '../../components/fantasy/Help';
+import { HowToPlayLink } from '../../components/fantasy/Help';
 import { useSaveStatus } from '../../components/pro/fantasy/data';
 import { accountEnabled, pushEntry, syncFantasy, useSession } from '../../lib/account';
 import { dayPoints, entryKey, repairEntry, fetchFantasyDay, getStore, history, settleDay, unsettledDays, useEntry, useFantasyDay, useFantasyStore } from '../../lib/fantasy';
@@ -147,10 +147,10 @@ export default function FantasyScreen() {
                         <Title>{t('fantasy.title')}</Title>
                         {pro && <ProBadge />}
                     </Row>
+                    {/* Siempre a la vista, también sin cuenta: la ayuda con las reglas del día que se está viendo */}
+                    <HowToPlayLink date={date} />
                 </View>
                 <Row gap={8}>
-                    {/* «¿Cómo se juega?»: la ayuda con las reglas del día que se está viendo */}
-                    <HowToPlayButton date={date} compact={width < 480} />
                     <Pressable
                         onPress={() => router.push('/posiciones?seccion=estadisticas')}
                         accessibilityRole="button"

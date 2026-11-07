@@ -16,7 +16,6 @@ import { alpha, radius, shadow } from '../../theme/tokens';
 import { PlayerPhoto, Row, Txt } from '../ui';
 import { teamTextLink } from '../stats/common';
 import { RulesToggle, formatCredits, gameStatus, lineText, teamOf, useOpenPlayer } from './shared';
-import { ScoringTable } from './ScoringTable';
 import { CreditsMeter } from './CreditsMeter';
 import { IdealCard, LockNotice, SmartActions, useOwners } from './Smart';
 import type { FantasyOwners } from './fans';
@@ -28,7 +27,6 @@ import { HelpButton } from './Help';
 export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; counted: CountedEntry; saveStatus: SaveStatus; onPick: (role: 'B' | 'P') => void }> = ({ day, entry, counted, saveStatus, onPick }) => {
     const { t, i18n } = useTranslation();
     const colors = useColors();
-    const [rules, setRules] = useState(false);
     const owners = useOwners(day);
     const dayRules = rulesOf(day);
     const lang = i18n.language;
@@ -102,8 +100,7 @@ export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; counted: Coun
 
             <IdealCard day={day} entry={counted.entry} />
 
-            <RulesToggle open={rules} onToggle={() => setRules((v) => !v)} />
-            {rules && <ScoringTable day={day} />}
+            <RulesToggle date={day.date} />
         </View>
     );
 };

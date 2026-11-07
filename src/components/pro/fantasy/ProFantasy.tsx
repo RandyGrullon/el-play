@@ -22,7 +22,7 @@ import { AccountCard } from '../../account/AccountCard';
 import { useFanProfile } from '../../fantasy/fans';
 import { shift, useOpenPlayer } from '../../fantasy/shared';
 import { useLocalText } from '../../fantasy/texts';
-import { HowToPlayButton } from '../../fantasy/Help';
+import { HowToPlayLink } from '../../fantasy/Help';
 import { ProNote, ProSegmented, ScreenTitle, useNow } from '../kit';
 import { ProFans } from '../fanaticos/ProFans';
 import { fmtPts } from './bits';
@@ -219,9 +219,9 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
                 <ScreenTitle
                     eyebrow={eyebrow}
                     title={t('fantasy.title')}
+                    subtitle={<HowToPlayLink date={date} style={{ marginTop: 2 }} />}
                     actions={
                         <>
-                            <HowToPlayButton date={date} compact />
                             <Pressable onPress={() => setSheet('season')} accessibilityRole="button" accessibilityLabel={t('pro.fantasy.season.open')} style={({ pressed }) => [iconButton, shadow('card'), { opacity: pressed ? 0.8 : 1 }]}>
                                 <BarChart3 size={20} color={colors.ink} />
                             </Pressable>

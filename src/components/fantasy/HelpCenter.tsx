@@ -6,17 +6,17 @@ import { Pressable, ScrollView, View, type LayoutChangeEvent } from 'react-nativ
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Clock, Coins, Crown, ListChecks, Users } from 'lucide-react-native';
 import type { FantasyRules } from '../../lib/fantasy';
-import { HELP_QUESTIONS, helpExamples, helpNumbers, scoringRows, type HelpQuestion } from '../../lib/fantasyHelp';
+import { HELP_QUESTIONS, HELP_SECTIONS, helpExamples, helpNumbers, scoringRows, type HelpQuestion, type HelpSection } from '../../lib/fantasyHelp';
 import { useColors } from '../../theme/theme';
 import { alpha, radius, shadow } from '../../theme/tokens';
 import { Card, Row, Txt } from '../ui';
 import { signed } from './PlayerBits';
 import { formatCredits } from './shared';
 
-type Section = 'steps' | 'points' | 'examples' | 'faq';
-const SECTIONS: Section[] = ['steps', 'points', 'examples', 'faq'];
+type Section = HelpSection;
+const SECTIONS = HELP_SECTIONS;
 
-export const HelpCenter: React.FC<{ rules: FantasyRules; initial?: HelpQuestion | null; scroller: RefObject<ComponentRef<typeof ScrollView> | null> }> = ({ rules, initial, scroller }) => {
+export const HelpCenter: React.FC<{ rules: FantasyRules; initial?: HelpQuestion | null; section?: HelpSection | null; scroller: RefObject<ComponentRef<typeof ScrollView> | null> }> = ({ rules, initial, section: initialSection, scroller }) => {
     const { t, i18n } = useTranslation();
     const lang = i18n.language;
     const colors = useColors();
@@ -74,15 +74,15 @@ export const HelpCenter: React.FC<{ rules: FantasyRules; initial?: HelpQuestion 
         { Icon: ListChecks, text: t('fantasyHelp.steps.s4', { picks: n.picks }) },
         { Icon: Clock, text: t('fantasyHelp.steps.s5') }
     ];
-    const chips = [
-        t('fantasyHelp.rules.roster', { batters: n.batters, count: n.pitchers }),
-        t('fantasyHelp.rules.perTeam', { n: n.perTeam }),
-        t('fantasyHelp.rules.captain', { x: num(n.captain) }),
-        n.budget === null ? t('fantasyHelp.rules.noCap') : t('fantasyHelp.rules.budget', { budget: num(n.budget) })
-    ];
 
     const sectionLayout = (section: Section) => (event: LayoutChangeEvent) => {
         sectionY.current[section] = event.nativeEvent.layout.y;
+        // Abierta en una parte («Cómo se cuentan los puntos» → Puntos): salta ahí una vez
+        if (section === initialSection && !jumped.current && section !== 'steps') {
+            jumped.current = true;
+            const y = event.nativeEvent.layout.y;
+            requestAnimationFrame(() => go(y));
+        }
         if (section === 'faq') {
             faqY.current = event.nativeEvent.layout.y;
             jumpToInitial();
@@ -137,22 +137,6 @@ export const HelpCenter: React.FC<{ rules: FantasyRules; initial?: HelpQuestion 
                         </Txt>
                     </Pressable>
                 ))}
-            </View>
-
-            {/* Las reglas del día de un vistazo */}
-            <View style={{ gap: 8 }}>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                    {chips.map((chip) => (
-                        <View key={chip} style={{ borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: alpha(colors.accent, 0.12) }}>
-                            <Txt size={12} weight="bold" tone="accentInk">
-                                {chip}
-                            </Txt>
-                        </View>
-                    ))}
-                </View>
-                <Txt size={13} tone="muted">
-                    {t('fantasyHelp.rules.lock')}
-                </Txt>
             </View>
 
             <View onLayout={sectionLayout('steps')} style={{ gap: 12 }}>

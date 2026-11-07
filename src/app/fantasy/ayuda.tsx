@@ -10,7 +10,7 @@ import { X } from 'lucide-react-native';
 import { IconButton, Skeleton, Txt } from '../../components/ui';
 import { HelpCenter } from '../../components/fantasy/HelpCenter';
 import { rulesOf, useFantasyDay } from '../../lib/fantasy';
-import { isHelpQuestion } from '../../lib/fantasyHelp';
+import { isHelpQuestion, isHelpSection } from '../../lib/fantasyHelp';
 import { useLeague } from '../../state/league';
 import { useColors } from '../../theme/theme';
 
@@ -48,7 +48,7 @@ export default function FantasyHelpScreen() {
                     <Skeleton height={200} />
                 </View>
             ) : (
-                <HelpCenter rules={rulesOf(query.data)} initial={isHelpQuestion(q) ? q : null} scroller={scroller} />
+                <HelpCenter rules={rulesOf(query.data)} initial={isHelpQuestion(q) ? q : null} section={isHelpSection(q) ? q : null} scroller={scroller} />
             )}
         </ScrollView>
     );

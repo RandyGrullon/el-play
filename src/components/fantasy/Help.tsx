@@ -6,16 +6,16 @@ import { Pressable, type StyleProp, type ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { BookOpen, CircleHelp } from 'lucide-react-native';
-import { HELP_TOPICS, type HelpQuestion, type HelpTopic } from '../../lib/fantasyHelp';
+import { HELP_TOPICS, type HelpQuestion, type HelpSection, type HelpTopic } from '../../lib/fantasyHelp';
 import { useColors } from '../../theme/theme';
 import { radius, shadow } from '../../theme/tokens';
 import { Txt } from '../ui';
 
-/** Abre la ayuda (en una pregunta si se pasa) con las reglas del día que se está viendo (`date`: sin él, hoy) */
+/** Abre la ayuda (en una pregunta o una parte si se pasa) con las reglas del día que se está viendo (`date`: sin él, hoy) */
 export const useOpenHelp = (date?: string) => {
     const router = useRouter();
     return useCallback(
-        (question?: HelpQuestion) => router.push({ pathname: '/fantasy/ayuda', params: { ...(question ? { q: question } : {}), ...(date ? { dia: date } : {}) } }),
+        (question?: HelpQuestion | HelpSection) => router.push({ pathname: '/fantasy/ayuda', params: { ...(question ? { q: question } : {}), ...(date ? { dia: date } : {}) } }),
         [router, date]
     );
 };
@@ -38,20 +38,41 @@ export const HelpButton: React.FC<{ topic: HelpTopic; date?: string; color?: str
     );
 };
 
-/** «¿Cómo se juega?»: el botón del encabezado del Fantasy y de la portada */
+/** «¿Cómo se juega?» debajo del título del Fantasy (como la web): siempre a la vista, también sin cuenta */
+export const HowToPlayLink: React.FC<{ date?: string; style?: StyleProp<ViewStyle> }> = ({ date, style }) => {
+    const { t } = useTranslation();
+    const colors = useColors();
+    const open = useOpenHelp(date);
+    return (
+        <Pressable
+            onPress={() => open()}
+            accessibilityRole="button"
+            hitSlop={{ top: 4, bottom: 4 }}
+            style={({ pressed }) => [{ alignSelf: 'flex-start', height: 36, flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: -4, paddingHorizontal: 4, borderRadius: radius.pill, opacity: pressed ? 0.7 : 1 }, style]}
+        >
+            <CircleHelp size={16} color={colors.accentInk} />
+            <Txt size={14} weight="bold" tone="accentInk">
+                {t('fantasyHelp.open')}
+            </Txt>
+        </Pressable>
+    );
+};
+
+/** «¿Cómo se juega?»: el botón de la portada (y uno redondo de 44 px donde no cabe el texto) */
 export const HowToPlayButton: React.FC<{ date?: string; compact?: boolean; tone?: 'surface' | 'onGradient'; style?: StyleProp<ViewStyle> }> = ({ date, compact, tone = 'surface', style }) => {
     const { t } = useTranslation();
     const colors = useColors();
     const open = useOpenHelp(date);
+    // En la portada (sobre el degradado), blanco con el azul de la marca, como la web
     const onGradient = tone === 'onGradient';
-    const ink = onGradient ? '#fff' : colors.ink;
+    const ink = onGradient ? '#1e4fd8' : colors.ink;
     return (
         <Pressable
             onPress={() => open()}
             accessibilityRole="button"
             accessibilityLabel={t('fantasyHelp.open')}
             style={({ pressed }) => [
-                { height: compact ? 44 : 48, minWidth: compact ? 44 : 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: compact ? 0 : 14, borderRadius: compact ? 22 : radius.tile, backgroundColor: onGradient ? 'rgba(255,255,255,0.2)' : colors.surface, opacity: pressed ? 0.8 : 1 },
+                { height: compact ? 44 : 48, minWidth: compact ? 44 : 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: compact ? 0 : 14, borderRadius: compact ? 22 : radius.tile, backgroundColor: onGradient ? '#fff' : colors.surface, opacity: pressed ? 0.8 : 1 },
                 !onGradient && shadow('card'),
                 style
             ]}

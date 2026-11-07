@@ -11,7 +11,6 @@ import { radius, shadow } from '../../theme/tokens';
 import { Card, Gradient, PlayerPhoto, Row, Skeleton, TeamLogo, Txt } from '../ui';
 import { TeamLink, teamTextLink } from '../stats/common';
 import { AccountCard } from '../account/AccountCard';
-import { ScoringTable } from './ScoringTable';
 import { RulesToggle, formatCredits, lineText, teamOf, useOpenPlayer } from './shared';
 import { HowToPlayButton } from './Help';
 
@@ -19,7 +18,6 @@ export const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ 
     const { t, i18n } = useTranslation();
     const colors = useColors();
     const openPlayer = useOpenPlayer();
-    const [showRules, setShowRules] = useState(false);
     const started = !!day?.games.some((game) => game.state !== 'preview');
     const top = day && started ? day.players.filter((p) => p.played).sort((a, b) => b.points - a.points).slice(0, 5) : [];
     // Los números son los de las reglas del día (el tope por equipo y los créditos cambian según los juegos)
@@ -142,8 +140,7 @@ export const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ 
 
             {day && (
                 <>
-                    <RulesToggle open={showRules} onToggle={() => setShowRules((v) => !v)} />
-                    {showRules && <ScoringTable day={day} />}
+                    <RulesToggle date={day.date} />
                 </>
             )}
         </>
