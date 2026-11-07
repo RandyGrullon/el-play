@@ -1781,7 +1781,8 @@
       },
       "prices": {
         "q": "¿Cómo se ponen los precios?",
-        "a": "Por los puntos por juego de esta temporada y las {{past}} anteriores (la actual pesa más), comparado con los demás de su mismo rol. Van de {{min}} a {{max}} créditos, se fijan al empezar el día y no cambian hasta el día siguiente. La flecha ↑↓ dice cuánto subió o bajó."
+        "a": "Por los puntos por juego de esta temporada y las {{past}} anteriores (la actual pesa más), comparado con los demás de su mismo rol. Van de {{min}} a {{max}} créditos, se fijan al empezar el día y no cambian hasta el día siguiente. La flecha ↑↓ dice cuánto subió o bajó.",
+        "aProvisional": "Por los puntos por juego de esta temporada y las {{past}} anteriores (la actual pesa más), comparado con los demás de su mismo rol. Van de {{min}} a {{max}} créditos. Los de este día todavía pueden ajustarse una vez antes de que empiece; después quedan fijos hasta el día siguiente. La flecha ↑↓ dice cuánto subió o bajó."
       },
       "cantPick": {
         "q": "¿Por qué no puedo escoger a un pelotero?",

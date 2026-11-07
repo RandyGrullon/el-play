@@ -1781,7 +1781,8 @@
       },
       "prices": {
         "q": "How are prices set?",
-        "a": "From points per game this season and the {{past}} before it (the current one weighs more), compared with others in the same role. They go from {{min}} to {{max}} credits, are set when the day starts and don't change until the next day. The ↑↓ arrow shows how much it went up or down."
+        "a": "From points per game this season and the {{past}} before it (the current one weighs more), compared with others in the same role. They go from {{min}} to {{max}} credits, are set when the day starts and don't change until the next day. The ↑↓ arrow shows how much it went up or down.",
+        "aProvisional": "From points per game this season and the {{past}} before it (the current one weighs more), compared with others in the same role. They go from {{min}} to {{max}} credits. This day's prices may still adjust once before it starts; after that they're fixed until the next day. The ↑↓ arrow shows how much it went up or down."
       },
       "cantPick": {
         "q": "Why can't I pick a player?",
