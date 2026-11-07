@@ -139,11 +139,14 @@ export const pickerRows = (day: FantasyDay, entry: DayEntry, filters: PickerFilt
     const now = context.now ?? Date.now();
     const left = creditsLeft(day, entry);
     const query = normalizeText(filters.search);
+    // Por juego: los de sus dos equipos (en una doble cartelera el pelotero va con el primer juego, pero juega los dos)
+    const picked = filters.gamePk === null ? null : gameOf(day, filters.gamePk);
+    const inGame = (player: FantasyPlayer) => filters.gamePk === null || player.gamePk === filters.gamePk || (!!picked && (picked.away?.id === player.teamId || picked.home?.id === player.teamId));
     return day.players
         .filter(
             (player) =>
                 player.role === filters.role &&
-                (filters.gamePk === null || player.gamePk === filters.gamePk) &&
+                inGame(player) &&
                 (filters.teamId === null || player.teamId === filters.teamId) &&
                 (!query || normalizeText(player.name).includes(query))
         )

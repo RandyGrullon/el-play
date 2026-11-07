@@ -97,6 +97,13 @@ describe('«Cómo se juega»', () => {
         expect(within(dialog).getByText('Hasta 3. Los días con pocos juegos el tope sube.')).toBeTruthy();
     });
 
+    it('precios provisionales: lo dice la respuesta', () => {
+        const prices = { min: 4, max: 12, step: 0.5, noData: 5, seasonWeights: [1, 0.5, 0.25, 0.125], frozen: false };
+        wrap(<HowToPlay day={makeDay([], { rules: { prices } })} topic="prices" onClose={() => undefined} />);
+        expect(screen.getByText(/todavía pueden ajustarse una vez antes de que empiece/)).toBeTruthy();
+        expect(screen.getByText(/Van de 4 a 12 créditos/)).toBeTruthy();
+    });
+
     it('un «?» la abre en su pregunta', () => {
         wrap(<HowToPlay day={makeDay([])} topic="captain" onClose={() => undefined} />);
         expect(screen.getByRole('button', { name: '¿Cómo funciona el capitán?' }).getAttribute('aria-expanded')).toBe('true');
@@ -157,10 +164,10 @@ describe('tarjetas de mi equipo', () => {
         const list = [
             player(12345678, 'Pelotero Uno', 'B', LIC, 1, { price: 30 }),
             player(12345681, 'Pelotero Cuatro', 'B', TOR, 3, { status: 'postponed', price: 10 }),
-            player(12345683, 'Pelotero Seis', 'B', AGU, 1, { price: 15 })
+            player(12345683, 'Pelotero Seis', 'B', AGU, 1, { price: 25 })
         ];
         const day = makeDay(list);
-        // 55 de 50 créditos: el último que entró no cuenta
+        // 55 de 50 créditos (el pospuesto no gasta): el último que entró no cuenta
         const entry: DayEntry = { lineup: [12345678, 12345681, 12345683], captain: null, picks: {}, savedAt: 5 };
         replaceStore({ 'lidom:2099-11-10': entry });
         wrap(<TeamTab day={day} entry={entry} onPick={() => undefined} />);
@@ -170,6 +177,8 @@ describe('tarjetas de mi equipo', () => {
         // El pospuesto se puede quitar aunque su juego «terminó»
         expect((screen.getByRole('button', { name: 'Quitar a Pelotero Cuatro' }) as HTMLButtonElement).disabled).toBe(false);
         expect(screen.getByText('Máx. 2 por equipo')).toBeTruthy();
+        // El pospuesto deja su lugar libre para escoger al que lo reemplaza
+        expect(screen.getAllByRole('button', { name: 'Escoger bateador' })).toHaveLength(3);
         expect(screen.getByRole('button', { name: 'Ayuda sobre los créditos' })).toBeTruthy();
         await act(async () => {
             await saveEntry('lidom', '2099-11-10', entry, async () => null);

@@ -12,8 +12,8 @@ import { formatTime } from '../../lib/format';
 import { playerPath } from '../../lib/links';
 import { withRanks } from '../../lib/fans';
 import { helpRules, helpSteps } from '../../lib/fantasyHelp';
-import { lineText, type FantasyDay } from '../../lib/fantasy';
-import { credits, useOpenHelp } from './fantasyUi';
+import { gameStarted, isPostponedGame, lineText, type FantasyDay } from '../../lib/fantasy';
+import { StatusBadge, credits, useOpenHelp } from './fantasyUi';
 
 const STEP_ICONS = { s1: Users, s2: Coins, s2NoCap: Coins, s3: Crown, s4: Trophy, s5: Radio };
 
@@ -21,7 +21,7 @@ export const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ 
     const { t, i18n } = useTranslation();
     const openHelp = useOpenHelp();
     const rules = helpRules(day);
-    const started = !!day?.games.some((game) => game.state !== 'preview');
+    const started = !!day?.games.some((game) => gameStarted(game));
     const top = withRanks(day && started ? day.players.filter((p) => p.played).sort((a, b) => b.points - a.points).slice(0, 5) : []);
     // Los mismos pasos de «Cómo se juega», con los números del día
     const steps = helpSteps(rules).slice(0, 4);
@@ -98,7 +98,7 @@ export const FantasyGate: React.FC<{ day?: FantasyDay; loading: boolean }> = ({ 
                                     <TeamLogo team={game.away} size={30} />
                                     <span className="text-sm font-extrabold">{game.away.abbrev}</span>
                                 </TeamLink>
-                                <span className="flex-1 text-center text-xs font-semibold text-muted">{formatTime(game.date, i18n.language)}</span>
+                                <span className="flex flex-1 justify-center text-xs font-semibold text-muted">{isPostponedGame(game) ? <StatusBadge status="postponed" /> : formatTime(game.date, i18n.language)}</span>
                                 <TeamLink id={game.home.id} className="flex items-center gap-2">
                                     <span className="text-sm font-extrabold">{game.home.abbrev}</span>
                                     <TeamLogo team={game.home} size={30} />

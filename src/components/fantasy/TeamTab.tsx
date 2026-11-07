@@ -18,6 +18,7 @@ import { retrySave, useSaveStatus } from '../../lib/fantasySave';
 import {
     applyLineup,
     countedEntry,
+    gameStarted,
     creditsLeft,
     entryCost,
     gameOf,
@@ -26,12 +27,13 @@ import {
     lineText,
     nextLockAt,
     notCounting,
+    occupying,
     playerScore,
     removeId,
     removePlayer,
-    rosterSize,
     rulesOf,
     setCaptain,
+    slotsLeft,
     teamPoints,
     type DayEntry,
     type FantasyDay,
@@ -108,7 +110,8 @@ const CreditsMeter: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, ent
     const left = creditsLeft(day, entry) ?? 0;
     const over = left < -1e-9;
     // Le faltan peloteros y lo que queda no alcanza ni para los más baratos: tiene que cambiar a alguien caro
-    const missing = Math.max(0, rosterSize(day) - entry.lineup.length);
+    const slots = slotsLeft(day, entry);
+    const missing = slots.batters + slots.pitchers;
     const short = !over && missing > 0 && left + 1e-9 < missing * rules.prices.min;
     const share = budget > 0 ? Math.min(1, spent / budget) : 1;
     return (
@@ -139,7 +142,8 @@ const LockNotice: React.FC<{ day: FantasyDay; entry: DayEntry; now: number }> = 
     const { t, i18n } = useTranslation();
     const next = nextLockAt(day, now);
     if (next === null) return null;
-    const missing = Math.max(0, rosterSize(day) - entry.lineup.length);
+    const slots = slotsLeft(day, entry);
+    const missing = slots.batters + slots.pitchers;
     const game = day.games.find((g) => !g.startTimeTBD && Date.parse(g.date) === next);
     return (
         <div className={`flex items-start gap-2.5 rounded-2xl p-3 text-sm ${missing ? 'bg-live/10' : 'bg-raised'}`}>
@@ -172,7 +176,7 @@ const SmartActions: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, ent
         const player = day.players.find((p) => p.id === id);
         return !!player && !isPostponed(day, player);
     });
-    const missing = rosterSize(day) - keep.length;
+    const missing = rulesOf(day).batters + rulesOf(day).pitchers - keep.length;
     const projected = projectedPoints(day, entry.lineup, entry.captain);
     const fill = () => {
         const best = bestLineup(day, { metric: 'proj', keep, captain: entry.captain !== null && keep.includes(entry.captain) ? entry.captain : null });
@@ -280,7 +284,7 @@ const LineupList: React.FC<{ day: FantasyDay; lineup: number[]; captain: number 
 /** El equipo ideal del día (lo máximo que se podía sumar con los créditos y las reglas) y cuánto de eso hizo el tuyo */
 const IdealCard: React.FC<{ day: FantasyDay; counted: DayEntry }> = ({ day, counted }) => {
     const { t, i18n } = useTranslation();
-    const started = day.games.some((game) => game.state !== 'preview');
+    const started = day.games.some((game) => gameStarted(game));
     const ideal = useMemo(() => (started ? bestLineup(day, { metric: 'points', ignoreLocks: true }) : null), [day, started]);
     const [open, setOpen] = useState(false);
     if (!ideal || ideal.total <= 0) return null;
@@ -335,7 +339,9 @@ export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role
     const rules = rulesOf(day);
     const counted = useMemo(() => countedEntry(day, entry), [day, entry]);
     const reasons = useMemo(() => notCounting(day, entry, counted, now), [day, entry, counted, now]);
-    const chosen = entry.lineup.map((id) => day.players.find((p) => p.id === id)).filter((p): p is FantasyPlayer => !!p);
+    // Los pospuestos no ocupan cupo: su lugar se ve libre para escoger al que lo reemplaza (y agregarlo lo saca)
+    const chosen = occupying(day, entry);
+    const postponed = entry.lineup.map((id) => day.players.find((p) => p.id === id)).filter((p): p is FantasyPlayer => !!p && isPostponed(day, p));
     // Uno que ya no sale en el día (pospuesto con la API de antes): se ve para poder quitarlo
     const missing = entry.lineup.filter((id) => !day.players.some((p) => p.id === id));
     const batters = chosen.filter((p) => p.role === 'B');
@@ -372,6 +378,9 @@ export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role
                         <PlayerSlot key={slot.id} day={day} entry={entry} counted={counted} player={slot} owned={owners.get(slot.id)} reason={reasons.get(slot.id)} now={now} />
                     )
                 )}
+                {postponed.map((player) => (
+                    <PlayerSlot key={player.id} day={day} entry={entry} counted={counted} player={player} now={now} />
+                ))}
                 {missing.map((id) => (
                     <MissingSlot key={id} day={day} id={id} />
                 ))}

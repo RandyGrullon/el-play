@@ -300,7 +300,8 @@ const PickerItem: React.FC<{
                     {locked && today ? (
                         <p className="truncate text-[11px] font-semibold text-muted">{today}</p>
                     ) : (
-                        metrics.length > 0 && (
+                        metrics.length > 0 &&
+                        status !== 'postponed' && (
                             <p className="truncate text-[11px] text-muted tabular-nums">
                                 {metrics.map((metric, index) => (
                                     <React.Fragment key={metric.key}>

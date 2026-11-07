@@ -84,6 +84,8 @@ const entry = (lineup: number[], captain: number | null = null, extra: Partial<D
 
 // Dos juegos: LIC-TOR a las 23:30 (por empezar) y EST-AGU a las 21:00 (por empezar)
 const GAMES = () => [game(1, '2026-11-10T23:30:00Z', 'preview', LIC, TOR), game(2, '2026-11-10T21:00:00Z', 'preview', EST, AGU)];
+// Lo que usa el reloj de verdad (agregar, quitar): juegos muy en el futuro, para que la prueba no dependa de la fecha
+const later = (g: FantasyGame) => ({ ...g, date: g.date.replace('2026-', '2099-') }) as FantasyGame;
 
 describe('fantasy v2: reglas del día (con y sin `rules`)', () => {
     it('sin rules (la API de antes o una respuesta guardada) usa las de siempre', () => {
@@ -178,13 +180,16 @@ describe('fantasy v2: pospuestos y peloteros que ya no salen en el día', () => 
         expect(withoutMissing(day, six)).toBe(six);
         const seven = entry([99999999, players[0].id, players[1].id, 3, 4, 5, 6], 99999999);
         expect(withoutMissing(day, seven)).toEqual({ ...seven, lineup: [players[0].id, players[1].id], captain: null });
+        // Uno de un juego pospuesto también sale
+        const postponed = { ...players[1], status: 'postponed' as const };
+        expect(withoutMissing({ ...day, players: [players[0], postponed] }, seven).lineup).toEqual([players[0].id]);
     });
 
     it('agregar un 7.º con uno que desapareció deja 6: el día se puede seguir guardando', () => {
         const batters = [player('B', LIC, 1), player('B', LIC, 1), player('B', TOR, 1), player('B', TOR, 1), player('B', EST, 2)];
         const pitcher = player('P', AGU, 2);
         const gone = 87654321;
-        const day = makeDay([...batters, pitcher], GAMES(), { credits: undefined });
+        const day = makeDay([...batters, pitcher], GAMES().map(later), { credits: undefined });
         replaceStore({ 'lidom:2026-11-10': entry([gone, batters[0].id, batters[1].id, batters[2].id, batters[3].id, pitcher.id]) });
         // El que desapareció no cuenta para el cupo: el lugar se ve vacío y se puede llenar
         expect(addPlayer(day, getStore()['lidom:2026-11-10'], batters[4])).toBe(true);
@@ -218,7 +223,8 @@ describe('fantasy v2: pospuestos y peloteros que ya no salen en el día', () => 
         expect(isLocked(day, inLineup, at('20:00'))).toBe(false);
         expect(removePlayer(day, inLineup)).toBe(true);
         expect(getStore()['lidom:2026-11-10'].lineup).toEqual([]);
-        expect(lockTime(postponed)).toBe(Infinity);
+        // La hora de cierre es la de siempre (como el servidor): el pospuesto simplemente no cuenta
+        expect(lockTime(postponed)).toBe(at('19:00'));
         expect(nextLockAt(day, at('20:00'))).toBe(at('23:30'));
         expect(setPick(day, postponed, LIC, at('18:00'))).toBe(false);
         // Ni el sugerido ni el ideal lo toman en cuenta
@@ -247,6 +253,58 @@ describe('fantasy v2: pospuestos y peloteros que ya no salen en el día', () => 
     it('uno suspendido ya empezó (sus peloteros quedan cerrados)', () => {
         expect(gameStarted({ state: 'preview', date: '2026-11-11T23:00:00Z', status: 'suspended' }, BEFORE)).toBe(true);
         expect(gameStarted({ state: 'preview', date: '2026-11-11T23:00:00Z', detailedState: 'Suspended: Rain' }, BEFORE)).toBe(true);
+    });
+});
+
+describe('fantasy v2: un pospuesto no suma ni ocupa cupo (igual que el servidor)', () => {
+    beforeEach(() => {
+        setStoreOwner('test-pospuestos-cupo');
+        replaceStore({});
+    });
+    afterEach(() => {
+        localStorage.removeItem('el-play-fantasy-v1:test-pospuestos-cupo');
+        setStoreOwner(null);
+    });
+    const postponedGame = () => game(3, '2026-11-10T19:00:00Z', 'final', LIC, TOR, { status: 'postponed', detailedState: 'Postponed' });
+    const openGame = () => game(5, '2026-11-10T23:30:00Z', 'preview', EST, AGU);
+
+    it('sin historial: no gasta créditos ni cupo (sobra el que de verdad se pasa)', () => {
+        const gone = player('B', LIC, 3, { status: 'postponed', price: 30 });
+        const b = [player('B', EST, 5, { price: 20, points: 4 }), player('B', AGU, 5, { price: 20, points: 6 }), player('B', EST, 5, { price: 15, points: 9 })];
+        const day = makeDay([gone, ...b], [postponedGame(), openGame()]);
+        const saved = entry([gone.id, ...b.map((p) => p.id)]);
+        expect(countedEntry(day, saved).lineup).toEqual([gone.id, b[0].id, b[1].id]);
+        expect(teamPoints(day, countedEntry(day, saved))).toBe(10);
+        // Ni el pospuesto lleva aviso de «no cuenta» (tiene el suyo) ni gasta créditos
+        expect(notCounting(day, saved, undefined, BEFORE)).toEqual(new Map([[b[2].id, 'over']]));
+        expect(creditsLeft(day, entry([gone.id, b[0].id]))).toBe(30);
+        expect(slotsLeft(day, entry([gone.id]))).toEqual({ batters: 5, pitchers: 1 });
+    });
+
+    it('con historial: no cuenta ni su pronóstico', () => {
+        const gone = player('B', LIC, 3, { status: 'postponed', points: 0 });
+        const day = makeDay([gone], [postponedGame(), openGame()], { credits: undefined });
+        const saved = entry([gone.id], gone.id, { picks: { 3: LIC, 5: EST }, history: { v: 1, players: { [gone.id]: [[at('15:00'), null]] }, captain: [[gone.id, at('15:00')]], picks: { 3: [[LIC, at('15:00')]], 5: [[EST, at('15:00')]] } } });
+        expect(countedEntry(day, saved)).toMatchObject({ lineup: [], captain: null });
+        expect(countedEntry(day, saved).picks).toEqual({ 5: EST });
+    });
+
+    it('agregar al que lo reemplaza con el equipo lleno saca al pospuesto (la base no acepta 7)', () => {
+        const gone = player('B', LIC, 3, { status: 'postponed' });
+        const batters = [0, 1, 2, 3].map((i) => player('B', i % 2 ? EST : AGU, 5));
+        const pitcher = player('P', LIC, 5);
+        const swap = player('B', TOR, 5);
+        const day = makeDay([gone, ...batters, pitcher, swap], [postponedGame(), later(openGame())], { credits: undefined, rules: { perTeam: 3 } });
+        replaceStore({ 'lidom:2026-11-10': entry([gone.id, ...batters.map((p) => p.id), pitcher.id], gone.id) });
+        expect(canAdd(day, getStore()['lidom:2026-11-10'], swap, BEFORE)).toBeNull();
+        expect(addPlayer(day, getStore()['lidom:2026-11-10'], swap)).toBe(true);
+        expect(getStore()['lidom:2026-11-10']).toMatchObject({ lineup: [...batters.map((p) => p.id), pitcher.id, swap.id], captain: null });
+    });
+
+    it('sin rules, el tope por equipo no cuenta a los equipos de un juego pospuesto', () => {
+        const day = makeDay([], [postponedGame(), openGame()]);
+        expect(perTeamLimit(day)).toBe(3);
+        expect(perTeamLimit(makeDay([], [postponedGame(), openGame()], { rules: { perTeam: 2 } }))).toBe(2);
     });
 });
 

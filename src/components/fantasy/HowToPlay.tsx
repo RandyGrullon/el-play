@@ -147,7 +147,8 @@ export const HowToPlay: React.FC<{ day?: FantasyDay; topic?: HelpTopic | null; o
                                         </button>
                                     </h4>
                                     <div id={`${id}-a`} role="region" aria-labelledby={`${id}-q`} hidden={!expanded} className="px-4 pb-4 text-sm leading-relaxed text-muted">
-                                        {t(`fantasyHelp.faq.${key}.a`, formatted(answers[key]))}
+                                        {/* Precios provisionales (días futuros, o hoy si ayer todavía se jugaba): pueden ajustarse una vez */}
+                                        {t(key === 'prices' && !rules.prices.frozen ? 'fantasyHelp.faq.prices.aProvisional' : `fantasyHelp.faq.${key}.a`, formatted(answers[key]))}
                                     </div>
                                 </div>
                             );
