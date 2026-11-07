@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Home, Menu, Radio, Sparkles, BarChart3 } from 'lucide-react';
@@ -24,6 +24,7 @@ import { Toast } from './Toast';
 import { InstallSheet } from '../install/InstallSheet';
 import { useFantasyAlerts } from '../../hooks/useFantasyAlerts';
 import { useGameAlerts } from '../../hooks/useGameAlerts';
+import { useSwipeBack } from '../../hooks/useSwipeBack';
 import { syncPush } from '../../lib/push';
 import { usePreferences } from '../../store/preferences';
 import { ErrorBoundary } from '../common/ErrorBoundary';
@@ -68,6 +69,7 @@ const BottomNav: React.FC<{ onLive: () => void; liveCount: number }> = ({ onLive
     return (
         <nav
             aria-label={t('nav.label')}
+            data-no-swipe
             className="fixed inset-x-0 bottom-0 z-30 mx-auto mb-[calc(10px+env(safe-area-inset-bottom))] grid h-[70px] w-[calc(100%-24px)] max-w-md grid-cols-5 rounded-[26px] bg-nav shadow-float"
         >
             {item('/', t('nav.games'), Home, true)}
@@ -195,6 +197,11 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
     const schedule = useSchedule(activeLeague);
     const [liveOpen, setLiveOpen] = useState(false);
     const liveCount = schedule.data?.games.filter((game) => game.state === 'live').length ?? 0;
+    // Deslizar a la derecha vuelve: se mueve la página (main), no la barra de abajo
+    const shellRef = useRef<HTMLDivElement>(null);
+    const pageRef = useRef<HTMLElement>(null);
+    const backdropRef = useRef<HTMLDivElement>(null);
+    useSwipeBack(shellRef, pageRef, backdropRef);
 
     useEffect(() => {
         document.documentElement.lang = i18n.language.startsWith('en') ? 'en' : 'es';
@@ -209,13 +216,17 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
     // vivo) se abre desde cualquier página, también desde la hoja de En vivo
     return (
         <FieldViewProvider>
-        <div className="min-h-screen pb-[calc(96px+env(safe-area-inset-bottom))]">
+        <div ref={shellRef} className="min-h-screen pb-[calc(96px+env(safe-area-inset-bottom))]">
             <OfflineBanner />
-            <main className="mx-auto max-w-3xl">
+            {/* Lo que queda a la izquierda de la página mientras se desliza para volver: oscurecido, con la sombra de su borde */}
+            <div ref={backdropRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-20 hidden bg-black/10">
+                <span className="absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-black/15 to-transparent" />
+            </div>
+            <main ref={pageRef} className="mx-auto max-w-3xl">
                 <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
             </main>
             {/* Avisos uno sobre otro (no se tapan) y encima de las hojas abiertas */}
-            <div className="pointer-events-none fixed inset-x-4 bottom-[calc(96px+env(safe-area-inset-bottom))] z-[60] mx-auto flex max-w-md flex-col gap-2 [&>*]:pointer-events-auto">
+            <div data-no-swipe className="pointer-events-none fixed inset-x-4 bottom-[calc(96px+env(safe-area-inset-bottom))] z-[60] mx-auto flex max-w-md flex-col gap-2 [&>*]:pointer-events-auto">
                 <UpdateToast />
                 <Toast />
             </div>
