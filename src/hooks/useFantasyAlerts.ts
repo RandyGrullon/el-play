@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { entryKey, playerScore, teamPoints, useFantasyDay, useFantasyStore, type FantasyDay } from '../lib/fantasy';
+import { countedEntry, entryKey, playerScore, rulesOf, teamPoints, useFantasyDay, useFantasyStore, type FantasyDay } from '../lib/fantasy';
 import { useSession } from '../lib/account';
 import { useLeague } from '../store/LeagueContext';
 import { usePreferences } from '../store/preferences';
@@ -31,12 +31,17 @@ export const useFantasyAlerts = () => {
     useEffect(() => {
         const day: FantasyDay | undefined = query.data;
         if (!enabled || !day) return;
-        const entry = store[entryKey(day.league, day.date)];
-        if (!entry?.lineup.length) return;
-        const now = new Map(entry.lineup.map((id) => [id, (() => {
-            const player = day.players.find((p) => p.id === id);
-            return player ? playerScore(entry, player) : 0;
-        })()]));
+        const saved = store[entryKey(day.league, day.date)];
+        if (!saved?.lineup.length) return;
+        // Con el equipo que cuenta (como la tabla): el que no cuenta no avisa
+        const entry = countedEntry(day, saved);
+        const captain = rulesOf(day).captain;
+        const now = new Map(
+            entry.lineup.map((id) => {
+                const player = day.players.find((p) => p.id === id);
+                return [id, player ? playerScore(entry, player, captain) : 0];
+            })
+        );
         const previous = seen.current;
         seen.current = { date: day.date, points: now };
         // La primera lectura (o un día nuevo) solo marca desde dónde se cuenta

@@ -12,7 +12,7 @@ import { playerPath } from '../../lib/links';
 import { formatTime, localeFor, seasonLabel, todayKey } from '../../lib/format';
 import { inningName } from '../../lib/baseball';
 import { useSession } from '../../lib/account';
-import { RULES, effectiveEntry, entryKey, gameStarted, isLocked, lineText, pickPoints, pickResult, playerScore, teamPoints, useFantasyDay, useFantasyStore, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
+import { countedEntry, entryKey, rulesOf, gameStarted, isLocked, lineText, pickPoints, pickResult, playerScore, teamPoints, useFantasyDay, useFantasyStore, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
 import { SEASON_TOP, useFanEntry, useFanProfile, useSeasonRanking, withRanks, type FanDay, type FanProfileData } from '../../lib/fans';
 import { achievements } from '../../lib/fantasyExtras';
 
@@ -288,7 +288,8 @@ const DayDetail: React.FC<DayDetailProps> = ({ userId, league, own, fanDay, date
 
     // Lo de Supabase se puntúa como estaba al empezar cada juego (lo cambiado después no cuenta)
     const saved: DayEntry | null = useLocal ? local! : remote.data ?? (fanDay && remote.isError ? { lineup: fanDay.lineup, captain: fanDay.captain, picks: {}, savedAt: 0 } : null);
-    const entry = saved && day ? effectiveEntry(day, saved) : saved;
+    // El propio usa su historial solo si está al día (countedEntry); el de los demás siempre
+    const entry = saved && day ? countedEntry(day, saved) : saved;
     const picksKnown = useLocal || !!remote.data;
     const box = flat ? 'rounded-2xl bg-raised/60 p-3' : 'card p-4';
 
@@ -372,7 +373,7 @@ const DayDetail: React.FC<DayDetailProps> = ({ userId, league, own, fanDay, date
                                 <li key={game.gamePk} className={`rounded-2xl p-2 ${flat ? 'bg-surface shadow-card' : 'border border-line/10'}`}>
                                     <div className="mb-1.5 flex items-center justify-between px-1 text-[11px] font-semibold text-muted">
                                         <span>{game.state === 'preview' ? formatTime(game.date, i18n.language) : game.state === 'final' ? t('fantasy.final') : t('fantasy.liveNow')}</span>
-                                        {result === 'win' && <span className="font-extrabold text-ball">+{RULES.pick}</span>}
+                                        {result === 'win' && <span className="font-extrabold text-ball">+{rulesOf(day).picks}</span>}
                                         {result === 'loss' && <span className="font-extrabold text-live">0</span>}
                                         {!pick && <span>{t('fantasy.noPick')}</span>}
                                     </div>

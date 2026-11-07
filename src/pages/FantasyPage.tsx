@@ -29,6 +29,7 @@ import {
     addPlayer,
     applyLineup,
     canAdd,
+    countedEntry,
     creditsLeft,
     effectiveEntry,
     entryCost,
@@ -45,6 +46,7 @@ import {
     pickResult,
     playerScore,
     removePlayer,
+    repairEntry,
     setCaptain,
     setPick,
     settleDay,
@@ -58,8 +60,9 @@ import {
     type FantasyGame,
     type FantasyPlayer
 } from '../lib/fantasy';
-import { accountEnabled, createLeague, dayEntries, joinLeague, myLeagues, pushEntry, syncFantasy, useSession, type PrivateLeague, type Rival } from '../lib/account';
-import { isFanId, useFanProfile, useFantasyOwners } from '../lib/fans';
+import { accountEnabled, createLeague, dayEntries, joinLeague, myLeagues, syncFantasy, useSession, type PrivateLeague, type Rival } from '../lib/account';
+import { isFanId, useFanProfile, useFantasyOwners, withRanks } from '../lib/fans';
+import { saveEntry } from '../lib/fantasySave';
 import { pointsBreakdown } from '../lib/fantasyExtras';
 import { LeagueSummary } from '../components/fantasy/LeagueSummary';
 
@@ -145,9 +148,15 @@ export const FantasyPage: React.FC = () => {
     useEffect(() => {
         if (day) settleDay(day, entry);
     }, [day, entry]);
+    // Supabase solo acepta días de hoy en adelante: los pasados no se suben (ni se arreglan)
+    const current = !!day && (!today || day.date >= today);
+    // Lo que la versión de antes dejó con 7 (uno que ya no salía en el día) la base no lo acepta: se arregla y se sube
     useEffect(() => {
-        if (session && day && entry.savedAt) pushEntry(day.league, day.date, entry);
-    }, [session, day?.league, day?.date, entry.savedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+        if (playing && day && current) repairEntry(day);
+    }, [playing, day, current, entry.lineup.length]);
+    useEffect(() => {
+        if (session && day && current && entry.savedAt) saveEntry(day.league, day.date, entry);
+    }, [session, day?.league, day?.date, current, entry.savedAt]); // eslint-disable-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (session) syncFantasy().catch(() => undefined);
     }, [session?.user.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -176,8 +185,10 @@ export const FantasyPage: React.FC = () => {
     // La temporada la da el servidor (la misma de la tabla y del perfil); mientras carga o sin red, la del teléfono
     const mine = useFanProfile(playing ? session.user.id : null, activeLeague);
     const season = mine.data?.season ?? { points: Math.round(past.reduce((sum, d) => sum + d.points, 0) * 10) / 10, days: past.length };
-    const points = day ? teamPoints(day, entry) : 0;
-    const picks = day ? pickPoints(day, entry) : 0;
+    // El equipo que cuenta (como la tabla y el perfil): lo cambiado tarde o pasado del tope no suma
+    const counted = useMemo(() => (day ? countedEntry(day, entry) : entry), [day, entry]);
+    const points = day ? teamPoints(day, counted) : 0;
+    const picks = day ? pickPoints(day, counted) : 0;
     const days = today ? [shift(today, -1), today, shift(today, 1)] : [];
     const dayLabel = (key: string) => (key === today ? t('games.today') : key < (today ?? '') ? t('games.yesterday') : t('games.tomorrow'));
 
@@ -601,7 +612,7 @@ const IdealCard: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, entry 
     const ideal = useMemo(() => (started ? bestLineup(day, { metric: 'points', ignoreLocks: true }) : null), [day, started]);
     const [open, setOpen] = useState(false);
     if (!ideal || ideal.total <= 0) return null;
-    const mine = teamPoints(day, entry);
+    const mine = teamPoints(day, countedEntry(day, entry));
     const pct = Math.max(0, Math.min(100, Math.round((Math.max(0, mine) / ideal.total) * 100)));
     const live = day.games.some((game) => game.state === 'live');
     return (
@@ -752,7 +763,7 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; player: FantasyPl
                 {items.map((item) => (
                     <li key={item.key} className="flex justify-between gap-3 py-0.5">
                         <span className="text-muted">
-                            {item.count} × {t(`fantasy.scoring.${player.role === 'P' ? 'pitcher' : 'batter'}.${item.key}`)} ({item.each > 0 ? `+${item.each}` : item.each})
+                            {item.count} × {t(`fantasyHelp.points.${player.role === 'P' ? 'pitcher' : 'batter'}.${item.key}`)} ({item.each > 0 ? `+${item.each}` : item.each})
                         </span>
                         <b className={`tabular-nums ${item.total < 0 ? 'text-live' : ''}`}>{item.total > 0 ? `+${item.total}` : item.total}</b>
                     </li>
@@ -1087,11 +1098,13 @@ const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: OpenFan 
 
     if (!session) return null;
 
-    const ranking = (rivals || [])
-        // Cada equipo como estaba al empezar cada juego (lo cambiado después no cuenta)
-        .map((rival) => ({ ...rival, entry: effectiveEntry(day, rival.entry) }))
-        .map((rival) => ({ ...rival, points: teamPoints(day, rival.entry) + pickPoints(day, rival.entry) }))
-        .sort((a, b) => b.points - a.points);
+    // Cada equipo como estaba al empezar cada juego (lo cambiado después no cuenta); los empates comparten el puesto
+    const ranking = withRanks(
+        (rivals || [])
+            .map((rival) => ({ ...rival, entry: effectiveEntry(day, rival.entry) }))
+            .map((rival) => ({ ...rival, points: Math.round((teamPoints(day, rival.entry) + pickPoints(day, rival.entry)) * 10) / 10 }))
+            .sort((a, b) => b.points - a.points)
+    );
 
     return (
         <section className="space-y-3">
@@ -1126,9 +1139,9 @@ const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: OpenFan 
                 <SeasonTable league={day.league} members={scope === 'all' ? undefined : leagues.find((l) => l.id === scope)?.members} onOpen={onOpenFan} />
             ) : (
                 <ol className="card divide-y divide-line/10 overflow-hidden">
-                    {ranking.map((row, index) => (
+                    {ranking.map((row) => (
                         <li key={row.userId}>
-                            <FanRow userId={row.userId} name={row.name} own={row.userId === session.user.id} onOpen={onOpenFan} rank={index + 1} points={row.points} />
+                            <FanRow userId={row.userId} name={row.name} own={row.userId === session.user.id} onOpen={onOpenFan} rank={row.rank} points={row.points} />
                         </li>
                     ))}
                     {!rivals && (
