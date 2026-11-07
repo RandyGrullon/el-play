@@ -299,14 +299,25 @@ export const useProGlossary = (league: LeagueId, enabled = true) =>
 
 // ---------------------------------------------------------------- fantasy: alineaciones del día (GET /api/v2/pro/fantasy/lineups)
 
+/** De dónde sale la alineación de un lado: la publicada (official) o la del último juego de ese equipo (expected) */
+export type LineupSource = 'official' | 'expected' | null;
+
 export interface DayLineups {
     league: LeagueId;
     date: string;
-    games: { gamePk: number; state: string; away: number[] | null; home: number[] | null }[];
+    /** `source` lo manda el servidor nuevo; sin él, cada lista es la publicada */
+    games: { gamePk: number; state: string; away: number[] | null; home: number[] | null; source?: { away: LineupSource; home: LineupSource } }[];
     /** Juegos con al menos una alineación publicada */
     posted: number;
+    /** Juegos con al menos una alineación esperada (todavía sin la publicada) */
+    expected?: number;
+    /** Faltó algo (un box score): se vuelve a pedir pronto */
+    partial?: boolean;
     updatedAt: string;
 }
+
+type LineupGame = DayLineups['games'][number];
+const sourceOf = (game: LineupGame, side: 'away' | 'home'): LineupSource => (game[side]?.length ? (game.source?.[side] ?? 'official') : null);
 
 /** Alineaciones del día según MLB (chip «Titular»): llegan cuando cada equipo las publica */
 export const useFantasyLineups = (league: LeagueId, date: string | undefined, enabled = true) =>
@@ -315,13 +326,46 @@ export const useFantasyLineups = (league: LeagueId, date: string | undefined, en
         queryFn: ({ signal }) => getPro<DayLineups>('pro-fantasy-lineups', `/api/v2/pro/fantasy/lineups${queryString({ league, date })}`, signal),
         enabled,
         staleTime: MINUTE,
-        refetchInterval: pollUnlessMissing<DayLineups>((data) => (data?.games.some((game) => game.state === 'preview' && (!game.away || !game.home)) ? 2 * MINUTE : false)),
+        // Mientras falte una alineación publicada (o solo esté la esperada) se sigue mirando
+        refetchInterval: pollUnlessMissing<DayLineups>((data) =>
+            data?.partial || data?.games.some((game) => game.state === 'preview' && (sourceOf(game, 'away') !== 'official' || sourceOf(game, 'home') !== 'official')) ? 2 * MINUTE : false
+        ),
         ...calmOn404,
         retry
     });
 
-/** Titulares confirmados del día: ids de las alineaciones publicadas */
-export const startersOf = (lineups: DayLineups | null | undefined) => new Set((lineups?.games ?? []).flatMap((game) => [...(game.away ?? []), ...(game.home ?? [])]));
+const idsBy = (lineups: DayLineups | null | undefined, source: Exclude<LineupSource, null>) =>
+    new Set((lineups?.games ?? []).flatMap((game) => (['away', 'home'] as const).flatMap((side) => (sourceOf(game, side) === source ? (game[side] ?? []) : []))));
+
+/** Titulares confirmados del día: ids de las alineaciones publicadas («Confirmado») */
+export const startersOf = (lineups: DayLineups | null | undefined) => idsBy(lineups, 'official');
+
+/** Titulares esperados: los de la alineación del último juego de su equipo, mientras no llega la publicada («Esperado») */
+export const expectedOf = (lineups: DayLineups | null | undefined) => idsBy(lineups, 'expected');
+
+/**
+ * Cómo llega cada bateador según las alineaciones (para cuando el día no trae `status`): en la publicada,
+ * «Confirmado»; en la esperada (la del último juego de su equipo), «Esperado»; si su equipo ya tiene lista y no está, «Banca».
+ */
+export const lineupStatuses = (day: { games: { gamePk: number; away: { id: number }; home: { id: number } }[]; players: { id: number; teamId: number; role: 'B' | 'P' }[] } | undefined, lineups: DayLineups | null | undefined) => {
+    const out = new Map<number, 'confirmed' | 'expected' | 'bench'>();
+    for (const game of lineups?.games ?? []) {
+        const dayGame = day?.games.find((item) => item.gamePk === game.gamePk);
+        if (!dayGame) continue;
+        for (const side of ['away', 'home'] as const) {
+            const source = sourceOf(game, side);
+            if (!source) continue;
+            const list = game[side] ?? [];
+            for (const player of day?.players ?? []) {
+                if (player.role === 'B' && player.teamId === dayGame[side].id) out.set(player.id, list.includes(player.id) ? (source === 'official' ? 'confirmed' : 'expected') : 'bench');
+            }
+        }
+    }
+    return out;
+};
+
+/** Juegos con alineación publicada de al menos un lado */
+export const postedGamesOf = (lineups: DayLineups | null | undefined) => new Set((lineups?.games ?? []).filter((game) => sourceOf(game, 'away') === 'official' || sourceOf(game, 'home') === 'official').map((game) => game.gamePk));
 
 // ---------------------------------------------------------------- fantasy: detalle de un fanático (GET /api/v2/pro/fantasy/fan/:userId/detail)
 

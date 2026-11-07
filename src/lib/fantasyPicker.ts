@@ -14,16 +14,18 @@ const round1 = (value: number) => Math.round(value * 10) / 10;
 const gameOf = (day: Pick<FantasyDay, 'games'>, player: Pick<FantasyPlayer, 'gamePk'>) => day.games.find((game) => game.gamePk === player.gamePk);
 
 /**
- * Cómo llega a su juego. Con el servidor nuevo, su `status`; sin él, lo de siempre: el bateador que abrió el último
- * juego es «Esperado» (si no, «Banca») y el lanzador que abrió hace 4 días o menos está «Descansando». Pospuesto, «No
- * jugó» (su juego terminó sin él) y «Ya empezó» van primero.
+ * Cómo llega a su juego. Con el servidor nuevo, su `status`; sin él, lo que se sepa de otra parte (`hint`: en PRO, las
+ * alineaciones publicadas o esperadas) y si no, lo de siempre: el bateador que abrió el último juego es «Esperado» (si
+ * no, «Banca») y el lanzador que abrió hace 4 días o menos está «Descansando». Pospuesto, «No jugó» (su juego terminó
+ * sin él) y «Ya empezó» van primero.
  */
-export const statusOf = (day: FantasyDay, player: FantasyPlayer, now = Date.now()): BadgeStatus | null => {
+export const statusOf = (day: FantasyDay, player: FantasyPlayer, now = Date.now(), hint?: PlayerStatus | null): BadgeStatus | null => {
     if (playerPostponed(day, player)) return 'postponed';
     const game = gameOf(day, player);
     if (player.status === 'dnp' || (game?.state === 'final' && !player.played)) return 'dnp';
     if (isLocked(day, player, now)) return 'started';
     if (player.status) return player.status;
+    if (hint) return hint;
     if (player.role === 'B') return player.starter ? 'expected' : 'bench';
     return player.rest || (player.startedAgo !== undefined && player.startedAgo <= 4) ? 'resting' : null;
 };
@@ -68,6 +70,8 @@ export interface PickExtras {
     last5?: (player: FantasyPlayer) => number[] | null | undefined;
     /** % de fanáticos que lo eligieron (solo se ve cuando su juego ya empezó) */
     owned?: (player: FantasyPlayer) => number | null | undefined;
+    /** Cómo llega a su juego si el día no lo dice (en PRO, por las alineaciones) */
+    status?: (player: FantasyPlayer) => PlayerStatus | null | undefined;
 }
 
 export interface PickFilters {
@@ -112,7 +116,7 @@ export const pickRowOf = (day: FantasyDay, entry: DayEntry, player: FantasyPlaye
         player,
         inTeam,
         locked,
-        status: statusOf(day, player, now),
+        status: statusOf(day, player, now, extras.status?.(player)),
         reason: inTeam ? null : reasonOf(day, entry, player, now),
         value: valueOf(player),
         ppg: num(extras.ppg?.(player)),

@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'react';
 import { AppState, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSession } from '../lib/account';
-import { entryKey, playerScore, teamPoints, useFantasyDay, useFantasyStore, type FantasyDay } from '../lib/fantasy';
+import { effectiveEntry, entryKey, playerScore, rulesOf, teamPoints, useFantasyDay, useFantasyStore, type FantasyDay } from '../lib/fantasy';
 import { todayKey } from '../lib/format';
 import { fantasyStep, fantasyText, type FantasySeen } from '../lib/gameAlerts';
 import { postNow } from '../lib/notify';
@@ -32,12 +32,15 @@ export const useFantasyAlerts = () => {
     useEffect(() => {
         const day: FantasyDay | undefined = query.data;
         if (!enabled || !day) return;
-        const entry = store[entryKey(day.league, day.date)];
-        if (!entry?.lineup.length) return;
+        const saved = store[entryKey(day.league, day.date)];
+        if (!saved?.lineup.length) return;
+        // Con el equipo que cuenta (lo que se pasa del tope no suma): el mismo número de la tabla
+        const entry = effectiveEntry(day, saved);
+        const captain = rulesOf(day).captain;
         const players = new Map(day.players.map((player) => [player.id, player]));
         const { seen: next, gains } = fantasyStep(seen.current, day.date, entry.lineup, (id) => {
             const player = players.get(id);
-            return player ? playerScore(entry, player) : null;
+            return player ? playerScore(entry, player, captain) : null;
         });
         seen.current = next;
         if (!gains.length) return;
