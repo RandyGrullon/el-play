@@ -22,7 +22,7 @@ const compile = (name) => {
     const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } });
     fs.writeFileSync(path.join(OUT, `${name}.js`), outputText);
 };
-['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts', 'field', 'spray'].forEach(compile);
+['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts', 'field', 'spray', 'swipeBack'].forEach(compile);
 // playEvents usa el modo PRO de la cuenta (React Native): aquí siempre Lite
 fs.writeFileSync(path.join(OUT, 'pro.js'), 'exports.proActive = () => false;\n');
 
@@ -948,6 +948,52 @@ it('mapa de calor: la celda más caliente vale 1 y queda junto a las caídas', (
     assert.ok(Math.hypot(hot.x, hot.y - 300) < 20);
     assert.deepStrictEqual(spray.heatGrid([], { minX: 0, maxX: 1, minY: 0, maxY: 1 }), []);
     assert.notStrictEqual(spray.heatColor(0), spray.heatColor(1));
+});
+
+// ---------------------------------------------------------------- deslizar para volver (src/lib/swipeBack.ts)
+console.log('deslizar para volver');
+const swipe = require(path.join(OUT, 'swipeBack.js'));
+// Un teléfono de 400 puntos de ancho: la raya del 35 % queda en 140
+const ANCHO = 400;
+
+it('la pantalla sigue al dedo: nunca a la izquierda ni más allá del ancho', () => {
+    assert.strictEqual(swipe.swipeOffset(100, ANCHO), 100);
+    assert.strictEqual(swipe.swipeOffset(-30, ANCHO), 0);
+    assert.strictEqual(swipe.swipeOffset(520, ANCHO), ANCHO);
+    // Sin medir todavía no se mueve
+    assert.strictEqual(swipe.swipeOffset(100, 0), 0);
+    close(swipe.swipeProgress(100, ANCHO), 0.25);
+    assert.strictEqual(swipe.swipeProgress(800, ANCHO), 1);
+    assert.strictEqual(swipe.swipeProgress(50, 0), 0);
+});
+
+it('la raya del 35 %: ahí vibra y desde ahí soltar vuelve', () => {
+    assert.strictEqual(swipe.pastSwipeThreshold(139, ANCHO), false);
+    assert.strictEqual(swipe.pastSwipeThreshold(140, ANCHO), true);
+    assert.strictEqual(swipe.pastSwipeThreshold(140, 0), false);
+});
+
+it('al soltar: pasado el 35 % o rápido a la derecha vuelve; si no, regresa a su sitio', () => {
+    assert.strictEqual(swipe.shouldSwipeBack(150, 0, ANCHO), true);
+    assert.strictEqual(swipe.shouldSwipeBack(100, 0, ANCHO), false);
+    // Un tirón corto pero rápido (más de 800 puntos/s) también vuelve; justo 800 no
+    assert.strictEqual(swipe.shouldSwipeBack(60, 900, ANCHO), true);
+    assert.strictEqual(swipe.shouldSwipeBack(60, 800, ANCHO), false);
+    // Lo devolvió a la izquierda (aunque soltara rápido) o no hay ancho: no vuelve
+    assert.strictEqual(swipe.shouldSwipeBack(-10, 2000, ANCHO), false);
+    assert.strictEqual(swipe.shouldSwipeBack(150, 0, 0), false);
+    assert.strictEqual(swipe.SWIPE_BACK.start, 20);
+    assert.strictEqual(swipe.SWIPE_BACK.failY, 15);
+});
+
+it('terminar de irse: rápido si se soltó con impulso, entre 120 y 280 ms', () => {
+    // Despacio: a 1500 puntos/s, los 300 que faltan en 200 ms
+    assert.strictEqual(swipe.swipeOutMs(300, 0), 200);
+    assert.ok(swipe.swipeOutMs(300, 2400) < swipe.swipeOutMs(300, 0));
+    assert.strictEqual(swipe.swipeOutMs(300, 6000), 120);
+    assert.strictEqual(swipe.swipeOutMs(1200, 0), 280);
+    assert.strictEqual(swipe.swipeOutMs(0, 0), 120);
+    assert.strictEqual(swipe.swipeOutMs(-50, 0), 120);
 });
 
 fs.rmSync(OUT, { recursive: true, force: true });

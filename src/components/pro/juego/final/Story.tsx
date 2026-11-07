@@ -13,6 +13,7 @@ import { TeamLogo, Txt } from '../../../ui';
 import { MOTION_EASE, ModuleHeader, contrastRatio, mix, teamInk, useMotion, withAlpha, type ViewNode } from '../../kit';
 import { buildSlides, type StoryTheme } from './StorySlides';
 import { LinkedTeams, TeamLink } from '../../../stats/common';
+import { useSwipeBackGesture } from '../../../SwipeBack';
 
 // Historia PRO del juego: diapositivas que avanzan solas cada 5 s (la barra de progreso va por tiempo, no por
 // cuadros), con deslizar y toques en los lados (react-native-gesture-handler) y los botones de abajo (anterior,
@@ -161,11 +162,14 @@ export const ProStory: React.FC<{ game: GameDetail; pro?: GamePro; winProb?: Win
         setPlaying(paused);
     };
 
-    // Deslizar a los lados cambia de diapositiva; tocar el 35 % izquierdo vuelve y el resto avanza
+    // Deslizar a los lados cambia de diapositiva; tocar el 35 % izquierdo vuelve y el resto avanza. En Android y la web la
+    // pantalla del juego se cierra deslizando a la derecha: `block` hace que ese gesto espere a este (aquí gana la historia)
+    const swipeBack = useSwipeBackGesture();
     const pan = usePanGesture({
         runOnJS: true,
         activeOffsetX: [-20, 20],
         failOffsetY: [-14, 14],
+        block: swipeBack ?? undefined,
         onDeactivate: (event) => {
             if (event.canceled || Math.abs(event.translationX) < 40) return;
             go(event.translationX < 0 ? 1 : -1);

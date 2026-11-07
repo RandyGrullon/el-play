@@ -91,7 +91,7 @@ export const HeaderButton: React.FC<{ label: string; onPress: () => void; childr
     );
 };
 
-/** Abre la ficha del pelotero (modal); nombre y equipo pintan la cabecera mientras carga */
+/** Abre la ficha del pelotero (encima de la pantalla que se ve); nombre y equipo pintan la cabecera mientras carga */
 // Desde dentro de una hoja (la jugada a jugada, el box, comparar) primero se cierra la hoja: si no, taparía la página
 export const openPlayer = (player: { id: number; name?: string | null; teamId?: number | null }, season?: number) => leaveSheets(() => router.push({ pathname: '/jugador/[id]', params: playerParams(player, season) }));
 

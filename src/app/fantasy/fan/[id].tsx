@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft } from 'lucide-react-native';
 import { Screen } from '../../../components/layout';
+import { SwipeBack } from '../../../components/SwipeBack';
 import { EmptyState, IconButton, Row, Txt } from '../../../components/ui';
 import { FanProfileView, useFanName } from '../../../components/fantasy/FanProfile';
 import { isFanId } from '../../../components/fantasy/fans';
@@ -27,24 +28,32 @@ export default function FanScreen() {
     const pro = useIsPro();
 
     // PRO: el perfil con su temporada, su equipo de hoy, «Comparar conmigo» y sus días; el Lite sigue igual debajo
-    if (pro) return <ProFanProfile userId={userId} league={activeLeague} onBack={back} />;
+    if (pro) {
+        return (
+            <SwipeBack onBack={back}>
+                <ProFanProfile userId={userId} league={activeLeague} onBack={back} />
+            </SwipeBack>
+        );
+    }
 
     return (
-        <Screen contentStyle={{ gap: 20 }}>
-            <Row gap={12}>
-                <IconButton label={i18n.language.startsWith('en') ? 'Back' : 'Atrás'} onPress={back} style={{ width: 44, height: 44 }}>
-                    <ChevronLeft size={22} color={colors.ink} />
-                </IconButton>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                    <Txt size={14} weight="semibold" tone="muted" numberOfLines={1}>
-                        {L('fans.tab')}
-                    </Txt>
-                    <Txt size={20} weight="extrabold" numberOfLines={1}>
-                        {own ? name || L('fans.yourProfile') : name || L('fans.anonymous')}
-                    </Txt>
-                </View>
-            </Row>
-            {isFanId(userId) ? <FanProfileView userId={userId} league={activeLeague} /> : <EmptyState title={L('fans.notFound')} />}
-        </Screen>
+        <SwipeBack onBack={back}>
+            <Screen contentStyle={{ gap: 20 }}>
+                <Row gap={12}>
+                    <IconButton label={i18n.language.startsWith('en') ? 'Back' : 'Atrás'} onPress={back} style={{ width: 44, height: 44 }}>
+                        <ChevronLeft size={22} color={colors.ink} />
+                    </IconButton>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                        <Txt size={14} weight="semibold" tone="muted" numberOfLines={1}>
+                            {L('fans.tab')}
+                        </Txt>
+                        <Txt size={20} weight="extrabold" numberOfLines={1}>
+                            {own ? name || L('fans.yourProfile') : name || L('fans.anonymous')}
+                        </Txt>
+                    </View>
+                </Row>
+                {isFanId(userId) ? <FanProfileView userId={userId} league={activeLeague} /> : <EmptyState title={L('fans.notFound')} />}
+            </Screen>
+        </SwipeBack>
     );
 }

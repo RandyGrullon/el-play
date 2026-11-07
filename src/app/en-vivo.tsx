@@ -19,6 +19,7 @@ import { PulseDot } from '../components/feed/PulseDot';
 import { waitingForNetwork } from '../components/feed/DayChips';
 import { useNow } from '../components/feed/useNow';
 import { TeamLink, playerTextLink, teamTextLink } from '../components/stats/common';
+import { SwipeBack } from '../components/SwipeBack';
 import { teamDisplayName } from '../lib/teams';
 
 const close = () => {
@@ -26,7 +27,8 @@ const close = () => {
     else router.replace('/');
 };
 
-// Modal del botón rojo de la barra: los juegos en vivo de la liga; si no hay, los próximos tres
+// Pantalla del botón rojo de la barra (se cierra con la X o deslizando a la derecha): los juegos en vivo de la liga; si
+// no hay, los próximos tres
 export default function LiveGamesScreen() {
     const { t, i18n } = useTranslation();
     const colors = useColors();
@@ -47,7 +49,7 @@ export default function LiveGamesScreen() {
         .slice(0, 3);
     const list = live.length ? live : next;
 
-    // El juego toma el lugar del modal: al volver se llega a la portada
+    // El juego toma el lugar de esta pantalla: al volver se llega a la portada
     const open = (game: ScheduleGame) => router.replace(`/juego/${game.gamePk}`);
 
     const row = (game: ScheduleGame) => {
@@ -107,42 +109,42 @@ export default function LiveGamesScreen() {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: colors.bg }}>
-            <View style={{ alignItems: 'center', paddingTop: 8 }}>
-                <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: colors.faint, opacity: 0.5 }} />
-            </View>
-            <Row justify="space-between" style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
-                <Row gap={10} style={{ flex: 1 }}>
-                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.live, alignItems: 'center', justifyContent: 'center' }}>
-                        <Radio size={16} color="#fff" />
-                    </View>
-                    <Txt size={20} weight="extrabold" numberOfLines={1} style={{ flex: 1 }} accessibilityRole="header">
-                        {live.length ? t('live.title') : t('live.noneTitle')}
-                    </Txt>
+        <SwipeBack onBack={close}>
+            <View style={{ flex: 1, backgroundColor: colors.bg }}>
+                {/* Ocupa toda la pantalla (ya no es una hoja que baja): la cabecera va bajo la barra de estado */}
+                <Row justify="space-between" style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 8 }}>
+                    <Row gap={10} style={{ flex: 1 }}>
+                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.live, alignItems: 'center', justifyContent: 'center' }}>
+                            <Radio size={16} color="#fff" />
+                        </View>
+                        <Txt size={20} weight="extrabold" numberOfLines={1} style={{ flex: 1 }} accessibilityRole="header">
+                            {live.length ? t('live.title') : t('live.noneTitle')}
+                        </Txt>
+                    </Row>
+                    <Pressable onPress={close} accessibilityRole="button" accessibilityLabel={t('common.close')} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' }}>
+                        <X size={18} color={colors.ink} />
+                    </Pressable>
                 </Row>
-                <Pressable onPress={close} accessibilityRole="button" accessibilityLabel={t('common.close')} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' }}>
-                    <X size={18} color={colors.ink} />
-                </Pressable>
-            </Row>
-            <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 8 }}>
-                {waitingForNetwork(schedule) ? (
-                    <OfflineState />
-                ) : schedule.isPending ? (
-                    [0, 1, 2].map((index) => <Skeleton key={index} height={64} round={radius.tile} />)
-                ) : schedule.isError && !schedule.data ? (
-                    <ErrorState message={errorText(schedule.error)} onRetry={() => schedule.refetch()} />
-                ) : (
-                    <>
-                        {!live.length && (
-                            <Txt size={14} tone="muted" style={{ marginBottom: 4 }}>
-                                {next.length ? t('live.next') : t('live.nothing')}
-                            </Txt>
-                        )}
-                        {list.map(row)}
-                    </>
-                )}
-            </ScrollView>
-            {field.element}
-        </View>
+                <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 8 }}>
+                    {waitingForNetwork(schedule) ? (
+                        <OfflineState />
+                    ) : schedule.isPending ? (
+                        [0, 1, 2].map((index) => <Skeleton key={index} height={64} round={radius.tile} />)
+                    ) : schedule.isError && !schedule.data ? (
+                        <ErrorState message={errorText(schedule.error)} onRetry={() => schedule.refetch()} />
+                    ) : (
+                        <>
+                            {!live.length && (
+                                <Txt size={14} tone="muted" style={{ marginBottom: 4 }}>
+                                    {next.length ? t('live.next') : t('live.nothing')}
+                                </Txt>
+                            )}
+                            {list.map(row)}
+                        </>
+                    )}
+                </ScrollView>
+                {field.element}
+            </View>
+        </SwipeBack>
     );
 }

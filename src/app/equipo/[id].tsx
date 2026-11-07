@@ -17,6 +17,7 @@ import { useColors } from '../../theme/theme';
 import { inkOn, radius, shadow } from '../../theme/tokens';
 import { ErrorState, OfflineState, Skeleton, Txt, useErrorText } from '../../components/ui';
 import { ActionDial } from '../../components/ActionDial';
+import { SwipeBack } from '../../components/SwipeBack';
 import { GameFeedCard } from '../../components/feed/GameFeedCard';
 import { TeamCompareSheet } from '../../components/compare/CompareSheet';
 import { useNow } from '../../components/feed/useNow';
@@ -68,27 +69,29 @@ export default function EquipoScreen() {
         const offline = waitingForNetwork(teamStats) && waitingForNetwork(gamesQuery);
         const pending = !!teamId && (teamStats.isPending || gamesQuery.isPending || standings.isPending);
         return (
-            <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top + 12, paddingHorizontal: 16, gap: 12 }}>
-                <Pressable
-                    onPress={goBack}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('team.back')}
-                    style={[{ width: 44, height: 44, borderRadius: radius.tile, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }, shadow('card')]}
-                >
-                    <ArrowLeft size={20} color={colors.ink} />
-                </Pressable>
-                {offline ? (
-                    <OfflineState />
-                ) : pending ? (
-                    <View style={{ gap: 12 }}>
-                        <Skeleton height={224} round={28} />
-                        <Skeleton height={128} />
-                        <Skeleton height={256} />
-                    </View>
-                ) : (
-                    <ErrorState message={teamId ? errorText(gamesQuery.error ?? teamStats.error ?? { code: 'not_found' }) : t('errors.not_found')} onRetry={teamId ? () => gamesQuery.refetch() : undefined} />
-                )}
-            </View>
+            <SwipeBack onBack={goBack}>
+                <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top + 12, paddingHorizontal: 16, gap: 12 }}>
+                    <Pressable
+                        onPress={goBack}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('team.back')}
+                        style={[{ width: 44, height: 44, borderRadius: radius.tile, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }, shadow('card')]}
+                    >
+                        <ArrowLeft size={20} color={colors.ink} />
+                    </Pressable>
+                    {offline ? (
+                        <OfflineState />
+                    ) : pending ? (
+                        <View style={{ gap: 12 }}>
+                            <Skeleton height={224} round={28} />
+                            <Skeleton height={128} />
+                            <Skeleton height={256} />
+                        </View>
+                    ) : (
+                        <ErrorState message={teamId ? errorText(gamesQuery.error ?? teamStats.error ?? { code: 'not_found' }) : t('errors.not_found')} onRetry={teamId ? () => gamesQuery.refetch() : undefined} />
+                    )}
+                </View>
+            </SwipeBack>
         );
     }
 
@@ -134,90 +137,92 @@ export default function EquipoScreen() {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: colors.bg }}>
-            <ScrollView
-                contentContainerStyle={{ paddingBottom: insets.bottom + 112, gap: 20 }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={color} colors={[color]} progressViewOffset={insets.top} />}
-            >
-                <TeamHero
-                    team={team}
-                    ink={ink}
-                    topInset={insets.top}
-                    seasonText={season ? t('common.season', { season: seasonLabel(season, activeLeague) }) : null}
-                    record={{ w, l, pct: standing?.row.pct ?? null }}
-                    rankLine={rankLine}
-                    chips={chips}
-                    favorite={favorite}
-                    onBack={goBack}
+        <SwipeBack onBack={goBack}>
+            <View style={{ flex: 1, backgroundColor: colors.bg }}>
+                <ScrollView
+                    contentContainerStyle={{ paddingBottom: insets.bottom + 112, gap: 20 }}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={color} colors={[color]} progressViewOffset={insets.top} />}
+                >
+                    <TeamHero
+                        team={team}
+                        ink={ink}
+                        topInset={insets.top}
+                        seasonText={season ? t('common.season', { season: seasonLabel(season, activeLeague) }) : null}
+                        record={{ w, l, pct: standing?.row.pct ?? null }}
+                        rankLine={rankLine}
+                        chips={chips}
+                        favorite={favorite}
+                        onBack={goBack}
+                    />
+
+                    <View style={{ paddingHorizontal: 16, gap: 20, width: '100%', maxWidth: 640, alignSelf: 'center' }}>
+                        {/* El juego de hoy o el próximo */}
+                        {upcoming && (
+                            <View style={{ gap: 8 }}>
+                                <Txt eyebrow accessibilityRole="header">
+                                    {upcoming.state === 'live' ? t('team.playingNow') : t('team.nextGame')}
+                                </Txt>
+                                <GameFeedCard game={upcoming} />
+                            </View>
+                        )}
+
+                        {gamesQuery.isPending ? (
+                            <View style={{ gap: 12 }}>
+                                <Skeleton height={112} />
+                                <Skeleton height={160} />
+                            </View>
+                        ) : (
+                            <>
+                                {results.length > 0 && <FormCard summary={summary} />}
+                                <Trajectory league={activeLeague} teamId={team.id} color={color} />
+                                <SplitsGrid
+                                    items={[
+                                        [t('team.home'), standing?.row.home ? splitText(standing.row.home) : splitText(summary.home)],
+                                        [t('team.away'), standing?.row.away ? splitText(standing.row.away) : splitText(summary.away)],
+                                        [t('team.oneRun'), standing?.row.oneRun ? splitText(standing.row.oneRun) : splitText(summary.oneRun)],
+                                        [t('team.extra'), splitText(standing?.row.extraInning)],
+                                        [t('team.runs'), scored !== null && allowed !== null ? `${scored}-${allowed}` : '—'],
+                                        [t('team.expected'), expected ? `${expected.wins}-${expected.losses}` : '—']
+                                    ]}
+                                />
+                                {results.length > 0 && <VersusList results={results} />}
+                            </>
+                        )}
+
+                        {row && rows.length > 0 && (
+                            <>
+                                <StatBlock group="bat" team={row} teams={rows} />
+                                <StatBlock group="pitch" team={row} teams={rows} />
+                            </>
+                        )}
+
+                        {players.data && <TeamLeaders team={team} players={players.data} />}
+                        {players.data && <Roster team={team} players={players.data} />}
+                        {results.length > 0 && <Results results={results} />}
+                        <Upcoming games={games} teamId={team.id} skip={upcoming?.gamePk ?? null} now={now} />
+                        <TeamMoves league={activeLeague} teamId={team.id} />
+                    </View>
+                </ScrollView>
+
+                <ActionDial
+                    label={t('dial.teamMenu', { team: name })}
+                    color={color}
+                    actions={[
+                        { key: 'compare', label: t('dial.compare'), icon: GitCompare, disabled: !row || rows.length < 2, onSelect: () => setComparing(true) },
+                        { key: 'share', label: t('dial.share'), icon: Share2, onSelect: () => shareLink(`/equipo/${team.id}`, name, t('team.shareText', { team: name })) },
+                        { key: 'favorite', label: favorite ? t('dial.isMyTeam') : t('dial.myTeam'), icon: Star, active: favorite, onSelect: () => toggleFavoriteTeam(team.id) },
+                        {
+                            key: 'next',
+                            label: upcoming?.state === 'live' ? t('dial.live') : t('dial.nextGame'),
+                            icon: upcoming?.state === 'live' ? Radio : CalendarClock,
+                            disabled: !upcoming,
+                            onSelect: () => upcoming && router.push({ pathname: '/juego/[gamePk]', params: { gamePk: upcoming.gamePk } })
+                        }
+                    ]}
                 />
 
-                <View style={{ paddingHorizontal: 16, gap: 20, width: '100%', maxWidth: 640, alignSelf: 'center' }}>
-                    {/* El juego de hoy o el próximo */}
-                    {upcoming && (
-                        <View style={{ gap: 8 }}>
-                            <Txt eyebrow accessibilityRole="header">
-                                {upcoming.state === 'live' ? t('team.playingNow') : t('team.nextGame')}
-                            </Txt>
-                            <GameFeedCard game={upcoming} />
-                        </View>
-                    )}
-
-                    {gamesQuery.isPending ? (
-                        <View style={{ gap: 12 }}>
-                            <Skeleton height={112} />
-                            <Skeleton height={160} />
-                        </View>
-                    ) : (
-                        <>
-                            {results.length > 0 && <FormCard summary={summary} />}
-                            <Trajectory league={activeLeague} teamId={team.id} color={color} />
-                            <SplitsGrid
-                                items={[
-                                    [t('team.home'), standing?.row.home ? splitText(standing.row.home) : splitText(summary.home)],
-                                    [t('team.away'), standing?.row.away ? splitText(standing.row.away) : splitText(summary.away)],
-                                    [t('team.oneRun'), standing?.row.oneRun ? splitText(standing.row.oneRun) : splitText(summary.oneRun)],
-                                    [t('team.extra'), splitText(standing?.row.extraInning)],
-                                    [t('team.runs'), scored !== null && allowed !== null ? `${scored}-${allowed}` : '—'],
-                                    [t('team.expected'), expected ? `${expected.wins}-${expected.losses}` : '—']
-                                ]}
-                            />
-                            {results.length > 0 && <VersusList results={results} />}
-                        </>
-                    )}
-
-                    {row && rows.length > 0 && (
-                        <>
-                            <StatBlock group="bat" team={row} teams={rows} />
-                            <StatBlock group="pitch" team={row} teams={rows} />
-                        </>
-                    )}
-
-                    {players.data && <TeamLeaders team={team} players={players.data} />}
-                    {players.data && <Roster team={team} players={players.data} />}
-                    {results.length > 0 && <Results results={results} />}
-                    <Upcoming games={games} teamId={team.id} skip={upcoming?.gamePk ?? null} now={now} />
-                    <TeamMoves league={activeLeague} teamId={team.id} />
-                </View>
-            </ScrollView>
-
-            <ActionDial
-                label={t('dial.teamMenu', { team: name })}
-                color={color}
-                actions={[
-                    { key: 'compare', label: t('dial.compare'), icon: GitCompare, disabled: !row || rows.length < 2, onSelect: () => setComparing(true) },
-                    { key: 'share', label: t('dial.share'), icon: Share2, onSelect: () => shareLink(`/equipo/${team.id}`, name, t('team.shareText', { team: name })) },
-                    { key: 'favorite', label: favorite ? t('dial.isMyTeam') : t('dial.myTeam'), icon: Star, active: favorite, onSelect: () => toggleFavoriteTeam(team.id) },
-                    {
-                        key: 'next',
-                        label: upcoming?.state === 'live' ? t('dial.live') : t('dial.nextGame'),
-                        icon: upcoming?.state === 'live' ? Radio : CalendarClock,
-                        disabled: !upcoming,
-                        onSelect: () => upcoming && router.push({ pathname: '/juego/[gamePk]', params: { gamePk: upcoming.gamePk } })
-                    }
-                ]}
-            />
-
-            {row && <TeamCompareSheet open={comparing} team={row} teams={rows} standings={standings.data} results={gamesQuery.isSuccess ? results : null} games={games} onClose={() => setComparing(false)} />}
-        </View>
+                {row && <TeamCompareSheet open={comparing} team={row} teams={rows} standings={standings.data} results={gamesQuery.isSuccess ? results : null} games={games} onClose={() => setComparing(false)} />}
+            </View>
+        </SwipeBack>
     );
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -15,8 +15,10 @@ import { ActionDial } from '../../components/ActionDial';
 import { PlayerCompareSheet } from '../../components/compare/CompareSheet';
 import { openTeam, shareLink } from '../../components/stats/common';
 import { PickerAction } from '../../components/fantasy/PlayerPicker';
+import { SwipeBack } from '../../components/SwipeBack';
 
-// Ficha del pelotero (modal). Parámetros: id; opcionales season (año) y name/teamId para pintar la cabecera mientras carga.
+// Ficha del pelotero, encima de la pantalla de donde se abrió (se cierra con la X o deslizando a la derecha).
+// Parámetros: id; opcionales season (año) y name/teamId para pintar la cabecera mientras carga.
 // Desde el selector del Fantasy llega `fantasy` (y `dia`, el día escogido): la ficha lleva el botón de agregar o quitar.
 // En PRO la cabecera dice «Ficha del pelotero» con la insignia y un botón para compartirla como imagen. En los dos, el
 // botón flotante: compararlo con otro, compartir su página, ir a su equipo o a su último juego.
@@ -34,8 +36,8 @@ export default function JugadorScreen() {
     const team = useCachedTeam(Number(params.teamId) || null);
     const player = usePlayer(id || null, activeLeague, season).data;
     const name = player?.name || params.name || '';
-    // En iOS el modal es una hoja con su propio borde; en Android y la web ocupa toda la pantalla
-    const top = Platform.OS === 'ios' ? 8 : insets.top + 8;
+    // Ocupa toda la pantalla en los tres (en iOS ya no es una hoja que baja): la cabecera va bajo la barra de estado
+    const top = insets.top + 8;
     const color = player?.team?.color || team?.color || '#2563eb';
     // El log viene del más nuevo al más viejo
     const lastGame = player?.log[0];
@@ -60,69 +62,66 @@ export default function JugadorScreen() {
     );
 
     return (
-        <View style={{ flex: 1, backgroundColor: colors.bg }}>
-            {Platform.OS === 'ios' && (
-                <View style={{ alignItems: 'center', paddingTop: 8 }}>
-                    <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: colors.faint, opacity: 0.5 }} />
-                </View>
-            )}
-            {pro ? (
-                <Row gap={8} style={{ paddingHorizontal: 16, paddingTop: top - 2, paddingBottom: 6 }}>
-                    <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Txt size={20} weight="black" numberOfLines={1} accessibilityRole="header" style={{ flexShrink: 1, letterSpacing: -0.3 }}>
-                            {t('pro.ficha.title')}
+        <SwipeBack onBack={close}>
+            <View style={{ flex: 1, backgroundColor: colors.bg }}>
+                {pro ? (
+                    <Row gap={8} style={{ paddingHorizontal: 16, paddingTop: top - 2, paddingBottom: 6 }}>
+                        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Txt size={20} weight="black" numberOfLines={1} accessibilityRole="header" style={{ flexShrink: 1, letterSpacing: -0.3 }}>
+                                {t('pro.ficha.title')}
+                            </Txt>
+                            <ProBadge />
+                        </View>
+                        <Pressable
+                            onPress={() => setShareOpen(true)}
+                            disabled={!player}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('pro.ficha.share.button')}
+                            accessibilityState={{ disabled: !player }}
+                            style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center', opacity: !player ? 0.4 : pressed ? 0.8 : 1 })}
+                        >
+                            <Share2 size={18} color={colors.ink} />
+                        </Pressable>
+                        <Pressable
+                            onPress={close}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('pro.ficha.closeAria')}
+                            style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.8 : 1 })}
+                        >
+                            <X size={20} color={colors.ink} />
+                        </Pressable>
+                    </Row>
+                ) : (
+                    <Row gap={12} style={{ paddingHorizontal: 20, paddingTop: top, paddingBottom: 8 }}>
+                        <Txt size={18} weight="extrabold" numberOfLines={1} style={{ flex: 1 }}>
+                            {name}
                         </Txt>
-                        <ProBadge />
-                    </View>
-                    <Pressable
-                        onPress={() => setShareOpen(true)}
-                        disabled={!player}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('pro.ficha.share.button')}
-                        accessibilityState={{ disabled: !player }}
-                        style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center', opacity: !player ? 0.4 : pressed ? 0.8 : 1 })}
-                    >
-                        <Share2 size={18} color={colors.ink} />
-                    </Pressable>
-                    <Pressable
-                        onPress={close}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('pro.ficha.closeAria')}
-                        style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.8 : 1 })}
-                    >
-                        <X size={20} color={colors.ink} />
-                    </Pressable>
-                </Row>
-            ) : (
-                <Row gap={12} style={{ paddingHorizontal: 20, paddingTop: top, paddingBottom: 8 }}>
-                    <Txt size={18} weight="extrabold" numberOfLines={1} style={{ flex: 1 }}>
-                        {name}
-                    </Txt>
-                    <Pressable onPress={close} accessibilityRole="button" accessibilityLabel={t('common.close')} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' }}>
-                        <X size={20} color={colors.ink} />
-                    </Pressable>
-                </Row>
-            )}
-            {pro ? (
-                // Sabe cuánto se bajó: el juego a juego largo solo monta las filas que se ven
-                <ProScroll tabScreen={false} contentStyle={{ width: '100%', maxWidth: 640, alignSelf: 'center', paddingBottom: 72 }}>
-                    {profile}
-                </ProScroll>
-            ) : (
-                <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: insets.bottom + 104, width: '100%', maxWidth: 640, alignSelf: 'center' }}>{profile}</ScrollView>
-            )}
+                        <Pressable onPress={close} accessibilityRole="button" accessibilityLabel={t('common.close')} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' }}>
+                            <X size={20} color={colors.ink} />
+                        </Pressable>
+                    </Row>
+                )}
+                {pro ? (
+                    // Sabe cuánto se bajó: el juego a juego largo solo monta las filas que se ven
+                    <ProScroll tabScreen={false} contentStyle={{ width: '100%', maxWidth: 640, alignSelf: 'center', paddingBottom: 72 }}>
+                        {profile}
+                    </ProScroll>
+                ) : (
+                    <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: insets.bottom + 104, width: '100%', maxWidth: 640, alignSelf: 'center' }}>{profile}</ScrollView>
+                )}
 
-            <ActionDial
-                label={t('dial.playerMenu', { name })}
-                color={color}
-                actions={[
-                    { key: 'compare', label: t('dial.compare'), icon: GitCompare, disabled: !player || (!player.hitting && !player.pitching), onSelect: () => setComparing(true) },
-                    { key: 'share', label: t('dial.share'), icon: Share2, disabled: !player, onSelect: () => player && shareLink(`/jugador/${player.id}`, player.name, t('dial.playerShareText', { name: player.name })) },
-                    { key: 'team', label: t('dial.team'), icon: Shield, disabled: !player?.team, onSelect: () => player?.team && openTeam(player.team.id) },
-                    { key: 'last', label: t('dial.lastGame'), icon: History, disabled: !lastGame, onSelect: () => lastGame && openGame(lastGame.gamePk) }
-                ]}
-            />
-            {player && <PlayerCompareSheet open={comparing} player={player} league={activeLeague} onClose={() => setComparing(false)} />}
-        </View>
+                <ActionDial
+                    label={t('dial.playerMenu', { name })}
+                    color={color}
+                    actions={[
+                        { key: 'compare', label: t('dial.compare'), icon: GitCompare, disabled: !player || (!player.hitting && !player.pitching), onSelect: () => setComparing(true) },
+                        { key: 'share', label: t('dial.share'), icon: Share2, disabled: !player, onSelect: () => player && shareLink(`/jugador/${player.id}`, player.name, t('dial.playerShareText', { name: player.name })) },
+                        { key: 'team', label: t('dial.team'), icon: Shield, disabled: !player?.team, onSelect: () => player?.team && openTeam(player.team.id) },
+                        { key: 'last', label: t('dial.lastGame'), icon: History, disabled: !lastGame, onSelect: () => lastGame && openGame(lastGame.gamePk) }
+                    ]}
+                />
+                {player && <PlayerCompareSheet open={comparing} player={player} league={activeLeague} onClose={() => setComparing(false)} />}
+            </View>
+        </SwipeBack>
     );
 }

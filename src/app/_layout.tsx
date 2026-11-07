@@ -67,6 +67,14 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
     return <ErrorScreen colors={colors} title={t('errors.screenTitle')} body={t('errors.screenBody')} detail={__DEV__ ? error.message : undefined} error={error} actions={[{ label: t('common.retry'), run: retry }]} />;
 }
 
+// Volver deslizando a la derecha desde cualquier punto de la pantalla, no solo del borde (components/SwipeBack.tsx).
+// iOS: el gesto nativo de pantalla completa en todas las que se apilan; la ficha del pelotero y los juegos en vivo ya no
+// son una hoja que baja: entran de lado como las demás y se cierran igual.
+const IOS_GESTURE = Platform.OS === 'ios' ? { gestureEnabled: true, fullScreenGestureEnabled: true } : null;
+// Android y la web: SwipeBack corre la pantalla con el dedo. «transparentModal» deja pintada la de abajo para que se vea
+// mientras se desliza (el fondo lo pone SwipeBack) y entra de la derecha, como en iOS.
+const SWIPE_SCREEN = Platform.OS === 'ios' ? {} : { presentation: 'transparentModal' as const, animation: 'ios_from_right' as const, contentStyle: { backgroundColor: 'transparent' } };
+
 const Navigator: React.FC = () => {
     const { colors, isDark } = useTheme();
     useAlertTaps();
@@ -75,14 +83,16 @@ const Navigator: React.FC = () => {
     return (
         <>
             <StatusBar style={isDark ? 'light' : 'dark'} />
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg }, ...IOS_GESTURE }}>
                 <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="juego/[gamePk]" />
-                <Stack.Screen name="equipo/[id]" />
-                <Stack.Screen name="jugador/[id]" options={{ presentation: 'modal' }} />
-                <Stack.Screen name="en-vivo" options={{ presentation: 'modal' }} />
-                <Stack.Screen name="privacidad" />
-                <Stack.Screen name="auth" />
+                <Stack.Screen name="juego/[gamePk]" options={SWIPE_SCREEN} />
+                <Stack.Screen name="equipo/[id]" options={SWIPE_SCREEN} />
+                <Stack.Screen name="jugador/[id]" options={SWIPE_SCREEN} />
+                <Stack.Screen name="en-vivo" options={SWIPE_SCREEN} />
+                <Stack.Screen name="privacidad" options={SWIPE_SCREEN} />
+                <Stack.Screen name="auth" options={SWIPE_SCREEN} />
+                <Stack.Screen name="fantasy/fan/[id]" options={SWIPE_SCREEN} />
+                <Stack.Screen name="+not-found" options={SWIPE_SCREEN} />
             </Stack>
             <Toast />
         </>

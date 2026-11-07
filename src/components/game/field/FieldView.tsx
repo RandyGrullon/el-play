@@ -294,7 +294,7 @@ export const FieldView: React.FC<FieldViewProps> = ({ gamePk, origin, onClosed }
             closing.current = true;
             const done = () => {
                 onClosed();
-                // iOS: el Modal tiene que terminar de irse antes de presentar la ficha (otro modal)
+                // iOS: el Modal termina de irse antes de que entre la ficha
                 if (after) setTimeout(after, Platform.OS === 'ios' ? 350 : 0);
             };
             if (animate && !quick) {

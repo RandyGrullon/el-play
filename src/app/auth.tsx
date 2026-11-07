@@ -7,6 +7,7 @@ import i18n from '../i18n';
 import { consumeAuthUrl, type AuthRedirect, type ConfirmSwitch } from '../lib/account';
 import { showToast } from '../lib/toast';
 import { localText } from '../components/fantasy/texts';
+import { SwipeBack } from '../components/SwipeBack';
 
 // En la web Google vuelve a /auth dentro de la ventana que abrió openAuthSessionAsync: la dirección se le pasa a la
 // ventana de la app (ella guarda la sesión) y esta se cierra sola, sin leer nada aquí
@@ -50,6 +51,14 @@ export default function AuthReturn() {
     const url = Linking.useLinkingURL();
     // Cada dirección se atiende una vez (si el efecto corre dos veces no se sale dos veces)
     const handled = useRef<string | null>(null);
+    // Si ya se salió deslizando mientras se leía la dirección, al terminar no se vuelve atrás otra vez
+    const mounted = useRef(true);
+    useEffect(() => {
+        mounted.current = true;
+        return () => {
+            mounted.current = false;
+        };
+    }, []);
     useEffect(() => {
         if (popup) return undefined;
         // Si no llega ninguna dirección (se abrió /auth a mano), igual se sale
@@ -65,8 +74,10 @@ export default function AuthReturn() {
                 if (auth && !auth.repeated) showToast(authMessage(auth), undefined, 7000);
             })
             .catch(() => undefined)
-            .finally(leave);
+            .finally(() => {
+                if (mounted.current) leave();
+            });
         return undefined;
     }, [url]);
-    return null;
+    return <SwipeBack onBack={leave}>{null}</SwipeBack>;
 }

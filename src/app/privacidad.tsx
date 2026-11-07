@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft } from 'lucide-react-native';
 import { Screen } from '../components/layout';
+import { SwipeBack } from '../components/SwipeBack';
 import { Card, IconButton, Title, Txt } from '../components/ui';
 import { useColors } from '../theme/theme';
 
@@ -89,32 +90,35 @@ export default function PrivacyScreen() {
     const router = useRouter();
     const en = i18n.language.startsWith('en');
     const sections = en ? EN : ES;
+    const back = () => (router.canGoBack() ? router.back() : router.replace('/mas'));
 
     return (
-        <Screen contentStyle={{ gap: 20 }}>
-            <View style={{ gap: 12 }}>
-                <IconButton label={en ? 'Back' : 'Atrás'} onPress={() => (router.canGoBack() ? router.back() : router.replace('/mas'))} style={{ width: 44, height: 44 }}>
-                    <ChevronLeft size={22} color={colors.ink} />
-                </IconButton>
-                <View>
-                    <Title>{t('privacy.title')}</Title>
-                    <Txt size={14} tone="muted">
-                        {t('privacy.updated', { date: en ? UPDATED.en : UPDATED.es })}
-                    </Txt>
-                </View>
-            </View>
-            {sections.map((section) => (
-                <Card key={section.title} style={{ gap: 8 }}>
-                    <Txt size={18} weight="extrabold" accessibilityRole="header">
-                        {section.title}
-                    </Txt>
-                    {section.body.map((paragraph) => (
-                        <Txt key={paragraph} size={14} tone="muted" style={{ lineHeight: 22 }}>
-                            {paragraph}
+        <SwipeBack onBack={back}>
+            <Screen contentStyle={{ gap: 20 }}>
+                <View style={{ gap: 12 }}>
+                    <IconButton label={en ? 'Back' : 'Atrás'} onPress={back} style={{ width: 44, height: 44 }}>
+                        <ChevronLeft size={22} color={colors.ink} />
+                    </IconButton>
+                    <View>
+                        <Title>{t('privacy.title')}</Title>
+                        <Txt size={14} tone="muted">
+                            {t('privacy.updated', { date: en ? UPDATED.en : UPDATED.es })}
                         </Txt>
-                    ))}
-                </Card>
-            ))}
-        </Screen>
+                    </View>
+                </View>
+                {sections.map((section) => (
+                    <Card key={section.title} style={{ gap: 8 }}>
+                        <Txt size={18} weight="extrabold" accessibilityRole="header">
+                            {section.title}
+                        </Txt>
+                        {section.body.map((paragraph) => (
+                            <Txt key={paragraph} size={14} tone="muted" style={{ lineHeight: 22 }}>
+                                {paragraph}
+                            </Txt>
+                        ))}
+                    </Card>
+                ))}
+            </Screen>
+        </SwipeBack>
     );
 }
