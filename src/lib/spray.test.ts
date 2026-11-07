@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AtBat, Pitch } from '../types';
 import { parkFor, wallAt } from './flight';
-import { directionOf, entryStagger, filterBalls, flightPath, replayStep, resultOf, sprayBalls, sprayStats, trajOf, zoneOf, zoneStats, DEFAULT_FILTERS, ENTRY_TOTAL_MS } from './spray';
+import { directionOf, entryStagger, filterBalls, flightPath, replayStep, resultOf, sprayBalls, sprayStats, trajOf, zoneOf, zoneStats, heatColor, heatGrid, DEFAULT_FILTERS, ENTRY_TOTAL_MS } from './spray';
 
 const pitch = (hit?: Pitch['hit']): Pitch => ({ n: 1, x: null, z: null, top: null, bot: null, r: 'inplay', code: 'X', call: '', type: 'SL', typeDesc: 'Slider', mph: 86, spin: null, zone: null, b: 0, s: 0, hit });
 const atBat = (i: number, event: string, top: boolean, hit: Pitch['hit'], side = 'R', hand = 'R') =>
@@ -80,5 +80,13 @@ describe('mapa de batazos: lógica', () => {
         expect(79 * entryStagger(80) + 520 + 350).toBeLessThanOrEqual(ENTRY_TOTAL_MS + 1);
         expect(replayStep(10)).toBe(700);
         expect(replayStep(80) * 80).toBeLessThanOrEqual(20000);
+    });
+
+    it('calor: lo más caliente vale 1 y el color va de frío a caliente', () => {
+        const grid = heatGrid([{ land: { x: 0, y: 100 } }, { land: { x: 0, y: 100 } }, { land: { x: 200, y: 300 } }], { x: -300, y: -450, w: 600, h: 480 });
+        expect(Math.max(...grid.values)).toBe(1);
+        expect(grid.values.length).toBe(grid.cols * grid.rows);
+        expect(heatColor(0)).toBe('rgb(59 130 246 / 0.25)');
+        expect(heatColor(1)).toBe('rgb(220 38 38 / 0.85)');
     });
 });

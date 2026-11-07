@@ -244,3 +244,46 @@ export const zoneStats = (balls: SprayBall[]) =>
         const inside = balls.filter((ball) => zoneOf(ball) === zone);
         return { zone, count: inside.length, hits: inside.filter((ball) => isHit(ball.result)).length, pct: pctOf(inside.length, balls.length) };
     });
+
+/** Rejilla de calor: manchas gaussianas (σ 28 pies) en celdas de 12 pies, normalizada a 1 en lo más caliente */
+export const heatGrid = (balls: Pick<SprayBall, 'land'>[], box: { x: number; y: number; w: number; h: number }, step = 12, sigma = 28) => {
+    const cols = Math.ceil(box.w / step);
+    const rows = Math.ceil(box.h / step);
+    const values = new Array<number>(cols * rows).fill(0);
+    const reach = sigma * 3;
+    for (const ball of balls) {
+        const p = svgPoint(ball.land);
+        const c0 = Math.max(0, Math.floor((p.x - reach - box.x) / step));
+        const c1 = Math.min(cols - 1, Math.ceil((p.x + reach - box.x) / step));
+        const r0 = Math.max(0, Math.floor((p.y - reach - box.y) / step));
+        const r1 = Math.min(rows - 1, Math.ceil((p.y + reach - box.y) / step));
+        for (let r = r0; r <= r1; r++)
+            for (let c = c0; c <= c1; c++) {
+                const dx = box.x + (c + 0.5) * step - p.x;
+                const dy = box.y + (r + 0.5) * step - p.y;
+                values[r * cols + c] += Math.exp(-(dx * dx + dy * dy) / (2 * sigma * sigma));
+            }
+    }
+    const max = Math.max(0, ...values);
+    return { cols, rows, step, x: box.x, y: box.y, values: max ? values.map((v) => v / max) : values };
+};
+
+const RAMP: [number, [number, number, number]][] = [
+    [0, [59, 130, 246]],
+    [0.3, [34, 211, 238]],
+    [0.55, [250, 204, 21]],
+    [0.8, [249, 115, 22]],
+    [1, [220, 38, 38]]
+];
+
+/** Frío a caliente (azul, celeste, amarillo, naranja, rojo); más opaco donde hay más */
+export const heatColor = (value: number) => {
+    const v = Math.max(0, Math.min(1, value));
+    let index = 1;
+    while (index < RAMP.length - 1 && v > RAMP[index][0]) index++;
+    const [a, ca] = RAMP[index - 1];
+    const [b, cb] = RAMP[index];
+    const p = (v - a) / (b - a || 1);
+    const mix = ca.map((channel, n) => Math.round(channel + (cb[n] - channel) * p));
+    return `rgb(${mix.join(' ')} / ${(0.25 + 0.6 * v).toFixed(2)})`;
+};

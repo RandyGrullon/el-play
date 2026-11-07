@@ -12,6 +12,8 @@ import {
     ZONES,
     fieldViewBox,
     filterBalls,
+    heatColor,
+    heatGrid,
     zoneStats,
     flightPath,
     markerRadius,
@@ -72,7 +74,7 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
     const view = useMemo(() => fieldViewBox(park), [park]);
     const all = useMemo(() => sprayBalls(game.atBats, park), [game.atBats, park]);
     const [filters, setFilters] = useState<SprayFilters>(DEFAULT_FILTERS);
-    const [mode, setMode] = useState<'balls' | 'zones'>('balls');
+    const [mode, setMode] = useState<'balls' | 'zones' | 'heat'>('balls');
     const [selected, setSelected] = useState<number | null>(null);
     const balls = useMemo(() => filterBalls(all, filters), [all, filters]);
     const stats = useMemo(() => sprayStats(balls), [balls]);
@@ -177,7 +179,7 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                 <h2 id="spray-title" className="eyebrow">
                     {t('spray.title')}
                 </h2>
-                <Segmented<'balls' | 'zones'>
+                <Segmented<'balls' | 'zones' | 'heat'>
                     size="sm"
                     label={t('spray.views.label')}
                     value={mode}
@@ -188,7 +190,8 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                     }}
                     options={[
                         { value: 'balls', label: t('spray.views.balls') },
-                        { value: 'zones', label: t('spray.views.zones') }
+                        { value: 'zones', label: t('spray.views.zones') },
+                        { value: 'heat', label: t('spray.views.heat') }
                     ]}
                 />
                 <button
@@ -241,6 +244,7 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                     <GlowDef id={glow} />
                     <ParkDrawing park={park} />
                     {mode === 'zones' && <ZonesLayer balls={balls} park={park} />}
+                    {mode === 'heat' && <HeatLayer balls={balls} box={view} park={park} />}
                     <g style={entered ? (mode === 'balls' ? undefined : { display: 'none' }) : { opacity: 0 }}>
                         {geo.map((item) => {
                             const active = item.ball.key === selected;
@@ -465,6 +469,39 @@ const ZonesLayer: React.FC<{ balls: SprayBall[]; park: ReturnType<typeof parkFor
                     </g>
                 );
             })}
+        </g>
+    );
+};
+
+const HeatLayer: React.FC<{ balls: SprayBall[]; box: { x: number; y: number; w: number; h: number }; park: ReturnType<typeof parkFor> }> = ({ balls, box, park }) => {
+    const id = useId().replace(/:/g, '');
+    const grid = useMemo(() => heatGrid(balls, box), [balls, box]);
+    // Recortado al terreno: de foul a foul hasta 40 pies detrás de la cerca (donde caen los jonrones)
+    const clip = useMemo(() => {
+        const points: string[] = [];
+        for (let deg = -45; deg <= 45.001; deg += 1.5) {
+            const p = svgPoint(polar(deg, wallAt(park, deg) + 40));
+            points.push(`${p.x.toFixed(1)} ${p.y.toFixed(1)}`);
+        }
+        return `M0 0 L${points.join(' L')} Z`;
+    }, [park]);
+    return (
+        <g>
+            <defs>
+                <clipPath id={`${id}-c`}>
+                    <path d={clip} />
+                </clipPath>
+                <filter id={`${id}-b`} x="-10%" y="-10%" width="120%" height="120%">
+                    <feGaussianBlur stdDeviation={grid.step * 0.7} />
+                </filter>
+            </defs>
+            <g clipPath={`url(#${id}-c)`}>
+                <g filter={`url(#${id}-b)`}>
+                    {grid.values.map((value, index) =>
+                        value > 0.05 ? <rect key={index} x={grid.x + (index % grid.cols) * grid.step} y={grid.y + Math.floor(index / grid.cols) * grid.step} width={grid.step + 0.5} height={grid.step + 0.5} fill={heatColor(value)} /> : null
+                    )}
+                </g>
+            </g>
         </g>
     );
 };
