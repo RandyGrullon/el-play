@@ -367,3 +367,28 @@ describe('fantasy PRO: alineaciones del día (chip «Titular»)', () => {
         });
     });
 });
+
+describe('fantasy PRO con el simulador (MLB_MOCK=1, npm run dev:mock)', () => {
+    afterEach(() => {
+        delete process.env.MLB_MOCK;
+    });
+
+    it('fanáticos simulados: % de todos, tabla con flechas y la fila de quien mira aunque no sea de los simulados', async () => {
+        clearCache();
+        process.env.MLB_MOCK = '1';
+        const { todayOf } = require('../services/pro/games');
+        const today = todayOf('lidom');
+        const stats = await proDay.dayStats('lidom', today);
+        expect(stats.fans).toBeGreaterThan(10);
+        expect(stats.scores).toHaveLength(stats.fans);
+        expect(Object.keys(stats.players).length).toBeGreaterThan(0);
+        const season = await proFans.seasonRanking('lidom', { today });
+        expect(season.ranking.length).toBeGreaterThan(10);
+        expect(season.daily.length).toBeGreaterThan(1);
+        const viewer = 'eeeeeeee-5555-4555-8555-eeeeeeeeeeee';
+        const mine = await proFans.seasonRanking('lidom', { today, users: [viewer] });
+        expect(mine.ranking).toEqual([expect.objectContaining({ userId: viewer, rank: expect.any(Number) })]);
+        const lineups = await proDay.dayLineups('lidom', today);
+        expect(lineups.games.every((game) => game.away?.length && game.home?.length)).toBe(true);
+    });
+});

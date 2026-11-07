@@ -297,6 +297,21 @@ const computeSeason = async (league, today) => {
     };
 };
 
+/** Filas de la tabla para cuentas que no están en la simulada, con su puesto contra la tabla de todos */
+const mockRows = async (league, today, ids, result) => {
+    const rows = [];
+    for (const userId of ids) {
+        const { profile } = await computeFan(league, userId, { today });
+        const { points, days } = profile.season;
+        const lastDay = result.data.lastDate ? (profile.days.find((day) => day.date === result.data.lastDate)?.total ?? null) : null;
+        const rank = 1 + result.all.filter((user) => user.points > points).length;
+        const before = lastDay === null ? points : round1(points - lastDay);
+        const prevRank = days - (lastDay === null ? 0 : 1) > 0 ? 1 + result.all.filter((user) => round1(user.points - (user.lastDay ?? 0)) > before).length : null;
+        rows.push({ userId, name: profile.name, points, days, rank, prevRank, lastDay, best: profile.season.best });
+    }
+    return rows;
+};
+
 /**
  * Tabla de la temporada PRO. Con `users` (los miembros de una liga privada) solo esas cuentas, aunque no entren en el
  * top 200, cada una con su puesto en la tabla general.
@@ -306,6 +321,8 @@ const seasonRanking = async (league, { today = todayOf(league), users = null } =
     if (!users) return result.data;
     const wanted = new Set(users);
     const picked = result.all.filter((user) => wanted.has(user.userId));
+    // Simulador: quien mira (una cuenta real) no está entre los fanáticos simulados; se le calcula su fila aparte
+    if (accounts.isMock()) picked.push(...(await mockRows(league, today, users.filter((id) => !picked.some((user) => user.userId === id)), result)));
     const missing = picked.filter((user) => !result.names.has(user.userId)).map((user) => user.userId);
     const extra = missing.length ? await accounts.profiles(missing) : new Map();
     const ranking = picked.map((user) => ({ ...user, name: (result.names.has(user.userId) ? result.names.get(user.userId) : extra.get(user.userId)?.name) ?? null }));
