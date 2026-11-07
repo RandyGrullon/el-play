@@ -4,6 +4,7 @@
 import React, { useMemo, useRef, useState, type ComponentRef } from 'react';
 import { Pressable, RefreshControl, ScrollView, View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { BarChart3, ChevronRight, Share2, Users } from 'lucide-react-native';
@@ -13,7 +14,7 @@ import { dayPoints, entryKey, gameStarted, history, playerScore, rulesOf, useFan
 import type { CountedEntry } from '../../../lib/fantasyCounted';
 import { formatLongDate } from '../../../lib/format';
 import { useFantasyForm, useFantasyStats, useProStandings } from '../../../lib/pro/liga';
-import { startersOf, useFantasyLineups } from '../../../lib/pro/pantallas';
+import { lineupStatuses, useFantasyLineups } from '../../../lib/pro/pantallas';
 import { useColors } from '../../../theme/theme';
 import { alpha, radius, shadow } from '../../../theme/tokens';
 import { ErrorState, OfflineState, Skeleton, Txt, useErrorText } from '../../ui';
@@ -114,8 +115,8 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
     // La proyección del servidor (la misma del Lite y la web), no el promedio de la temporada
     const projection = useMemo(() => (day ? projectionOf(day, entry) : { byId: {}, total: 0, known: 0, count: 0 }), [day, entry]);
     const forms = useMemo(() => teamFormOf(standingRows(standings.data)), [standings.data]);
-    const starters = useMemo(() => startersOf(lineups.data), [lineups.data]);
-    const lineupGames = useMemo(() => new Set((lineups.data?.games ?? []).filter((game) => game.away || game.home).map((game) => game.gamePk)), [lineups.data]);
+    // Confirmado, Esperado o Banca por las alineaciones (publicadas o la del último juego), si el día no lo dice
+    const lineupStatus = useMemo(() => lineupStatuses(day, lineups.data), [day, lineups.data]);
 
     const [role, setRole] = useState<'B' | 'P'>('B');
     const [replacing, setReplacing] = useState<FantasyPlayer | null>(null);
@@ -138,6 +139,9 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
         goPick();
     };
     const onInfo = (player: FantasyPlayer) => openPlayer(player.id);
+    // Desde «Escoge peloteros» la ficha lleva «Agregar/Quitar» con el mismo día (como el selector del Lite)
+    const router = useRouter();
+    const onPickInfo = (player: FantasyPlayer) => router.push({ pathname: '/jugador/[id]', params: { id: player.id, fantasy: '1', ...(date ? { dia: date } : {}), name: player.name, teamId: player.teamId } });
 
     const dayName = (key: string) => (key === today ? t('games.today') : key < (today ?? '') ? t('games.yesterday') : t('games.tomorrow'));
     const pills = (
@@ -336,11 +340,9 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
                                         onCancelReplace={() => setReplacing(null)}
                                         scout={scout}
                                         form={form.data?.players}
-                                        stats={stats.data}
-                                        starters={starters}
-                                        lineupGames={lineupGames}
+                                        lineupStatus={lineupStatus}
                                         now={now}
-                                        onInfo={onInfo}
+                                        onInfo={onPickInfo}
                                     />
                                 </View>
                             )}
