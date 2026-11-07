@@ -6,9 +6,9 @@
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Crown, Lock, Plus, X } from 'lucide-react-native';
+import { Crown, Lock, Plus, TriangleAlert, UserX, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { RULES, budgetOf, isLocked, scoringOf, playerPostponed, playerScore, removePlayer, rulesOf, setCaptain, type DayEntry, type FantasyDay, type FantasyPlayer, type NotCounted } from '../../lib/fantasy';
+import { RULES, budgetOf, isLocked, occupying, removeId, scoringOf, playerPostponed, playerScore, removePlayer, rulesOf, setCaptain, type DayEntry, type FantasyDay, type FantasyPlayer, type NotCounted } from '../../lib/fantasy';
 import type { CountedEntry } from '../../lib/fantasyCounted';
 import { statusOf } from '../../lib/fantasyPicker';
 import { useColors } from '../../theme/theme';
@@ -32,7 +32,11 @@ export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; counted: Coun
     const owners = useOwners(day);
     const dayRules = rulesOf(day);
     const lang = i18n.language;
-    const chosen = entry.lineup.map((id) => day.players.find((p) => p.id === id)).filter((p): p is FantasyPlayer => !!p);
+    // Los pospuestos no ocupan cupo: su lugar se ve libre para escoger al que lo reemplaza (y agregarlo lo saca)
+    const chosen = occupying(day, entry);
+    const postponed = entry.lineup.map((id) => day.players.find((p) => p.id === id)).filter((p): p is FantasyPlayer => !!p && playerPostponed(day, p));
+    // Uno que ya no sale en el día (pospuesto con la API de antes): se ve para poder quitarlo
+    const missing = entry.lineup.filter((id) => !day.players.some((p) => p.id === id));
     const batters = chosen.filter((p) => p.role === 'B');
     const pitchers = chosen.filter((p) => p.role === 'P');
     const slots: (FantasyPlayer | 'B' | 'P')[] = [
@@ -88,12 +92,52 @@ export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; counted: Coun
                         <PlayerSlot key={slot.id} day={day} entry={entry} counted={counted.entry} notCounted={counted.notCounted.get(slot.id)} player={slot} owned={owners.players.get(slot.id)} />
                     )
                 )}
+                {postponed.map((player) => (
+                    <PlayerSlot key={player.id} day={day} entry={entry} counted={counted.entry} player={player} />
+                ))}
+                {missing.map((id) => (
+                    <MissingSlot key={id} day={day} id={id} />
+                ))}
             </View>
 
             <IdealCard day={day} entry={counted.entry} />
 
             <RulesToggle open={rules} onToggle={() => setRules((v) => !v)} />
             {rules && <ScoringTable day={day} />}
+        </View>
+    );
+};
+
+/** Uno de tu equipo que ya no sale en los juegos del día: se ve con su aviso y se puede quitar (igual que la web) */
+export const MissingSlot: React.FC<{ day: FantasyDay; id: number }> = ({ day, id }) => {
+    const { t } = useTranslation();
+    const colors = useColors();
+    const name = t('fantasyHelp.card.missingName');
+    return (
+        <View style={[{ minHeight: 84, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 22, backgroundColor: colors.surface, borderWidth: 1, borderColor: alpha(colors.live, 0.3) }, shadow('card')]}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.raised }}>
+                <UserX size={24} color={colors.muted} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                <Txt weight="extrabold" numberOfLines={1}>
+                    {name}
+                </Txt>
+                <Row gap={4}>
+                    <TriangleAlert size={14} color={colors.live} />
+                    <Txt size={11} weight="bold" tone="live" style={{ flexShrink: 1 }}>
+                        {t('fantasyHelp.card.missing')}
+                    </Txt>
+                </Row>
+            </View>
+            <Pressable
+                onPress={() => removeId(day, id)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('fantasy.remove', { name })}
+                style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.live }}
+            >
+                <X size={14} color="#fff" />
+            </Pressable>
         </View>
     );
 };

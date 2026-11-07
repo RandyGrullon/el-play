@@ -1201,6 +1201,29 @@ const helpLib = require(compileTo('lib/fantasyHelp.ts'));
         assert.strictEqual(perTeamLimit(d), 3);
     });
 
+    it('pospuesto en el equipo: deja su lugar libre y agregar al que lo reemplaza lo saca; el que ya no sale se puede quitar', () => {
+        const { canAdd, addPlayer, removeId, entryCost, getStore, replaceStore, setStoreOwner } = fantasyLib;
+        const { slotsLeft } = pickerLib;
+        setStoreOwner('pospuesto-prueba');
+        const d = dia([p(12345601, 'B', 1, 12, 5, { status: 'postponed' }), p(12345602, 'B', 3, 8, 5), p(12345603, 'B', 3, 8, 5), p(12345604, 'B', 4, 8, 5), p(12345605, 'B', 4, 8, 5), p(12345606, 'P', 3, 4, 5), p(12345607, 'B', 4, 8, 5)]);
+        d.games[0] = { ...d.games[0], state: 'final', detailedState: 'Postponed', status: 'postponed' };
+        const saved = { lineup: [12345601, 12345602, 12345603, 12345604, 12345605, 12345606], captain: 12345601, picks: {}, savedAt: 1 };
+        replaceStore({ 'lidom:2099-10-20': saved });
+        // El pospuesto no gasta créditos ni ocupa su cupo de bateador
+        assert.strictEqual(entryCost(d, saved), 36);
+        partial(slotsLeft(d, saved), { batters: 1, pitchers: 0, credits: 14 });
+        assert.strictEqual(canAdd(d, saved, d.players[6]), null);
+        assert.ok(addPlayer(d, saved, d.players[6]));
+        const after = getStore()['lidom:2099-10-20'];
+        assert.deepStrictEqual(after.lineup, [12345602, 12345603, 12345604, 12345605, 12345606, 12345607]);
+        assert.strictEqual(after.captain, null);
+        // Uno que ya no sale en el día (sin juego que lo cierre) se quita por su id
+        replaceStore({ 'lidom:2099-10-20': { ...after, lineup: [...after.lineup.slice(0, 5), 99999999] } });
+        assert.ok(removeId(d, 99999999));
+        assert.ok(!getStore()['lidom:2099-10-20'].lineup.includes(99999999));
+        setStoreOwner(null);
+    });
+
     it('puestos compartidos en los empates: 1, 2, 2, 4 (también con decimales que no cuadran exactos)', () => {
         const { rankRows } = fantasyLib;
         const rows = rankRows([

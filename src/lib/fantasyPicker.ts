@@ -2,7 +2,7 @@
 // cada uno para el juego, su rival, por qué no se puede agregar, filtros (Disponibles, Me alcanza, Titulares, por juego
 // y por equipo), orden (Proyección, Valor, Precio, Pts/J, Últimos 5 y % elegido) y lo que falta para completar. Lo nuevo
 // de las reglas v2 (status, opp, season, last5, priceDelta) puede no venir: se saca de lo que ya hay. Lógica pura.
-import { canAdd, creditsLeft, gameStarted, isLocked, perTeamLimit, playerPostponed, rulesOf, type AddProblem, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer, type PlayerStatus } from './fantasy';
+import { canAdd, creditsLeft, gameStarted, isLocked, occupying, perTeamLimit, playerPostponed, rulesOf, type AddProblem, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer, type PlayerStatus } from './fantasy';
 import { valueOf } from './fantasyBest';
 
 export type PickSort = 'proj' | 'value' | 'price' | 'ppg' | 'last5' | 'owned';
@@ -179,10 +179,10 @@ export const pickerRows = (day: FantasyDay, entry: DayEntry, filters: PickFilter
         .sort((a, b) => desc(sortValue(a, sort), sortValue(b, sort)) || desc(a.player.proj, b.player.proj) || a.player.name.localeCompare(b.player.name, 'es'));
 };
 
-/** Lo que falta: bateadores, lanzador y créditos que quedan (null si ese día no hay tope) */
+/** Lo que falta: bateadores, lanzador y créditos que quedan (null si ese día no hay tope); un pospuesto deja su lugar libre */
 export const slotsLeft = (day: FantasyDay, entry: Pick<DayEntry, 'lineup'>) => {
     const roster = rulesOf(day).roster;
-    const chosen = entry.lineup.map((id) => day.players.find((p) => p.id === id)).filter((p): p is FantasyPlayer => !!p);
+    const chosen = occupying(day, entry);
     return {
         batters: Math.max(0, roster.batters - chosen.filter((p) => p.role === 'B').length),
         pitchers: Math.max(0, roster.pitchers - chosen.filter((p) => p.role === 'P').length),

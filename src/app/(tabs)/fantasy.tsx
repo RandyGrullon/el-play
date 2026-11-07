@@ -23,7 +23,7 @@ import { useLocalText } from '../../components/fantasy/texts';
 import { HowToPlayButton } from '../../components/fantasy/Help';
 import { useSaveStatus } from '../../components/pro/fantasy/data';
 import { accountEnabled, pushEntry, syncFantasy, useSession } from '../../lib/account';
-import { dayPoints, entryKey, fetchFantasyDay, getStore, history, settleDay, unsettledDays, useEntry, useFantasyDay, useFantasyStore } from '../../lib/fantasy';
+import { dayPoints, entryKey, repairEntry, fetchFantasyDay, getStore, history, settleDay, unsettledDays, useEntry, useFantasyDay, useFantasyStore } from '../../lib/fantasy';
 import { useCountedEntry } from '../../lib/fantasyCounted';
 import { formatLongDate } from '../../lib/format';
 import { useIsPro } from '../../lib/pro';
@@ -70,6 +70,10 @@ export default function FantasyScreen() {
     useEffect(() => {
         if (day) settleDay(day, entry, counted.entry);
     }, [day, entry, counted.entry]);
+    // Un equipo que quedó con más de 6 (un pospuesto con la versión de antes) se arregla y se vuelve a guardar
+    useEffect(() => {
+        if (day && session) repairEntry(day);
+    }, [day, session]);
     useEffect(() => {
         if (session && day && entry.savedAt) pushEntry(day.league, day.date, entry);
     }, [session, day?.league, day?.date, entry.savedAt]); // eslint-disable-line react-hooks/exhaustive-deps

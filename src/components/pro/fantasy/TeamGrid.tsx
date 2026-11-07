@@ -10,7 +10,7 @@ import { ArrowLeftRight, Crown, Plus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { inningName } from '../../../lib/baseball';
 import { formatTime } from '../../../lib/format';
-import { RULES, creditsLeft, creditsOf, scoringOf, entryCost, gameStarted, perTeamLimit, playerPostponed, playerScore, rulesOf, setCaptain, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer, type NotCounted } from '../../../lib/fantasy';
+import { RULES, creditsLeft, creditsOf, occupying, scoringOf, entryCost, gameStarted, perTeamLimit, playerPostponed, playerScore, rulesOf, setCaptain, type DayEntry, type FantasyDay, type FantasyGame, type FantasyPlayer, type NotCounted } from '../../../lib/fantasy';
 import type { CountedEntry } from '../../../lib/fantasyCounted';
 import { statusOf } from '../../../lib/fantasyPicker';
 import type { PlayerRow } from '../../../lib/stats';
@@ -20,6 +20,7 @@ import { PlayerPhoto, Txt } from '../../ui';
 import { formatCredits, lineText } from '../../fantasy/shared';
 import { CardWarning, StatusBadge, lockText } from '../../fantasy/PlayerBits';
 import { HelpButton } from '../../fantasy/Help';
+import { MissingSlot } from '../../fantasy/TeamTab';
 import { Chip, Enter, Flash, GrowBar, ModuleHeader, teamInk, useChipInk, useProColors } from '../kit';
 import { FloatChip, LockMark, MiniDiamond, Num, PartChip, PartChips, PulseFrame, diamondLabel, fmtPts, fmtSignedPts, useScoreChange, type T } from './bits';
 import { partsTotal, pointParts, surname, type Projection } from './logic';
@@ -65,14 +66,18 @@ export const TeamGrid: React.FC<TeamGridProps> = ({ day, entry, counted, prevDay
     const goldInk = colors.gold;
     const credits = creditsOf(day);
     const rules = rulesOf(day);
-    const chosen = entry.lineup.map((id) => day.players.find((player) => player.id === id)).filter((player): player is FantasyPlayer => !!player);
+    // Los pospuestos no ocupan cupo (su lugar se ve libre y agregar al que lo reemplaza lo saca); van al final
+    const chosen = occupying(day, entry);
+    const postponed = entry.lineup.map((id) => day.players.find((player) => player.id === id)).filter((player): player is FantasyPlayer => !!player && playerPostponed(day, player));
+    const missing = entry.lineup.filter((id) => !day.players.some((player) => player.id === id));
     const batters = chosen.filter((player) => player.role === 'B');
     const pitchers = chosen.filter((player) => player.role === 'P');
     const slots: (FantasyPlayer | 'B' | 'P')[] = [
         ...batters,
         ...Array.from({ length: Math.max(0, RULES.batters - batters.length) }, () => 'B' as const),
         ...pitchers,
-        ...Array.from({ length: Math.max(0, RULES.pitchers - pitchers.length) }, () => 'P' as const)
+        ...Array.from({ length: Math.max(0, RULES.pitchers - pitchers.length) }, () => 'P' as const),
+        ...postponed
     ];
 
     return (
@@ -109,6 +114,9 @@ export const TeamGrid: React.FC<TeamGridProps> = ({ day, entry, counted, prevDay
                         })}
                         {row.length === 1 && <View style={{ flex: 1, flexBasis: 0 }} />}
                     </View>
+                ))}
+                {missing.map((id) => (
+                    <MissingSlot key={id} day={day} id={id} />
                 ))}
             </View>
         </View>
