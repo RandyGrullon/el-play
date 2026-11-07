@@ -3,14 +3,32 @@
 // gana cada juego. Cada pelotero se cierra cuando empieza su juego. Para jugar hace falta cuenta (Supabase): el equipo vive en la cuenta y el teléfono
 // guarda una copia por usuario.
 import { useQuery } from '@tanstack/react-query';
-import { useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { LeagueId, ScheduleGame } from '../types';
-import { isOnHold } from './baseball';
+import { isNotPlayed, isOnHold } from './baseball';
 import { API_BASE } from './config';
 import { getItem, onHydrated, removeItem, setItem } from './storage';
 
 export interface FantasyLine {
     [stat: string]: number | string;
+}
+
+/**
+ * Cómo llega al juego (lo manda el servidor nuevo; sin él, la app lo deduce de lo de siempre):
+ * bateador confirmado en la alineación del día, esperado (abrió el último juego) o en la banca; lanzador abridor
+ * probable, descansando (abrió hace 4 días o menos) o en el bullpen; pospuesto, o no jugó (su juego terminó sin él).
+ */
+export type PlayerStatus = 'confirmed' | 'expected' | 'bench' | 'probable' | 'bullpen' | 'resting' | 'postponed' | 'dnp';
+
+/** Números cortos de la temporada (el servidor nuevo): bateador avg/ops/hr, lanzador era/whip/k */
+export interface FantasySeasonLine {
+    avg?: string;
+    ops?: string;
+    hr?: number;
+    era?: string;
+    whip?: string;
+    k?: number;
+    g: number;
 }
 
 export interface FantasyPlayer {
@@ -34,12 +52,44 @@ export interface FantasyPlayer {
     startedAgo?: number;
     /** Lanzador de un juego por empezar: en cuántos juegos de los 10 días anteriores lanzó */
     outings?: number;
+    // Lo del servidor nuevo (rules v2). Todo es opcional: sin ello la app sigue como antes
+    /** Rival del día (home: juega en casa) */
+    opp?: { id: number; abbrev: string; home: boolean } | null;
+    status?: PlayerStatus;
+    /** Puntos de fantasy de sus últimos 5 juegos, del más viejo al más nuevo (pueden ser menos) */
+    last5?: number[];
+    season?: FantasySeasonLine | null;
+    /** Precio de hoy menos el del día de juego anterior (null si no se sabe) */
+    priceDelta?: number | null;
 }
+
+export type FantasyGameStatus = 'scheduled' | 'live' | 'final' | 'postponed' | 'suspended';
 
 export interface FantasyGame extends ScheduleGame {
     state: ScheduleGame['state'];
     /** Primer lanzamiento (solo juegos empezados en vivo): con la hora por definir, ahí se cierra */
     firstPitch?: string;
+    /** Servidor nuevo: el estado para el fantasy y los abridores probables (ids) */
+    status?: FantasyGameStatus;
+    probables?: { away: number | null; home: number | null };
+}
+
+type Scoring = { batter: Record<string, number>; pitcher: Record<string, number> };
+
+/** Las reglas del día que manda el servidor nuevo (rules v2): de ahí salen todos los números de la ayuda */
+export interface FantasyRules {
+    version: number;
+    roster: { batters: number; pitchers: number };
+    /** El máximo de verdad por equipo ese día (sube los días de 1 o 2 juegos) */
+    perTeam: number;
+    /** Créditos del día; null = ese día no hay tope */
+    budget: number | null;
+    captain: number;
+    picks: { points: number };
+    scoring: Scoring;
+    prices: { min: number; max: number; step: number; noData: number; seasonWeights: number[]; frozen: boolean };
+    lock: 'per-game';
+    timezone: string;
 }
 
 export interface FantasyDay {
@@ -48,23 +98,106 @@ export interface FantasyDay {
     games: FantasyGame[];
     teams: Record<string, { id: number; abbrev: string; color: string; logo: string }>;
     players: FantasyPlayer[];
-    scoring: { batter: Record<string, number>; pitcher: Record<string, number> };
+    scoring: Scoring;
     /** Días con créditos: presupuesto del equipo y rango de precios (el servidor pone los precios) */
     credits?: { budget: number; min: number; max: number };
+    /** Servidor nuevo: las reglas del día (puede faltar o venir a medias: cada número tiene su valor de siempre) */
+    rules?: Partial<FantasyRules>;
     /** Cuándo llegó (lo pone la app): cada respuesta es un objeto nuevo y las pantallas vuelven a mirar la hora */
     fetchedAt?: number;
 }
 
 export const RULES = { batters: 5, pitchers: 1, perTeam: 2, captain: 1.5, pick: 10, budget: 50 };
 
+const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+
 /**
- * Máximo por equipo ese día: 2, o los que hagan falta para poder llenar los 6 con los equipos que juegan (con un solo
- * juego, como en la Serie Final o la final de la Serie del Caribe, 3 por equipo). Igual que la web (src/lib/fantasy.ts)
- * y su servidor (server/services/fantasyScore.js).
+ * Máximo por equipo ese día: el que manda el servidor (rules.perTeam) o, sin él, 2 o los que hagan falta para poder
+ * llenar los 6 con los equipos que juegan (con un solo juego, como en la Serie Final o la final de la Serie del Caribe,
+ * 3 por equipo). Igual que la web (src/lib/fantasy.ts) y su servidor (server/services/fantasyScore.js).
  */
-export const perTeamLimit = (day: Pick<FantasyDay, 'games'> | null | undefined) => {
+export const perTeamLimit = (day: (Pick<FantasyDay, 'games'> & { rules?: FantasyDay['rules'] }) | null | undefined) => {
+    if (finite(day?.rules?.perTeam) && day.rules.perTeam > 0) return day.rules.perTeam;
     const teams = new Set((day?.games ?? []).flatMap((game) => [game.away?.id, game.home?.id]).filter(Boolean)).size;
     return teams ? Math.max(RULES.perTeam, Math.ceil((RULES.batters + RULES.pitchers) / teams)) : RULES.perTeam;
+};
+
+/** Créditos del día: los de rules (null = sin tope) o, sin rules, los de `credits`; null si ese día no hay tope */
+export const budgetOf = (day: Pick<FantasyDay, 'credits' | 'rules'> | null | undefined): number | null => {
+    const rules = day?.rules;
+    if (rules && 'budget' in rules) return finite(rules.budget) ? rules.budget : null;
+    return day?.credits && finite(day.credits.budget) ? day.credits.budget : null;
+};
+
+const DEFAULT_PRICES: FantasyRules['prices'] = { min: 4, max: 12, step: 0.5, noData: 5, seasonWeights: [1, 0.5, 0.25, 0.125], frozen: true };
+
+/** Créditos del día con el rango de precios (null si ese día no hay tope): lo que pintan la barra y el selector */
+export const creditsOf = (day: Pick<FantasyDay, 'credits' | 'rules'> | null | undefined): { budget: number; min: number; max: number } | null => {
+    const budget = budgetOf(day);
+    if (budget === null) return null;
+    const prices = day?.rules?.prices;
+    return {
+        budget,
+        min: finite(prices?.min) ? prices.min : finite(day?.credits?.min) ? day.credits.min : DEFAULT_PRICES.min,
+        max: finite(prices?.max) ? prices.max : finite(day?.credits?.max) ? day.credits.max : DEFAULT_PRICES.max
+    };
+};
+
+/** Las claves de la puntuación como las usa la app (y la tabla de puntos) aunque el servidor las mande de otra forma */
+const SCORING_KEYS: Record<string, string> = { hbp: 'hitByPitch', hitbypitch: 'hitByPitch', strikeout: 'strikeOut', strikeouts: 'strikeOut', homerun: 'homeRun', stolenbase: 'stolenBase', earnedrun: 'earnedRun' };
+
+/** El orden de la tabla de puntos (el de la ayuda) */
+export const SCORING_ORDER = {
+    batter: ['single', 'double', 'triple', 'homeRun', 'run', 'rbi', 'walk', 'hitByPitch', 'stolenBase', 'strikeOut'],
+    pitcher: ['out', 'strikeOut', 'win', 'save', 'earnedRun', 'hit', 'walk']
+} as const;
+
+const DEFAULT_SCORING: Scoring = {
+    batter: { single: 3, double: 5, triple: 8, homeRun: 10, run: 2, rbi: 2, walk: 2, hitByPitch: 2, stolenBase: 5, strikeOut: -1 },
+    pitcher: { out: 1, strikeOut: 2, win: 5, save: 5, earnedRun: -2, hit: -0.5, walk: -0.5 }
+};
+
+const normalizeGroup = (group: Record<string, unknown> | undefined) => {
+    const out: Record<string, number> = {};
+    for (const [key, value] of Object.entries(group ?? {})) if (finite(value)) out[SCORING_KEYS[key.toLowerCase()] ?? key] = value;
+    return out;
+};
+
+/** La puntuación del día con las claves de la app: la de rules, la de `scoring` o la de siempre */
+export const scoringOf = (day: Pick<FantasyDay, 'scoring' | 'rules'> | null | undefined): Scoring => {
+    const pick = (role: 'batter' | 'pitcher') => {
+        const fromRules = normalizeGroup(day?.rules?.scoring?.[role]);
+        if (Object.keys(fromRules).length) return fromRules;
+        const fromDay = normalizeGroup(day?.scoring?.[role]);
+        return Object.keys(fromDay).length ? fromDay : { ...DEFAULT_SCORING[role] };
+    };
+    return { batter: pick('batter'), pitcher: pick('pitcher') };
+};
+
+/** Todas las reglas del día, con el valor de siempre donde el servidor no manda nada */
+export const rulesOf = (day: FantasyDay | null | undefined): FantasyRules => {
+    const rules = day?.rules;
+    const prices = rules?.prices;
+    const credits = creditsOf(day);
+    return {
+        version: finite(rules?.version) ? rules.version : 1,
+        roster: { batters: RULES.batters, pitchers: RULES.pitchers },
+        perTeam: perTeamLimit(day),
+        budget: budgetOf(day),
+        captain: finite(rules?.captain) ? rules.captain : RULES.captain,
+        picks: { points: finite(rules?.picks?.points) ? rules.picks.points : RULES.pick },
+        scoring: scoringOf(day),
+        prices: {
+            min: credits?.min ?? (finite(prices?.min) ? prices.min : DEFAULT_PRICES.min),
+            max: credits?.max ?? (finite(prices?.max) ? prices.max : DEFAULT_PRICES.max),
+            step: finite(prices?.step) ? prices.step : DEFAULT_PRICES.step,
+            noData: finite(prices?.noData) ? prices.noData : DEFAULT_PRICES.noData,
+            seasonWeights: Array.isArray(prices?.seasonWeights) && prices.seasonWeights.every(finite) ? prices.seasonWeights : DEFAULT_PRICES.seasonWeights,
+            frozen: prices?.frozen ?? DEFAULT_PRICES.frozen
+        },
+        lock: 'per-game',
+        timezone: typeof rules?.timezone === 'string' && rules.timezone ? rules.timezone : 'America/Santo_Domingo'
+    };
 };
 
 /**
@@ -100,23 +233,42 @@ export const fetchFantasyDay = async (league: LeagueId, date?: string, signal?: 
 const MINUTE = 60 * 1000;
 const startTime = (game: Pick<FantasyGame, 'date'>) => (game.date ? new Date(game.date).getTime() : NaN);
 
+/** Juego pospuesto o cancelado: sus peloteros no suman, no se pueden agregar y los que están se pueden cambiar */
+export const isPostponed = (game: Pick<FantasyGame, 'status' | 'detailedState'> | null | undefined) => !!game && (game.status === 'postponed' || isNotPlayed(game.detailedState ?? ''));
+
 /**
- * Cada cuánto volver a pedir el día: 20 s con juegos en vivo; 30 s desde 15 minutos antes de un juego que todavía
- * no empieza (así se cierra a tiempo aunque el estado tarde en cambiar); si falta más, se despierta a esa hora.
+ * Cada cuánto volver a pedir el día (igual que la web): 20 s con juegos en vivo; 30 s desde 15 minutos antes de un
+ * juego que todavía no empieza (así se cierra a tiempo aunque el estado tarde en cambiar); si falta más, se despierta
+ * al entrar en esos 15 minutos, sin pasar de 15 minutos entre consultas.
  */
 export const fantasyInterval = (day: FantasyDay | undefined, now = Date.now()): number | false => {
     if (!day) return false;
     if (day.games.some((game) => game.state === 'live')) return 20000;
     // Sin los que están en espera (el suspendido con fecha nueva sí cuenta: se cierra cuando se reanuda)
-    const pending = day.games.filter((game) => game.state === 'preview' && !game.startTimeTBD && !isOnHold(game, now)).map((game) => startTime(game) - now);
+    const pending = day.games.filter((game) => game.state === 'preview' && !game.startTimeTBD && !isPostponed(game) && !isOnHold(game, now)).map((game) => startTime(game) - now);
     if (!pending.length || pending.every((startsIn) => Number.isNaN(startsIn))) return false;
     const next = Math.min(...pending.filter((startsIn) => !Number.isNaN(startsIn)));
     if (next <= 15 * MINUTE) return 30000;
-    return Math.min(next - 15 * MINUTE, 60 * MINUTE);
+    return Math.min(next - 15 * MINUTE, 15 * MINUTE);
 };
 
-export const useFantasyDay = (league: LeagueId, date?: string, enabled = true) =>
-    useQuery({
+/**
+ * Al llegar la hora de un juego se vuelve a pintar quien usa el día (igual que la web): sus peloteros se ven cerrados
+ * aunque los datos no cambien todavía. setTimeout no aguanta esperas de semanas: si falta mucho, se calcula a las 6 h.
+ */
+export const useLockClock = (day: FantasyDay | undefined) => {
+    const [tick, setTick] = useState(0);
+    const next = nextLockAt(day);
+    useEffect(() => {
+        if (next === null) return;
+        const timer = setTimeout(() => setTick((value) => value + 1), Math.min(Math.max(0, next - Date.now()) + 250, 6 * 60 * MINUTE));
+        return () => clearTimeout(timer);
+    }, [next, tick]);
+    return tick;
+};
+
+export const useFantasyDay = (league: LeagueId, date?: string, enabled = true) => {
+    const query = useQuery({
         queryKey: ['fantasy', league, date ?? 'hoy'],
         queryFn: ({ signal }) => fetchFantasyDay(league, date, signal),
         enabled,
@@ -124,6 +276,9 @@ export const useFantasyDay = (league: LeagueId, date?: string, enabled = true) =
         refetchInterval: (query) => fantasyInterval(query.state.data),
         refetchOnWindowFocus: true
     });
+    useLockClock(query.data);
+    return query;
+};
 
 // ---------------------------------------------------------------- lo que eligió el usuario (copia en el teléfono de lo de su cuenta)
 
@@ -222,19 +377,22 @@ export const gameStarted = (game: Pick<FantasyGame, 'state' | 'date' | 'startTim
 /** Próxima hora de inicio que todavía no llega (ahí se cierran los peloteros de ese juego) */
 export const nextLockAt = (day: FantasyDay | undefined, now = Date.now()) => {
     const upcoming = (day?.games ?? [])
-        .filter((game) => !game.startTimeTBD && !gameStarted(game, now))
+        .filter((game) => !game.startTimeTBD && !isPostponed(game) && !gameStarted(game, now))
         .map((game) => Date.parse(game.date))
         .filter(Number.isFinite);
     return upcoming.length ? Math.min(...upcoming) : null;
 };
 
-/** Un pelotero se cierra cuando su juego empieza */
-export const isLocked = (day: FantasyDay, player: Pick<FantasyPlayer, 'gamePk'>, now = Date.now()) => {
+/** Su juego fue pospuesto (lo dice el servidor nuevo en el pelotero o en el juego) */
+export const playerPostponed = (day: Pick<FantasyDay, 'games'>, player: Pick<FantasyPlayer, 'gamePk' | 'status'>) => player.status === 'postponed' || isPostponed(gameOf(day as FantasyDay, player.gamePk));
+
+/** Un pelotero se cierra cuando su juego empieza (el de un juego pospuesto no: hay que poder cambiarlo) */
+export const isLocked = (day: FantasyDay, player: Pick<FantasyPlayer, 'gamePk'> & { status?: PlayerStatus }, now = Date.now()) => {
     const game = gameOf(day, player.gamePk);
-    return !!game && gameStarted(game, now);
+    return !!game && !playerPostponed(day, player) && gameStarted(game, now);
 };
 
-export type AddProblem = 'locked' | 'full' | 'team' | 'budget' | 'already' | null;
+export type AddProblem = 'locked' | 'postponed' | 'full' | 'team' | 'budget' | 'already' | null;
 
 const priceOf = (player: Pick<FantasyPlayer, 'price'> | undefined) => (player && Number.isFinite(player.price) ? player.price! : 0);
 
@@ -243,10 +401,14 @@ export const entryCost = (day: FantasyDay, entry: Pick<DayEntry, 'lineup'>) =>
     Math.round(entry.lineup.reduce((sum, id) => sum + priceOf(day.players.find((p) => p.id === id)), 0) * 10) / 10;
 
 /** Créditos que quedan (null si el día no se juega con créditos) */
-export const creditsLeft = (day: FantasyDay, entry: Pick<DayEntry, 'lineup'>) => (day.credits ? Math.round((day.credits.budget - entryCost(day, entry)) * 10) / 10 : null);
+export const creditsLeft = (day: FantasyDay, entry: Pick<DayEntry, 'lineup'>) => {
+    const budget = budgetOf(day);
+    return budget === null ? null : Math.round((budget - entryCost(day, entry)) * 10) / 10;
+};
 
 export const canAdd = (day: FantasyDay, entry: DayEntry, player: FantasyPlayer, now = Date.now()): AddProblem => {
     if (entry.lineup.includes(player.id)) return 'already';
+    if (playerPostponed(day, player)) return 'postponed';
     if (isLocked(day, player, now)) return 'locked';
     const chosen = entry.lineup.map((id) => day.players.find((p) => p.id === id)).filter((p): p is FantasyPlayer => !!p);
     const sameRole = chosen.filter((p) => p.role === player.role).length;
@@ -301,7 +463,7 @@ export const applyLineup = (day: FantasyDay, lineup: number[], captain: number |
 };
 
 export const setPick = (day: FantasyDay, game: FantasyGame, teamId: number) => {
-    if (gameStarted(game)) return false;
+    if (gameStarted(game) || isPostponed(game)) return false;
     update(day, (value) => ({ ...value, picks: { ...value.picks, [game.gamePk]: teamId } }));
     return true;
 };
@@ -350,16 +512,20 @@ const fits = (kept: FantasyPlayer[], player: FantasyPlayer, budget: number | nul
  * cambiaron), sobran los que entraron de último. Sin historial (lo del teléfono o filas de antes del arreglo) cuenta
  * el orden de la alineación.
  */
+const hasHistory = (history: DayEntry['history']): history is EntryHistory => !!history && typeof history === 'object' && !!history.players && typeof history.players === 'object';
+
 export const effectiveEntry = (day: FantasyDay, entry: DayEntry): DayEntry => {
     const history = entry.history;
-    const budget = day.credits ? day.credits.budget : null;
-    if (!history || typeof history !== 'object' || !history.players || typeof history.players !== 'object') {
+    const budget = budgetOf(day);
+    if (!hasHistory(history)) {
         if (budget === null) return entry;
         const kept: FantasyPlayer[] = [];
         const lineup: number[] = [];
         for (const id of entry.lineup) {
             const player = day.players.find((p) => p.id === id);
             if (!player) lineup.push(id);
+            // El de un juego pospuesto no ocupa cupo ni créditos (no suma): su cambio sí cuenta
+            else if (playerPostponed(day, player)) lineup.push(id);
             else if (fits(kept, player, budget, perTeamLimit(day))) {
                 kept.push(player);
                 lineup.push(id);
@@ -372,7 +538,7 @@ export const effectiveEntry = (day: FantasyDay, entry: DayEntry): DayEntry => {
     const counted: { player: FantasyPlayer; lock: number; added: number }[] = [];
     for (const [key, spans] of Object.entries(history.players)) {
         const player = day.players.find((p) => String(p.id) === key);
-        if (!player) continue;
+        if (!player || playerPostponed(day, player)) continue;
         const lock = locks.get(String(player.gamePk)) ?? Infinity;
         const span = spanAt(spans, lock);
         if (span) counted.push({ player, lock, added: Number(span[0]) });
@@ -391,6 +557,34 @@ export const effectiveEntry = (day: FantasyDay, entry: DayEntry): DayEntry => {
         if (pick) picks[game.gamePk] = pick;
     }
     return { ...entry, lineup, captain: captains[0]?.player.id ?? null, picks };
+};
+
+/** Por qué un pelotero del equipo no cuenta: se pasó del tope (cupo, máximo por equipo o créditos) o entró tarde */
+export type NotCounted = 'cap' | 'late';
+
+/**
+ * Los del equipo que no cuentan (para el aviso «No cuenta: …» de su tarjeta), con la misma regla de effectiveEntry:
+ * «late» si su juego ya se cerró y no estaba en el equipo a esa hora (lo dice el historial de la base); «cap» si
+ * estaba pero se pasa del tope y entró de último. Los de un juego pospuesto tienen su propio aviso.
+ */
+export const notCounted = (day: FantasyDay, entry: DayEntry, effective: DayEntry = effectiveEntry(day, entry)): Map<number, NotCounted> => {
+    const out = new Map<number, NotCounted>();
+    const history = hasHistory(entry.history) ? entry.history : null;
+    for (const id of entry.lineup) {
+        if (effective.lineup.includes(id)) continue;
+        const player = day.players.find((p) => p.id === id);
+        if (!player || playerPostponed(day, player)) continue;
+        if (history) {
+            const game = gameOf(day, player.gamePk);
+            const lock = game ? lockTime(game) : Infinity;
+            if (!spanAt(history.players[String(id)], lock)) {
+                if (Number.isFinite(lock)) out.set(id, 'late');
+                continue;
+            }
+        }
+        out.set(id, 'cap');
+    }
+    return out;
 };
 
 // ---------------------------------------------------------------- puntos
@@ -413,13 +607,38 @@ export const pickResult = (game: FantasyGame, entry: DayEntry): 'win' | 'loss' |
     return winner === pick ? 'win' : 'loss';
 };
 
-export const pickPoints = (day: FantasyDay, entry: DayEntry) => day.games.filter((game) => pickResult(game, entry) === 'win').length * RULES.pick;
+export const pickPoints = (day: FantasyDay, entry: DayEntry) => day.games.filter((game) => pickResult(game, entry) === 'win').length * rulesOf(day).picks.points;
 
-/** Guarda el resultado del día cuando ya terminaron todos los juegos (para el historial y la racha) */
-export const settleDay = (day: FantasyDay, entry: DayEntry) => {
+/** Puntos del día con el equipo que cuenta (effectiveEntry): los mismos de la tabla y del perfil */
+export const dayPoints = (day: FantasyDay, entry: DayEntry, counted: DayEntry = effectiveEntry(day, entry)) => {
+    const team = teamPoints(day, counted);
+    const picks = pickPoints(day, counted);
+    return { team, picks, total: Math.round((team + picks) * 10) / 10 };
+};
+
+/**
+ * Puestos que se comparten en los empates (1, 2, 2, 4), de más a menos puntos: igual en la tabla del día, la de la
+ * temporada y en PRO. Los puntos se comparan redondeados a un decimal (10,1 + 0,2 es 10,3).
+ */
+export const rankRows = <T extends { points: number }>(rows: T[], tie: (a: T, b: T) => number = () => 0): (T & { rank: number })[] => {
+    const round = (value: number) => Math.round(value * 10) / 10;
+    const sorted = [...rows].sort((a, b) => round(b.points) - round(a.points) || tie(a, b));
+    let rank = 0;
+    return sorted.map((row, index) => {
+        if (index === 0 || round(row.points) !== round(sorted[index - 1].points)) rank = index + 1;
+        return { ...row, rank };
+    });
+};
+
+/**
+ * Guarda el resultado del día cuando ya terminaron todos los juegos (para el historial y la racha), con el equipo que
+ * cuenta (`counted`: el de la base con su historial si se tiene; si no, effectiveEntry con lo del teléfono)
+ */
+export const settleDay = (day: FantasyDay, entry: DayEntry, counted?: DayEntry) => {
     if (!day.games.length || day.games.some((game) => game.state !== 'final')) return;
     if (!entry.lineup.length && !Object.keys(entry.picks).length) return;
-    const result = { team: teamPoints(day, entry), picks: pickPoints(day, entry) };
+    const { team, picks } = dayPoints(day, entry, counted);
+    const result = { team, picks };
     if (entry.result && entry.result.team === result.team && entry.result.picks === result.picks) return;
     const all = load();
     save({ ...all, [entryKey(day.league, day.date)]: { ...entry, result } });
