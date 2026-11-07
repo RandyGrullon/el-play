@@ -6,11 +6,11 @@
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Crown, Lock, Plus, TriangleAlert, UserX, X } from 'lucide-react-native';
+import { Clock, Crown, Lock, Plus, TriangleAlert, UserX, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { RULES, budgetOf, isLocked, occupying, removeId, scoringOf, playerPostponed, playerScore, removePlayer, rulesOf, setCaptain, type DayEntry, type FantasyDay, type FantasyPlayer, type NotCounted } from '../../lib/fantasy';
 import type { CountedEntry } from '../../lib/fantasyCounted';
-import { statusOf } from '../../lib/fantasyPicker';
+import { matchupOf, statusOf } from '../../lib/fantasyPicker';
 import { useColors } from '../../theme/theme';
 import { alpha, radius, shadow } from '../../theme/tokens';
 import { PlayerPhoto, Row, Txt } from '../ui';
@@ -22,7 +22,7 @@ import { IdealCard, LockNotice, SmartActions, useOwners } from './Smart';
 import type { FantasyOwners } from './fans';
 import { pointParts } from '../pro/fantasy/logic';
 import type { SaveStatus } from '../pro/fantasy/data';
-import { CardWarning, SaveLine, StatusBadge, lockText } from './PlayerBits';
+import { SaveLine, StatusBadge, lockText } from './PlayerBits';
 import { HelpButton } from './Help';
 
 export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; counted: CountedEntry; saveStatus: SaveStatus; onPick: (role: 'B' | 'P') => void }> = ({ day, entry, counted, saveStatus, onPick }) => {
@@ -167,13 +167,17 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; counted: DayEntry
     // Sus puntos en el equipo que cuenta (con la corona que cuenta); si no cuenta, sus puntos tachados
     const counts = counted.lineup.includes(player.id);
     const score = formatCredits(counts ? playerScore(counted, player, rulesOf(day).captain) : player.points, lang);
+    // Un solo aviso (el mismo orden de la web): pospuesto, no jugó, entró tarde o se pasó del tope
     const warning = postponed
-        ? { text: t('fantasyHelp.card.postponed'), tone: 'down' as const }
-        : notCounted
-          ? { text: t(notCounted === 'late' ? 'fantasyHelp.card.notCountingLate' : 'fantasyHelp.card.notCountingOver'), tone: 'down' as const }
-          : status === 'dnp'
-            ? { text: t('fantasyHelp.card.dnp'), tone: 'muted' as const }
-            : null;
+        ? t('fantasyHelp.card.postponed')
+        : status === 'dnp'
+          ? t('fantasyHelp.card.dnp')
+          : notCounted === 'late'
+            ? t('fantasyHelp.card.notCountingLate')
+            : notCounted === 'over'
+              ? t('fantasyHelp.card.notCountingOver')
+              : null;
+    const match = matchupOf(day, player);
     const scoreText = (
         <Txt
             size={24}
@@ -190,7 +194,7 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; counted: DayEntry
             {/* Encima del desglose, que sale por debajo */}
             <View
                 style={[
-                    { zIndex: 1, minHeight: 84, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 22, backgroundColor: colors.surface, borderWidth: 2, borderColor: captain ? alpha(colors.gold, 0.6) : 'transparent' },
+                    { zIndex: 1, minHeight: 84, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 22, backgroundColor: colors.surface, borderWidth: 1, borderColor: warning ? alpha(colors.live, 0.3) : 'transparent' },
                     shadow('card')
                 ]}
             >
@@ -210,39 +214,46 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; counted: DayEntry
                                 {player.name}
                             </Txt>
                         </Row>
-                        <Row gap={0}>
-                            <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} style={{ flexShrink: 0, maxWidth: '100%' }}>
-                                <Text {...teamTextLink(team?.id)}>{team?.abbrev}</Text> · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')} · {closes ?? gameStatus(day, player.gamePk, lang, t)}
+                        <Row gap={6}>
+                            {/* Antes de su juego: Confirmado / Esperado / Banca / Abridor probable / Bullpen / Descansando */}
+                            {badge ? <StatusBadge status={badge} /> : null}
+                            <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} style={{ flexShrink: 1, minWidth: 0 }}>
+                                <Text {...teamTextLink(team?.id)}>{team?.abbrev}</Text>
+                                {match ? ` ${match.home ? 'vs' : '@'} ${match.opp}` : ''} · {player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter')}
+                                {locked ? ` · ${gameStatus(day, player.gamePk, lang, t)}` : ''}
+                                {price !== null ? ` · ${t('fantasy.credits.price', { price })}` : ''}
                             </Txt>
-                            {price !== null && (
-                                // Espacio duro al empezar: en un texto de una línea aparte el espacio normal se pierde (en la web)
-                                <Txt size={12} weight="semibold" tone="muted" numberOfLines={1} style={{ flexShrink: 1, minWidth: 0 }}>
-                                    {` · ${t('fantasy.credits.price', { price })}`}
-                                </Txt>
-                            )}
                         </Row>
-                        {line && (
+                        {warning ? (
+                            <Row gap={4}>
+                                <TriangleAlert size={14} color={colors.live} />
+                                <Txt size={11} weight="bold" tone="live" numberOfLines={1} style={{ flexShrink: 1 }}>
+                                    {warning}
+                                </Txt>
+                            </Row>
+                        ) : line ? (
                             <Txt size={12} tone="muted" numberOfLines={1}>
                                 {line}
                             </Txt>
-                        )}
-                        {!locked && !postponed && player.proj !== undefined && (
+                        ) : !locked && player.proj !== undefined ? (
                             <Txt size={12} weight="bold" tone="accentInk" numberOfLines={1}>
                                 {t('fantasy.smart.proj', { pts: formatCredits(player.proj, lang) })}
                                 {/* El lanzador: si abrió el último juego o hace cuántos días (como en la web) */}
                                 {player.rest ? ` · ${t('fantasy.smart.restShort')}` : player.startedAgo !== undefined ? ` · ${t('fantasy.smart.startedAgo', { count: player.startedAgo })}` : ''}
                             </Txt>
-                        )}
-                        {(warning || badge) && (
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 3 }}>
-                                {badge ? <StatusBadge status={badge} /> : null}
-                                {warning ? <CardWarning text={warning.text} tone={warning.tone} /> : null}
-                            </View>
-                        )}
+                        ) : null}
                     </View>
                 </Pressable>
                 <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                    {locked ? (
+                    {!locked && closes ? (
+                        // Antes de su juego: a qué hora se cierra (después, sus puntos en vivo)
+                        <Row gap={4}>
+                            <Clock size={12} color={colors.muted} />
+                            <Txt size={11} weight="bold" tone="muted" numberOfLines={1}>
+                                {closes}
+                            </Txt>
+                        </Row>
+                    ) : locked ? (
                         parts.length ? (
                             <Pressable onPress={() => setBreakdown((value) => !value)} hitSlop={8} accessibilityRole="button" accessibilityState={{ expanded: breakdown }} accessibilityLabel={`${score}. ${t('fantasyMore.breakdownOf', { name: player.name })}`}>
                                 {scoreText}
