@@ -114,6 +114,32 @@ export const filterBalls = (balls: SprayBall[], filters: SprayFilters) =>
         return true;
     });
 
+export interface SprayBatter {
+    id: number;
+    name: string;
+    side: 'away' | 'home';
+    count: number;
+}
+
+/** Los que pusieron la bola en juego (con el filtro de equipo): primero el visitante, luego el que más bateó y por nombre */
+export const sprayBatters = (balls: SprayBall[], team: SprayTeam): SprayBatter[] => {
+    const map = new Map<number, SprayBatter>();
+    for (const ball of balls) {
+        if (team !== 'all' && ball.side !== team) continue;
+        const row = map.get(ball.atBat.batter.id) ?? { id: ball.atBat.batter.id, name: ball.atBat.batter.name, side: ball.side, count: 0 };
+        row.count += 1;
+        map.set(row.id, row);
+    }
+    return [...map.values()].sort((a, b) => (a.side === b.side ? b.count - a.count || a.name.localeCompare(b.name) : a.side === 'away' ? -1 : 1));
+};
+
+/** Cambiar de equipo: el bateador escogido se queda solo si bateó por ese equipo */
+export const withTeam = (balls: SprayBall[], filters: SprayFilters, team: SprayTeam): SprayFilters => ({
+    ...filters,
+    team,
+    batter: filters.batter !== null && (team === 'all' || balls.some((ball) => ball.side === team && ball.atBat.batter.id === filters.batter)) ? filters.batter : null
+});
+
 const DEFAULT_LA: Record<SprayTraj, number> = { ground: 0, line: 14, fly: 32, popup: 62 };
 
 export interface FlightPath {
