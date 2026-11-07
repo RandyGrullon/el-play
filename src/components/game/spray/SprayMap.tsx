@@ -13,7 +13,7 @@ import { NO_FILTERS, ZONES, entryTiming, filterBalls, flightPath, heatColor, hea
 import { useMotion } from '../../../lib/motion';
 import { useColors, useTheme } from '../../../theme/theme';
 import { alpha, fonts, radius } from '../../../theme/tokens';
-import { Card, PlayerPhoto, Row, Segmented, Txt } from '../../ui';
+import { Card, PlayerPhoto, Row, Segmented, Sheet, Txt } from '../../ui';
 import { PlayerLink, playerTextLink } from '../../stats/common';
 import { useInView } from '../../pro/kit/hooks';
 import { SprayField, fairPoints, sprayViewOf, zoneLabelAt, zonePoints } from './SprayField';
@@ -144,6 +144,7 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
     const [filters, setFilters] = useState<SprayFilters>(NO_FILTERS);
     const [selected, setSelected] = useState<number | null>(null);
     const [width, setWidth] = useState(0);
+    const [picking, setPicking] = useState(false);
     const balls = useMemo(() => filterBalls(all, filters), [all, filters]);
     const stats = useMemo(() => sprayStats(balls), [balls]);
     const zones = useMemo(() => zoneStats(balls), [balls]);
@@ -288,6 +289,17 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
         { value: 'fly', label: t('spray.kind.fly') },
         { value: 'popup', label: t('spray.kind.popup') }
     ];
+    const batters = (() => {
+        const map = new Map<number, { id: number; name: string; side: 'away' | 'home'; count: number }>();
+        for (const ball of all) {
+            if (filters.team !== 'all' && ball.side !== filters.team) continue;
+            const row = map.get(ball.atBat.batter.id) ?? { id: ball.atBat.batter.id, name: ball.atBat.batter.name, side: ball.side, count: 0 };
+            row.count += 1;
+            map.set(row.id, row);
+        }
+        return [...map.values()].sort((a, b) => (a.side === b.side ? b.count - a.count || a.name.localeCompare(b.name) : a.side === 'away' ? -1 : 1));
+    })();
+    const batterName = filters.batter !== null ? (all.find((ball) => ball.atBat.batter.id === filters.batter)?.atBat.batter.name ?? '') : '';
     const pressSpot = (ball: SprayBall) => ({ left: `${((ball.land.x - view.x) / view.w) * 100}%` as const, top: `${((-ball.land.y - view.y) / view.h) * 100}%` as const });
 
     return (
@@ -314,7 +326,7 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, gap: 6 }} accessibilityLabel={t('spray.filters.label')}>
                 <View role="radiogroup" accessibilityLabel={t('spray.filters.team')} style={{ flexDirection: 'row', gap: 6 }}>
                     {teamOptions.map((option) => (
-                        <Chip key={option.value} label={option.label} a11y={option.a11y} active={filters.team === option.value} onPress={() => setFilter({ team: option.value })} />
+                        <Chip key={option.value} label={option.label} a11y={option.a11y} active={filters.team === option.value} onPress={() => setFilter({ team: option.value, batter: option.value === 'all' || all.some((ball) => ball.side === option.value && ball.atBat.batter.id === filters.batter) ? filters.batter : null })} />
                     ))}
                 </View>
                 <Divider />
@@ -329,7 +341,51 @@ export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
                         <Chip key={option.value} label={option.label} a11y={`${t('spray.filters.type')}: ${option.label}`} active={filters.traj === option.value} onPress={() => setFilter({ traj: option.value })} />
                     ))}
                 </View>
+                <Divider />
+                <Pressable
+                    onPress={() => setPicking(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={filters.batter !== null ? `${t('spray.batter')}: ${batterName}` : t('spray.pickBatter')}
+                    style={({ pressed }) => ({ height: 32, paddingHorizontal: 12, borderRadius: radius.pill, justifyContent: 'center', backgroundColor: filters.batter !== null ? colors.ink : colors.raised, opacity: pressed ? 0.8 : 1 })}
+                >
+                    <Txt size={13} weight="bold" color={filters.batter !== null ? colors.bg : colors.muted} numberOfLines={1}>
+                        {filters.batter !== null ? batterName : `${t('spray.batter')} ▾`}
+                    </Txt>
+                </Pressable>
+                {filters.batter !== null && (
+                    <Pressable onPress={() => setFilter({ batter: null })} accessibilityRole="button" accessibilityLabel={t('spray.clearBatter')} style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.raised }}>
+                        <X size={14} color={colors.ink} />
+                    </Pressable>
+                )}
             </ScrollView>
+            <Sheet open={picking} onClose={() => setPicking(false)} title={t('spray.pickBatter')}>
+                {batters.map((row) => (
+                    <Pressable
+                        key={row.id}
+                        onPress={() => {
+                            setPicking(false);
+                            setFilter({ batter: row.id });
+                        }}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: filters.batter === row.id }}
+                        accessibilityLabel={`${row.name}, ${game[row.side].abbrev}, ${t('spray.ballsCount', { count: row.count })}`}
+                        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, borderRadius: radius.tile, backgroundColor: filters.batter === row.id ? alpha(colors.accent, 0.15) : 'transparent', opacity: pressed ? 0.8 : 1 })}
+                    >
+                        <PlayerPhoto personId={row.id} name={row.name} size={44} team={game[row.side]} />
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                            <Txt size={15} weight="bold" numberOfLines={1}>
+                                {row.name}
+                            </Txt>
+                            <Txt size={13} tone="muted">
+                                {game[row.side].abbrev}
+                            </Txt>
+                        </View>
+                        <Txt size={13} weight="semibold" tone="muted">
+                            {t('spray.ballsCount', { count: row.count })}
+                        </Txt>
+                    </Pressable>
+                ))}
+            </Sheet>
 
             <View style={{ paddingHorizontal: 12, alignItems: 'center' }}>
                 <View
