@@ -262,7 +262,8 @@ export const DaySummary: React.FC<DaySummaryProps> = ({ day, entry, dayName, tea
                     <View accessible accessibilityRole="text" accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0 }}>
                         <save.Icon size={16} color={save.color} />
                         <Txt size={12} weight="semibold" color={save.color} style={{ flexShrink: 1 }}>
-                            {t(`pro.fantasy.save.${saveStatus}`)}
+                            {/* Las mismas palabras del Lite y la web: Guardando… / Guardado / Sin conexión: se guarda al volver */}
+                            {t(`fantasyHelp.save.${saveStatus === 'pending' ? 'saving' : saveStatus}`)}
                         </Txt>
                     </View>
                 ) : (
