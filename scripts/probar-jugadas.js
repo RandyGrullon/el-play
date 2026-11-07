@@ -1139,6 +1139,8 @@ const helpLib = require(compileTo('lib/fantasyHelp.ts'));
         const d = dia([p(1, 'B', 1, 8, 5), p(2, 'B', 3, 8, 5)], PAST);
         d.games[0] = { ...d.games[0], state: 'final', detailedState: 'Postponed', status: 'postponed' };
         assert.strictEqual(isLocked(d, d.players[0]), false);
+        // No se cierra nunca: quien lo cambia por otro no se pasa del cupo (igual que la web y el servidor)
+        assert.strictEqual(fantasyLib.lockTime(d.games[0]), Infinity);
         assert.strictEqual(canAdd(d, { lineup: [], captain: null, picks: {}, savedAt: 0 }, d.players[0]), 'postponed');
         assert.strictEqual(canAdd(d, { lineup: [], captain: null, picks: {}, savedAt: 0 }, d.players[1]), null);
         const lejos = dia([], new Date(Date.now() + 5 * 3600000).toISOString());
@@ -1167,14 +1169,14 @@ const helpLib = require(compileTo('lib/fantasyHelp.ts'));
         assert.ok(!counted.lineup.includes(12345602));
         // 12 + 12 + 12 + 10 = 46 de 50: cabe todo lo demás
         assert.deepStrictEqual(counted.lineup, [12345601, 12345603, 12345604, 12345605]);
-        assert.deepStrictEqual([...notCounted(d, entry, counted)], [[12345602, 'late']]);
+        assert.deepStrictEqual([...notCounted(d, entry, counted, start + 3600000)], [[12345602, 'late']]);
         partial(dayPoints(d, entry, counted), { team: 15, total: 15 });
         // Sin historial (lo del teléfono): el orden de la alineación; 12 × 5 = 60 > 50 → el último que entró no cuenta
         const local = { lineup: [12345601, 12345602, 12345603, 12345604, 12345605], captain: 12345605, picks: {}, savedAt: 1 };
         const sinHistorial = effectiveEntry(d, local);
         assert.deepStrictEqual(sinHistorial.lineup, [12345601, 12345602, 12345603, 12345604]);
         assert.strictEqual(sinHistorial.captain, null);
-        assert.deepStrictEqual([...notCounted(d, local)], [[12345605, 'cap']]);
+        assert.deepStrictEqual([...notCounted(d, local)], [[12345605, 'over']]);
     });
 
     it('puestos compartidos en los empates: 1, 2, 2, 4 (también con decimales que no cuadran exactos)', () => {
@@ -1276,10 +1278,12 @@ const helpLib = require(compileTo('lib/fantasyHelp.ts'));
         const { rulesOf } = fantasyLib;
         const { helpNumbers, helpExamples, scoringRows, HELP_QUESTIONS, HELP_TOPICS, isHelpQuestion } = helpLib;
         const r = rulesOf(dia([], LATER, { scoring: { batter: { single: 3, double: 5, triple: 8, homeRun: 10, run: 2, rbi: 2, walk: 2, hitByPitch: 2, stolenBase: 5, strikeOut: -1 }, pitcher: { out: 1, strikeOut: 2, win: 5, save: 5, earnedRun: -2, hit: -0.5, walk: -0.5 } } }));
-        assert.deepStrictEqual(helpNumbers(r), { batters: 5, pitchers: 1, budget: 50, captain: 1.5, picks: 10, perTeam: 2, min: 4, max: 12 });
+        assert.deepStrictEqual(helpNumbers(r), { batters: 5, pitchers: 1, budget: 50, captain: 1.5, picks: 10, perTeam: 2, min: 4, max: 12, past: 3, code: 6 });
         const ex = helpExamples(r);
-        partial(ex, { solo: { total: 14, captain: 21 }, double: { total: 9 }, pitcher: { outs: 18, strikeOuts: 14, earnedRuns: -4, hits: -2.5, walks: -0.5, win: 5, total: 30 } });
+        partial(ex, { solo: { hr: 10, run: 2, rbi: 2, total: 14, captain: 21 }, double: { double: 5, rbi: 2, total: 9 }, pitcher: { ip: 6, outs: 18, outsPts: 18, k: 7, kPts: 14, er: 2, erPts: -4, h: 5, hPts: -2.5, bb: 1, bbPts: -0.5, winPts: 5, total: 30 } });
         assert.deepStrictEqual(scoringRows(r, 'pitcher').map((row) => row.key), ['out', 'strikeOut', 'win', 'save', 'earnedRun', 'hit', 'walk']);
+        // Los textos de la ayuda son los de la web (hbp y strikeout)
+        assert.deepStrictEqual(scoringRows(r, 'batter').filter((row) => row.key !== row.label).map((row) => row.label), ['hbp', 'strikeout']);
         assert.strictEqual(scoringRows(r, 'batter').length, 10);
         // Con otras reglas cambian los números (nada escrito a mano)
         const otras = rulesOf(dia([], LATER, { rules: { budget: null, perTeam: 3, captain: 2, picks: { points: 15 }, scoring: { batter: { homeRun: 12, run: 1, rbi: 1, double: 4 }, pitcher: { out: 1 } } } }));
