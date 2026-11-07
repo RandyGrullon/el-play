@@ -1797,7 +1797,7 @@
       },
       "noPlay": {
         "q": "¿Y si mi pelotero no juega?",
-        "a": "Suma 0 y no hay cambio automático. Antes de su juego verás «Confirmado» cuando salga en la alineación, «Esperado» si fue titular en el juego anterior y «Banca» si no; en lanzadores, «Abridor probable», «Descansando» o «Bullpen»."
+        "a": "Suma 0 y no hay cambio automático. Antes de su juego verás «Confirmado» cuando salga en la alineación, «Esperado» si fue titular en el juego anterior y «Banca» si no; en lanzadores, «Abridor probable» (lo anunció su equipo), «Le toca abrir» (por su rotación, cuando no se ha anunciado), «Descansando» o «Bullpen»."
       },
       "prices": {
         "q": "¿Cómo se ponen los precios?",
@@ -1919,6 +1919,7 @@
       "expected": "Esperado",
       "bench": "Banca",
       "probable": "Abridor probable",
+      "rotation": "Le toca abrir",
       "bullpen": "Bullpen",
       "resting": "Descansando",
       "postponed": "Pospuesto",

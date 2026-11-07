@@ -536,3 +536,19 @@ describe('guardado con estado (Guardando… / Guardado / Sin conexión)', () => 
         expect(getSaveStatus('lidom', '2026-11-10')).toBe('offline');
     });
 });
+
+describe('le toca abrir (abridor estimado por la rotación)', () => {
+    const day = { date: '2026-11-10', games: [], players: [], scoring: {} } as unknown as FantasyDay;
+    const pitcher = (extra: Partial<FantasyPlayer>) => ({ id: 12345678, name: 'Pelotero Uno', teamId: 901, gamePk: null, role: 'P', pos: 'P', starter: true, played: false, line: null, points: 0, ...extra }) as FantasyPlayer;
+
+    it('«probable» con estimated sale como «rotation» y cuenta como titular; sin estimated sigue «probable»', () => {
+        expect(statusOf(day, pitcher({ status: 'probable', estimated: true }))).toBe('rotation');
+        expect(statusOf(day, pitcher({ status: 'probable' }))).toBe('probable');
+        expect(statusOf(day, pitcher({ status: 'bullpen', estimated: true }))).toBe('bullpen');
+    });
+
+    it('tiene su etiqueta en español e inglés', () => {
+        expect(es.fantasyHelp.status.rotation).toBe('Le toca abrir');
+        expect(en.fantasyHelp.status.rotation).toBe('Due to start');
+    });
+});

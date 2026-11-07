@@ -28,6 +28,8 @@ const MIN_PLAYERS = 20;
 const PROJECTION = {
     confirmed: 1,
     probable: 1,
+    // Le toca abrir por la rotación (estimado, no anunciado)
+    rotation: 0.85,
     postponed: 0,
     starter: 0.85,
     bench: 0.3,
@@ -227,6 +229,7 @@ const dayPrices = (leagueKey, date, scoring, { through } = {}) => {
 const projectionKey = (player) => {
     if (player.status === 'postponed') return 'postponed';
     if (player.role !== 'P') return player.status === 'confirmed' ? 'confirmed' : player.starter ? 'starter' : 'bench';
+    if (player.status === 'rotation') return 'rotation';
     if (player.status === 'probable') return 'probable';
     if (player.rest) return 'rest';
     if (player.outings === undefined) return 'pitcher';

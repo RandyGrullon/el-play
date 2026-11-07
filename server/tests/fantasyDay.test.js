@@ -275,6 +275,47 @@ describe('fantasy del día: juegos pospuestos', () => {
     });
 });
 
+describe('fantasy del día: le toca abrir por la rotación', () => {
+    // 901 abre con 51, 52, 53, 54 y 51 (del 12 al 16); el 20 juega sin probable anunciado: le toca al 52 (7 días sin
+    // abrir); el 53 (6 días) también descansó pero lleva menos. 902 siempre abre con el 51: no hay rotación que estimar.
+    const ROTATION = [
+        game(6001, '2026-10-12', '2026-10-12T23:00:00Z', A, B, 'final', { pitched: { [A]: [51, 52] } }),
+        game(6002, '2026-10-13', '2026-10-13T23:00:00Z', A, B, 'final', { pitched: { [A]: [52, 51] } }),
+        game(6003, '2026-10-14', '2026-10-14T23:00:00Z', A, B, 'final', { pitched: { [A]: [53, 52] } }),
+        game(6004, '2026-10-15', '2026-10-15T23:00:00Z', A, B, 'final', { pitched: { [A]: [54, 52] } }),
+        game(6005, '2026-10-16', '2026-10-16T23:00:00Z', A, B, 'final', { pitched: { [A]: [51, 52] } }),
+        game(6010, '2026-10-20', '2026-10-20T23:00:00Z', A, B, 'preview')
+    ];
+
+    it('sin probable anunciado sale «probable» con estimated, y el juego trae rotation', async () => {
+        fakeLeague(ROTATION);
+        const day = await fantasy.fantasyDay('lidom', '2026-10-20');
+        expect(playerOf(day, A, 52)).toMatchObject({ status: 'probable', estimated: true, starter: true });
+        expect(playerOf(day, A, 53).status).toBe('bullpen');
+        expect(playerOf(day, A, 51).estimated).toBeUndefined();
+        expect(day.games.find((g) => g.gamePk === 6010)).toMatchObject({ probables: { away: null, home: null }, rotation: { away: id(A, 52), home: null } });
+        // 902 no tiene a quién estimar
+        expect(day.players.filter((p) => p.teamId === B && p.estimated)).toEqual([]);
+    });
+
+    it('la proyección del estimado es ×0,85 (el anunciado, ×1)', async () => {
+        fakeLeague(ROTATION);
+        const day = await fantasy.fantasyDay('lidom', '2026-10-20');
+        const table = await prices.dayPrices('lidom', '2026-10-20', { batterPoints: fantasy.batterPoints, pitcherPoints: fantasy.pitcherPoints });
+        const starter = playerOf(day, A, 52);
+        expect(starter.proj).toBe(Math.round(new Map(table.ppg.P).get(starter.id) * 0.85 * 10) / 10);
+    });
+
+    it('con el probable anunciado no se estima nada', async () => {
+        fakeLeague(ROTATION.map((g) => (g.gamePk === 6010 ? { ...g, probables: { away: 53 } } : g)));
+        const day = await fantasy.fantasyDay('lidom', '2026-10-20');
+        expect(playerOf(day, A, 53)).toMatchObject({ status: 'probable' });
+        expect(playerOf(day, A, 53).estimated).toBeUndefined();
+        expect(playerOf(day, A, 52).status).toBe('bullpen');
+        expect(day.games.find((g) => g.gamePk === 6010).rotation).toBeUndefined();
+    });
+});
+
 describe('fantasy del día: doble cartelera', () => {
     it('antes del primer juego, los peloteros van con el juego 1 (se cierran al empezar el primero)', async () => {
         fakeLeague(LEAGUE);

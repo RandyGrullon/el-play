@@ -74,6 +74,7 @@ export const HelpButton: React.FC<{ topic: keyof typeof HELP_FOR; className?: st
 const STATUS_TONE: Record<PlayerStatus | 'started', string> = {
     confirmed: 'bg-ball/15 text-ink',
     probable: 'bg-ball/15 text-ink',
+    rotation: 'bg-accent/10 text-accent-ink',
     expected: 'bg-accent/10 text-accent-ink',
     bench: 'bg-raised text-muted',
     bullpen: 'bg-raised text-muted',
@@ -83,7 +84,7 @@ const STATUS_TONE: Record<PlayerStatus | 'started', string> = {
     started: 'bg-raised text-faint'
 };
 
-/** Confirmado / Esperado / Banca / Abridor probable / Bullpen / Descansando / Pospuesto / No jugó / Ya empezó */
+/** Confirmado / Esperado / Banca / Abridor probable / Le toca abrir / Bullpen / Descansando / Pospuesto / No jugó / Ya empezó */
 export const StatusBadge: React.FC<{ status: PlayerStatus | 'started' | null; className?: string }> = ({ status, className = '' }) => {
     const { t } = useTranslation();
     if (!status) return null;

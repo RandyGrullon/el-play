@@ -35,6 +35,8 @@ export interface FantasyPlayer {
     /** Rival del día; `home` = él juega en casa */
     opp?: { id: number; abbrev: string; home: boolean } | null;
     status?: PlayerStatus;
+    /** Abridor estimado por la rotación (la liga no lo anunció): el servidor lo manda con status «probable» */
+    estimated?: boolean;
     /** Puntos de fantasy de sus últimos 5 juegos, del más viejo al más nuevo (puede traer menos) */
     last5?: number[];
     season?: FantasySeasonLine | null;
@@ -47,7 +49,8 @@ export interface FantasyPlayer {
  * Lanzadores: probable (abridor anunciado), resting (abrió en los últimos 4 días), bullpen. Cualquiera: postponed
  * (su juego se pospuso: suma 0 y hay que cambiarlo) y dnp (su juego terminó y no jugó).
  */
-export type PlayerStatus = 'confirmed' | 'expected' | 'bench' | 'probable' | 'bullpen' | 'resting' | 'postponed' | 'dnp';
+// «rotation» no viene del servidor: es el «probable» estimado por la rotación (estimated), con su propia etiqueta
+export type PlayerStatus = 'confirmed' | 'expected' | 'bench' | 'probable' | 'rotation' | 'bullpen' | 'resting' | 'postponed' | 'dnp';
 
 export interface FantasySeasonLine {
     avg?: string;
