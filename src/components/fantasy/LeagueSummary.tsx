@@ -1,5 +1,5 @@
 // Una liga privada del Fantasy (igual que LeagueSummary de la web): su código para invitar, el campeón de la semana,
-// la racha más larga, compartir el resumen del día y salir de la liga.
+// la racha actual más larga, compartir el resumen del día y salir de la liga.
 import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +18,7 @@ import { useSeasonRanking } from './fans';
 
 const round = (value: number) => Math.round(value * 10) / 10;
 
-/** Campeón de la semana o racha más larga */
+/** Campeón de la semana o racha actual (días seguidos hasta hoy) */
 const Box: React.FC<{ tint: string; icon: React.ReactNode; title: string; name: string; detail?: string }> = ({ tint, icon, title, name, detail }) => (
     <View style={{ flex: 1, minWidth: 0, borderRadius: radius.tile, padding: 12, backgroundColor: alpha(tint, 0.13) }}>
         <Row gap={6}>
