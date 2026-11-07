@@ -1,145 +1,416 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ChevronLeft, ChevronRight, Play, Square } from 'lucide-react';
 import type { GameDetail } from '../../types';
-import { battedBalls, eventName, inningName, type BattedKind } from '../../lib/baseball';
+import { eventName, inningName, pitchTypeName } from '../../lib/baseball';
+import { parkFor } from '../../lib/flight';
+import {
+    DEFAULT_FILTERS,
+    ENTRY_FLIGHT_MS,
+    SPRAY_RESULT_COLORS,
+    entryStagger,
+    fieldViewBox,
+    filterBalls,
+    flightPath,
+    markerRadius,
+    pathD,
+    replayStep,
+    sprayBalls,
+    sprayStats,
+    svgPoint,
+    type SprayBall,
+    type SprayFilters,
+    type SprayResult
+} from '../../lib/spray';
+import { usePreferences } from '../../store/preferences';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { Segmented } from '../ui/Segmented';
 import { PlayerLink } from '../ui/PlayerLink';
+import { PlayerPhoto } from '../ui/PlayerPhoto';
+import { GlowDef, ParkDrawing, ResultMarker } from '../spray/ParkDrawing';
 
-// Mapa de batazos: dónde cayó cada bola puesta en juego. Las coordenadas son las del cuadro de Gameday (250×250,
-// home en ≈125,198, ~2,5 pies por unidad); el anotador las marca en todos los estadios, también en los que no
-// tienen rastreo de lanzamientos (Francisco Micheli y Julián Javier).
-const HOME_X = 125.42;
-const HOME_Y = 198.27;
-// Jardín genérico: líneas de foul de ~330 pies, central de ~400
-const POLE = 92;
-const FENCE = `M0 0 L${-POLE} ${-POLE} Q0 -228 ${POLE} ${-POLE} Z`;
-const DIRT = 'M0 0 L-38 -38 Q0 -84 38 -38 Z';
-const INFIELD = 'M0 -5 L-21 -26 L0 -47 L21 -26 Z';
-const BASES = [
-    [25.5, -25.5],
-    [0, -51],
-    [-25.5, -25.5]
-];
+// Mapa de batazos sobre el parque de verdad del juego (en pies): cada bola con su vuelo desde home y dónde cayó,
+// filtros por equipo y resultado, la ficha de la bola tocada, «Repetir» y los números de lo filtrado.
 
-export const SPRAY_COLORS: Record<BattedKind, string> = {
-    hr: 'rgb(var(--live))',
-    hit: 'rgb(var(--accent))',
-    out: 'rgb(var(--muted))'
+const RESULTS: SprayResult[] = ['single', 'double', 'triple', 'hr', 'error', 'out'];
+const TEXT_ON: Record<SprayResult, string> = { single: '#ffffff', double: '#ffffff', triple: '#14151a', hr: '#ffffff', error: '#14151a', out: '' };
+
+interface Geo {
+    ball: SprayBall;
+    d: string;
+    x: number;
+    y: number;
+    r: number;
+    bounces: { x: number; y: number }[];
+}
+
+const animateBall = (node: Element | null, delay: number, duration: number) => {
+    if (!node || typeof (node as HTMLElement).animate !== 'function') return [];
+    const out: Animation[] = [];
+    const path = node.querySelector('[data-path]');
+    const marker = node.querySelector('[data-marker]');
+    const ripple = node.querySelector('[data-ripple]');
+    if (path) out.push(path.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration, delay, easing: 'cubic-bezier(0.3, 0.6, 0.4, 1)', fill: 'backwards' }));
+    node.querySelectorAll('[data-bounce]').forEach((item, index, list) =>
+        out.push(item.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 80, delay: delay + (duration * (index + 1)) / (list.length + 1), fill: 'backwards' }))
+    );
+    if (marker) out.push(marker.animate([{ opacity: 0, transform: 'scale(0.3)' }, { opacity: 1, transform: 'scale(1.25)', offset: 0.6 }, { opacity: 1, transform: 'none' }], { duration: 300, delay: delay + duration, easing: 'ease-out', fill: 'backwards' }));
+    if (ripple) out.push(ripple.animate([{ opacity: 0.85, transform: 'scale(0.6)' }, { opacity: 0, transform: 'scale(3)' }], { duration: 450, delay: delay + duration, easing: 'ease-out', fill: 'both' }));
+    return out;
 };
-
-const COLORS = SPRAY_COLORS;
-
-/** Del cuadro de Gameday al dibujo (home en 0,0) */
-export const fieldPoint = (x: number, y: number) => [x - HOME_X, y - HOME_Y] as const;
-export const FIELD_VIEWBOX = '-112 -182 224 198';
-
-/** El terreno (jardín, tierra, cuadro, bases y home) para poner encima los batazos */
-export const FieldBackdrop: React.FC = () => (
-    <>
-        <path d={FENCE} fill="#3f9b63" fillOpacity={0.2} stroke="#3f9b63" strokeOpacity={0.55} strokeWidth={1.2} />
-        <path d={DIRT} fill="#c08a52" fillOpacity={0.3} />
-        <path d={INFIELD} fill="#3f9b63" fillOpacity={0.28} />
-        <g stroke="#ffffff" strokeOpacity={0.9} strokeWidth={0.8}>
-            <line x1={0} y1={0} x2={-POLE} y2={-POLE} />
-            <line x1={0} y1={0} x2={POLE} y2={-POLE} />
-        </g>
-        {BASES.map(([x, y]) => (
-            <rect key={`${x}${y}`} x={x - 1.8} y={y - 1.8} width={3.6} height={3.6} fill="#ffffff" transform={`rotate(45 ${x} ${y})`} />
-        ))}
-        <path d="M-2 0.6 L2 0.6 L2 2.4 L0 4 L-2 2.4 Z" fill="#ffffff" />
-    </>
-);
-
-type Filter = 'all' | 'away' | 'home';
 
 export const SprayChart: React.FC<{ game: GameDetail }> = ({ game }) => {
     const { t, i18n } = useTranslation();
-    const [filter, setFilter] = useState<Filter>('all');
+    const lang = i18n.language;
+    const glow = `${useId().replace(/:/g, '')}-glow`;
+    const { playAnimations } = usePreferences();
+    const reduced = useReducedMotion();
+    const motion = playAnimations && !reduced;
+    const park = useMemo(() => parkFor(game.venue), [game.venue]);
+    const view = useMemo(() => fieldViewBox(park), [park]);
+    const all = useMemo(() => sprayBalls(game.atBats, park), [game.atBats, park]);
+    const [filters, setFilters] = useState<SprayFilters>(DEFAULT_FILTERS);
     const [selected, setSelected] = useState<number | null>(null);
-    const all = useMemo(() => battedBalls(game.atBats), [game.atBats]);
-    const balls = filter === 'all' ? all : all.filter((ball) => ball.side === filter);
-    const current = balls.find((ball) => ball.atBat.i === selected) ?? null;
-    const count = (kind: BattedKind) => balls.filter((ball) => ball.kind === kind).length;
+    const balls = useMemo(() => filterBalls(all, filters), [all, filters]);
+    const stats = useMemo(() => sprayStats(balls), [balls]);
+    const hasEv = useMemo(() => all.some((ball) => ball.ev != null), [all]);
+    const geo = useMemo<Geo[]>(
+        () =>
+            balls.map((ball) => {
+                const path = flightPath(ball);
+                const p = svgPoint(ball.land);
+                return { ball, d: pathD(path), x: p.x, y: p.y, r: markerRadius(ball), bounces: path.bounces.map(svgPoint) };
+            }),
+        [balls]
+    );
+
+    const svgRef = useRef<SVGSVGElement>(null);
+    const nodes = useRef(new Map<number, SVGGElement>());
+    const running = useRef<Animation[]>([]);
+    const [entered, setEntered] = useState(!motion);
+    const seen = useRef<Set<number> | null>(null);
+    const [replaying, setReplaying] = useState(false);
+    const [tick, setTick] = useState<SprayBall | null>(null);
+    const timers = useRef<number[]>([]);
+
+    // Entrada: la primera vez que el mapa se ve, las bolas vuelan en orden (≤ 2,5 s)
+    useEffect(() => {
+        if (entered || !svgRef.current) return;
+        if (typeof IntersectionObserver === 'undefined') return setEntered(true);
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (!entries.some((entry) => entry.isIntersecting)) return;
+                observer.disconnect();
+                const stagger = entryStagger(geo.length);
+                geo.forEach((item, index) => running.current.push(...animateBall(nodes.current.get(item.ball.key) ?? null, index * stagger, ENTRY_FLIGHT_MS)));
+                setEntered(true);
+            },
+            { threshold: 0.3 }
+        );
+        observer.observe(svgRef.current);
+        return () => observer.disconnect();
+    }, [entered, geo]);
+
+    // En vivo: la bola nueva vuela igual
+    useEffect(() => {
+        if (!seen.current) {
+            seen.current = new Set(all.map((ball) => ball.key));
+            return;
+        }
+        const fresh = all.filter((ball) => !seen.current!.has(ball.key));
+        fresh.forEach((ball) => seen.current!.add(ball.key));
+        if (motion && entered) fresh.forEach((ball) => animateBall(nodes.current.get(ball.key) ?? null, 0, ENTRY_FLIGHT_MS));
+    }, [all, motion, entered]);
+
+    const stopReplay = () => {
+        timers.current.forEach((timer) => window.clearTimeout(timer));
+        timers.current = [];
+        running.current.forEach((animation) => animation.cancel());
+        running.current = [];
+        setReplaying(false);
+        setTick(null);
+    };
+    useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
+
+    const replay = () => {
+        if (replaying) return stopReplay();
+        stopReplay();
+        setSelected(null);
+        setReplaying(true);
+        const step = replayStep(geo.length);
+        const flight = Math.min(600, Math.round(step * 0.85));
+        geo.forEach((item, index) => {
+            running.current.push(...animateBall(nodes.current.get(item.ball.key) ?? null, index * step, flight));
+            timers.current.push(window.setTimeout(() => setTick(item.ball), index * step));
+        });
+        timers.current.push(window.setTimeout(stopReplay, geo.length * step + flight + 400));
+    };
+
+    const select = (key: number | null) => {
+        setSelected(key);
+        if (key !== null && motion) animateBall(nodes.current.get(key) ?? null, 0, ENTRY_FLIGHT_MS);
+    };
+
+    const setFilter = <K extends keyof SprayFilters>(key: K, value: SprayFilters[K]) => {
+        if (replaying) stopReplay();
+        setSelected(null);
+        setFilters((current) => ({ ...current, [key]: value }));
+    };
 
     if (!all.length) return null;
 
-    const pick = (value: Filter) => {
-        setFilter(value);
-        setSelected(null);
-    };
+    const resultLabel = (result: SprayResult) => t(`spray.result.${result}`);
+    const labelOf = (ball: SprayBall) =>
+        [ball.atBat.batter.name, eventName(ball.atBat, lang) || resultLabel(ball.result), inningName({ n: ball.atBat.inning, isTop: ball.atBat.top }, lang), ball.ev != null ? `${ball.ev} mph` : '', t('spray.feet', { ft: ball.dist })]
+            .filter(Boolean)
+            .join(' · ');
+    const index = selected !== null ? balls.findIndex((ball) => ball.key === selected) : -1;
+    const current = index >= 0 ? balls[index] : null;
+    const present = RESULTS.filter((result) => balls.some((ball) => ball.result === result));
 
     return (
         <section className="card overflow-hidden" aria-labelledby="spray-title">
             <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line/10 px-4 py-3">
-                <h2 id="spray-title" className="eyebrow">{t('spray.title')}</h2>
-                <Segmented<Filter>
+                <h2 id="spray-title" className="eyebrow">
+                    {t('spray.title')}
+                </h2>
+                <button
+                    type="button"
+                    onClick={replay}
+                    aria-pressed={replaying}
+                    disabled={!balls.length}
+                    className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-raised px-3 text-xs font-bold text-ink disabled:opacity-40"
+                >
+                    {replaying ? <Square className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                    {replaying ? t('spray.stop') : t('spray.replay')}
+                </button>
+            </header>
+
+            <div className="flex gap-2 overflow-x-auto px-4 pt-3 scrollbar-none">
+                <Segmented<SprayFilters['team']>
                     size="sm"
                     label={t('spray.filter')}
-                    value={filter}
-                    onChange={pick}
+                    value={filters.team}
+                    onChange={(value) => setFilter('team', value)}
                     options={[
                         { value: 'all', label: t('spray.both') },
                         { value: 'away', label: game.away.abbrev },
                         { value: 'home', label: game.home.abbrev }
                     ]}
                 />
-            </header>
-
-            <div className="px-3 pt-2">
-                <svg viewBox={FIELD_VIEWBOX} className="mx-auto h-auto w-full max-w-[420px] select-none" role="img" aria-label={t('spray.aria', { count: balls.length })}>
-                    <FieldBackdrop />
-
-                    {balls.map((ball) => {
-                        const active = ball.atBat.i === selected;
-                        const cx = ball.x - HOME_X;
-                        const cy = ball.y - HOME_Y;
-                        return (
-                            <g key={ball.atBat.i} onClick={() => setSelected(active ? null : ball.atBat.i)} style={{ cursor: 'pointer' }} opacity={selected !== null && !active ? 0.35 : 1}>
-                                <title>{`${ball.atBat.batter.name} · ${eventName(ball.atBat, i18n.language)}`}</title>
-                                {active && <circle cx={cx} cy={cy} r={8} fill="none" stroke={COLORS[ball.kind]} strokeWidth={1.5} />}
-                                {/* Área para tocar más grande que el punto */}
-                                <circle cx={cx} cy={cy} r={7} fill="transparent" />
-                                <circle cx={cx} cy={cy} r={ball.kind === 'hr' ? 4.6 : 3.8} fill={COLORS[ball.kind]} stroke="rgb(var(--surface))" strokeWidth={1.1} />
-                            </g>
-                        );
-                    })}
-                </svg>
+                <Segmented<SprayFilters['result']>
+                    size="sm"
+                    label={t('spray.resultFilter')}
+                    value={filters.result}
+                    onChange={(value) => setFilter('result', value)}
+                    options={[
+                        { value: 'all', label: t('spray.all') },
+                        { value: 'hits', label: t('spray.onlyHits') },
+                        { value: 'hr', label: t('spray.onlyHr') },
+                        { value: 'outs', label: t('spray.onlyOuts') }
+                    ]}
+                />
             </div>
 
-            <div className="px-4 pb-4">
-                {current ? (
-                    <div className="rounded-2xl bg-raised p-3 text-sm">
-                        <p className="font-extrabold">
-                            <PlayerLink id={current.atBat.batter.id}>{current.atBat.batter.name}</PlayerLink> · <span style={{ color: COLORS[current.kind] }}>{eventName(current.atBat, i18n.language)}</span>
-                        </p>
-                        <p className="mt-0.5 text-muted">
-                            {[
-                                inningName({ n: current.atBat.inning, isTop: current.atBat.top }, i18n.language),
-                                current.pitch.hit?.traj ? t(`spray.traj.${current.pitch.hit.traj}`, { defaultValue: current.pitch.hit.traj.replace(/_/g, ' ') }) : '',
-                                current.pitch.hit?.hard ? t(`spray.hard.${current.pitch.hit.hard}`, { defaultValue: current.pitch.hit.hard }) : '',
-                                current.pitch.hit?.ev ? t('zone.exitVelo', { mph: current.pitch.hit.ev }) : '',
-                                current.pitch.hit?.dist && current.pitch.hit.dist > 30 ? t('spray.feet', { ft: current.pitch.hit.dist }) : ''
-                            ]
-                                .filter(Boolean)
-                                .join(' · ')}
-                        </p>
-                    </div>
+            <div className="fld relative px-3 pt-3">
+                <svg
+                    ref={svgRef}
+                    viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
+                    className="mx-auto h-auto w-full max-w-[520px] select-none rounded-2xl"
+                    style={{ background: 'var(--fld-foul)' }}
+                    role="group"
+                    aria-label={t('spray.aria', { count: balls.length })}
+                >
+                    <GlowDef id={glow} />
+                    <ParkDrawing park={park} />
+                    <g style={entered ? undefined : { opacity: 0 }}>
+                        {geo.map((item) => {
+                            const active = item.ball.key === selected;
+                            const color = SPRAY_RESULT_COLORS[item.ball.result];
+                            return (
+                                <g
+                                    key={item.ball.key}
+                                    ref={(node) => {
+                                        if (node) nodes.current.set(item.ball.key, node);
+                                        else nodes.current.delete(item.ball.key);
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={labelOf(item.ball)}
+                                    aria-pressed={active}
+                                    onClick={() => select(active ? null : item.ball.key)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            select(active ? null : item.ball.key);
+                                        }
+                                    }}
+                                    style={{ cursor: 'pointer', opacity: selected !== null && !active ? 0.22 : 1, transition: 'opacity .2s' }}
+                                >
+                                    <path data-path d={item.d} pathLength={1} strokeDasharray="1" fill="none" stroke={color} strokeOpacity={active ? 0.95 : 0.42} strokeWidth={active ? 3.2 : 2.2} strokeLinecap="round" />
+                                    {item.bounces.map((point, n) => (
+                                        <circle key={n} data-bounce cx={point.x} cy={point.y} r={2.4} fill={color} fillOpacity={0.7} />
+                                    ))}
+                                    <circle cx={item.x} cy={item.y} r={16} fill="transparent" />
+                                    <circle data-ripple cx={item.x} cy={item.y} r={item.r} fill="none" stroke={color} strokeWidth={2} opacity={0} style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+                                    <g data-marker style={{ transformBox: 'fill-box', transformOrigin: 'center' }}>
+                                        {active && <circle cx={item.x} cy={item.y} r={item.r + 5} fill="none" stroke="#ffffff" strokeWidth={2} />}
+                                        <ResultMarker result={item.ball.result} x={item.x} y={item.y} r={item.r} glowId={glow} />
+                                    </g>
+                                </g>
+                            );
+                        })}
+                    </g>
+                </svg>
+                {!balls.length && <p className="absolute inset-x-0 top-1/2 text-center text-sm font-bold text-white">{t('spray.empty')}</p>}
+            </div>
+
+            <ol className="sr-only" aria-label={t('spray.list')}>
+                {balls.map((ball) => (
+                    <li key={ball.key}>{labelOf(ball)}</li>
+                ))}
+            </ol>
+
+            <div className="px-4 pb-4 pt-2">
+                {replaying && tick ? (
+                    <p className="text-center text-sm font-bold" aria-live="polite">
+                        {inningName({ n: tick.atBat.inning, isTop: tick.atBat.top }, lang)} · {tick.atBat.batter.name} · <span style={{ color: tick.result === 'out' ? undefined : SPRAY_RESULT_COLORS[tick.result] }}>{eventName(tick.atBat, lang) || resultLabel(tick.result)}</span>
+                    </p>
+                ) : current ? (
+                    <DetailCard ball={current} position={index} total={balls.length} onStep={(delta) => select(balls[(index + delta + balls.length) % balls.length].key)} />
                 ) : (
                     <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] text-muted">
-                        <Legend color={COLORS.hit} label={t('spray.hits', { count: count('hit') })} />
-                        <Legend color={COLORS.hr} label={t('spray.homeRuns', { count: count('hr') })} />
-                        <Legend color={COLORS.out} label={t('spray.outs', { count: count('out') })} />
+                        {present.map((result) => (
+                            <span key={result} className="inline-flex items-center gap-1.5">
+                                <span
+                                    className="h-2.5 w-2.5 rounded-full"
+                                    style={result === 'out' ? { boxShadow: 'inset 0 0 0 2px rgb(var(--muted))' } : { backgroundColor: SPRAY_RESULT_COLORS[result] }}
+                                />
+                                {resultLabel(result)} {balls.filter((ball) => ball.result === result).length}
+                            </span>
+                        ))}
                         <span className="text-faint">{t('spray.tap')}</span>
                     </p>
                 )}
+
+                <StatsStrip stats={stats} hasEv={hasEv} />
             </div>
         </section>
     );
 };
 
-const Legend: React.FC<{ color: string; label: string }> = ({ color, label }) => (
-    <span className="inline-flex items-center gap-1.5">
-        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-        {label}
-    </span>
-);
+const DetailCard: React.FC<{ ball: SprayBall; position: number; total: number; onStep: (delta: number) => void }> = ({ ball, position, total, onStep }) => {
+    const { t, i18n } = useTranslation();
+    const lang = i18n.language;
+    const { atBat, pitch } = ball;
+    const color = SPRAY_RESULT_COLORS[ball.result];
+    const facts: [string, string][] = [
+        ...(ball.ev != null ? ([[t('spray.card.ev'), `${ball.ev} mph`]] as [string, string][]) : []),
+        ...(ball.la != null ? ([[t('spray.card.la'), `${ball.la}°`]] as [string, string][]) : []),
+        [t('spray.card.dist'), `${ball.measured ? '' : '≈ '}${t('spray.feet', { ft: ball.dist })}`],
+        [t('spray.card.type'), t(`spray.traj.${pitch.hit?.traj || { ground: 'ground_ball', line: 'line_drive', fly: 'fly_ball', popup: 'popup' }[ball.traj]}`)],
+        ...(ball.hard ? ([[t('spray.card.hard'), t(`spray.hard.${ball.hard}`, { defaultValue: ball.hard })]] as [string, string][]) : [])
+    ];
+    return (
+        <div className="rounded-2xl bg-raised p-3 text-sm">
+            <div className="flex items-center gap-3">
+                <PlayerLink id={atBat.batter.id} decorative>
+                    <PlayerPhoto personId={atBat.batter.id} name={atBat.batter.name} size={44} />
+                </PlayerLink>
+                <div className="min-w-0 flex-1">
+                    <p className="truncate font-extrabold">
+                        <PlayerLink id={atBat.batter.id}>{atBat.batter.name}</PlayerLink>
+                    </p>
+                    <p className="truncate text-xs text-muted">
+                        {inningName({ n: atBat.inning, isTop: atBat.top }, lang)} · <PlayerLink id={atBat.pitcher.id}>{atBat.pitcher.name}</PlayerLink>
+                        {pitch.type || pitch.typeDesc ? ` · ${pitchTypeName(pitch, lang)}` : ''}
+                        {pitch.mph ? ` ${pitch.mph} mph` : ''}
+                    </p>
+                </div>
+                <span className="pill shrink-0" style={ball.result === 'out' ? { background: 'rgb(var(--surface))', color: 'rgb(var(--ink))' } : { background: color, color: TEXT_ON[ball.result] }}>
+                    {eventName(atBat, lang) || t(`spray.result.${ball.result}`)}
+                </span>
+            </div>
+            <dl className="mt-2.5 flex flex-wrap gap-1.5">
+                {facts.map(([label, value]) => (
+                    <div key={label} className="rounded-xl bg-surface px-2.5 py-1.5">
+                        <dt className="text-[10px] font-bold uppercase tracking-wide text-faint">{label}</dt>
+                        <dd className="font-bold tabular-nums">{value}</dd>
+                    </div>
+                ))}
+                {ball.ev != null && ball.ev >= 95 && <span className="pill self-center bg-live/15 text-live">{t('spray.card.hardHit')}</span>}
+            </dl>
+            <div className="mt-2 flex items-center justify-between">
+                <button type="button" onClick={() => onStep(-1)} className="flex h-9 w-9 items-center justify-center rounded-full bg-surface" aria-label={t('spray.card.prev')}>
+                    <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="text-xs font-bold text-muted tabular-nums">{t('spray.card.position', { n: position + 1, total })}</span>
+                <button type="button" onClick={() => onStep(1)} className="flex h-9 w-9 items-center justify-center rounded-full bg-surface" aria-label={t('spray.card.next')}>
+                    <ChevronRight className="h-4 w-4" />
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const StatsStrip: React.FC<{ stats: ReturnType<typeof sprayStats>; hasEv: boolean }> = ({ stats, hasEv }) => {
+    const { t } = useTranslation();
+    const tiles: [string, React.ReactNode][] = [
+        [t('spray.stats.inPlay'), stats.count],
+        [t('spray.stats.hits'), stats.hits],
+        [t('spray.stats.hr'), stats.hr]
+    ];
+    if (hasEv) {
+        tiles.push([t('spray.stats.hardPct'), stats.hardPct != null ? `${stats.hardPct}%` : '—']);
+        tiles.push([t('spray.stats.avgEv'), stats.avgEv != null ? `${stats.avgEv}` : '—']);
+        tiles.push([t('spray.stats.avgLa'), stats.avgLa != null ? `${stats.avgLa}°` : '—']);
+    }
+    if (stats.longest)
+        tiles.push([
+            t('spray.stats.longest'),
+            <>
+                {t('spray.feet', { ft: stats.longest.measured })}{' '}
+                <PlayerLink id={stats.longest.atBat.batter.id} className="block truncate text-[11px] font-semibold text-muted">
+                    {stats.longest.atBat.batter.name}
+                </PlayerLink>
+            </>
+        ]);
+    const bar = (label: string, parts: [string, number][]) => (
+        <div>
+            <p className="eyebrow mb-1">{label}</p>
+            <p className="flex flex-wrap gap-x-3 text-xs font-semibold text-muted">
+                {parts.map(([name, pct]) => (
+                    <span key={name}>
+                        {name} <b className="text-ink tabular-nums">{pct}%</b>
+                    </span>
+                ))}
+            </p>
+        </div>
+    );
+    return (
+        <div className="mt-3 space-y-3 border-t border-line/10 pt-3">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {tiles.map(([label, value]) => (
+                    <div key={label} className="min-w-0 rounded-2xl bg-raised px-2 py-2 text-center">
+                        <p className="truncate text-[10px] font-bold uppercase tracking-wide text-faint">{label}</p>
+                        <div className="font-display text-base font-extrabold tabular-nums">{value}</div>
+                    </div>
+                ))}
+            </div>
+            {stats.count > 0 &&
+                bar(t('spray.stats.types'), [
+                    [t('spray.traj.ground_ball'), stats.traj.ground],
+                    [t('spray.traj.line_drive'), stats.traj.line],
+                    [t('spray.traj.fly_ball'), stats.traj.fly],
+                    [t('spray.traj.popup'), stats.traj.popup]
+                ])}
+            {stats.dir &&
+                bar(t('spray.stats.dirs'), [
+                    [t('spray.stats.pull'), stats.dir.pull],
+                    [t('spray.stats.center'), stats.dir.center],
+                    [t('spray.stats.oppo'), stats.dir.oppo]
+                ])}
+            {!hasEv && <p className="text-[11px] text-faint">{t('spray.noEv')}</p>}
+        </div>
+    );
+};

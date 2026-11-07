@@ -50,7 +50,7 @@ export const zoneGrid = (pitches: RecentPitch[]) => {
 export const recentBatted = (pitches: RecentPitch[]) =>
     pitches
         .filter((pitch) => pitch.hit && typeof pitch.hit.x === 'number')
-        .map((pitch, index) => ({ key: index, x: pitch.hit!.x, y: pitch.hit!.y, kind: (pitch.event === 'home_run' ? 'hr' : HITS.has(pitch.event ?? '') ? 'hit' : 'out') as BattedKind }));
+        .map((pitch, index) => ({ key: index, x: pitch.hit!.x, y: pitch.hit!.y, ev: pitch.hit!.ev, event: pitch.event ?? null, kind: (pitch.event === 'home_run' ? 'hr' : HITS.has(pitch.event ?? '') ? 'hit' : 'out') as BattedKind }));
 
 // ---------------------------------------------------------------- percentiles en la liga
 

@@ -8,7 +8,12 @@ import { HITTING_METRICS, PITCHING_METRICS, percentiles, recentBatted, zoneGrid,
 import { arsenal } from '../../lib/baseball';
 import type { Pitch } from '../../types';
 import { Segmented } from '../ui/Segmented';
-import { FIELD_VIEWBOX, FieldBackdrop, SPRAY_COLORS, fieldPoint } from '../game/SprayChart';
+import { gamedayToFeet, parkFor } from '../../lib/flight';
+import { fieldViewBox, markerRadius, resultOf, svgPoint } from '../../lib/spray';
+import { ParkDrawing, ResultMarker } from '../spray/ParkDrawing';
+
+const PARK = parkFor(null);
+const BOX = fieldViewBox(PARK);
 
 const Heading: React.FC<{ children: React.ReactNode; aside?: React.ReactNode }> = ({ children, aside }) => (
     <div className="mb-2 flex items-center justify-between gap-2">
@@ -220,11 +225,16 @@ export const RecentPitches: React.FC<{ player: PlayerDetail; league: LeagueId }>
                 {view === 'spray' &&
                     (balls.length ? (
                         <>
-                            <svg viewBox={FIELD_VIEWBOX} className="mx-auto h-auto w-full max-w-[360px]" role="img" aria-label={t('spray.aria', { count: balls.length })}>
-                                <FieldBackdrop />
+                            <svg viewBox={`${BOX.x} ${BOX.y} ${BOX.w} ${BOX.h}`} className="fld mx-auto h-auto w-full max-w-[360px] rounded-2xl" style={{ background: 'var(--fld-foul)' }} role="img" aria-label={t('spray.aria', { count: balls.length })}>
+                                <ParkDrawing park={PARK} />
                                 {balls.map((ball) => {
-                                    const [cx, cy] = fieldPoint(ball.x, ball.y);
-                                    return <circle key={ball.key} cx={cx} cy={cy} r={ball.kind === 'hr' ? 4.6 : 3.8} fill={SPRAY_COLORS[ball.kind]} stroke="rgb(var(--surface))" strokeWidth={1.1} />;
+                                    const p = svgPoint(gamedayToFeet(ball.x, ball.y));
+                                    const result = ball.kind === 'hr' ? 'hr' : ball.kind === 'hit' ? resultOf(ball.event) : 'out';
+                                    return (
+                                        <g key={ball.key}>
+                                            <ResultMarker result={result === 'out' || result === 'error' ? (ball.kind === 'hit' ? 'single' : 'out') : result} x={p.x} y={p.y} r={markerRadius({ ev: ball.ev, result })} />
+                                        </g>
+                                    );
                                 })}
                             </svg>
                             <p className="mt-1 text-center text-xs text-muted">
