@@ -80,9 +80,49 @@ const roster = (teamId) => {
     });
     // Banca: tres de reserva (se sacan después de los lanzadores para no cambiar a los de siempre)
     const bench = ['C', 'IF', 'OF'].map((pos, index) => person(80 + index, { pos, bats: random() < 0.35 ? 'L' : 'R', avg: round(between(random, 0.19, 0.29), 3).toFixed(3).replace(/^0/, ''), hr: Math.floor(between(random, 0, 4)) }));
-    const value = { hitters, pitchers, bench };
+    // Dos abridores más y un relevista (también después, por lo mismo): rotación de cuatro (50, 51, 54, 55), relevistas
+    // 52 y 56 y el cerrador 53
+    const more = [0, 1, 2].map((index) => {
+        const types = Object.keys(PITCH_TYPES).sort(() => random() - 0.5).slice(0, 3 + Math.floor(random() * 2));
+        if (!types.includes('FF') && !types.includes('SI')) types[0] = 'FF';
+        return person(54 + index, {
+            pos: 'P',
+            throws: random() < 0.3 ? 'L' : 'R',
+            arsenal: types,
+            era: round(between(random, 2.4, 5.8), 2),
+            wins: Math.floor(between(random, 0, 5)),
+            losses: Math.floor(between(random, 0, 5)),
+            saves: 0,
+            rotation: index < 2
+        });
+    });
+    const value = { hitters, pitchers: [...pitchers, ...more], bench };
     rosterCache.set(teamId, value);
     return value;
+};
+
+// El abridor de cada juego rota entre cuatro (el que abrió descansa los días siguientes) y el segundo juego de una doble
+// cartelera lo abre otro. Orden del juego: abridor, los dos relevistas y el cerrador (así los usa la simulación); los
+// otros abridores no lanzan.
+const staffOf = (teamId, slot) => {
+    const p = roster(teamId).pitchers;
+    const rotation = [p[0], p[1], p[4], p[5]];
+    const starter = rotation[((slot % 4) + 4) % 4];
+    return [starter, p[2], p[6], p[3], ...rotation.filter((pitcher) => pitcher !== starter)];
+};
+const rotationSlot = (teamId, dayNumber, second) => dayNumber + teamId + (second ? 2 : 0);
+
+// Uno de cada tres días el receptor titular descansa y juega el de la banca
+const catcherRests = (teamId, dayNumber) => (dayNumber + teamId) % 3 === 0;
+const asHitter = (player) => ({ ...player, avg: Number(player.avg), power: player.power ?? 0.15 });
+const asBench = (player) => ({ ...player, avg: typeof player.avg === 'number' ? player.avg.toFixed(3).replace(/^0/, '') : player.avg, hr: player.hr ?? 0 });
+
+/** La alineación, la banca y los lanzadores de un equipo en un juego */
+const teamForGame = (teamId, dayNumber, second) => {
+    const base = roster(teamId);
+    const pitchers = staffOf(teamId, rotationSlot(teamId, dayNumber, second));
+    if (!catcherRests(teamId, dayNumber)) return { hitters: base.hitters, bench: base.bench, pitchers };
+    return { hitters: [...base.hitters.slice(0, 8), asHitter(base.bench[0])], bench: [asBench(base.hitters[8]), ...base.bench.slice(1)], pitchers };
 };
 
 
@@ -162,12 +202,16 @@ const battedData = (random, eventType, label, batter, venue) => {
 const simCache = new Map();
 
 const simulate = (gamePk, awayId, homeId) => {
-    const key = `${gamePk}`;
+    // Con los equipos en la llave: el mismo gamePk de «hoy» puede ser otro juego al pasar la medianoche
+    const key = `${gamePk}:${awayId}:${homeId}`;
     if (simCache.has(key)) return simCache.get(key);
     const random = rng(gamePk);
     const hitRandom = rng(gamePk * 31 + 7);
     const venue = TEAMS[homeId]?.venue;
-    const teams = { away: roster(awayId), home: roster(homeId) };
+    const dayNumber = Math.floor((gamePk - 800000) / 10);
+    const found = findGame(gamePk);
+    const second = !!found && found.awayId === awayId && found.homeId === homeId && found.gameNumber === 2;
+    const teams = { away: teamForGame(awayId, dayNumber, second), home: teamForGame(homeId, dayNumber, second) };
     const lineupIndex = { away: 0, home: 0 };
     const pitcherState = { away: { index: 0, count: 0 }, home: { index: 0, count: 0 } };
     const score = { away: 0, home: 0 };
@@ -184,6 +228,14 @@ const simulate = (gamePk, awayId, homeId) => {
             const state = pitcherState[fielding];
             if (state.count > 85 + state.index * 10 && state.index < 3) {
                 state.index += 1;
+                state.count = 0;
+            }
+            // El bullpen por entradas: un relevista en la 7.ª, el otro en la 8.ª (un juego sí y otro no) y el cerrador en
+            // la 9.ª con ventaja de 1 a 3 carreras. Cambiar de lanzador no cambia lo que pasa en el terreno.
+            const lead = score[fielding] - score[batting];
+            const byInning = inning >= 9 && lead >= 1 && lead <= 3 ? 3 : inning >= 8 && gamePk % 2 === 0 ? 2 : inning >= 7 ? 1 : 0;
+            if (outs === 0 && state.index < byInning) {
+                state.index = byInning;
                 state.count = 0;
             }
             const pitcher = teams[fielding].pitchers[state.index];
@@ -422,21 +474,35 @@ const gamesForDay = (dayString) => {
     const dayNumber = Math.floor(Date.parse(`${dayString}T00:00:00Z`) / DAY);
     const today = localDay(Date.now());
     const order = [...TEAM_IDS].sort((a, b) => ((a * 31 + dayNumber * 17) % 97) - ((b * 31 + dayNumber * 17) % 97));
-    return [0, 1, 2].map((index) => {
+    const isToday = dayString === today;
+    // Hoy: doble cartelera (el primero terminado y el segundo en vivo), uno por empezar y uno pospuesto por lluvia
+    const pairs = isToday ? [[0, 1], [0, 1], [4, 5], [2, 3]] : [[0, 1], [2, 3], [4, 5]];
+    return pairs.map(([a, b], index) => {
         const gamePk = 800000 + dayNumber * 10 + index;
-        const awayId = order[index * 2];
-        const homeId = order[index * 2 + 1];
+        const awayId = order[a];
+        const homeId = order[b];
         const weekday = new Date(`${dayString}T12:00:00Z`).getUTCDay();
         let start = Date.parse(`${dayString}T${weekday === 0 ? '21' : '23'}:${index === 2 ? '30' : '00'}:00Z`);
         let mode = start + 4 * 3600000 < Date.now() ? 'final' : start > Date.now() ? 'preview' : 'live';
-        if (dayString === today) {
-            // Hoy siempre hay uno en vivo, uno terminado y uno por empezar
-            mode = ['live', 'final', 'preview'][index];
+        let gameNumber = 1;
+        let doubleHeader = 'N';
+        // Alineaciones anunciadas: las de un juego empezado; antes del juego, solo las que el equipo ya publicó
+        let lineups = mode === 'preview' ? { away: false, home: false } : { away: true, home: true };
+        if (isToday) {
+            // Hoy siempre hay uno en vivo, uno terminado y uno por empezar (y uno pospuesto)
+            mode = ['live', 'final', 'preview', 'postponed'][index];
             if (mode === 'live') start = BOOT - 55 * 60000;
-            if (mode === 'final') start = Date.now() - 4 * 3600000;
+            // El primero de la doble cartelera empezó 3 h 30 min antes del segundo
+            if (mode === 'final') start = BOOT - 55 * 60000 - 210 * 60000;
             if (mode === 'preview') start = Math.max(start, Date.now() + 2 * 3600000);
+            if (index < 2) {
+                doubleHeader = 'Y';
+                gameNumber = index === 1 ? 1 : 2;
+            }
+            // El de casa ya publicó su alineación; el visitante, todavía no
+            lineups = mode === 'preview' ? { away: false, home: true } : mode === 'postponed' ? { away: false, home: false } : { away: true, home: true };
         }
-        return { gamePk, awayId, homeId, start, mode, dayString };
+        return { gamePk, awayId, homeId, start, mode, dayString, gameNumber, doubleHeader, lineups };
     });
 };
 
@@ -449,7 +515,7 @@ const findGame = (gamePk) => {
 
 const revealedPitches = (game, sim) => {
     if (game.mode === 'final') return sim.totalPitches;
-    if (game.mode === 'preview') return 0;
+    if (game.mode === 'preview' || game.mode === 'postponed') return 0;
     // El juego en vivo arranca ya avanzado (~40 % de los pitcheos) y suma uno cada PITCH_MS (detenido no avanza)
     const start = Math.floor(sim.totalPitches * 0.4);
     if (delayState()) return start;
@@ -549,6 +615,8 @@ const buildLinescore = (game, state) => {
 };
 
 const status = (mode, finished) => {
+    // Pospuesto: MLB lo da «Final» con codedGameState D
+    if (mode === 'postponed') return { abstractGameState: 'Final', codedGameState: 'D', detailedState: 'Postponed', statusCode: 'DR', reason: 'Rain' };
     if (mode === 'preview') return { abstractGameState: 'Preview', codedGameState: 'S', detailedState: 'Scheduled', statusCode: 'S' };
     if (finished || mode === 'final') return { abstractGameState: 'Final', codedGameState: 'F', detailedState: 'Final', statusCode: 'F' };
     const delayed = delayState();
@@ -563,7 +631,9 @@ const decisionsFor = (state) => {
     const loser = winner === 'home' ? 'away' : 'home';
     const winPitchers = state.sim.teams[winner].pitchers;
     const decisions = { winner: personRef(winPitchers[0]), loser: personRef(state.sim.teams[loser].pitchers[0]) };
-    if (Math.abs(last.home - last.away) <= 3) decisions.save = personRef(winPitchers[3]);
+    // Salvado: el cerrador, si lanzó y el juego terminó cerrado
+    const closerPitched = state.plays.some(({ play }) => play.pitcher.id === winPitchers[3]?.id);
+    if (Math.abs(last.home - last.away) <= 3 && closerPitched) decisions.save = personRef(winPitchers[3]);
     return decisions;
 };
 
@@ -574,13 +644,15 @@ const buildBoxscore = (game, state) => {
         const players = {};
         const batting = {};
         const pitching = {};
-        for (const hitter of team.hitters) batting[hitter.id] = { atBats: 0, runs: 0, hits: 0, rbi: 0, baseOnBalls: 0, strikeOuts: 0, homeRuns: 0 };
+        for (const hitter of team.hitters) batting[hitter.id] = { plateAppearances: 0, atBats: 0, runs: 0, hits: 0, doubles: 0, triples: 0, rbi: 0, baseOnBalls: 0, strikeOuts: 0, homeRuns: 0, sacFlies: 0 };
         for (const { play, events, complete } of state.plays) {
             if (play.fielding === side) {
-                const p = (pitching[play.pitcher.id] = pitching[play.pitcher.id] || { outs: 0, hits: 0, runs: 0, earnedRuns: 0, baseOnBalls: 0, strikeOuts: 0, homeRuns: 0, numberOfPitches: 0, strikes: 0 });
+                const p = (pitching[play.pitcher.id] = pitching[play.pitcher.id] || { battersFaced: 0, outs: 0, hits: 0, runs: 0, earnedRuns: 0, baseOnBalls: 0, strikeOuts: 0, homeRuns: 0, numberOfPitches: 0, strikes: 0 });
                 p.numberOfPitches += events.length;
                 p.strikes += events.filter((e) => e.details.isStrike).length;
                 if (!complete) continue;
+                // Apariciones y bateadores enfrentados: con esto el fantasy sabe quién jugó
+                p.battersFaced += 1;
                 if (play.isOut) p.outs += 1;
                 if (['single', 'double', 'triple', 'home_run'].includes(play.eventType)) p.hits += 1;
                 if (play.eventType === 'home_run') p.homeRuns += 1;
@@ -591,8 +663,12 @@ const buildBoxscore = (game, state) => {
             }
             if (play.batting === side && complete) {
                 const b = batting[play.batter.id];
+                b.plateAppearances += 1;
                 if (!['walk', 'sac_fly'].includes(play.eventType)) b.atBats += 1;
                 if (['single', 'double', 'triple', 'home_run'].includes(play.eventType)) b.hits += 1;
+                if (play.eventType === 'double') b.doubles += 1;
+                if (play.eventType === 'triple') b.triples += 1;
+                if (play.eventType === 'sac_fly') b.sacFlies += 1;
                 if (play.eventType === 'home_run') b.homeRuns += 1;
                 if (play.eventType === 'walk') b.baseOnBalls += 1;
                 if (play.eventType === 'strikeout') b.strikeOuts += 1;
@@ -600,12 +676,19 @@ const buildBoxscore = (game, state) => {
                 for (const scorer of play.scorers) if (batting[scorer.id]) batting[scorer.id].runs += 1;
             }
         }
-        const appeared = game.mode === 'preview' ? [] : team.hitters;
+        // Ganador, perdedor y salvado en la línea de cada uno (como el box score de MLB)
+        const decisions = decisionsFor(state);
+        for (const [key, field] of [['winner', 'wins'], ['loser', 'losses'], ['save', 'saves']]) {
+            if (decisions?.[key] && pitching[decisions[key].id]) pitching[decisions[key].id][field] = 1;
+        }
+        const appeared = game.mode === 'preview' || game.mode === 'postponed' ? [] : team.hitters;
+        // La alineación se anuncia antes del juego (en el simulado, solo la que el equipo ya publicó)
+        const posted = game.lineups ? !!game.lineups[side] : true;
         team.hitters.forEach((hitter, index) => {
             players[`ID${hitter.id}`] = {
                 person: { id: hitter.id, fullName: hitter.fullName },
                 position: { abbreviation: hitter.pos },
-                battingOrder: appeared.length ? String((index + 1) * 100) : undefined,
+                battingOrder: appeared.length || posted ? String((index + 1) * 100) : undefined,
                 stats: { batting: appeared.length ? { ...batting[hitter.id], summary: `${batting[hitter.id].hits}-${batting[hitter.id].atBats}` } : {}, pitching: {} },
                 seasonStats: { batting: { avg: hitter.avg.toFixed(3).replace(/^0/, '') }, pitching: {} }
             };
@@ -642,8 +725,7 @@ const buildBoxscore = (game, state) => {
             batters: appeared.map((h) => h.id),
             pitchers: team.pitchers.filter((p) => pitching[p.id]).map((p) => p.id),
             bench: team.bench.map((h) => h.id),
-            // La alineación se anuncia antes del juego
-            battingOrder: team.hitters.map((h) => h.id),
+            battingOrder: posted ? team.hitters.map((h) => h.id) : [],
             bullpen: team.pitchers.filter((p) => !pitching[p.id]).map((p) => p.id)
         };
     }
@@ -683,7 +765,34 @@ const buildFeed = (game) => {
         }
         return list;
     };
+    // Recorrido de los corredores y del bateador (como liveData.plays.allPlays[].runners): quién anotó, quién fue out
+    const BASES = ['1B', '2B', '3B'];
+    const runnersOf = (play) => {
+        const endOf = (person) => {
+            if (play.scorers.some((s) => s.id === person.id)) return 'score';
+            const at = play.after.bases.findIndex((b) => b && b.id === person.id);
+            return at >= 0 ? BASES[at] : null;
+        };
+        const entry = (person, originBase, end, out) => ({
+            movement: { originBase, start: originBase, end: out ? null : end, isOut: !!out, ...(out ? { outBase: '1B', outNumber: play.after.outs } : {}) },
+            details: {
+                runner: personRef(person),
+                eventType: play.eventType,
+                isScoringEvent: end === 'score' && !out,
+                earned: end === 'score' && !out,
+                rbi: end === 'score' && !out && play.rbi > 0,
+                responsiblePitcher: end === 'score' && !out ? personRef(play.pitcher) : null
+            }
+        });
+        const list = play.before.bases
+            .map((person, index) => (person ? { person, origin: BASES[index], end: endOf(person) } : null))
+            .filter((item) => item && item.end !== item.origin)
+            .map((item) => entry(item.person, item.origin, item.end, false));
+        list.unshift(entry(play.batter, null, endOf(play.batter), play.isOut));
+        return list;
+    };
     const allPlays = plays.map(({ play, events, complete }, index) => ({
+        runners: complete ? runnersOf(play) : [],
         result: complete
             ? { type: 'atBat', event: play.label, eventType: play.eventType, description: play.description, rbi: play.rbi, awayScore: play.after.away, homeScore: play.after.home, isOut: play.isOut }
             : { type: 'atBat', awayScore: play.before.away, homeScore: play.before.home },
@@ -718,7 +827,7 @@ const buildFeed = (game) => {
             venue: { name: TEAMS[game.homeId].venue },
             weather: { condition: 'Partly Cloudy', temp: '84', wind: '8 mph, Out To CF' },
             gameInfo:
-                game.mode === 'preview'
+                game.mode === 'preview' || game.mode === 'postponed'
                     ? {}
                     : {
                         attendance: 8000 + (game.gamePk % 7) * 650,
@@ -748,26 +857,35 @@ const buildFeed = (game) => {
 
 // ------------------------------------------------------------------ Endpoints
 
-const scheduleGame = (game) => {
+const scheduleGame = (game, params = {}) => {
     const feed = buildFeed(game);
     const { linescore } = feed.liveData;
-    const final = feed.gameData.status.abstractGameState === 'Final';
+    // Un pospuesto viene «Final» pero sin marcador ni ganador
+    const played = game.mode !== 'preview' && game.mode !== 'postponed';
+    const final = played && feed.gameData.status.abstractGameState === 'Final';
     const side = (key) => {
         const id = key === 'away' ? game.awayId : game.homeId;
         const other = key === 'away' ? 'home' : 'away';
         return {
             team: { id, name: TEAMS[id].name },
-            score: game.mode === 'preview' ? undefined : linescore.teams[key].runs,
+            score: played ? linescore.teams[key].runs : undefined,
             isWinner: final ? linescore.teams[key].runs > linescore.teams[other].runs : undefined,
             leagueRecord: feed.gameData.teams[key].record.leagueRecord,
             probablePitcher: feed.gameData.probablePitchers[key]
         };
     };
+    // hydrate=lineups: las alineaciones ya publicadas (como MLB, solo el lado que la tiene)
+    const sim = String(params.hydrate || '').includes('lineups') ? simulate(game.gamePk, game.awayId, game.homeId) : null;
+    const lineups = {};
+    for (const key of ['away', 'home']) {
+        if (sim && game.lineups?.[key]) lineups[`${key}Players`] = sim.teams[key].hitters.map((h) => ({ id: h.id, fullName: h.fullName, primaryPosition: { abbreviation: h.pos } }));
+    }
     return {
         gamePk: game.gamePk,
         gameType: 'R',
-        doubleHeader: 'N',
-        gameNumber: 1,
+        doubleHeader: game.doubleHeader || 'N',
+        gameNumber: game.gameNumber || 1,
+        ...(Object.keys(lineups).length ? { lineups } : {}),
         // El día del juego en RD (el Fantasy arma cada día con esto)
         officialDate: game.dayString,
         gameDate: new Date(game.start).toISOString(),
@@ -788,9 +906,53 @@ const schedule = (params = {}) => {
     const dates = [];
     for (let time = start; time <= end; time += DAY) {
         const day = new Date(time).toISOString().slice(0, 10);
-        dates.push({ date: day, games: gamesForDay(day).map(scheduleGame) });
+        dates.push({ date: day, games: gamesForDay(day).map((game) => scheduleGame(game, params)) });
     }
     return { dates };
+};
+
+/** Carreras, récords por situación y récord esperado de una fila simulada (lo que el PRO muestra en Posiciones) */
+const standingExtras = (row) => {
+    const random = rng(row.id * 211);
+    const games = row.wins + row.losses;
+    const split = (type, share) => {
+        const w = Math.round(row.wins * share);
+        const l = Math.round(row.losses * share);
+        return { type, wins: w, losses: l, pct: w + l ? (w / (w + l)).toFixed(3).replace(/^0/, '') : '.000' };
+    };
+    const home = 0.45 + random() * 0.1;
+    const left = 0.25 + random() * 0.1;
+    const day = 0.2 + random() * 0.1;
+    const close = 0.25 + random() * 0.1;
+    const extra = 0.05 + random() * 0.05;
+    const winners = 0.4 + random() * 0.2;
+    const runsScored = Math.round(games * (4 + random() * 1.5));
+    const runsAllowed = Math.max(0, runsScored - Math.round((row.wins - row.losses) * (1.5 + random())));
+    const expectedWins = Math.round((games * runsScored ** 1.83) / (runsScored ** 1.83 + runsAllowed ** 1.83 || 1));
+    return {
+        runsScored,
+        runsAllowed,
+        runDifferential: runsScored - runsAllowed,
+        records: {
+            splitRecords: [
+                { type: 'lastTen', wins: row.lastWins, losses: 10 - row.lastWins },
+                split('home', home),
+                split('away', 1 - home),
+                split('left', left),
+                split('right', 1 - left),
+                split('leftHome', left * home),
+                split('leftAway', left * (1 - home)),
+                split('rightHome', (1 - left) * home),
+                split('rightAway', (1 - left) * (1 - home)),
+                split('day', day),
+                split('night', 1 - day),
+                split('oneRun', close),
+                split('extraInning', extra),
+                split('winners', winners)
+            ],
+            expectedRecords: [{ type: 'xWinLoss', wins: expectedWins, losses: games - expectedWins }]
+        }
+    };
 };
 
 const standings = (params = {}) => {
@@ -814,7 +976,9 @@ const standings = (params = {}) => {
                 winningPercentage: (row.wins / (row.wins + row.losses)).toFixed(3).replace(/^0/, ''),
                 gamesBack: index === 0 ? '-' : String(((leader.wins - row.wins + (row.losses - leader.losses)) / 2).toFixed(1)).replace('.0', ''),
                 streak: { streakCode: row.streak },
-                records: { splitRecords: [{ type: 'lastTen', wins: row.lastWins, losses: 10 - row.lastWins }] }
+                ...standingExtras(row),
+                eliminationNumber: '-',
+                clinched: false
             }))
         }]
     };
@@ -901,20 +1065,93 @@ const seasonSplits = (group, season) => {
         const people = group === 'pitching' ? team.pitchers : team.hitters;
         people.forEach((player, index) => {
             const played = Math.max(1, Math.round(games * between(random, 0.6, 1)));
-            const stat = group === 'pitching' ? pitchingLine(random, player, Math.ceil(played / (index === 0 ? 5 : 2)), index < 2) : hittingLine(random, player, played);
+            const starter = index < 2 || !!player.rotation;
+            const stat = group === 'pitching' ? pitchingLine(random, player, Math.ceil(played / (index === 0 || player.rotation ? 5 : 2)), starter) : hittingLine(random, player, played);
             splits.push({ season: String(season), stat, team: { id: teamId, name: TEAMS[teamId].name }, player: { id: player.id, fullName: player.fullName }, position: { abbreviation: player.pos } });
         });
     }
     return splits;
 };
 
-/** /stats?stats=byDateRange: unos seis juegos de cada bateador, distintos cada día */
-const rangeSplits = (group, endDate) => {
-    if (group !== 'hitting') return [];
-    const day = Math.floor(Date.parse(`${endDate}T00:00:00Z`) / DAY) || 0;
+// La temporada simulada abre el 16 de octubre (la de LIDOM S va de octubre de S a enero de S + 1)
+const openingOf = (date) => {
+    const year = Number(date.slice(0, 4));
+    return `${Number(date.slice(5, 7)) >= 9 ? year : year - 1}-10-16`;
+};
+
+/** Línea de bateo de un juego (inventada, con conteos enteros coherentes) */
+const gameHitting = (random, player) => {
+    const ab = 3 + (random() < 0.5 ? 1 : 0);
+    let h = 0;
+    for (let i = 0; i < ab; i++) if (random() < player.avg) h += 1;
+    const hr = h && random() < 0.08 + player.power * 0.12 ? 1 : 0;
+    const d = h - hr > 0 && random() < 0.25 ? 1 : 0;
+    const t = h - hr - d > 0 && random() < 0.03 ? 1 : 0;
+    const bb = random() < 0.35 ? 1 : 0;
+    const hbp = random() < 0.04 ? 1 : 0;
+    const sf = random() < 0.05 ? 1 : 0;
+    return {
+        gamesPlayed: 1, plateAppearances: ab + bb + hbp + sf, atBats: ab, runs: hr + (h + bb - hr > 0 && random() < 0.35 ? 1 : 0), hits: h, doubles: d, triples: t, homeRuns: hr,
+        rbi: hr + (random() < h * 0.3 ? 1 : 0), baseOnBalls: bb, strikeOuts: Math.min(ab - h, Math.floor(random() * 2.2)), stolenBases: random() < 0.06 ? 1 : 0, caughtStealing: 0, hitByPitch: hbp, sacFlies: sf
+    };
+};
+
+/** Línea de pitcheo de un juego: el abridor de 4 a 6 entradas, el relevista de 2 a 4 outs */
+const gamePitching = (random, player, starter) => {
+    const outs = starter ? 12 + Math.floor(random() * 7) : 2 + Math.floor(random() * 3);
+    const won = random() < (starter ? 0.4 : 0.08);
+    return {
+        gamesPlayed: 1, gamesPitched: 1, gamesStarted: starter ? 1 : 0, outs, earnedRuns: Math.floor((outs / 27) * player.era + random()), hits: Math.round((outs / 3) * (0.6 + random() * 0.6)),
+        baseOnBalls: Math.floor((outs / 3) * 0.35 + random()), strikeOuts: Math.round((outs / 3) * (0.6 + random() * 0.7)), homeRuns: random() < 0.15 ? 1 : 0,
+        wins: won ? 1 : 0, losses: !won && random() < (starter ? 0.35 : 0.06) ? 1 : 0, saves: player.saves && random() < 0.5 ? 1 : 0, holds: 0
+    };
+};
+
+/** Suma de líneas de un juego, con los promedios recalculados */
+const sumLines = (group, lines) => {
+    const sum = {};
+    for (const line of lines) for (const [key, value] of Object.entries(line)) if (typeof value === 'number') sum[key] = (sum[key] || 0) + value;
+    if (group === 'pitching') {
+        const outs = sum.outs || 0;
+        return { ...sum, inningsPitched: ipText(outs), era: outs ? ((sum.earnedRuns * 27) / outs).toFixed(2) : '-.--', whip: outs ? (((sum.hits + sum.baseOnBalls) * 3) / outs).toFixed(2) : '-.--' };
+    }
+    const tb = sum.hits + sum.doubles + 2 * sum.triples + 3 * sum.homeRuns;
+    const obp = (sum.hits + sum.baseOnBalls + sum.hitByPitch) / Math.max(1, sum.atBats + sum.baseOnBalls + sum.hitByPitch + sum.sacFlies);
+    const slg = tb / Math.max(1, sum.atBats);
+    return { ...sum, avg: rate(sum.hits, sum.atBats), obp: rate(obp * 1000, 1000), slg: rate(slg * 1000, 1000), ops: rate((obp + slg) * 1000, 1000) };
+};
+
+/**
+ * /stats?stats=byDateRange: la suma de cada juego del rango desde la apertura (los equipos simulados juegan todos los
+ * días). El bateador de la alineación descansa alguno (el receptor de la banca juega cuando descansa el titular); el
+ * abridor lanza cuando le toca en la rotación y cada relevista en algo menos de la mitad de los juegos.
+ */
+const rangeSplits = (group, startDate, endDate) => {
+    const opening = openingOf(endDate);
+    const from = startDate && startDate > opening ? startDate : opening;
+    const first = Math.floor(Date.parse(`${from}T00:00:00Z`) / DAY);
+    const last = Math.floor(Date.parse(`${endDate}T00:00:00Z`) / DAY);
+    if (!Number.isFinite(first) || !Number.isFinite(last) || last < first) return [];
     return TEAM_IDS.flatMap((teamId) => {
-        const random = rng(teamId * 977 + day);
-        return roster(teamId).hitters.map((player) => ({ stat: hittingLine(random, player, 6), team: { id: teamId, name: TEAMS[teamId].name }, player: { id: player.id, fullName: player.fullName } }));
+        const team = roster(teamId);
+        const people = group === 'pitching' ? team.pitchers : [...team.hitters, asHitter(team.bench[0])];
+        return people
+            .map((player) => {
+                const lines = [];
+                for (let day = first; day <= last; day++) {
+                    const random = rng(player.id * 7 + day * 131 + (group === 'pitching' ? 3 : 0));
+                    if (group === 'pitching') {
+                        const staff = staffOf(teamId, rotationSlot(teamId, day, false));
+                        const starter = staff[0].id === player.id;
+                        if (!starter && !(staff.slice(1, 4).some((p) => p.id === player.id) && random() < 0.45)) continue;
+                        lines.push(gamePitching(random, player, starter));
+                    } else if (teamForGame(teamId, day, false).hitters.some((h) => h.id === player.id) && random() < 0.95) {
+                        lines.push(gameHitting(random, player));
+                    }
+                }
+                return lines.length ? { stat: sumLines(group, lines), team: { id: teamId, name: TEAMS[teamId].name }, player: { id: player.id, fullName: player.fullName } } : null;
+            })
+            .filter(Boolean);
     });
 };
 
@@ -1058,7 +1295,7 @@ const get = async (url, params = {}) => {
     if (path === '/standings') return standings(params);
     if (path === '/stats') {
         // Últimos días (los que vienen calientes): seis juegos de cada uno
-        if (params.stats === 'byDateRange') return Number(params.leagueId) === 131 ? { stats: [{ splits: rangeSplits(params.group, params.endDate) }] } : { stats: [] };
+        if (params.stats === 'byDateRange') return Number(params.leagueId) === 131 ? { stats: [{ splits: rangeSplits(params.group, params.startDate, params.endDate) }] } : { stats: [] };
         if (params.playerPool === 'ALL' && !params.sortStat) return Number(params.leagueId) === 131 ? { stats: [{ splits: seasonSplits(params.group, params.season) }] } : { stats: [] };
         return stats(params);
     }
@@ -1072,7 +1309,27 @@ const get = async (url, params = {}) => {
     if ((match = path.match(/^\/people\/(\d+)\/stats$/))) return personStats(match[1], params);
     if (path === '/transactions') return transactions(params);
     if ((match = path.match(/^\/league\/(\d+)$/))) {
-        return { leagues: [{ id: Number(match[1]), season: String(new Date().getUTCFullYear()), numGames: 50 }] };
+        const year = new Date().getUTCFullYear();
+        // LIDOM simulada: la regular empezó el 16 de octubre (el simulador tiene juegos todos los días)
+        const dates =
+            Number(match[1]) === 131
+                ? {
+                      seasonDateInfo: {
+                          seasonId: String(year),
+                          seasonStartDate: `${year}-10-01`,
+                          regularSeasonStartDate: `${year}-10-16`,
+                          regularSeasonEndDate: `${year}-12-20`,
+                          postSeasonStartDate: `${year}-12-23`,
+                          postSeasonEndDate: `${year + 1}-01-31`,
+                          seasonEndDate: `${year + 1}-01-31`,
+                          offSeasonEndDate: `${year + 1}-09-30`,
+                          qualifierPlateAppearances: 2.7,
+                          qualifierOutsPitched: 2.4
+                      },
+                      seasonState: 'inseason'
+                  }
+                : {};
+        return { leagues: [{ id: Number(match[1]), season: String(year), numGames: 50, ...dates }] };
     }
     throw Object.assign(new Error(`mock: ruta sin simular ${path}`), { response: { status: 404 } });
 };

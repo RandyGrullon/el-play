@@ -2,7 +2,8 @@ import React from 'react';
 
 interface SegmentedProps<T extends string> {
     value: T;
-    options: { value: T; label: React.ReactNode; badge?: React.ReactNode }[];
+    /** `aria`: nombre para el lector cuando la etiqueta sola no basta («Tipo: Rodado») */
+    options: { value: T; label: React.ReactNode; badge?: React.ReactNode; aria?: string }[];
     onChange: (value: T) => void;
     label: string;
     size?: 'sm' | 'md';
@@ -20,6 +21,7 @@ export function Segmented<T extends string>({ value, options, onChange, label, s
                         type="button"
                         role="radio"
                         aria-checked={active}
+                        aria-label={option.aria}
                         onClick={() => onChange(option.value)}
                         className={`relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full font-semibold transition-colors ${
                             size === 'sm' ? 'min-h-8 px-3 text-xs' : 'min-h-9 px-4 text-sm'

@@ -4,7 +4,8 @@ const { getLiveFeed } = require('./liveFeed');
 const { transformScheduleGame, gameState, uniqueGames } = require('../utils/transformers');
 const { teamAbbrev, teamColor, teamLogo } = require('../utils/teams');
 const { cached } = require('../utils/cache');
-const { CREDITS, CREDITS_FROM, dayPrices, projectionOf } = require('./fantasyPrices');
+const { CREDITS, CREDITS_FROM, PAST_WEIGHTS, dayPrices, projectionOf } = require('./fantasyPrices');
+const { RULES, perTeamLimit, budgetOf } = require('./fantasyScore');
 
 // Fantasy de El Play: los puntos de cada pelotero en un día salen del box score de MLB de sus juegos.
 // El servidor los calcula (una sola regla para todos); la app arma el equipo y suma.
@@ -74,6 +75,16 @@ const pitcherLine = (p = {}) => ({
 });
 
 /**
+ * Abrió el juego en la alineación: su turno en el orden termina en 00 ("300"; "301" entró de emergente). Sin ese dato
+ * (alineación anunciada sin turnos), estar en battingOrder del equipo.
+ */
+const inStartingLineup = (player, team, id) => {
+    const order = Number(player.battingOrder);
+    if (Number.isFinite(order) && order > 0) return order % 100 === 0;
+    return (team.battingOrder || []).includes(id);
+};
+
+/**
  * Peloteros de un juego (todo el roster que trae el box score: titulares, banca y bullpen).
  * Con `withStats`, los puntos de ese juego; sin él (juego que no ha empezado), solo el roster.
  */
@@ -98,7 +109,7 @@ const playersFromFeed = (doc, gamePk, withStats) => {
                 gamePk,
                 role,
                 pos,
-                starter: role === 'B' ? (team.battingOrder || []).includes(id) : (team.pitchers || [])[0] === id,
+                starter: role === 'B' ? inStartingLineup(player, team, id) : (team.pitchers || [])[0] === id,
                 played: !!played,
                 line: withStats ? (role === 'P' ? pitcherLine(pitching) : batterLine(batting)) : null,
                 points: withStats ? (role === 'P' ? pitcherPoints(pitching) : batterPoints(batting)) : 0
@@ -124,6 +135,53 @@ const mergeGames = (a, b, gamePk) => {
 const isoDay = (date, timeZone) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 const shiftDay = (day, days) => new Date(Date.parse(`${day}T12:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
 
+/** Pospuesto o cancelado: MLB lo da como «Final» (codedGameState D o C) aunque no se jugó */
+const isPostponed = (status = {}) => /^(Postponed|Cancelled)/i.test(status.detailedState || '') || ['D', 'C'].includes(status.codedGameState);
+
+/** Estado de un juego para el fantasy: 'scheduled' | 'live' | 'final' | 'postponed' | 'suspended' */
+const gameStatus = (status = {}) => {
+    if (isPostponed(status)) return 'postponed';
+    if (/^Suspended/i.test(status.detailedState || '')) return 'suspended';
+    const state = gameState(status);
+    return state === 'preview' ? 'scheduled' : state;
+};
+
+// Un juego terminado todavía puede tardar en llegar a las estadísticas de la temporada: se da por cerrado 4 h después de
+// su hora de inicio (en LIDOM, poco antes de la medianoche)
+const SETTLE_MS = 4 * 3600000;
+
+/** Juego que todavía puede cambiar las estadísticas: por empezar, en vivo o recién terminado (no los pospuestos ni suspendidos) */
+const unsettled = (game, now) => {
+    const status = gameStatus(game.status);
+    if (status === 'postponed' || status === 'suspended') return false;
+    if (status !== 'final') return true;
+    const start = Date.parse(game.gameDate || '');
+    return Number.isFinite(start) && now < start + SETTLE_MS;
+};
+
+/**
+ * Hasta qué día van los datos con los que se ponen los precios de `day`: el día anterior, salvo que algún juego de antes
+ * siga abierto (p. ej. los de mañana mientras se juega hoy). Nunca pasa de ayer. `games` es el calendario de los 10
+ * días anteriores.
+ */
+const statsThrough = (games, day, today, now = Date.now()) => {
+    const cap = day > today ? shiftDay(today, -1) : shiftDay(day, -1);
+    const open = games
+        .filter((game) => game.officialDate < day && unsettled(game, now))
+        .map((game) => game.officialDate)
+        .sort()[0];
+    const through = open ? shiftDay(open, -1) : cap;
+    return through < cap ? through : cap;
+};
+
+/** El último día con juego antes de `day` (los pospuestos no cuentan), o null si no hay en el calendario */
+const previousGameDay = (games, day) =>
+    games
+        .filter((game) => game.officialDate < day && gameStatus(game.status) !== 'postponed')
+        .map((game) => game.officialDate)
+        .sort()
+        .pop() ?? null;
+
 const feedOf = async (gamePk) => {
     try {
         return (await getLiveFeed(gamePk)).doc;
@@ -143,17 +201,28 @@ const boxOf = async (gamePk) => {
     }
 };
 
-// De un juego terminado para la rotación basta saber quién lanzó por equipo (el primero abrió): el box score recortado
-// con `fields` (~2 KB) y un día en caché, porque ya no cambia. Si MLB falla, null.
-const pitchersOf = async (gamePk) => {
+/**
+ * Lo que hace falta de un juego terminado de los días anteriores, por equipo: quién lanzó (en orden: el primero abrió),
+ * y de cada pelotero del roster su rol, posición, si abrió en la alineación, si jugó y sus puntos. Sale del box score y
+ * queda un día en caché recortado (unos KB): ya no cambia. Si MLB falla, null.
+ */
+const gameLogOf = async (gamePk) => {
     try {
         return await cached(
-            `fantasy_pitchers_${gamePk}`,
+            `fantasy_log_${gamePk}`,
             86400,
             async () => {
-                const boxscore = await http.mlbGet(`${MLB_API_BASE}/game/${gamePk}/boxscore`, { fields: 'teams,away,home,team,id,pitchers' });
+                const boxscore = await http.mlbGet(`${MLB_API_BASE}/game/${gamePk}/boxscore`);
                 if (!boxscore?.teams) throw new Error('sin box score');
-                return Object.fromEntries(['away', 'home'].map((side) => [boxscore.teams[side]?.team?.id, boxscore.teams[side]?.pitchers || []]));
+                const teams = {};
+                for (const side of ['away', 'home']) {
+                    const id = boxscore.teams[side]?.team?.id;
+                    if (id) teams[id] = { pitchers: boxscore.teams[side].pitchers || [], players: [] };
+                }
+                for (const player of playersFromFeed({ liveData: { boxscore } }, gamePk, true)) {
+                    teams[player.teamId]?.players.push({ id: player.id, name: player.name, role: player.role, pos: player.pos, starter: player.starter, played: player.played, points: player.points });
+                }
+                return teams;
             },
             { staleSec: 86400 }
         );
@@ -180,122 +249,246 @@ const recentPitching = (games, day) => {
     return recent;
 };
 
+// Un lanzador que abrió en los últimos 4 días descansa hoy
+const RESTING_DAYS = 4;
+const LAST_GAMES = 5;
+
+/** Reglas del día tal como las aplica el servidor (las mismas de fantasyScore): la app las muestra sin escribirlas a mano */
+const rulesOf = (day, league, frozen) => {
+    const b = SCORING.batter;
+    const p = SCORING.pitcher;
+    return {
+        version: 2,
+        roster: { batters: RULES.batters, pitchers: RULES.pitchers },
+        perTeam: perTeamLimit(day),
+        budget: budgetOf(day),
+        captain: RULES.captain,
+        picks: { points: RULES.pick },
+        scoring: {
+            batter: { single: b.single, double: b.double, triple: b.triple, homeRun: b.homeRun, run: b.run, rbi: b.rbi, walk: b.walk, hbp: b.hitByPitch, stolenBase: b.stolenBase, strikeout: b.strikeOut },
+            pitcher: { out: p.out, strikeout: p.strikeOut, win: p.win, save: p.save, earnedRun: p.earnedRun, hit: p.hit, walk: p.walk }
+        },
+        prices: { min: CREDITS.min, max: CREDITS.max, step: CREDITS.step, noData: CREDITS.unknown, seasonWeights: [1, ...PAST_WEIGHTS], frozen },
+        lock: 'per-game',
+        timezone: league.timeZone
+    };
+};
+
+/** Calendario de los 10 días anteriores y el día, con los abridores probables y las alineaciones si MLB las tiene */
+const scheduleOf = async (league, day) => {
+    const params = { sportId: league.sportId, leagueId: league.leagueId, startDate: shiftDay(day, -10), endDate: day, hydrate: 'team,linescore,probablePitcher,lineups' };
+    try {
+        return await http.mlbGet(`${MLB_API_BASE}/schedule`, params);
+    } catch (error) {
+        // Si MLB rechaza alguna hidratación, se pide como antes
+        if (error.response?.status !== 400) throw error;
+        return http.mlbGet(`${MLB_API_BASE}/schedule`, { ...params, hydrate: 'team,linescore' });
+    }
+};
+
+/**
+ * Precios del día y los del día de juego anterior (para la flecha ↑↓), con los datos de antes de cada día. Sin datos
+ * suficientes, ese día no hay tope: `table` null. `failed` si MLB falló (el día sale incompleto y se vuelve a pedir pronto).
+ */
+const pricesOf = async (league, day, through, previousDay) => {
+    if (day < CREDITS_FROM) return { table: null, previous: null, failed: false };
+    const scoring = { batterPoints, pitcherPoints };
+    try {
+        const table = await dayPrices(league.id, day, scoring, { through });
+        let previous = null;
+        if (table && previousDay && previousDay >= CREDITS_FROM) {
+            const before = shiftDay(previousDay, -1);
+            previous = await dayPrices(league.id, previousDay, scoring, { through: through < before ? through : before });
+        }
+        return { table, previous, failed: false };
+    } catch (problem) {
+        console.warn(`[fantasy] precios ${league.id} ${day}: ${problem.message}`);
+        return { table: null, previous: null, failed: true };
+    }
+};
+
 /**
  * Todo lo del fantasy para un día: juegos y peloteros con sus puntos.
  * - Juegos en vivo o terminados: puntos reales de cada pelotero (y quedan «cerrados»: ya no se pueden cambiar).
  * - Juegos por empezar: roster del equipo, tomado de su juego de hoy y de su último juego.
+ * - Juegos pospuestos: siguen en el día y sus peloteros salen con status 'postponed' (no suman ni se pueden escoger).
+ * Cada pelotero trae su rival (`opp`), si va a jugar (`status`), sus puntos de los últimos 5 juegos (`last5`), su línea
+ * de la temporada (`season`) y cuánto cambió su precio desde el día de juego anterior (`priceDelta`). `rules` dice las
+ * reglas de ese día (tope por equipo y créditos de verdad).
  */
 const fantasyDay = async (leagueKey, date) => {
     const league = LEAGUES[leagueKey] || LEAGUES.lidom;
-    const day = date || isoDay(new Date(), league.timeZone);
-    const data = await http.mlbGet(`${MLB_API_BASE}/schedule`, {
-        sportId: league.sportId,
-        leagueId: league.leagueId,
-        startDate: shiftDay(day, -10),
-        endDate: day,
-        hydrate: 'team,linescore'
-    });
+    const today = isoDay(new Date(), league.timeZone);
+    const day = date || today;
+    const data = await scheduleOf(league, day);
     const all = uniqueGames((data?.dates || []).flatMap((entry) => entry.games || []));
-    const todays = all.filter((game) => game.officialDate === day && !['Postponed', 'Cancelled'].includes(game.status?.detailedState));
+    const todays = all.filter((game) => game.officialDate === day);
+    const teamsOf = (game) => [game.teams?.away?.team?.id, game.teams?.home?.team?.id];
+    const playing = new Set(todays.flatMap(teamsOf).filter(Boolean));
+
+    // Precios: solo con lo de antes del día (no cambian mientras se juega). Se piden mientras se arma lo demás.
+    const through = statsThrough(all, day, today);
+    const pricing = pricesOf(league, day, through, previousGameDay(all, day));
+
+    // Juegos jugados de los 10 días anteriores por los equipos de hoy (los pospuestos no): de ahí salen el roster y la
+    // alineación del último juego de cada equipo, la rotación de los lanzadores y los puntos de los últimos 5 juegos
+    const before = all
+        .filter((game) => game.officialDate < day && gameStatus(game.status) === 'final' && teamsOf(game).some((id) => playing.has(id)))
+        .sort((a, b) => String(a.gameDate).localeCompare(String(b.gameDate)));
+    const logs = new Map(await Promise.all(before.map(async (game) => [game.gamePk, await gameLogOf(game.gamePk)])));
+    // Sin alguno de esos juegos la rotación y los últimos 5 saldrían mal: el día sale incompleto y se vuelve a pedir pronto
+    let missing = before.some((game) => !logs.get(game.gamePk)) ? 1 : 0;
+
+    // De cada equipo: su último juego, quién bateó de titular y quién abrió ahí, y las salidas de sus lanzadores
+    const context = new Map();
+    for (const teamId of playing) {
+        const games = before.filter((game) => teamsOf(game).includes(teamId));
+        const last = games.length ? logs.get(games[games.length - 1].gamePk)?.[teamId] ?? null : null;
+        const outings = games.map((game) => ({ date: game.officialDate, time: game.gameDate, pitchers: logs.get(game.gamePk)?.[teamId]?.pitchers }));
+        context.set(teamId, {
+            last,
+            lineup: new Set((last?.players || []).filter((player) => player.role === 'B' && player.starter).map((player) => player.id)),
+            opener: last?.pitchers?.[0] ?? null,
+            recent: outings.every((game) => game.pitchers) ? recentPitching(outings, day) : null
+        });
+    }
+
+    // Puntos de cada pelotero en los juegos que jugó, del más viejo al más nuevo
+    const pointsByGame = new Map();
+    for (const game of before) {
+        for (const team of Object.values(logs.get(game.gamePk) || {})) {
+            for (const player of team.players) {
+                if (!player.played) continue;
+                if (!pointsByGame.has(player.id)) pointsByGame.set(player.id, []);
+                pointsByGame.get(player.id).push(player.points);
+            }
+        }
+    }
 
     const players = new Map();
-    const startOf = new Map(todays.map((game) => [game.gamePk, game.gameDate || '']));
+    // Orden de los juegos de un equipo en el día: el 1 y el 2 de una doble cartelera (la hora del 2 puede ser de relleno)
+    const orderOf = new Map(todays.map((game) => [game.gamePk, `${game.gameNumber ?? 1}|${game.gameDate || ''}`]));
     const add = (list, prefer) => {
         for (const player of list) {
             const current = players.get(player.id);
             // Doble cartelera: jugó los dos juegos del día. Cuentan los dos (los puntos y la línea se suman) y se cierra
             // con el primero
             if (current?.line && player.line && current.gamePk !== player.gamePk) {
-                players.set(player.id, mergeGames(current, player, (startOf.get(current.gamePk) || '') <= (startOf.get(player.gamePk) || '') ? current.gamePk : player.gamePk));
+                players.set(player.id, mergeGames(current, player, (orderOf.get(current.gamePk) || '') <= (orderOf.get(player.gamePk) || '') ? current.gamePk : player.gamePk));
                 continue;
             }
             if (!current || (prefer && !current.line)) players.set(player.id, player);
         }
     };
 
-    // Del último juego de cada equipo con juego por empezar: quién bateó en la alineación (probable titular hoy)
-    // y qué lanzador abrió (le toca descansar). En LIDOM no se anuncian alineaciones ni abridores antes del juego.
-    const lastLineup = new Set();
-    const lastStarter = new Set();
-    // Y de sus juegos de los 10 días anteriores, las salidas de cada lanzador (la rotación: a quién le toca abrir)
-    const recentByTeam = new Map();
-
-    // Juegos empezados sin box score (MLB falló): el día sale incompleto y se vuelve a pedir pronto
-    let missing = 0;
+    // Alineaciones anunciadas de los juegos por empezar (gamePk:teamId → ids)
+    const posted = new Map();
     const games = await Promise.all(
         todays.map(async (game) => {
             const state = gameState(game.status);
-            const doc = state === 'final' ? await boxOf(game.gamePk) : await feedOf(game.gamePk);
-            if (!doc && state !== 'preview') missing += 1;
-            if (doc) add(playersFromFeed(doc, game.gamePk, state !== 'preview'), state !== 'preview');
-            if (state === 'preview') {
-                // Roster completo: el último juego de cada equipo (los rosters de un juego que no empieza vienen cortos)
-                for (const side of ['away', 'home']) {
-                    const teamId = game.teams?.[side]?.team?.id;
-                    const last = all
-                        .filter((g) => g.officialDate < day && gameState(g.status) === 'final' && [g.teams?.away?.team?.id, g.teams?.home?.team?.id].includes(teamId))
-                        .sort((a, b) => b.gameDate.localeCompare(a.gameDate))[0];
-                    const lastDoc = last ? await boxOf(last.gamePk) : null;
-                    if (!lastDoc) continue;
-                    const roster = playersFromFeed(lastDoc, game.gamePk, false).filter((player) => player.teamId === teamId);
-                    roster.filter((player) => player.starter).forEach((player) => (player.role === 'P' ? lastStarter : lastLineup).add(player.id));
-                    add(roster, false);
-                    const played = all.filter((g) => g.officialDate < day && gameState(g.status) === 'final' && !['Postponed', 'Cancelled'].includes(g.status?.detailedState) && [g.teams?.away?.team?.id, g.teams?.home?.team?.id].includes(teamId));
-                    const logs = await Promise.all(played.map(async (g) => ({ date: g.officialDate, time: g.gameDate, pitchers: (await pitchersOf(g.gamePk))?.[teamId] })));
-                    // Sin alguno de esos juegos la rotación saldría mal: esos lanzadores quedan sin el dato y se vuelve a pedir pronto
-                    if (logs.every((log) => log.pitchers)) recentByTeam.set(teamId, recentPitching(logs, day));
-                    else missing += 1;
-                }
+            const status = gameStatus(game.status);
+            const started = status === 'live' || status === 'final';
+            // Pospuesto: no se pide nada (su roster sale del último juego de cada equipo)
+            const doc = status === 'postponed' ? null : status === 'final' ? await boxOf(game.gamePk) : await feedOf(game.gamePk);
+            // Juegos empezados sin box score (MLB falló): el día sale incompleto y se vuelve a pedir pronto
+            if (!doc && started) missing += 1;
+            if (doc) add(playersFromFeed(doc, game.gamePk, started), started);
+            const box = doc?.liveData?.boxscore?.teams;
+            const probables = {};
+            for (const side of ['away', 'home']) {
+                const listed = game.teams?.[side]?.probablePitcher?.id ?? doc?.gameData?.probablePitchers?.[side]?.id ?? null;
+                // Empezado: el que abrió de verdad
+                probables[side] = (started ? box?.[side]?.pitchers?.[0] : null) ?? listed;
+                const teamId = game.teams?.[side]?.team?.id;
+                if (started || !teamId) continue;
+                const fromFeed = box?.[side]?.battingOrder || [];
+                const order = fromFeed.length ? fromFeed : (game.lineups?.[`${side}Players`] || []).map((person) => person?.id).filter(Boolean);
+                if (order.length) posted.set(`${game.gamePk}:${teamId}`, new Set(order));
             }
             // Primer lanzamiento (del feed de un juego en vivo): con la hora por definir, ahí se cierra el juego en el fantasy
-            const firstPitch = state !== 'preview' ? doc?.gameData?.gameInfo?.firstPitch : undefined;
-            return { ...transformScheduleGame(game, leagueKey), state, ...(firstPitch ? { firstPitch } : {}) };
+            const firstPitch = started ? doc?.gameData?.gameInfo?.firstPitch : undefined;
+            return { ...transformScheduleGame(game, leagueKey), state, ...(firstPitch ? { firstPitch } : {}), status, probables };
         })
     );
 
-    // Un pelotero de un juego por empezar pertenece a ese juego aunque su roster venga del juego anterior
-    const gameOfTeam = new Map(games.flatMap((game) => [[game.away.id, game.gamePk], [game.home.id, game.gamePk]]));
+    // Roster completo de los equipos sin juego empezado hoy: el de su último juego (los de un juego que no empieza vienen
+    // cortos). El gamePk se pone abajo.
+    const startedTeams = new Set(games.filter((game) => game.status === 'live' || game.status === 'final').flatMap((game) => [game.away.id, game.home.id]));
+    for (const teamId of playing) {
+        if (startedTeams.has(teamId)) continue;
+        const roster = context.get(teamId)?.last?.players || [];
+        add(roster.map((player) => ({ id: player.id, name: player.name, teamId, gamePk: null, role: player.role, pos: player.pos, starter: player.starter, played: false, line: null, points: 0 })), false);
+    }
+
+    // El juego de cada equipo en el fantasy: el primero del día que no esté pospuesto (doble cartelera: se cierra al
+    // empezar el primero); si solo tiene pospuestos, ese
+    const byOrder = [...games].sort((a, b) => (orderOf.get(a.gamePk) || '').localeCompare(orderOf.get(b.gamePk) || ''));
+    const gameOfTeam = new Map();
+    for (const game of byOrder) {
+        for (const id of [game.away.id, game.home.id]) {
+            const current = gameOfTeam.get(id);
+            if (!current || (current.status === 'postponed' && game.status !== 'postponed')) gameOfTeam.set(id, game);
+        }
+    }
+    const gameByPk = new Map(games.map((game) => [game.gamePk, game]));
+
+    const { table, previous, failed: pricesFailed } = await pricing;
+    const priceMaps = table ? { B: new Map(table.prices.B), P: new Map(table.prices.P) } : null;
+    const previousMaps = previous ? { B: new Map(previous.prices.B), P: new Map(previous.prices.P) } : null;
+    const seasonMaps = table?.season ? { B: new Map(table.season.B), P: new Map(table.season.P) } : null;
+
     const list = [...players.values()]
         .filter((player) => gameOfTeam.has(player.teamId))
         .map((player) => {
-            const gamePk = player.line ? player.gamePk : gameOfTeam.get(player.teamId);
-            if (player.line) return { ...player, gamePk };
-            // Juego por empezar: titular = estuvo en la alineación del último juego; `rest` = abrió el último juego;
-            // lanzador: en cuántos juegos de los 10 días anteriores lanzó y hace cuántos días abrió
-            const recent = player.role === 'P' ? recentByTeam.get(player.teamId) : null;
-            const outing = recent?.get(player.id);
+            const game = (player.line && gameByPk.get(player.gamePk)) || gameOfTeam.get(player.teamId);
+            const ctx = context.get(player.teamId) || {};
+            const pitcher = player.role === 'P';
+            const outing = pitcher ? ctx.recent?.get(player.id) : undefined;
+            // Salidas de los 10 días anteriores (un lanzador) y si abrió el último juego de su equipo
+            const recent = pitcher && ctx.recent ? { outings: outing?.outings ?? 0, ...(outing?.startedAgo !== undefined ? { startedAgo: outing.startedAgo } : {}) } : {};
+            const rest = pitcher && ctx.opener === player.id;
+            const resting = (ctx.recent ? outing?.startedAgo !== undefined && outing.startedAgo <= RESTING_DAYS : rest) ? 'resting' : 'bullpen';
+            const side = game.home.id === player.teamId ? 'home' : 'away';
+
+            // Si va a jugar: con el juego empezado, lo que pasó; antes, la alineación anunciada (o la del último juego)
+            // y el abridor probable
+            let lineup;
+            if (player.line) lineup = pitcher ? (player.starter ? 'probable' : resting) : player.starter ? 'confirmed' : 'bench';
+            else if (pitcher) lineup = game.probables?.[side] === player.id ? 'probable' : resting;
+            else {
+                const announced = posted.get(`${game.gamePk}:${player.teamId}`);
+                lineup = announced ? (announced.has(player.id) ? 'confirmed' : 'bench') : ctx.lineup?.has(player.id) ? 'expected' : 'bench';
+            }
+            const ownGames = games.filter((g) => g.status !== 'postponed' && (g.away.id === player.teamId || g.home.id === player.teamId));
+            const status =
+                game.status === 'postponed' ? 'postponed' : !player.played && ownGames.length > 0 && ownGames.every((g) => g.status === 'final') ? 'dnp' : lineup;
+
+            // Juego por empezar: titular = va en la alineación (anunciada o la del último juego) o es el abridor probable;
+            // `rest` = abrió el último juego; lanzador: en cuántos juegos de los 10 días anteriores lanzó y hace cuántos días abrió
+            const base = player.line
+                ? { ...player }
+                : { ...player, gamePk: game.gamePk, starter: ['confirmed', 'expected', 'probable'].includes(lineup), ...(rest ? { rest: true } : {}), ...recent };
+
+            const role = pitcher ? 'P' : 'B';
+            const price = priceMaps ? priceMaps[role].get(player.id) ?? CREDITS.unknown : undefined;
+            const was = previousMaps ? previousMaps[role].get(player.id) ?? CREDITS.unknown : undefined;
+            const opponent = side === 'home' ? game.away : game.home;
             return {
-                ...player,
-                gamePk,
-                starter: player.role === 'B' ? lastLineup.has(player.id) : false,
-                ...(lastStarter.has(player.id) ? { rest: true } : {}),
-                ...(recent ? { outings: outing?.outings ?? 0, ...(outing?.startedAgo !== undefined ? { startedAgo: outing.startedAgo } : {}) } : {})
+                ...base,
+                ...(priceMaps ? { price } : {}),
+                // Lo que se espera de él hoy (con lo de antes de hoy; sube a ×1 cuando se sabe que juega)
+                ...(table?.ppg ? { proj: projectionOf(table, { ...base, ...recent, ...(rest ? { rest: true } : {}), status: status === 'postponed' ? 'postponed' : lineup }) } : {}),
+                opp: opponent?.id ? { id: opponent.id, abbrev: opponent.abbrev || teamAbbrev(opponent.id), home: side === 'home' } : null,
+                status,
+                last5: (pointsByGame.get(player.id) || []).slice(-LAST_GAMES),
+                season: seasonMaps?.[role].get(player.id) ?? null,
+                priceDelta: priceMaps && previousMaps ? Math.round((price - was) * 10) / 10 : null
             };
         });
 
-    // Créditos: el precio de cada pelotero en el día (sin datos suficientes, ese día no hay tope)
-    let credits = null;
-    let pricesFailed = false;
-    if (day >= CREDITS_FROM) {
-        try {
-            const table = await dayPrices(league.id, day, { batterPoints, pitcherPoints });
-            if (table) {
-                const prices = { B: new Map(table.prices.B), P: new Map(table.prices.P) };
-                for (const player of list) {
-                    player.price = prices[player.role === 'P' ? 'P' : 'B'].get(player.id) ?? CREDITS.unknown;
-                    // Lo que se espera de él hoy (con lo de antes de hoy: no cambia durante el día)
-                    if (table.ppg) player.proj = projectionOf(table, player);
-                }
-                credits = { budget: table.budget, min: CREDITS.min, max: CREDITS.max };
-            }
-        } catch (problem) {
-            // Sin precios no se puede armar con tope: el día sale incompleto y se vuelve a pedir pronto
-            console.warn(`[fantasy] precios ${league.id} ${day}: ${problem.message}`);
-            pricesFailed = true;
-        }
-    }
-
-    return {
+    // Créditos: el presupuesto del día (sin datos suficientes, ese día no hay tope)
+    const credits = table ? { budget: table.budget, min: CREDITS.min, max: CREDITS.max } : null;
+    const dayData = {
         league: leagueKey,
         date: day,
         games,
@@ -304,10 +497,16 @@ const fantasyDay = async (leagueKey, date) => {
         ),
         players: list,
         scoring: SCORING,
-        ...(credits ? { credits } : {}),
+        ...(credits ? { credits } : {})
+    };
+    const yesterday = shiftDay(day, -1);
+    const frozen = table ? table.frozen : through === yesterday && yesterday < today;
+    return {
+        ...dayData,
+        rules: rulesOf(dayData, league, frozen),
         ...(missing || pricesFailed ? { incomplete: true } : {})
     };
 };
 
 module.exports = {
-    mergeGames, fantasyDay, batterPoints, pitcherPoints, playersFromFeed, recentPitching, SCORING };
+    mergeGames, fantasyDay, batterPoints, pitcherPoints, playersFromFeed, recentPitching, gameStatus, statsThrough, previousGameDay, rulesOf, SCORING };

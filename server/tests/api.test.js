@@ -173,7 +173,9 @@ describe('previa: enfrentamientos de la temporada, los que vienen calientes y al
         const preview = mock.gamesForDay(new Date(Date.now() - 4 * 3600000).toISOString().slice(0, 10)).find((game) => game.mode === 'preview');
         const detail = transformGame(mock.buildFeed(preview));
         expect(detail.state).toBe('preview');
-        expect(detail.lineups.away).toHaveLength(9);
+        // El de casa ya publicó su alineación; el visitante, todavía no
+        expect(detail.lineups.home).toHaveLength(9);
+        expect(detail.lineups.away).toEqual([]);
         expect(detail.lineups.home[0]).toMatchObject({ pos: expect.any(String), avg: expect.stringMatching(/^\.\d{3}$/) });
     });
 });

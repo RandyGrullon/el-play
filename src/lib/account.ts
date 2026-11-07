@@ -4,7 +4,7 @@
 // Se activa con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en Vercel; las tablas están en supabase/fantasy.sql.
 import { useSyncExternalStore } from 'react';
 import type { LeagueId } from '../types';
-import { getStore, replaceStore, setStoreOwner, takeLegacyStore, type DayEntry, type EntryHistory } from './fantasy';
+import { getStore, markSynced, replaceStore, setStoreOwner, takeLegacyStore, type DayEntry, type EntryHistory } from './fantasy';
 
 const URL_BASE: string | undefined = import.meta.env.VITE_SUPABASE_URL || undefined;
 const ANON: string | undefined = import.meta.env.VITE_SUPABASE_ANON_KEY || undefined;
@@ -479,14 +479,18 @@ interface EntryRow {
 export const syncFantasy = async () => {
     const current = readSession();
     if (!current) return;
-    const remote = await rest<EntryRow[]>(`fantasy_entries?user_id=eq.${current.user.id}&select=league,day,lineup,captain,picks,saved_at`);
+    // select=* trae history si la base ya lo tiene (y no falla si todavía no)
+    const remote = await rest<EntryRow[]>(`fantasy_entries?user_id=eq.${current.user.id}&select=*`);
     const legacy = takeLegacyStore();
     const local = getStore();
     const merged = { ...legacy, ...local };
     for (const row of remote || []) {
         const key = `${row.league}:${row.day}`;
         if (!merged[key] || merged[key].savedAt < row.saved_at) {
-            merged[key] = { lineup: row.lineup || [], captain: row.captain, picks: row.picks || {}, savedAt: row.saved_at, result: merged[key]?.result };
+            const history = row.history && typeof row.history === 'object' ? { history: row.history, historyAt: row.saved_at } : {};
+            merged[key] = { lineup: row.lineup || [], captain: row.captain, picks: row.picks || {}, savedAt: row.saved_at, syncedAt: row.saved_at, ...history, result: merged[key]?.result };
+        } else if (merged[key].savedAt === row.saved_at && merged[key].syncedAt !== row.saved_at) {
+            merged[key] = { ...merged[key], syncedAt: row.saved_at };
         }
     }
     replaceStore(merged);
@@ -501,18 +505,26 @@ export const syncFantasy = async () => {
             const [league, day] = key.split(':');
             return { user_id: current.user.id, league, day, lineup: entry.lineup, captain: entry.captain, picks: entry.picks, saved_at: entry.savedAt };
         });
-    if (uploads.length) await rest('fantasy_entries', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify(uploads) });
+    if (uploads.length) {
+        const rows = await rest<EntryRow[] | null>('fantasy_entries', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify(uploads) });
+        for (const row of rows || []) markSynced(row.league as LeagueId, row.day, row.saved_at, row.history && typeof row.history === 'object' ? row.history : null);
+    }
 };
 
-/** Sube un día en cuanto cambia (si hay sesión); si falla, la próxima sincronización lo sube */
-export const pushEntry = async (league: LeagueId, day: string, entry: DayEntry) => {
+/**
+ * Sube un día en cuanto cambia (si hay sesión). Devuelve el historial que escribió la base (null si no lo tiene) y
+ * lanza si no se pudo (sin red: AccountError 'network'): quien llama lo muestra y lo vuelve a intentar.
+ */
+export const pushEntry = async (league: LeagueId, day: string, entry: DayEntry): Promise<EntryHistory | null> => {
     const current = readSession();
-    if (!current) return;
-    await rest('fantasy_entries', {
+    if (!current) return null;
+    const rows = await rest<EntryRow[] | null>('fantasy_entries', {
         method: 'POST',
-        headers: { Prefer: 'resolution=merge-duplicates' },
+        headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
         body: JSON.stringify({ user_id: current.user.id, league, day, lineup: entry.lineup, captain: entry.captain, picks: entry.picks, saved_at: entry.savedAt })
-    }).catch(() => undefined);
+    });
+    const row = Array.isArray(rows) ? rows[0] : null;
+    return row?.history && typeof row.history === 'object' ? row.history : null;
 };
 
 export interface Rival {

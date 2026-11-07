@@ -10,6 +10,8 @@ interface BottomSheetProps {
     children: React.ReactNode;
     /** Alto casi completo (zona, jugadas, box) en vez de ajustarse al contenido */
     tall?: boolean;
+    /** Pantalla completa en el teléfono (la ayuda del Fantasy); en escritorio, un panel alto y más ancho */
+    full?: boolean;
 }
 
 // Hojas abiertas, de la de abajo a la de arriba: Escape cierra solo la de arriba (una hoja puede abrir otra encima)
@@ -29,7 +31,7 @@ export const pushModalLayer = () => {
 };
 
 // Hoja que sube desde abajo (en escritorio, panel centrado). Cierra con la X, tocando fuera o con Escape.
-export const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, title, children, tall = false }) => {
+export const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, title, children, tall = false, full = false }) => {
     const { t } = useTranslation();
     const closeRef = useRef<HTMLButtonElement>(null);
     // onClose suele ser una función nueva en cada render: con el ref el efecto no se repite (y el foco no salta a la X)
@@ -62,10 +64,12 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, title, 
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={title}>
             <button type="button" className="absolute inset-0 animate-[fade-up_.2s_ease-out] bg-black/45" aria-label={t('common.close')} onClick={onClose} tabIndex={-1} />
             <div
-                className={`relative flex w-full max-w-xl animate-fade-up flex-col rounded-t-[28px] bg-bg shadow-float sm:rounded-[28px] ${tall ? 'h-[92dvh] sm:h-[86dvh]' : 'max-h-[92dvh]'}`}
+                className={`relative flex w-full animate-fade-up flex-col bg-bg shadow-float sm:rounded-[28px] ${
+                    full ? 'h-[100dvh] pt-[env(safe-area-inset-top)] sm:h-[90dvh] sm:max-w-2xl sm:pt-0' : `max-w-xl rounded-t-[28px] ${tall ? 'h-[92dvh] sm:h-[86dvh]' : 'max-h-[92dvh]'}`
+                }`}
             >
                 <div className="flex items-center gap-3 px-5 pb-2 pt-3">
-                    <span className="absolute left-1/2 top-2 h-1 w-10 -translate-x-1/2 rounded-full bg-line/20 sm:hidden" aria-hidden="true" />
+                    {!full && <span className="absolute left-1/2 top-2 h-1 w-10 -translate-x-1/2 rounded-full bg-line/20 sm:hidden" aria-hidden="true" />}
                     <h2 className="mt-2 flex-1 truncate text-lg font-extrabold">{title}</h2>
                     <button ref={closeRef} type="button" onClick={onClose} className="mt-2 flex h-10 w-10 items-center justify-center rounded-full bg-raised text-ink" aria-label={t('common.close')}>
                         <X className="h-5 w-5" />

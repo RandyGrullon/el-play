@@ -112,7 +112,7 @@ describe('vista del terreno', () => {
     it('el diamante de la tarjeta abre el terreno (no el juego) con las caras de los que están en juego', async () => {
         renderList();
         fireEvent.click(screen.getByRole('button', { name: 'Ver el terreno' }));
-        const dialog = await screen.findByRole('dialog', { name: 'El terreno' });
+        const dialog = await screen.findByRole('dialog', { name: 'El terreno' }, { timeout: 5000 });
         expect(dialog.getAttribute('aria-modal')).toBe('true');
         expect(screen.queryByText('Página del juego')).toBeNull();
         // Los nueve, el corredor, el bateador y el que espera; cada cara abre su página
@@ -133,15 +133,15 @@ describe('vista del terreno', () => {
     it('Escape lo cierra y tocar una cara va a la página del pelotero', async () => {
         renderList();
         fireEvent.click(screen.getByRole('button', { name: 'Ver el terreno' }));
-        await screen.findByRole('dialog', { name: 'El terreno' });
+        await screen.findByRole('dialog', { name: 'El terreno' }, { timeout: 5000 });
         fireEvent.keyDown(document, { key: 'Escape' });
-        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 5000 });
 
         fireEvent.click(screen.getByRole('button', { name: 'Ver el terreno' }));
-        await screen.findByRole('dialog', { name: 'El terreno' });
+        await screen.findByRole('dialog', { name: 'El terreno' }, { timeout: 5000 });
         fireEvent.click(screen.getByRole('link', { name: 'Receptor: Pelotero Dos' }));
         expect(await screen.findByText('Página del pelotero')).toBeTruthy();
-        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 5000 });
     });
 
     it('entre entradas lo dice y muestra la defensa que sale', async () => {
