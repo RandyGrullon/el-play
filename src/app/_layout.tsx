@@ -81,6 +81,8 @@ const Navigator: React.FC = () => {
                 <Stack.Screen name="equipo/[id]" />
                 <Stack.Screen name="jugador/[id]" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="en-vivo" options={{ presentation: 'modal' }} />
+                {/* «Cómo se juega» del Fantasy: a pantalla completa, con su botón de cerrar */}
+                <Stack.Screen name="fantasy/ayuda" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
                 <Stack.Screen name="privacidad" />
                 <Stack.Screen name="auth" />
             </Stack>
