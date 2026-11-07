@@ -6,7 +6,7 @@ import { BASE_POINTS, FIELD_H, FIELD_W, MOUND, ON_DECK, PLATE } from '../../../l
 // advertencia junto a la cerca, el arco de tierra del cuadro, las líneas de foul, las tres bases, el home, el
 // montículo, las cajas de bateo y los círculos de espera. Solo dibujo: las caras van encima (FieldView).
 
-const PALETTE = {
+export const FIELD_PALETTE = {
     light: { foul: '#2f8049', grassA: '#3c9a5a', grassB: '#4aab69', infield: '#47a666', track: '#c48d5a', dirt: '#d3a271', dirtEdge: '#b98756', line: 'rgba(255,255,255,0.94)', frame: '#246b3c' },
     dark: { foul: '#1f5233', grassA: '#28683f', grassB: '#2f7649', infield: '#2e7348', track: '#94663f', dirt: '#a5784d', dirtEdge: '#8a613b', line: 'rgba(240,244,248,0.86)', frame: '#173f27' }
 };
@@ -39,7 +39,7 @@ const Base: React.FC<{ x: number; y: number; color: string }> = ({ x, y, color }
 
 // Memo: el juego se relee cada ~5 s y el dibujo no cambia
 export const FieldDrawing: React.FC<{ width: number; height: number; dark: boolean }> = React.memo(function FieldDrawing({ width, height, dark }) {
-    const c = dark ? PALETTE.dark : PALETTE.light;
+    const c = dark ? FIELD_PALETTE.dark : FIELD_PALETTE.light;
     // En la web el id del recorte es del documento entero: uno por dibujo
     const clip = `el-play-grass-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
     return (

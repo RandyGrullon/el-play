@@ -737,7 +737,71 @@
       "soft": "soft",
       "medium": "medium",
       "hard": "hard"
-    }
+    },
+    "views": {
+      "balls": "Batted balls",
+      "zones": "Zones",
+      "heat": "Heat"
+    },
+    "result": {
+      "single": "Single",
+      "double": "Double",
+      "triple": "Triple",
+      "hr": "Home run",
+      "out": "Out",
+      "error": "Error"
+    },
+    "kind": {
+      "ground": "Grounder",
+      "line": "Liner",
+      "fly": "Fly ball",
+      "popup": "Pop-up"
+    },
+    "dir": {
+      "pull": "Pull",
+      "center": "Center",
+      "oppo": "Opposite"
+    },
+    "filters": {
+      "label": "Map filters",
+      "team": "Team",
+      "result": "Result",
+      "type": "Type",
+      "all": "All",
+      "hits": "Hits",
+      "hr": "Home runs",
+      "outs": "Outs"
+    },
+    "tapBall": "Tap a batted ball",
+    "replay": "Replay",
+    "stop": "Stop",
+    "hardBadge": "Hard-hit ball",
+    "inPlay": "In play",
+    "hitsShort": "Hits",
+    "hrShort": "HR",
+    "hardPct": "Hard-hit",
+    "avgEv": "Avg EV",
+    "avgLa": "Avg launch",
+    "longest": "Longest",
+    "noEv": "This ballpark does not measure exit velocity",
+    "empty": "No batted balls with these filters",
+    "prev": "Previous batted ball",
+    "next": "Next batted ball",
+    "closeDetail": "Close the detail",
+    "pitch": "{{mph}} mph {{type}}",
+    "vs": "Pitcher",
+    "launch": "{{deg}}°",
+    "zoneLabel": "{{count}} · {{pct}}% · {{hits}} H",
+    "less": "Less",
+    "more": "More",
+    "heatAria": "Heat map with {{count}} batted balls",
+    "zonesAria": "Zones with {{count}} batted balls",
+    "expand": "Expand",
+    "batter": "Batter",
+    "pickBatter": "Pick a batter",
+    "clearBatter": "Clear the batter",
+    "ballsCount_one": "{{count}} batted ball",
+    "ballsCount_other": "{{count}} batted balls"
   },
   "anim": {
     "single": "SINGLE",

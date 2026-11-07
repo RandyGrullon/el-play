@@ -737,7 +737,71 @@
       "soft": "suave",
       "medium": "medio",
       "hard": "fuerte"
-    }
+    },
+    "views": {
+      "balls": "Batazos",
+      "zones": "Zonas",
+      "heat": "Calor"
+    },
+    "result": {
+      "single": "Sencillo",
+      "double": "Doble",
+      "triple": "Triple",
+      "hr": "Jonrón",
+      "out": "Out",
+      "error": "Error"
+    },
+    "kind": {
+      "ground": "Rodado",
+      "line": "Línea",
+      "fly": "Elevado",
+      "popup": "Globito"
+    },
+    "dir": {
+      "pull": "Halado",
+      "center": "Centro",
+      "oppo": "Contrario"
+    },
+    "filters": {
+      "label": "Filtros del mapa",
+      "team": "Equipo",
+      "result": "Resultado",
+      "type": "Tipo",
+      "all": "Todo",
+      "hits": "Hits",
+      "hr": "Jonrones",
+      "outs": "Outs"
+    },
+    "tapBall": "Toca un batazo",
+    "replay": "Repetir",
+    "stop": "Detener",
+    "hardBadge": "Batazo fuerte",
+    "inPlay": "En juego",
+    "hitsShort": "Hits",
+    "hrShort": "HR",
+    "hardPct": "Fuertes",
+    "avgEv": "EV prom.",
+    "avgLa": "Ángulo prom.",
+    "longest": "Más largo",
+    "noEv": "Este estadio no mide la velocidad de salida",
+    "empty": "Ningún batazo con estos filtros",
+    "prev": "Batazo anterior",
+    "next": "Batazo siguiente",
+    "closeDetail": "Cerrar el detalle",
+    "pitch": "{{type}} de {{mph}} mph",
+    "vs": "Lanzador",
+    "launch": "{{deg}}°",
+    "zoneLabel": "{{count}} · {{pct}}% · {{hits}} H",
+    "less": "Menos",
+    "more": "Más",
+    "heatAria": "Mapa de calor con {{count}} batazos",
+    "zonesAria": "Zonas con {{count}} batazos",
+    "expand": "Ampliar",
+    "batter": "Bateador",
+    "pickBatter": "Escoge un bateador",
+    "clearBatter": "Quitar el bateador",
+    "ballsCount_one": "{{count}} batazo",
+    "ballsCount_other": "{{count}} batazos"
   },
   "anim": {
     "single": "HIT",

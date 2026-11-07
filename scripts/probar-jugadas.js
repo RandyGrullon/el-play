@@ -22,7 +22,7 @@ const compile = (name) => {
     const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } });
     fs.writeFileSync(path.join(OUT, `${name}.js`), outputText);
 };
-['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts', 'field'].forEach(compile);
+['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts', 'field', 'spray'].forEach(compile);
 // playEvents usa el modo PRO de la cuenta (React Native): aquí siempre Lite
 fs.writeFileSync(path.join(OUT, 'pro.js'), 'exports.proActive = () => false;\n');
 
@@ -850,6 +850,104 @@ it('las otras formas del nombre: cada una enlaza a la misma persona, sin repetir
     assert.deepStrictEqual(formas.map((person) => [person.id, person.name, person.teamId]), [[12345678, 'Pelotero Uno', 9001], [12345678, 'P. Uno', 9001]]);
     const partes = nameSegments('P. Uno roba la segunda; Pelotero Uno anota', formas);
     assert.deepStrictEqual(partes.filter((part) => part.person).map((part) => [part.text, part.person.id]), [['P. Uno', 12345678], ['Pelotero Uno', 12345678]]);
+});
+
+
+// ---------------------------------------------------------------- mapa de batazos (src/lib/spray.ts)
+console.log('mapa de batazos');
+const spray = require(path.join(OUT, 'spray.js'));
+const turno = (i, event, hit, extra = {}) => ({
+    i, inning: 1 + Math.floor(i / 6), top: i % 2 === 0, complete: true, scoring: false, event, eventLabel: extra.label ?? null, desc: '', rbi: 0, away: 0, home: 0, outs: 0, actions: [],
+    batter: { id: extra.batter ?? 12345678, name: extra.name ?? 'Pelotero Uno', side: extra.side ?? 'R' },
+    pitcher: { id: 87654321, name: 'Lanzador Dos', hand: extra.hand ?? 'R' },
+    pitches: [{ r: 'ball', hit: null }, { r: 'inplay', type: 'FF', typeDesc: 'Four-Seam Fastball', mph: 95, hit }]
+});
+const parque = parkFor('Estadio Quisqueya Juan Marichal');
+// x/y del cuadro de Gameday: home 125.42,198.27; 2.5 pies por unidad
+const JUEGO = [
+    turno(0, 'single', { ev: 101, la: 12, dist: 250, x: 80, y: 120, traj: 'line_drive', hard: 'hard' }),
+    turno(1, 'field_out', { ev: 80, la: -5, dist: 90, x: 140, y: 170, traj: 'ground_ball' }, { side: 'L', batter: 23456789, name: 'Pelotero Tres' }),
+    turno(2, 'home_run', { ev: 106, la: 28, dist: 420, x: 125, y: 40, traj: 'fly_ball' }),
+    turno(3, 'double', { ev: null, la: null, dist: null, x: 190, y: 100, traj: null }, { side: 'S', hand: 'L', batter: 34567890, name: 'Pelotero Cuatro' }),
+    turno(4, 'field_error', { ev: 70, la: 60, dist: 120, x: 118, y: 160, traj: 'popup' })
+];
+
+it('clase del resultado por el evento', () => {
+    assert.deepStrictEqual(['single', 'double', 'triple', 'home_run', 'field_error', 'field_out', 'sac_fly', null].map(spray.resultOf), ['single', 'double', 'triple', 'hr', 'error', 'out', 'out', 'out']);
+    assert.strictEqual(spray.trajOf(null, 40), 'fly');
+    assert.strictEqual(spray.trajOf('bunt_popup', null), 'popup');
+    assert.strictEqual(spray.trajOf(null, null, 'Groundout'), 'ground');
+    assert.strictEqual(spray.trajOf(null, null, null), null);
+});
+
+it('batazos y filtros: equipo, resultado, trayectoria y bateador se combinan', () => {
+    const balls = spray.sprayBalls(JUEGO, parque);
+    assert.deepStrictEqual(balls.map((b) => b.order), [0, 1, 2, 3, 4]);
+    const f = (extra) => spray.filterBalls(balls, { ...spray.NO_FILTERS, ...extra }).map((b) => b.key);
+    assert.deepStrictEqual(f({ team: 'away' }), [0, 2, 4]);
+    assert.deepStrictEqual(f({ result: 'hits' }), [0, 2, 3]);
+    assert.deepStrictEqual(f({ result: 'hr' }), [2]);
+    assert.deepStrictEqual(f({ result: 'outs' }), [1]);
+    assert.deepStrictEqual(f({ traj: 'ground' }), [1]);
+    assert.deepStrictEqual(f({ team: 'away', result: 'hits', batter: 12345678 }), [0, 2]);
+    // El jonrón cae detrás de la cerca
+    const hr = balls[2];
+    assert.ok(Math.hypot(hr.land.x, hr.land.y) > wallAt(parque, hr.deg));
+});
+
+it('vuelo desde arriba: el rodado recto con piques; la curva crece con el ángulo', () => {
+    const land = { x: 0, y: 300 };
+    const rodado = spray.flightPath(land, 'ground', -5);
+    assert.strictEqual(rodado.bulge, 0);
+    assert.strictEqual(rodado.bounces.length, 3);
+    const linea = spray.flightPath(land, 'line', 15);
+    const elevado = spray.flightPath(land, 'fly', 32);
+    assert.ok(linea.bulge > 0 && elevado.bulge > linea.bulge);
+    close(spray.pathLength(rodado), 300, 0);
+    // Al right la panza va hacia el centro (x menor que la recta)
+    const derecha = spray.flightPath({ x: 200, y: 200 }, 'fly', 30);
+    assert.ok(derecha.control.x < 100);
+});
+
+it('zona del batazo y halado/centro/contrario por el lado del bateador', () => {
+    assert.strictEqual(spray.zoneOf({ x: 0, y: 100 }), 'IF');
+    assert.strictEqual(spray.zoneOf({ x: -200, y: 200 }), 'LF');
+    assert.strictEqual(spray.zoneOf({ x: 0, y: 350 }), 'CF');
+    assert.strictEqual(spray.zoneOf({ x: 120, y: 280 }), 'RCF');
+    assert.strictEqual(spray.dirOf(-30, 'R', 'R'), 'pull');
+    assert.strictEqual(spray.dirOf(-30, 'L', 'R'), 'oppo');
+    assert.strictEqual(spray.dirOf(5, 'L', 'R'), 'center');
+    // Ambidiestro contra zurdo batea a la derecha: halar es al left
+    assert.strictEqual(spray.dirOf(-30, 'S', 'L'), 'pull');
+    assert.strictEqual(spray.dirOf(-30, null, 'L'), null);
+});
+
+it('cifras de los batazos: fuertes entre los medidos, promedios y el más largo', () => {
+    const s = spray.sprayStats(spray.sprayBalls(JUEGO, parque));
+    partial(s, { balls: 5, hits: 3, hr: 1, tracked: 4 });
+    close(s.hardHit, 0.5);
+    close(s.avgEv, (101 + 80 + 106 + 70) / 4);
+    assert.strictEqual(s.longest.key, 2);
+    close(s.traj.ground, 0.25);
+    const zonas = spray.zoneStats(spray.sprayBalls(JUEGO, parque));
+    assert.strictEqual(Object.values(zonas).reduce((sum, z) => sum + z.count, 0), 5);
+    assert.strictEqual(spray.sprayStats([]).hardHit, null);
+});
+
+it('tiempos: la entrada cabe en 2,5 s y «Repetir» en 20 s', () => {
+    const { dur, step } = spray.entryTiming(80);
+    assert.ok(dur + step * 79 <= 2500.001);
+    assert.strictEqual(spray.replayStep(10), 700);
+    assert.ok(spray.replayStep(80) * 80 <= 20000);
+});
+
+it('mapa de calor: la celda más caliente vale 1 y queda junto a las caídas', () => {
+    const grid = spray.heatGrid([{ x: 0, y: 300 }, { x: 5, y: 305 }], { minX: -300, maxX: 300, minY: 0, maxY: 450 });
+    const hot = grid.reduce((a, b) => (b.v > a.v ? b : a));
+    assert.strictEqual(hot.v, 1);
+    assert.ok(Math.hypot(hot.x, hot.y - 300) < 20);
+    assert.deepStrictEqual(spray.heatGrid([], { minX: 0, maxX: 1, minY: 0, maxY: 1 }), []);
+    assert.notStrictEqual(spray.heatColor(0), spray.heatColor(1));
 });
 
 fs.rmSync(OUT, { recursive: true, force: true });
