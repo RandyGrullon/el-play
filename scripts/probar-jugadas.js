@@ -1179,6 +1179,28 @@ const helpLib = require(compileTo('lib/fantasyHelp.ts'));
         assert.deepStrictEqual([...notCounted(d, local)], [[12345605, 'over']]);
     });
 
+    it('equipo que cuenta: el de un juego pospuesto no suma ni ocupa cupo, y su pronóstico no cuenta (igual que el servidor)', () => {
+        const { effectiveEntry, notCounted, perTeamLimit } = fantasyLib;
+        const start = Date.parse('2026-11-07T23:00:00Z');
+        const d = dia(
+            [p(12345601, 'B', 1, 12, 5, { status: 'postponed' }), p(12345602, 'B', 3, 12, 5, { played: true, points: 4 }), p(12345603, 'B', 3, 12, 5), p(12345604, 'B', 4, 12, 5), p(12345605, 'B', 4, 12, 5), p(12345606, 'P', 3, 2, 5)],
+            '2026-11-07T23:00:00Z'
+        );
+        d.games[0] = { ...d.games[0], state: 'final', detailedState: 'Postponed', status: 'postponed' };
+        d.games[1] = { ...d.games[1], date: '2026-11-07T20:00:00Z', state: 'live' };
+        // Sin historial: 12 × 5 + 2 = 62 > 50, pero el pospuesto no gasta: 12 × 4 + 2 = 50, cuentan todos los demás
+        const local = { lineup: [12345601, 12345602, 12345603, 12345604, 12345605, 12345606], captain: null, picks: { 1: 1, 2: 3 }, savedAt: 1 };
+        assert.deepStrictEqual(effectiveEntry(d, local).lineup, local.lineup);
+        assert.deepStrictEqual([...notCounted(d, local)], []);
+        // Con historial: el pospuesto no cuenta (ni su pronóstico), aunque se cambie después de su hora
+        const history = { v: 1, players: Object.fromEntries(local.lineup.map((id) => [id, [[start - 4 * 3600000, null]]])), picks: { 1: [[1, start - 4 * 3600000]], 2: [[3, start - 4 * 3600000]] } };
+        const counted = effectiveEntry(d, { ...local, history });
+        assert.deepStrictEqual(counted.lineup, [12345602, 12345603, 12345604, 12345605, 12345606]);
+        assert.deepStrictEqual(counted.picks, { 2: 3 });
+        // Sin rules, el tope por equipo no cuenta los equipos del juego pospuesto (quedan 2 equipos: 3 por equipo)
+        assert.strictEqual(perTeamLimit(d), 3);
+    });
+
     it('puestos compartidos en los empates: 1, 2, 2, 4 (también con decimales que no cuadran exactos)', () => {
         const { rankRows } = fantasyLib;
         const rows = rankRows([
@@ -1191,8 +1213,8 @@ const helpLib = require(compileTo('lib/fantasyHelp.ts'));
         assert.deepStrictEqual(rankRows([]), []);
     });
 
-    it('selector: estado, razones y filtros (Disponibles, Me alcanza, Titulares, juego y equipo)', () => {
-        const { statusOf, reasonOf, pickerRows, DEFAULT_FILTERS, slotsLeft, matchupOf, pickerOptions } = pickerLib;
+    it('selector: estado, razones y filtros (Disponibles, Me alcanza, Titulares, juego y equipo), igual que la web', () => {
+        const { statusOf, badgeOf, reasonOf, pickerRows, defaultFilters, slotsLeft, matchupOf, pickerOptions, roleFull, isFiltered } = pickerLib;
         const players = [
             p(12345678, 'B', 1, 12, 9, { name: 'Pelotero Uno', status: 'confirmed', last5: [3, 5, 8, 2, 12], opp: { id: 2, abbrev: 'BBB', home: false } }),
             p(12345679, 'B', 1, 6, 4, { name: 'Pelotero Dos', status: 'bench' }),
@@ -1200,45 +1222,50 @@ const helpLib = require(compileTo('lib/fantasyHelp.ts'));
             p(12345681, 'B', 3, 11, 3, { name: 'Pelotero Cuatro' }),
             p(12345682, 'B', 4, 4, 2, { name: 'Pelotero Cinco', starter: false }),
             p(12345683, 'P', 3, 10, 8, { name: 'Lanzador Uno', status: 'probable' }),
-            p(12345684, 'P', 4, 6, 3, { name: 'Lanzador Dos', rest: true })
+            p(12345684, 'P', 4, 6, 3, { name: 'Lanzador Dos', rest: true }),
+            p(12345685, 'P', 4, 5, 1, { name: 'Lanzador Tres' })
         ];
         const d = dia(players, PAST);
         d.games[0] = { ...d.games[0], state: 'live' };
         const vacio = { lineup: [], captain: null, picks: {}, savedAt: 0 };
-        assert.strictEqual(statusOf(d, players[0]), 'started');
+        // El del servidor manda; sin él, se saca del día (titular del último juego = Esperado, si no Banca)
+        assert.strictEqual(statusOf(d, players[0]), 'confirmed');
+        assert.strictEqual(badgeOf({ status: 'confirmed', locked: true }), 'started');
+        assert.strictEqual(badgeOf({ status: 'dnp', locked: true }), 'dnp');
         assert.strictEqual(statusOf(d, players[3]), 'expected');
         assert.strictEqual(statusOf(d, players[4]), 'bench');
         assert.strictEqual(statusOf(d, players[5]), 'probable');
         assert.strictEqual(statusOf(d, players[6]), 'resting');
+        assert.strictEqual(statusOf(d, players[7]), 'bullpen');
+        // En PRO, las alineaciones dicen «Esperado» o «Confirmado» si el día no trae el estado
+        assert.strictEqual(statusOf(d, players[4], Date.now(), 'expected'), 'expected');
         assert.deepStrictEqual(reasonOf(d, vacio, players[0]), { kind: 'started' });
         assert.deepStrictEqual(matchupOf(d, players[0]), { team: 'AAA', opp: 'BBB', home: false });
         assert.deepStrictEqual(matchupOf(d, players[3]), { team: 'CCC', opp: 'DDD', home: false });
-        // 3 bateadores del juego 2 con 40 créditos gastados (el lanzador de 10, y dos de 11 y 4): quedan 25
+        // 2 bateadores y el lanzador del juego 2 (10 + 11 + 4): quedan 25 créditos
         const mio = { lineup: [12345683, 12345681, 12345682], captain: null, picks: {}, savedAt: 1 };
         assert.deepStrictEqual(slotsLeft(d, mio), { batters: 3, pitchers: 0, credits: 25 });
-        assert.deepStrictEqual(reasonOf(d, mio, players[6]), { kind: 'fullP' });
-        // Disponibles: sin los del juego empezado; los míos abiertos sí salen
+        assert.deepStrictEqual(reasonOf(d, mio, players[6]), { kind: 'fullP', count: 1 });
+        assert.strictEqual(roleFull(d, mio, 'P'), true);
+        // Disponibles: sin los del juego empezado; los de tu equipo siempre salen
         const ids = (rows) => rows.map((row) => row.player.id);
-        assert.deepStrictEqual(ids(pickerRows(d, mio, { ...DEFAULT_FILTERS, role: 'B' }, 'proj')), [12345681, 12345682]);
-        assert.deepStrictEqual(ids(pickerRows(d, mio, { ...DEFAULT_FILTERS, role: 'B', available: false }, 'proj')), [12345678, 12345680, 12345679, 12345681, 12345682]);
-        // Titulares: confirmados, esperados (o titular del último juego sin estado) y abridores probables; con su juego
-        // empezado ya no (dicen «Ya empezó»)
-        assert.deepStrictEqual(ids(pickerRows(d, vacio, { ...DEFAULT_FILTERS, role: 'B', available: false, starters: true }, 'proj')), [12345681]);
-        assert.deepStrictEqual(ids(pickerRows(d, vacio, { ...DEFAULT_FILTERS, role: 'P', available: false, starters: true }, 'proj')), [12345683]);
+        assert.deepStrictEqual(ids(pickerRows(d, mio, defaultFilters('B'), 'proj')), [12345681, 12345682]);
+        assert.deepStrictEqual(ids(pickerRows(d, mio, { ...defaultFilters('B'), available: false }, 'proj')), [12345678, 12345680, 12345679, 12345681, 12345682]);
+        assert.strictEqual(isFiltered(defaultFilters('B')), false);
+        assert.strictEqual(isFiltered({ ...defaultFilters('B'), teamId: 1 }), true);
+        // Titulares: confirmados, esperados y abridores probables
+        assert.deepStrictEqual(ids(pickerRows(d, vacio, { ...defaultFilters('B'), available: false, starters: true }, 'proj')), [12345678, 12345680, 12345681]);
+        assert.deepStrictEqual(ids(pickerRows(d, vacio, { ...defaultFilters('P'), available: false, starters: true }, 'proj')), [12345683]);
         // Por juego y por equipo
-        assert.deepStrictEqual(ids(pickerRows(d, vacio, { ...DEFAULT_FILTERS, role: 'B', available: false, gamePk: 2 }, 'proj')), [12345681, 12345682]);
-        assert.deepStrictEqual(ids(pickerRows(d, vacio, { ...DEFAULT_FILTERS, role: 'B', available: false, teamId: 1 }, 'proj')), [12345678, 12345679]);
-        // Me alcanza: con 25 créditos y 3 cupos, el de 12 sigue; con 8 que quedan, solo los de 8 o menos
+        assert.deepStrictEqual(ids(pickerRows(d, vacio, { ...defaultFilters('B'), available: false, gamePk: 2 }, 'proj')), [12345681, 12345682]);
+        assert.deepStrictEqual(ids(pickerRows(d, vacio, { ...defaultFilters('B'), available: false, teamId: 1 }, 'proj')), [12345678, 12345679]);
+        // Me alcanza: con 35 créditos y 30 gastados quedan 5: fuera el de 12 y el de 6 (los míos siempre salen)
         const caro = { lineup: [12345683, 12345681, 12345682, 12345680], captain: null, picks: {}, savedAt: 1 };
         d.games[0] = { ...d.games[0], state: 'preview', date: LATER };
         assert.strictEqual(slotsLeft(d, caro).credits, 20);
-        // Con 35 créditos quedan 5: fuera el de 12 y el de 6 (los míos siempre salen)
         const apretado = { ...d, credits: { budget: 35, min: 4, max: 12 } };
-        assert.deepStrictEqual(ids(pickerRows(apretado, caro, { ...DEFAULT_FILTERS, role: 'B', available: false, affordable: true }, 'proj')), [12345680, 12345681, 12345682]);
-        assert.deepStrictEqual(ids(pickerRows(d, vacio, { ...DEFAULT_FILTERS, role: 'B', available: false, starters: true }, 'proj')), [12345678, 12345680, 12345681]);
-        const sinPlata = { lineup: [12345683, 12345681, 12345682, 12345679], captain: null, picks: {}, savedAt: 1 };
-        // 10 + 11 + 4 + 6 = 31: quedan 19, cabe el de 12; con otro de 12 adentro no
-        assert.strictEqual(reasonOf(d, sinPlata, players[0]), null);
+        assert.deepStrictEqual(ids(pickerRows(apretado, caro, { ...defaultFilters('B'), available: false, affordable: true }, 'proj')), [12345680, 12345681, 12345682]);
+        // Las razones con sus números
         const lleno = dia([...players, p(12345690, 'B', 2, 12, 1, { name: 'Pelotero Seis' }), p(12345691, 'B', 2, 4, 1, { name: 'Pelotero Siete' })]);
         assert.deepStrictEqual(reasonOf(lleno, { lineup: [12345683, 12345681, 12345690, 12345679], captain: null, picks: {}, savedAt: 1 }, players[0]), { kind: 'budget', short: 1 });
         assert.deepStrictEqual(reasonOf(lleno, { lineup: [12345680, 12345690], captain: null, picks: {}, savedAt: 1 }, lleno.players.find((x) => x.id === 12345691)), { kind: 'team', n: 2, team: 'BBB' });
@@ -1248,7 +1275,7 @@ const helpLib = require(compileTo('lib/fantasyHelp.ts'));
     });
 
     it('selector: orden por Proyección, Valor, Precio, Pts/J, Últimos 5 y % elegido (sin dato al final)', () => {
-        const { pickerRows, DEFAULT_FILTERS, pickerOptions } = pickerLib;
+        const { pickerRows, defaultFilters, pickerOptions } = pickerLib;
         const players = [
             p(12345678, 'B', 1, 12, 9, { name: 'Pelotero Uno', last5: [10, 10, 10] }),
             p(12345679, 'B', 2, 4, 4, { name: 'Pelotero Dos', last5: [1, 2, 3, 4, 5, 20] }),
@@ -1256,22 +1283,24 @@ const helpLib = require(compileTo('lib/fantasyHelp.ts'));
         ];
         const d = dia(players);
         const vacio = { lineup: [], captain: null, picks: {}, savedAt: 0 };
-        const order = (sort, extras) => pickerRows(d, vacio, { ...DEFAULT_FILTERS, role: 'B' }, sort, extras).map((row) => row.player.id);
+        const order = (sort, extras) => pickerRows(d, vacio, defaultFilters('B'), sort, extras).map((row) => row.player.id);
         assert.deepStrictEqual(order('proj'), [12345678, 12345680, 12345679]);
-        // Valor: 4/4 = 1, 6/8 = 0.75, 9/12 = 0.75 (empate: más proyección primero)
+        // Valor: 4/4 = 1, 9/12 = 0.75 y 6/8 = 0.75 (empate: más proyección primero)
         assert.deepStrictEqual(order('value'), [12345679, 12345678, 12345680]);
         assert.deepStrictEqual(order('price'), [12345678, 12345680, 12345679]);
         const ppg = { 12345678: 3, 12345679: 7 };
         assert.deepStrictEqual(order('ppg', { ppg: (x) => ppg[x.id] }), [12345679, 12345678, 12345680]);
         // Últimos 5: (2 + 3 + 4 + 5 + 20) / 5 = 6.8 contra 10; sin dato al final
         assert.deepStrictEqual(order('last5'), [12345678, 12345679, 12345680]);
-        const row = pickerRows(d, vacio, { ...DEFAULT_FILTERS, role: 'B' }, 'proj').find((r) => r.player.id === 12345679);
+        const row = pickerRows(d, vacio, defaultFilters('B'), 'proj').find((r) => r.player.id === 12345679);
         assert.deepStrictEqual(row.last5, [2, 3, 4, 5, 20]);
         assert.strictEqual(row.last5Avg, 6.8);
-        // % elegido: solo se ve con el juego cerrado
-        assert.strictEqual(pickerRows(d, vacio, { ...DEFAULT_FILTERS, role: 'B' }, 'owned', { owned: () => 40 })[0].owned, null);
-        assert.deepStrictEqual(pickerOptions(d).sorts, ['proj', 'value', 'price', 'last5']);
-        assert.deepStrictEqual(pickerOptions(d, { ppg: () => 1, owned: () => 1 }).sorts, ['proj', 'value', 'price', 'ppg', 'last5', 'owned']);
+        const owned = { 12345680: 40, 12345679: 12.5 };
+        assert.deepStrictEqual(order('owned', { owned: (x) => owned[x.id] }), [12345680, 12345679, 12345678]);
+        // El % elegido solo se ofrece cuando ya existe; sin proyección se empieza por Pts/J
+        assert.deepStrictEqual(pickerOptions(d).sorts, ['proj', 'value', 'price', 'ppg', 'last5']);
+        assert.deepStrictEqual(pickerOptions(d, true).sorts, ['proj', 'value', 'price', 'ppg', 'last5', 'owned']);
+        assert.strictEqual(pickerOptions(dia([p(1, 'B', 1, 5, undefined)])).defaultSort, 'ppg');
     });
 
     it('ayuda: los números y los ejemplos salen de las reglas del día', () => {

@@ -107,6 +107,8 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; counted: DayEntry
     const locked = isLocked(day, player);
     const postponed = playerPostponed(day, player);
     const status = statusOf(day, player);
+    // Cómo llega a su juego, hasta que empieza (después se ven sus puntos)
+    const badge = !locked && status && status !== 'dnp' && status !== 'postponed' ? status : null;
     const captain = entry.captain === player.id;
     const line = lineText(player, t);
     const closes = lockText(day, player, t, lang);
@@ -187,9 +189,9 @@ const PlayerSlot: React.FC<{ day: FantasyDay; entry: DayEntry; counted: DayEntry
                                 {player.rest ? ` · ${t('fantasy.smart.restShort')}` : player.startedAgo !== undefined ? ` · ${t('fantasy.smart.startedAgo', { count: player.startedAgo })}` : ''}
                             </Txt>
                         )}
-                        {(warning || (status && status !== 'started' && status !== 'dnp' && status !== 'postponed')) && (
+                        {(warning || badge) && (
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 3 }}>
-                                {status && status !== 'started' && status !== 'dnp' && status !== 'postponed' ? <StatusBadge status={status} /> : null}
+                                {badge ? <StatusBadge status={badge} /> : null}
                                 {warning ? <CardWarning text={warning.text} tone={warning.tone} /> : null}
                             </View>
                         )}

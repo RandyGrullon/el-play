@@ -229,7 +229,8 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ day, entry, counted = en
           : status === 'dnp'
             ? { text: t('fantasyHelp.card.dnp'), tone: 'muted' as const }
             : null;
-    const badge = status && status !== 'started' && status !== 'dnp' && status !== 'postponed' ? status : null;
+    // Cómo llega a su juego, hasta que empieza (después se ven sus puntos)
+    const badge = !started && status && status !== 'dnp' && status !== 'postponed' ? status : null;
     const parts = useMemo(() => pointParts(player, day.scoring), [player, day.scoring]);
     const line = lineText(player, t);
     const color = team?.color ?? '#64748b';

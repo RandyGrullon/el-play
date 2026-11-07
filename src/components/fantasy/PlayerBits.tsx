@@ -33,7 +33,7 @@ export const reasonText = (reason: PickReason | null, t: TFunction, lang: string
         case 'fullB':
             return t('fantasyHelp.reason.fullB', { n: reason.n });
         case 'fullP':
-            return t('fantasyHelp.reason.fullP', { count: 1 });
+            return t('fantasyHelp.reason.fullP', { count: reason.count });
         case 'team':
             return t('fantasyHelp.reason.team', { n: reason.n, team: reason.team });
         case 'budget':

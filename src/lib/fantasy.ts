@@ -118,7 +118,8 @@ const finite = (value: unknown): value is number => typeof value === 'number' &&
  */
 export const perTeamLimit = (day: (Pick<FantasyDay, 'games'> & { rules?: FantasyDay['rules'] }) | null | undefined) => {
     if (finite(day?.rules?.perTeam) && day.rules.perTeam > 0) return day.rules.perTeam;
-    const teams = new Set((day?.games ?? []).flatMap((game) => [game.away?.id, game.home?.id]).filter(Boolean)).size;
+    // Los juegos pospuestos no cuentan (sus equipos no juegan ese día), como en el servidor
+    const teams = new Set((day?.games ?? []).filter((game) => !isPostponed(game)).flatMap((game) => [game.away?.id, game.home?.id]).filter(Boolean)).size;
     return teams ? Math.max(RULES.perTeam, Math.ceil((RULES.batters + RULES.pitchers) / teams)) : RULES.perTeam;
 };
 
@@ -518,7 +519,8 @@ const fits = (kept: FantasyPlayer[], player: FantasyPlayer, budget: number | nul
  * (el primero que se cerró: cambiarlo después no vale) y cada pronóstico como estaba al empezar su juego.
  * Si alguien se pasa de los cupos o del presupuesto (quitó a uno ya cerrado para meter a otro, o los precios
  * cambiaron), sobran los que entraron de último. Sin historial (lo del teléfono o filas de antes del arreglo) cuenta
- * el orden de la alineación.
+ * el orden de la alineación. Un pelotero de un juego pospuesto no suma ni ocupa cupo, rol ni créditos (se puede cambiar
+ * cuando sea) y un pronóstico de un juego pospuesto no cuenta. Igual que el servidor.
  */
 const hasHistory = (history: DayEntry['history']): history is EntryHistory => !!history && typeof history === 'object' && !!history.players && typeof history.players === 'object';
 
@@ -531,7 +533,7 @@ export const effectiveEntry = (day: FantasyDay, entry: DayEntry): DayEntry => {
         const lineup: number[] = [];
         for (const id of entry.lineup) {
             const player = day.players.find((p) => p.id === id);
-            if (!player) lineup.push(id);
+            if (!player || playerPostponed(day, player)) lineup.push(id);
             else if (fits(kept, player, budget, perTeamLimit(day))) {
                 kept.push(player);
                 lineup.push(id);
@@ -544,7 +546,7 @@ export const effectiveEntry = (day: FantasyDay, entry: DayEntry): DayEntry => {
     const counted: { player: FantasyPlayer; lock: number; added: number }[] = [];
     for (const [key, spans] of Object.entries(history.players)) {
         const player = day.players.find((p) => String(p.id) === key);
-        if (!player) continue;
+        if (!player || playerPostponed(day, player)) continue;
         const lock = locks.get(String(player.gamePk)) ?? Infinity;
         const span = spanAt(spans, lock);
         if (span) counted.push({ player, lock, added: Number(span[0]) });
@@ -558,7 +560,7 @@ export const effectiveEntry = (day: FantasyDay, entry: DayEntry): DayEntry => {
     const lineup = kept.map((item) => item.player.id).sort((a, b) => order(a) - order(b));
     const captains = kept.filter((item) => valueAt(history.captain, item.lock) === item.player.id).sort((a, b) => a.lock - b.lock);
     const picks: Record<string, number> = {};
-    for (const game of day.games) {
+    for (const game of day.games.filter((item) => !isPostponed(item))) {
         const pick = valueAt(history.picks?.[game.gamePk], locks.get(String(game.gamePk)) ?? Infinity);
         if (pick) picks[game.gamePk] = pick;
     }
@@ -580,7 +582,8 @@ export const notCounted = (day: FantasyDay, entry: DayEntry, effective: DayEntry
     for (const id of entry.lineup) {
         if (used.has(id)) continue;
         const player = day.players.find((p) => p.id === id);
-        if (!player) continue;
+        // El de un juego pospuesto tiene su propio aviso («Pospuesto: cámbialo»)
+        if (!player || playerPostponed(day, player)) continue;
         const game = gameOf(day, player.gamePk);
         const lock = game ? lockTime(game) : Infinity;
         out.set(id, history && lock <= now && !spanAt(history.players[String(id)], lock) ? 'late' : 'over');
