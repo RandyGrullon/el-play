@@ -14,6 +14,7 @@ import { ProPlayAnimation } from '../pro/animaciones/ProPlayAnimation';
 import { MissedCard } from '../pro/animaciones/MissedCard';
 import { playHaptic } from '../pro/animaciones/haptics';
 import { hasProScene } from '../pro/animaciones/scenes';
+import { ReplayTag } from './ReplayTag';
 import { Confetti, type Burst } from './Confetti';
 import { HomeRunFlight, homeRunFlightMs } from './HomeRunFlight';
 
@@ -207,6 +208,8 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
     const [letterValues] = useState(() => Array.from({ length: 24 }, () => new Animated.Value(0)));
     // Cambio en el marcador: la mitad del que anotó crece (flexGrow no va por el hilo nativo: valor aparte y sin él)
     const [grow] = useState(() => new Animated.Value(0));
+    // Etiqueta «Repetición» (solo al repetir una jugada del historial)
+    const [tag] = useState(() => new Animated.Value(reduce ? 1 : 0));
     const doneRef = useRef(onDone);
     useEffect(() => {
         doneRef.current = onDone;
@@ -272,6 +275,7 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
             running.push(Animated.timing(v.stage, { toValue: 1, duration: 200, useNativeDriver: native }));
             running[0].start();
         }
+        if (event.replay) go(tag, 1, 300, 180);
 
         if (runnerCard) {
             go(v.card, 1, 480);
@@ -443,6 +447,7 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                 running.push(animation);
                 animation.start();
             };
+            if (event.replay) exit(tag, 0, 200);
             if (reduce) exit(v.stage, 0);
             else if (runnerCard || kind === 'steal' || kind === 'out' || kind === 'pinchHitter' || kind === 'pinchRunner' || kind === 'pitchingChange') exit(v.card, 2);
             else if (kind === 'inning' || kind === 'lead') {
@@ -1506,9 +1511,15 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
     return (
         <View pointerEvents="box-none" style={styles.root} accessibilityLiveRegion="polite">
             <Animated.View style={{ width: W, height: H, opacity: v.stage }}>
-                <Pressable onPress={() => closeRef.current()} accessibilityLabel={t('anim.close')} style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
+                <Pressable onPress={() => closeRef.current()} accessibilityLabel={event.replay ? `${t('anim.replay')}. ${t('anim.close')}` : t('anim.close')} style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
                     {body}
                 </Pressable>
+                {/* Repetición desde el historial: la etiqueta baja un poco después de que entra la jugada y se va al cerrar */}
+                {event.replay && (
+                    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: tag, transform: [{ translateY: tag.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }] }]}>
+                        <ReplayTag style={{ top: insets.top + 14 }} />
+                    </Animated.View>
+                )}
             </Animated.View>
         </View>
     );

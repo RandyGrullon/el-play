@@ -402,7 +402,8 @@
     "inProgress": "Al bate",
     "atBatNow": "{{batter}} al bate contra {{pitcher}}",
     "pitches_one": "{{count}} pitcheo",
-    "pitches_other": "{{count}} pitcheos"
+    "pitches_other": "{{count}} pitcheos",
+    "replay": "Repetir la jugada"
   },
   "box": {
     "team": "Equipo",
@@ -821,6 +822,7 @@
     "inningEnd_top": "Fin de la alta · {{n}}.ª entrada",
     "inningEnd_bottom": "Fin de la baja · {{n}}.ª entrada",
     "nowBatting": "Ahora batea",
+    "replay": "Repetición",
     "close": "Cerrar la animación",
     "final": "Final",
     "win": "¡VICTORIA!",

@@ -12,6 +12,7 @@ import { useColors } from '../../../theme/theme';
 import { alpha, fonts, inkOn, shadow } from '../../../theme/tokens';
 import { TeamLogo, Txt } from '../../ui';
 import { CountUp, MOTION_EASE, Odometer, PlusOne, useProColors } from '../kit';
+import { ReplayTag } from '../../gamecast/ReplayTag';
 
 /** Colores del escenario con los del tema (claro u oscuro) */
 export const useStagePalette = () => {
@@ -129,11 +130,13 @@ interface StageFrameProps {
     /** Lo que oye el lector de pantalla: la jugada completa (lo de adentro es decorativo) */
     summary: string;
     onClose: () => void;
+    /** Repetición pedida desde el historial: lleva la etiqueta «Repetición» (bajo el marcador, a la izquierda) */
+    replay?: boolean;
     children: React.ReactNode;
 }
 
 /** El escenario: arriba de la pantalla (encima del juego) o dentro de una página (`inline`) */
-export const StageFrame: React.FC<StageFrameProps> = ({ height, style, inline, summary, onClose, children }) => {
+export const StageFrame: React.FC<StageFrameProps> = ({ height, style, inline, summary, onClose, replay = false, children }) => {
     const { t } = useTranslation();
     const insets = useSafeAreaInsets();
     const window = useWindowDimensions();
@@ -154,9 +157,11 @@ export const StageFrame: React.FC<StageFrameProps> = ({ height, style, inline, s
     return (
         <View pointerEvents="box-none" style={styles.root} accessibilityLiveRegion="polite">
             <Animated.View style={[{ width, height: height + insets.top, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, overflow: 'hidden', backgroundColor: palette.bg }, shadow('float'), style]}>
-                <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={summary} accessibilityHint={t('anim.close')} style={{ flex: 1, paddingTop: insets.top }}>
+                <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={replay ? `${t('anim.replay')}. ${summary}` : summary} accessibilityHint={t('anim.close')} style={{ flex: 1, paddingTop: insets.top }}>
                     {body}
                 </Pressable>
+                {/* Bajo el marcador (56 de alto), donde no tapa ni el inning ni la jugada */}
+                {replay && <ReplayTag align="flex-start" style={{ top: insets.top + 64, paddingLeft: 10 }} />}
             </Animated.View>
         </View>
     );

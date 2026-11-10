@@ -13,6 +13,7 @@ import { middle } from '../../kit';
 import { Collapse, EventBadge, OutDots, PitchPill, PressureChip, ScorePill, WpaPill, fmtSwing, usePlayColors, useSwingLabel } from './parts';
 import { detailJoiner, detailText, playLine } from './texts';
 import { LinkedNames, PlayerLink, playerTextLink, teamTextLink } from '../../../stats/common';
+import { ReplayButton, useReplay, useReplayPress } from '../../../gamecast/replay';
 
 type Game = Pick<GameDetail, 'away' | 'home' | 'state' | 'box'>;
 type T = ReturnType<typeof useTranslation>['t'];
@@ -165,6 +166,9 @@ export const PlayRow: React.FC<PlayRowProps> = ({ item, game, names, open, onTog
     const swing = swingLabel(item.swing, game);
     const people = [...atBatPeople(atBat, names, game), ...bookPeople(game, names)];
     const batter = { id: atBat.batter.id, name: names.full(atBat.batter.id, atBat.batter.name), teamId: team.id };
+    // Las jugadas con animación se pueden repetir: el ▶ de la derecha o tocar la fila (que además la abre)
+    const canReplay = !!useReplay()?.can(atBat.i);
+    const press = useReplayPress(atBat.i, onToggle);
 
     if (!(big || isBig(item))) {
         const detail = playDetail(item);
@@ -172,28 +176,33 @@ export const PlayRow: React.FC<PlayRowProps> = ({ item, game, names, open, onTog
         const name = names.label(atBat.batter.id, atBat.batter.name);
         return (
             <View>
-                <Pressable
-                    onPress={onToggle}
-                    accessibilityRole="button"
-                    accessibilityState={{ expanded: open }}
-                    accessibilityLabel={[`${event}: ${name}${text ? `${detailJoiner(detail)}${text}` : ''}`, swing].filter(Boolean).join('. ')}
+                <View
                     style={[
-                        { minHeight: 46, minWidth: '88%', maxWidth: '100%', alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 24, backgroundColor: colors.surface, paddingVertical: 8, paddingLeft: 12, paddingRight: 10, borderWidth: 1, borderColor: alpha(colors.ink, 0.06) },
+                        { minHeight: 46, minWidth: '88%', maxWidth: '100%', alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', borderRadius: 24, backgroundColor: colors.surface, borderWidth: 1, borderColor: alpha(colors.ink, 0.06) },
                         shadow('card')
                     ]}
                 >
-                    <EventBadge atBat={atBat} inProgress={!atBat.complete} />
-                    <Txt size={13} style={{ flex: 1, minWidth: 0, lineHeight: 18 }}>
-                        <Text {...playerTextLink(batter)}>{name}</Text>
-                        {text ? (
-                            <Txt size={13} tone="muted">
-                                {detailJoiner(detail)}
-                                <LinkedNames text={text} people={people} />
-                            </Txt>
-                        ) : null}
-                    </Txt>
-                    <WpaPill swing={item.swing} game={game} />
-                </Pressable>
+                    <Pressable
+                        onPress={press}
+                        accessibilityRole="button"
+                        accessibilityState={{ expanded: open }}
+                        accessibilityLabel={[`${event}: ${name}${text ? `${detailJoiner(detail)}${text}` : ''}`, swing].filter(Boolean).join('. ')}
+                        style={{ flexGrow: 1, flexShrink: 1, minWidth: 0, alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingLeft: 12, paddingRight: canReplay ? 6 : 10 }}
+                    >
+                        <EventBadge atBat={atBat} inProgress={!atBat.complete} />
+                        <Txt size={13} style={{ flex: 1, minWidth: 0, lineHeight: 18 }}>
+                            <Text {...playerTextLink(batter)}>{name}</Text>
+                            {text ? (
+                                <Txt size={13} tone="muted">
+                                    {detailJoiner(detail)}
+                                    <LinkedNames text={text} people={people} />
+                                </Txt>
+                            ) : null}
+                        </Txt>
+                        <WpaPill swing={item.swing} game={game} />
+                    </Pressable>
+                    {canReplay && <ReplayButton atBatIndex={atBat.i} size={32} style={{ marginRight: 7 }} />}
+                </View>
                 <Collapse open={open}>
                     <PlayPanel item={item} names={names} showDesc people={people} />
                 </Collapse>
@@ -207,36 +216,41 @@ export const PlayRow: React.FC<PlayRowProps> = ({ item, game, names, open, onTog
     const label = [event, item.pressure !== null ? t('pro.jugadas.pressure', { value: item.pressure.toFixed(2) }) : null, desc, batted, score, swing].filter(Boolean).join('. ');
     return (
         <View>
-            <Pressable
-                onPress={onToggle}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: open }}
-                accessibilityLabel={label}
+            <View
                 style={[
-                    { width: '94%', maxWidth: '100%', alignSelf: 'flex-start', gap: 8, borderRadius: 24, backgroundColor: colors.surface, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: alpha(colors.ink, 0.06), borderLeftWidth: 3, borderLeftColor: team.color },
+                    { width: '94%', maxWidth: '100%', alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', borderRadius: 24, backgroundColor: colors.surface, borderWidth: 1, borderColor: alpha(colors.ink, 0.06), borderLeftWidth: 3, borderLeftColor: team.color },
                     shadow('card')
                 ]}
             >
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-                    <EventBadge atBat={atBat} inProgress={!atBat.complete} />
-                    {item.pressure !== null && <PressureChip li={item.pressure} />}
-                    <View style={{ flex: 1 }} />
-                    <WpaPill swing={item.swing} game={game} strong={item.scoring || item.key} />
-                </View>
-                <Txt size={14.5} weight="medium" style={{ lineHeight: 20 }}>
-                    <LinkedNames text={desc} people={people} />
-                </Txt>
-                <View style={{ minHeight: 22, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <PlayerLink player={batter} hitSlop={6}>
-                        <PlayerPhoto personId={atBat.batter.id} name={atBat.batter.name} size={22} team={team} />
-                    </PlayerLink>
-                    <Txt size={11.5} tone="muted" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
-                        {batted ?? scorebookWords(t, item)}
+                <Pressable
+                    onPress={press}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: open }}
+                    accessibilityLabel={label}
+                    style={{ flex: 1, minWidth: 0, alignSelf: 'stretch', gap: 8, paddingLeft: 14, paddingRight: canReplay ? 8 : 14, paddingVertical: 12 }}
+                >
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+                        <EventBadge atBat={atBat} inProgress={!atBat.complete} />
+                        {item.pressure !== null && <PressureChip li={item.pressure} />}
+                        <View style={{ flex: 1 }} />
+                        <WpaPill swing={item.swing} game={game} strong={item.scoring || item.key} />
+                    </View>
+                    <Txt size={14.5} weight="medium" style={{ lineHeight: 20 }}>
+                        <LinkedNames text={desc} people={people} />
                     </Txt>
-                    {atBat.outs !== null && <OutDots outs={atBat.outs} />}
-                    {atBat.scoring && <ScorePill atBat={atBat} game={game} />}
-                </View>
-            </Pressable>
+                    <View style={{ minHeight: 22, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <PlayerLink player={batter} hitSlop={6}>
+                            <PlayerPhoto personId={atBat.batter.id} name={atBat.batter.name} size={22} team={team} />
+                        </PlayerLink>
+                        <Txt size={11.5} tone="muted" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
+                            {batted ?? scorebookWords(t, item)}
+                        </Txt>
+                        {atBat.outs !== null && <OutDots outs={atBat.outs} />}
+                        {atBat.scoring && <ScorePill atBat={atBat} game={game} />}
+                    </View>
+                </Pressable>
+                {canReplay && <ReplayButton atBatIndex={atBat.i} size={34} style={{ marginRight: 10 }} />}
+            </View>
             <Collapse open={open}>
                 <PlayPanel item={item} names={names} showDesc={false} people={people} />
             </Collapse>
@@ -260,31 +274,37 @@ export const ScorebookRow: React.FC<{ item: PlayItem; names: NameBook; open: boo
     const codeColor = tone === 'out' ? colors.ink : paint.event(tone).ink;
     const name = names.full(atBat.batter.id, atBat.batter.name);
     const right = ball?.ev != null ? t('pro.jugadas.batted.ev', { value: ball.ev.toFixed(1) }) : t('pro.jugadas.batted.pitches', { count: atBat.pitches.length });
+    // Las jugadas con animación se pueden repetir: el ▶ de la derecha o tocar la fila (que además la abre)
+    const canReplay = !!useReplay()?.can(atBat.i);
+    const press = useReplayPress(atBat.i, onToggle);
     return (
         <View>
-            <Pressable
-                onPress={onToggle}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: open }}
-                accessibilityLabel={[code, `${name}${text ? `${detailJoiner(detail)}${text}` : ''}`, right].filter(Boolean).join('. ')}
-                style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }}
-            >
-                <Txt size={17} condensed tabular color={codeColor} style={{ width: 40 }}>
-                    {code ?? '·'}
-                </Txt>
-                <Txt size={13} weight="semibold" style={{ flex: 1, minWidth: 0, lineHeight: 18 }}>
-                    <Text {...playerTextLink({ id: atBat.batter.id, name })}>{name}</Text>
-                    {text ? (
-                        <Txt size={13} tone="muted">
-                            {detailJoiner(detail)}
-                            <LinkedNames text={text} people={atBatPeople(atBat, names)} />
-                        </Txt>
-                    ) : null}
-                </Txt>
-                <Txt size={14} condensed tabular tone="muted" style={{ flexShrink: 0, textAlign: 'right' }}>
-                    {right}
-                </Txt>
-            </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Pressable
+                    onPress={press}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: open }}
+                    accessibilityLabel={[code, `${name}${text ? `${detailJoiner(detail)}${text}` : ''}`, right].filter(Boolean).join('. ')}
+                    style={{ flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                >
+                    <Txt size={17} condensed tabular color={codeColor} style={{ width: 40 }}>
+                        {code ?? '·'}
+                    </Txt>
+                    <Txt size={13} weight="semibold" style={{ flex: 1, minWidth: 0, lineHeight: 18 }}>
+                        <Text {...playerTextLink({ id: atBat.batter.id, name })}>{name}</Text>
+                        {text ? (
+                            <Txt size={13} tone="muted">
+                                {detailJoiner(detail)}
+                                <LinkedNames text={text} people={atBatPeople(atBat, names)} />
+                            </Txt>
+                        ) : null}
+                    </Txt>
+                    <Txt size={14} condensed tabular tone="muted" style={{ flexShrink: 0, textAlign: 'right' }}>
+                        {right}
+                    </Txt>
+                </Pressable>
+                {canReplay && <ReplayButton atBatIndex={atBat.i} size={32} />}
+            </View>
             <Collapse open={open}>
                 <PlayPanel item={item} names={names} showDesc />
             </Collapse>

@@ -27,6 +27,8 @@ import { GameHero, goBack, heroFromDetail, heroFromSchedule } from '../../compon
 import { Timeline } from '../../components/gamecast/Timeline';
 import { StoryRecap } from '../../components/gamecast/StoryRecap';
 import { PlayAnimation } from '../../components/gamecast/PlayAnimation';
+import { ReplayContext } from '../../components/gamecast/replay';
+import { useReplayHost } from '../../components/gamecast/ReplayHost';
 import { Bases, OutsDots } from '../../components/game/Bases';
 import { DelayBanner } from '../../components/game/Delay';
 import { RainOverlay, useRainToggle } from '../../components/game/RainOverlay';
@@ -420,6 +422,8 @@ export default function GameScreen() {
     const previous = useRef<{ game: GameDetail; at: number } | null>(null);
     const shown = useRef(new Set<string>());
     const [plays, setPlays] = useState<PlayEvent[]>([]);
+    // Repetir una jugada del historial (Lite y PRO): una a la vez, con pausa entre repeticiones y encima de la hoja abierta
+    const replay = useReplayHost(game, plays.length > 0);
     const readAt = query.dataUpdatedAt;
     // Si este juego se sigue en segundo plano, cada lectura nueva va a la pantalla bloqueada / notificación
     useFollowSync(game, readAt);
@@ -537,58 +541,62 @@ export default function GameScreen() {
 
     return (
         <SwipeBack onBack={goBack}>
-            <ProScrollProvider value={scrollState}>
-                <FieldLauncherProvider open={liveGame ? field.open : null}>
-                    <View style={{ flex: 1, backgroundColor: colors.bg }}>
-                        <Stack.Screen options={{ title }} />
-                        {pro ? (
-                            <ProGameScroll state={scrollState} onRefresh={() => query.refetch()} contentStyle={contentStyle}>
-                                {/* En vivo, la mitad del equipo que anota destella sobre la cabecera de siempre */}
-                                {liveGame && hero ? (
-                                    <View>
-                                        {hero}
-                                        <HeroPulse game={liveGame} />
-                                    </View>
-                                ) : (
-                                    hero
-                                )}
-                                {bannerUnderHero}
-                                {body}
-                            </ProGameScroll>
-                        ) : (
-                            <Screen padded={false} onRefresh={() => query.refetch()} contentStyle={contentStyle}>
-                                {hero}
-                                {bannerUnderHero}
-                                {body}
-                            </Screen>
-                        )}
-                        {pro && liveGame && <ProScoreBar game={liveGame} fetchedAt={readAt} />}
+            <ReplayContext.Provider value={replay.api}>
+                <ProScrollProvider value={scrollState}>
+                    <FieldLauncherProvider open={liveGame ? field.open : null}>
+                        <View style={{ flex: 1, backgroundColor: colors.bg }}>
+                            <Stack.Screen options={{ title }} />
+                            {pro ? (
+                                <ProGameScroll state={scrollState} onRefresh={() => query.refetch()} contentStyle={contentStyle}>
+                                    {/* En vivo, la mitad del equipo que anota destella sobre la cabecera de siempre */}
+                                    {liveGame && hero ? (
+                                        <View>
+                                            {hero}
+                                            <HeroPulse game={liveGame} />
+                                        </View>
+                                    ) : (
+                                        hero
+                                    )}
+                                    {bannerUnderHero}
+                                    {body}
+                                </ProGameScroll>
+                            ) : (
+                                <Screen padded={false} onRefresh={() => query.refetch()} contentStyle={contentStyle}>
+                                    {hero}
+                                    {bannerUnderHero}
+                                    {body}
+                                </Screen>
+                            )}
+                            {pro && liveGame && <ProScoreBar game={liveGame} fetchedAt={readAt} />}
 
-                        {plays[0] && <PlayAnimation key={plays[0].key} event={plays[0]} onDone={() => setPlays((queue) => queue.slice(1))} />}
+                            {/* La repetición va primero: lo que llegue en vivo mientras sale espera en su cola */}
+                            {plays[0] && !replay.playing && <PlayAnimation key={plays[0].key} event={plays[0]} onDone={() => setPlays((queue) => queue.slice(1))} />}
 
-                        {game && (
-                            <>
-                                <Sheet open={sheet === 'zone'} onClose={() => setSheet(null)} title={t('zone.title')}>
-                                    <StrikeZonePanel game={game} />
-                                    {/* En la pausa entre entradas el duelo es el del último out: la zona ya dice a quién le toca */}
-                                    {!inningBreak(game) && <Matchup game={game} />}
-                                </Sheet>
-                                {/* La lista lleva su propio desplazamiento: así el encabezado de cada media entrada se queda pegado arriba */}
-                                <Sheet open={sheet === 'plays'} onClose={() => setSheet(null)} title={t('plays.title')} scroll={false}>
-                                    <PlayByPlay game={game} fill />
-                                </Sheet>
-                                <Sheet open={sheet === 'box'} onClose={() => setSheet(null)} title={t('game.tabs.box')}>
-                                    <BoxScore game={game} />
-                                </Sheet>
-                            </>
-                        )}
-                        {shareSheet}
-                        {/* Lluvia sobre toda la pantalla (no se toca) y el terreno al tocar las bases */}
-                        <RainOverlay active={rainOn} />
-                        {field.element}
-                    </View>
-                </FieldLauncherProvider>
-            </ProScrollProvider>
+                            {game && (
+                                <>
+                                    <Sheet open={sheet === 'zone'} onClose={() => setSheet(null)} title={t('zone.title')}>
+                                        <StrikeZonePanel game={game} />
+                                        {/* En la pausa entre entradas el duelo es el del último out: la zona ya dice a quién le toca */}
+                                        {!inningBreak(game) && <Matchup game={game} />}
+                                    </Sheet>
+                                    {/* La lista lleva su propio desplazamiento: así el encabezado de cada media entrada se queda pegado arriba */}
+                                    <Sheet open={sheet === 'plays'} onClose={() => setSheet(null)} title={t('plays.title')} scroll={false}>
+                                        <PlayByPlay game={game} fill />
+                                    </Sheet>
+                                    <Sheet open={sheet === 'box'} onClose={() => setSheet(null)} title={t('game.tabs.box')}>
+                                        <BoxScore game={game} />
+                                    </Sheet>
+                                </>
+                            )}
+                            {shareSheet}
+                            {/* Lluvia sobre toda la pantalla (no se toca) y el terreno al tocar las bases */}
+                            <RainOverlay active={rainOn} />
+                            {field.element}
+                            {replay.element}
+                        </View>
+                    </FieldLauncherProvider>
+                </ProScrollProvider>
+            </ReplayContext.Provider>
         </SwipeBack>
     );
 }

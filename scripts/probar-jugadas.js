@@ -28,7 +28,7 @@ fs.writeFileSync(path.join(OUT, 'pro.js'), 'exports.proActive = () => false;\n')
 
 const { camera, flightMs, flightOf, gamedayToFeet, groundAt, heightAt, parkFor, wallAt, wallCrossing } = require(path.join(OUT, 'flight.js'));
 const { basesOf, legsOf, runnerPaths, walkPaths } = require(path.join(OUT, 'runners.js'));
-const { forMode, leadChange, newPlayEvents } = require(path.join(OUT, 'playEvents.js'));
+const { REPLAY_COOLDOWN_MS, forMode, leadChange, newPlayEvents, replayEventOf, replayGate } = require(path.join(OUT, 'playEvents.js'));
 const { delayOf, isOnHold, isRainDelay } = require(path.join(OUT, 'baseball.js'));
 const { batterBox, fieldModel } = require(path.join(OUT, 'field.js'));
 const { gameInterval } = require(path.join(OUT, 'polling.js'));
@@ -324,6 +324,130 @@ it('dejado en el terreno: el local gana en la baja de la última entrada (o en e
     // El PRO sigue con la victoria de siempre
     partial(final(false, 9, 9, true)[0], { kind: 'win', atBat: null });
 });
+
+console.log('repetir una jugada del historial y la pausa entre repeticiones (los mismos casos de la web)');
+{
+    // Juego, equipos y peloteros de prueba
+    const UNO = { id: 12345678, name: 'Pelotero Uno' };
+    const DOS = { id: 87654321, name: 'Pelotero Dos' };
+    const equipo = (id, abbrev, runs = 0, isWinner = false) => ({ id, abbrev, name: `Equipo ${abbrev}`, logo: '', color: '#123456', record: null, teamName: abbrev, runs, hits: 0, errors: 0, lob: 0, isWinner });
+    const turno = (i, event, extra = {}) => ({
+        i,
+        inning: 1,
+        top: true,
+        complete: event !== null,
+        scoring: false,
+        batter: { id: 11111111 + i, name: `Bateador ${i}`, side: 'R' },
+        pitcher: { ...UNO, hand: 'R' },
+        event,
+        eventLabel: null,
+        desc: '',
+        rbi: 0,
+        away: 0,
+        home: 0,
+        outs: 0,
+        pitches: [],
+        actions: [],
+        ...extra
+    });
+    // El marcador de ahora (5-4) no es el de la jugada que se repite
+    const partido = (atBats, extra = {}) => ({ gamePk: 12345678, state: 'live', scheduledInnings: 9, league: 'lidom', venue: 'Estadio de Prueba', atBats, away: equipo(99991, 'UNO', 5), home: equipo(99992, 'DOS', 4), ...extra });
+
+    it('sencillo con carreras: bases del turno anterior de la misma media, carreras del marcador, estadio y el marcador de entonces', () => {
+        const atBats = [turno(0, 'single', { post: 1 }), turno(1, 'walk', { post: 3 }), turno(2, 'single', { post: 3, away: 1, rbi: 1, scoring: true, batter: { ...DOS, side: 'L' } })];
+        const event = replayEventOf(partido(atBats), 2);
+        partial(event, { key: 'replay-2', kind: 'single', replay: true, venue: 'Estadio de Prueba', bases: { first: true, second: true, third: false }, runs: { count: 1, away: 1, home: 0 } });
+        assert.strictEqual(event.atBat, atBats[2]);
+        assert.strictEqual(event.atBat.batter.name, 'Pelotero Dos');
+        // El protagonista es el que batea; los equipos llevan el marcador de después de ese turno
+        assert.deepStrictEqual([event.team.abbrev, event.rival.abbrev], ['UNO', 'DOS']);
+        assert.deepStrictEqual([event.away.runs, event.home.runs, event.team.runs], [1, 0, 1]);
+        // La cola en vivo no la ve: no es una lectura nueva
+        assert.notStrictEqual(event.key, 'ab-2');
+    });
+
+    it('ponche: los ponches del lanzador hasta ese turno (sin los de otro ni los de después)', () => {
+        const otro = { ...DOS, hand: 'L' };
+        const atBats = [turno(0, 'strikeout'), turno(1, 'strikeout', { pitcher: otro }), turno(2, 'field_out', { outs: 2 }), turno(3, 'strikeout', { outs: 3 }), turno(4, 'strikeout', { inning: 2 }), turno(5, 'strikeout', { inning: 2 })];
+        const event = replayEventOf(partido(atBats), 3);
+        partial(event, { kind: 'k', strikeouts: 2, bases: null, runs: undefined, replay: true });
+        assert.strictEqual(event.atBat.pitcher.name, 'Pelotero Uno');
+        // El ponche lo celebra el que lanza
+        assert.strictEqual(event.team.abbrev, 'DOS');
+        assert.strictEqual(replayEventOf(partido(atBats), 5).strikeouts, 4);
+    });
+
+    it('el primer turno de una media entrada sale sin nadie en base (no hereda los de la otra media)', () => {
+        const atBats = [turno(0, 'single', { post: 1 }), turno(1, 'double', { post: 6, outs: 3 }), turno(2, 'double', { top: false, post: 2 })];
+        assert.deepStrictEqual(replayEventOf(partido(atBats), 0).bases, { first: false, second: false, third: false });
+        assert.deepStrictEqual(replayEventOf(partido(atBats), 2).bases, { first: false, second: false, third: false });
+        // En la misma media sí: el anterior dejó a uno en primera
+        assert.deepStrictEqual(replayEventOf(partido(atBats), 1).bases, { first: true, second: false, third: false });
+    });
+
+    it('sin animación: error (en el Lite), turno en curso o que no existe → null', () => {
+        const atBats = [turno(0, 'field_error'), turno(1, 'single'), turno(2, null, { pitches: [{ r: 'ball' }] })];
+        assert.strictEqual(replayEventOf(partido(atBats), 0), null);
+        assert.strictEqual(replayEventOf(partido(atBats), 2), null);
+        assert.strictEqual(replayEventOf(partido(atBats), 99), null);
+        assert.strictEqual(replayEventOf(partido(atBats), 1).kind, 'single');
+        // El PRO anima el error en vivo: también lo repite (con el juego, para sus extras)
+        partial(replayEventOf(partido(atBats), 0, { pro: true }), { kind: 'error', gamePk: 12345678, replay: true });
+    });
+
+    it('el que deja en el terreno al local repite «en el terreno» (en el PRO, su jugada); los demás turnos, su jugada', () => {
+        const atBats = [turno(0, 'field_out', { inning: 9, top: true, away: 2, home: 2 }), turno(1, 'single', { inning: 9, top: false, home: 3, away: 2, scoring: true })];
+        const final = partido(atBats, { state: 'final', away: equipo(99991, 'UNO', 2), home: equipo(99992, 'DOS', 3, true) });
+        partial(replayEventOf(final, 1), { key: 'replay-1', kind: 'walkoff', replay: true, team: { abbrev: 'DOS' } });
+        assert.strictEqual(replayEventOf(final, 1).atBat, atBats[1]);
+        assert.strictEqual(replayEventOf(final, 0).kind, 'out');
+        partial(replayEventOf(final, 1, { pro: true }), { kind: 'single', runs: { count: 1, away: 2, home: 3 }, team: { abbrev: 'DOS' } });
+    });
+
+    it('PRO: las carreras de cada jugada y el marcador de entonces (sin el corredor del Lite)', () => {
+        const atBats = [turno(0, 'single', { post: 1 }), turno(1, 'sac_fly', { away: 1, outs: 1 }), turno(2, 'strikeout', { away: 1, outs: 2 })];
+        partial(replayEventOf(partido(atBats), 1, { pro: true }), { kind: 'out', out: { variant: 'sac', outs: 1 }, runs: { count: 1, away: 1, home: 0 }, away: { runs: 1 }, home: { runs: 0 } });
+        partial(replayEventOf(partido(atBats), 2, { pro: true }), { kind: 'k', strikeouts: 1, runs: undefined, away: { runs: 1 } });
+        assert.strictEqual(replayEventOf(partido(atBats), 1, { pro: true }).bases, undefined);
+    });
+
+    it('mientras sale una, los toques se ignoran (ni la reinician ni hacen cola)', () => {
+        const playing = replayGate.start(replayGate.idle, 1000);
+        assert.deepStrictEqual(playing, { playing: true, readyAt: 0 });
+        assert.strictEqual(replayGate.allowed(playing, 1500), false);
+        assert.strictEqual(replayGate.start(playing, 1500), null);
+        assert.strictEqual(replayGate.start(playing, 60000), null);
+    });
+
+    it(`al terminar hay ${REPLAY_COOLDOWN_MS} ms de pausa (y terminar dos veces no la alarga)`, () => {
+        assert.strictEqual(REPLAY_COOLDOWN_MS, 1200);
+        const ended = replayGate.end(replayGate.start(replayGate.idle, 1000), 3000);
+        assert.deepStrictEqual(ended, { playing: false, readyAt: 4200 });
+        assert.strictEqual(replayGate.start(ended, 3001), null);
+        assert.strictEqual(replayGate.start(ended, 4199), null);
+        assert.deepStrictEqual(replayGate.start(ended, 4200), { playing: true, readyAt: 4200 });
+        assert.strictEqual(replayGate.end(ended, 4100), ended);
+    });
+
+    it('cuatro toques seguidos en la misma jugada la repiten una sola vez', () => {
+        let gate = replayGate.idle;
+        let replays = 0;
+        const tap = (now) => {
+            const started = replayGate.start(gate, now);
+            if (!started) return;
+            gate = started;
+            replays += 1;
+        };
+        [0, 80, 160, 240].forEach(tap);
+        assert.strictEqual(replays, 1);
+        // Termina a los 2,3 s: los toques durante la pausa tampoco cuentan; después, sí
+        gate = replayGate.end(gate, 2300);
+        [2400, 3000, 3499].forEach(tap);
+        assert.strictEqual(replays, 1);
+        tap(3500);
+        assert.strictEqual(replays, 2);
+    });
+}
 
 console.log('reto del ABS: revisando y resultado entre dos lecturas (los mismos casos de la web)');
 {

@@ -254,7 +254,7 @@ const FieldScene: React.FC<SceneProps & { play: ProPlay | undefined; pro: GamePr
     const stageHeight = cine ? 492 : 440;
 
     return (
-        <StageFrame height={stageHeight} style={style} inline={inline} summary={summary} onClose={() => close(true)}>
+        <StageFrame height={stageHeight} style={style} inline={inline} summary={summary} onClose={() => close(true)} replay={event.replay}>
             <ScoreStrip event={event} scored={scored} outs={titled ? outsAfter : outsBefore} count={count} narrow={width < 350} />
             <View onLayout={onLayout} style={{ height: FIELD_H }}>
                 <Svg width={width} height={FIELD_H}>
@@ -452,7 +452,7 @@ const StrikeoutScene: React.FC<SceneProps> = ({ event, scale, reduce, inline, on
     const summary = `${looking ? t('anim.kLooking') : t('anim.k')}. ${sub}. ${pitchText ?? ''}`;
 
     return (
-        <StageFrame height={440} style={style} inline={inline} summary={summary} onClose={() => close(true)}>
+        <StageFrame height={440} style={style} inline={inline} summary={summary} onClose={() => close(true)} replay={event.replay}>
             <ScoreStrip event={event} scored outs={stamped ? (atBat?.outs ?? 0) : Math.max(0, (atBat?.outs ?? 1) - 1)} count={last && last.b !== null && last.s !== null ? `${last.b}-${last.s}` : null} />
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 16 }}>
                 <Svg width={W} height={H} style={{ overflow: 'visible' }}>
@@ -556,7 +556,7 @@ const ChangeScene: React.FC<SceneProps & { pro: GamePro | undefined; game: GameD
     const summary = t('pro.animaciones.change.aria', { team: team.name, in: incoming?.name ?? '', out: outgoing?.name ?? '' });
 
     return (
-        <StageFrame height={440} style={style} inline={inline} summary={summary} onClose={() => close(true)}>
+        <StageFrame height={440} style={style} inline={inline} summary={summary} onClose={() => close(true)} replay={event.replay}>
             <ScoreStrip event={event} scored outs={event.atBat?.complete ? (event.atBat.outs ?? 0) : 0} count={null} />
             <View style={{ flex: 1, justifyContent: 'flex-end', paddingHorizontal: 12, paddingBottom: 16 }}>
                 <Animated.View style={[{ borderRadius: 26, padding: 16, backgroundColor: team.color, overflow: 'hidden' }, cardStyle]}>
@@ -616,7 +616,7 @@ const NoHitScene: React.FC<SceneProps & { pro: GamePro | undefined }> = ({ event
     const ink = '#2a1d00';
 
     return (
-        <StageFrame height={300} style={style} inline={inline} summary={`${heading}. ${text}`} onClose={() => close(true)}>
+        <StageFrame height={300} style={style} inline={inline} summary={`${heading}. ${text}`} onClose={() => close(true)} replay={event.replay}>
             <ScoreStrip event={event} scored outs={3} count={null} />
             <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 12, overflow: 'hidden' }}>
                 <Animated.View style={[{ borderRadius: 26, paddingHorizontal: 20, paddingVertical: 16, overflow: 'hidden', backgroundColor: '#f2c14e' }, bannerStyle]}>
