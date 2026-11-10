@@ -52,5 +52,35 @@ describe('PlayByPlay', () => {
         expect(row.getAttribute('aria-expanded')).toBe('false');
         fireEvent.click(row);
         expect(document.querySelector('button[aria-expanded]')!.getAttribute('aria-expanded')).toBe('true');
+        // Sin `replay` (animaciones apagadas o menos movimiento) no se ofrece repetir
+        expect(screen.queryByRole('button', { name: 'Repetir la jugada' })).toBeNull();
+    });
+
+    it('repetir: ▶ solo en las jugadas con animación, la fila también la pide (y sigue abriendo) y apagado con el candado', () => {
+        const error = { ...atBat, i: 1, event: 'field_error', eventLabel: 'Field Error', scoring: false, desc: 'Pelotero Dos reaches on a fielding error.' } as AtBat;
+        const both = { ...game, atBats: [atBat, error] } as GameDetail;
+        const calls: number[] = [];
+        const view = (locked: boolean) => (
+            <MemoryRouter>
+                <PlayByPlay game={both} replay={{ locked, onReplay: (index) => calls.push(index) }} />
+            </MemoryRouter>
+        );
+        const { rerender } = render(view(false));
+        const replays = screen.getAllByRole('button', { name: 'Repetir la jugada' });
+        expect(replays).toHaveLength(1);
+        expect(replays[0].getAttribute('aria-disabled')).toBe('false');
+        fireEvent.click(replays[0]);
+        expect(calls).toEqual([0]);
+
+        // La fila del jonrón repite y abre los pitcheos; la del error solo abre
+        const rows = Array.from(document.querySelectorAll('button[aria-expanded]'));
+        fireEvent.click(rows[1]);
+        expect(calls).toEqual([0, 0]);
+        expect(rows[1].getAttribute('aria-expanded')).toBe('true');
+        fireEvent.click(rows[0]);
+        expect(calls).toEqual([0, 0]);
+
+        rerender(view(true));
+        expect(screen.getByRole('button', { name: 'Repetir la jugada' }).getAttribute('aria-disabled')).toBe('true');
     });
 });

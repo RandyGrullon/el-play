@@ -21,6 +21,10 @@ const BASES_BY_KIND = { single: 1, double: 2, triple: 3, hr: 4 } as const;
 export const basesOf = (runners: { first: unknown; second: unknown; third: unknown } | null | undefined): Bases | null =>
     runners ? { first: !!runners.first, second: !!runners.second, third: !!runners.third } : null;
 
+/** Bases de la máscara `post` de un turno (1 = primera, 2 = segunda, 4 = tercera); null si no viene */
+export const basesOfMask = (mask: number | null | undefined): Bases | null =>
+    typeof mask === 'number' ? { first: (mask & 1) !== 0, second: (mask & 2) !== 0, third: (mask & 4) !== 0 } : null;
+
 /**
  * Los recorridos de la jugada. `scored` = carreras que entraron (del marcador; si no, las impulsadas).
  * En el jonrón anotan todos; en los demás anotan los de adelante y el resto avanza tantas bases como el hit.

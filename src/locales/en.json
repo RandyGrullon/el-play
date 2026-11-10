@@ -402,7 +402,8 @@
     "inProgress": "At bat",
     "atBatNow": "{{batter}} batting against {{pitcher}}",
     "pitches_one": "{{count}} pitch",
-    "pitches_other": "{{count}} pitches"
+    "pitches_other": "{{count}} pitches",
+    "replay": "Replay the play"
   },
   "box": {
     "team": "Team",
@@ -794,6 +795,7 @@
     "inningEnd_bottom": "End of the bottom · inning {{n}}",
     "nowBatting": "Now batting",
     "close": "Close animation",
+    "replay": "Replay",
     "final": "Final",
     "win": "WIN!",
     "champions": "CHAMPIONS!",

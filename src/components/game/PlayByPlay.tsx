@@ -1,8 +1,9 @@
 import React, { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Play } from 'lucide-react';
 import type { AtBat, GameDetail } from '../../types';
 import { describePlay, eventName, eventTone, inningName, type EventTone } from '../../lib/baseball';
+import { replayEventOf } from '../../lib/playEvents';
 import { peopleOf, slot } from '../../lib/links';
 import { Segmented } from '../ui/Segmented';
 import { PlayerLink } from '../ui/PlayerLink';
@@ -27,15 +28,23 @@ interface PlayByPlayProps {
     limit?: number;
     /** Solo los últimos turnos, sin filtro ni agrupación (tarjeta "Últimas jugadas") */
     compact?: boolean;
+    /** Repetir la animación de una jugada terminada (sin esto, las filas no ofrecen repetir); `locked`: hay una saliendo o en la pausa */
+    replay?: { locked: boolean; onReplay: (atBatIndex: number) => void };
 }
 
-export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = false }) => {
+export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = false, replay }) => {
     const { t, i18n } = useTranslation();
     const [filter, setFilter] = useState<'all' | 'scoring'>('all');
     const [open, setOpen] = useState<number | null>(null);
     const uid = useId();
     // Los nombres de las jugadas abren la página de cada pelotero
     const people = useMemo(() => peopleOf(game.atBats), [game.atBats]);
+    // Los turnos cuyo resultado tiene animación (los mismos que salen en vivo) se pueden repetir
+    const offersReplay = !!replay;
+    const replayable = useMemo(
+        () => new Set(offersReplay ? game.atBats.filter((atBat) => replayEventOf(game, atBat.i)).map((atBat) => atBat.i) : []),
+        [game, offersReplay]
+    );
 
     // Más reciente primero; el turno en curso solo si ya tiene pitcheos
     const plays = useMemo(() => {
@@ -62,6 +71,7 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = f
         const tone = eventTone(atBat.event);
         const team = battingTeam(atBat);
         const labelId = `${uid}-${atBat.i}`;
+        const canReplay = !!replay && replayable.has(atBat.i);
         const person = (who: { id: number; name: string }) => (
             <PlayerLink id={who.id} className={OVER_CARD}>
                 {who.name}
@@ -72,7 +82,16 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = f
                 {/* Toda la fila abre los pitcheos (el botón va por encima del contenido); los equipos y los peloteros que
                     nombra la jugada van encima del botón y abren su página */}
                 <div className="relative isolate flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-raised/50">
-                    <button type="button" onClick={() => setOpen(expanded ? null : atBat.i)} aria-expanded={expanded} aria-labelledby={labelId} className="absolute inset-0 z-[1] w-full" />
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setOpen(expanded ? null : atBat.i);
+                            if (canReplay) replay.onReplay(atBat.i);
+                        }}
+                        aria-expanded={expanded}
+                        aria-labelledby={labelId}
+                        className="absolute inset-0 z-[1] w-full"
+                    />
                     <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: team.color }} aria-hidden="true" />
                     <span id={labelId} className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-2">
@@ -103,6 +122,20 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, limit, compact = f
                         {atBat.pitches.length > 0 && t('plays.pitches', { count: atBat.pitches.length })}
                         <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
                     </span>
+                    {/* Repetir la animación (también al tocar la fila); mientras sale una o en la pausa, apagado */}
+                    {canReplay && (
+                        <button
+                            type="button"
+                            onClick={() => replay.onReplay(atBat.i)}
+                            aria-label={t('plays.replay')}
+                            aria-describedby={labelId}
+                            aria-disabled={replay.locked}
+                            title={t('plays.replay')}
+                            className={`relative z-[2] -my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-raised text-ink transition-opacity ${replay.locked ? 'cursor-default opacity-40' : ''}`}
+                        >
+                            <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                        </button>
+                    )}
                 </div>
                 {expanded && (
                     <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2 sm:items-start">
