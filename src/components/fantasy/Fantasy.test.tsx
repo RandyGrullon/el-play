@@ -16,7 +16,7 @@ const LIC = 12345601;
 const TOR = 12345602;
 const EST = 12345603;
 const AGU = 12345604;
-const TEAMS = {
+const TEAMS: Record<number, { id: number; abbrev: string; color: string; logo: string }> = {
     [LIC]: { id: LIC, abbrev: 'LIC', color: '#123456', logo: '' },
     [TOR]: { id: TOR, abbrev: 'TOR', color: '#654321', logo: '' },
     [EST]: { id: EST, abbrev: 'EST', color: '#abcdef', logo: '' },
