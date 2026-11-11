@@ -1,13 +1,12 @@
 // Compartir mi equipo como imagen (igual que la web): la hoja de compartir de siempre (historia o post, tres estilos y
 // foto propia) con las 6 fotos, la corona del capitán, el precio de cada uno, los créditos usados y, cuando ya hay
-// juegos, los puntos (antes, la proyección). Sin imagen (la web de la app), el texto con el enlace.
+// juegos, los puntos. Sin imagen (la web de la app), el texto con el enlace.
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Share2 } from 'lucide-react-native';
 import { LEAGUES } from '../../lib/leagues';
 import { budgetOf, dayPoints, entryCost, gameStarted, playerScore, rulesOf, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../lib/fantasy';
-import { projectedPoints } from '../../lib/fantasyBest';
 import { formatShortDate } from '../../lib/format';
 import { useColors } from '../../theme/theme';
 import { IconButton } from '../ui';
@@ -28,7 +27,6 @@ export const fantasyPost = (day: FantasyDay, entry: DayEntry, counted: DayEntry,
     const anyStarted = players.some(started);
     const budget = budgetOf(day);
     const totals = dayPoints(day, entry, counted);
-    const projected = players.some((player) => player.proj !== undefined) ? projectedPoints(day, entry.lineup, entry.captain) : null;
     const league = LEAGUES.find((item) => item.id === day.league);
     return {
         kind: 'fantasy',
@@ -53,8 +51,9 @@ export const fantasyPost = (day: FantasyDay, entry: DayEntry, counted: DayEntry,
         }),
         credits: budget === null ? t('fantasyIdeas.share.noCap') : t('fantasyIdeas.share.credits', { spent: formatCredits(entryCost(day, entry), lang), budget: formatCredits(budget, lang) }),
         captain: t('fantasyIdeas.share.captain', { x: formatCredits(rules.captain, lang) }),
-        total: anyStarted ? t('fantasyIdeas.share.points', { pts: formatCredits(totals.total, lang) }) : projected !== null ? t('fantasyIdeas.share.points', { pts: formatCredits(projected, lang) }) : null,
-        totalLabel: anyStarted ? t('fantasyIdeas.share.total') : t('fantasyIdeas.share.projected'),
+        // Los puntos solo cuando ya empezó algún juego del equipo (antes no hay nada que contar), como la web
+        total: anyStarted ? t('fantasyIdeas.share.points', { pts: formatCredits(totals.total, lang) }) : null,
+        totalLabel: t('fantasyIdeas.share.total'),
         picks: totals.picks > 0 ? t('fantasyIdeas.share.picks', { pts: formatCredits(totals.picks, lang) }) : null
     };
 };

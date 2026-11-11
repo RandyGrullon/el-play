@@ -1,6 +1,6 @@
 // Fantasy (igual que FantasyPage de la web): sin cuenta, la portada para entrar; con cuenta, Ayer/Hoy/Mañana,
 // los puntos del día y las pestañas Mi equipo / Pronósticos / Tabla. Todo se sincroniza con la cuenta.
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { Platform, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -239,8 +239,26 @@ const FantasyTabs: React.FC<{ value: Tab; onChange: (tab: Tab) => void; options:
     const colors = useColors();
     const { width } = useWindowDimensions();
     const roomy = width >= 400;
+    // Si no caben todas, la escogida se pone a la vista (como la web)
+    const row = useRef<ComponentRef<typeof ScrollView>>(null);
+    const spots = useRef(new Map<Tab, { x: number; width: number }>());
+    const box = useRef({ width: 0, scroll: 0 });
+    useEffect(() => {
+        const spot = spots.current.get(value);
+        const { width: visible, scroll } = box.current;
+        if (!spot || !visible) return;
+        if (spot.x < scroll || spot.x + spot.width > scroll + visible) row.current?.scrollTo({ x: Math.max(0, spot.x - 16), animated: true });
+    }, [value]);
     return (
         <ScrollView
+            ref={row}
+            onLayout={(event) => {
+                box.current.width = event.nativeEvent.layout.width;
+            }}
+            onScroll={(event) => {
+                box.current.scroll = event.nativeEvent.contentOffset.x;
+            }}
+            scrollEventThrottle={64}
             horizontal
             showsHorizontalScrollIndicator={false}
             accessibilityRole="tablist"
@@ -253,6 +271,9 @@ const FantasyTabs: React.FC<{ value: Tab; onChange: (tab: Tab) => void; options:
                     <Pressable
                         key={option.value}
                         onPress={() => onChange(option.value)}
+                        onLayout={(event) => {
+                            spots.current.set(option.value, { x: event.nativeEvent.layout.x, width: event.nativeEvent.layout.width });
+                        }}
                         accessibilityRole="tab"
                         accessibilityState={{ selected: active }}
                         style={[{ flexGrow: 1, flexShrink: 0, flexBasis: 'auto', alignItems: 'center', borderRadius: radius.pill, paddingHorizontal: roomy ? 10 : 8, paddingVertical: 7 }, active && [{ backgroundColor: colors.surface }, shadow('card')]]}
