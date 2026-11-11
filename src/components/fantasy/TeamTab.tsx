@@ -41,6 +41,8 @@ import {
     type NotCounting
 } from '../../lib/fantasy';
 import { HelpButton, StatusBadge, credits, gameStatus, untilText, useOpenHelp, useOwners } from './fantasyUi';
+import { IdeasSection } from './IdeasSection';
+import { QuickActions } from './QuickActions';
 
 // ---------------------------------------------------------------- guardado
 
@@ -180,7 +182,7 @@ const SmartActions: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ day, ent
     const projected = projectedPoints(day, entry.lineup, entry.captain);
     const fill = () => {
         const best = bestLineup(day, { metric: 'proj', keep, captain: entry.captain !== null && keep.includes(entry.captain) ? entry.captain : null });
-        if (best) applyLineup(day, best.lineup, best.captain);
+        if (best) applyLineup(day, best.lineup, best.captain, Date.now(), 'fill');
         else showToast(t('fantasy.smart.none'));
     };
     const locked = entry.lineup.filter((id) => {
@@ -365,6 +367,7 @@ export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role
             <LockNotice day={day} entry={entry} now={now} />
             <CreditsMeter day={day} entry={entry} />
             <SmartActions day={day} entry={entry} />
+            <QuickActions day={day} entry={entry} now={now} />
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 {slots.map((slot, index) =>
                     typeof slot === 'string' ? (
@@ -385,6 +388,8 @@ export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; onPick: (role
                     <MissingSlot key={id} day={day} id={id} />
                 ))}
             </div>
+
+            <IdeasSection day={day} entry={entry} now={now} />
 
             <IdealCard day={day} counted={counted} />
 

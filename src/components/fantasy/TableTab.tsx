@@ -11,18 +11,45 @@ import { LEAGUE_CODE_LENGTH } from '../../lib/fantasyHelp';
 import { effectiveEntry, pickPoints, teamPoints, type FantasyDay } from '../../lib/fantasy';
 import { FanRow, SeasonTable, type OpenFan } from './FanSearch';
 import { LeagueSummary } from './LeagueSummary';
-import { HelpButton } from './fantasyUi';
+import { HelpButton, useFantasyDemo } from './fantasyUi';
+import { LeagueOwnerTools, LeagueWeeks, type OwnerActions } from './LeagueWeeks';
+import { useLeagueWeeks } from '../../lib/fantasyLeagues';
+import { DEMO_LEAGUE, DEMO_NAMES, DEMO_USER } from '../../lib/fantasyDemo';
+
+type Period = 'day' | 'week' | 'season';
+
+/** Día / Semana / Temporada (la semana solo dentro de una liga privada y si el servidor la tiene) */
+const PeriodSwitch: React.FC<{ value: Period; onChange: (value: Period) => void; dayName: string; week: boolean }> = ({ value, onChange, dayName, week }) => {
+    const { t } = useTranslation();
+    return (
+        <Segmented<Period>
+            size="sm"
+            label={week ? t('fantasyLeagues.period') : t('fantasy.fans.period')}
+            value={value}
+            onChange={onChange}
+            options={[{ value: 'day', label: dayName }, ...(week ? [{ value: 'week' as const, label: t('fantasyLeagues.week') }] : []), { value: 'season', label: t('fantasy.fans.season') }]}
+        />
+    );
+};
 
 export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: OpenFan }> = ({ day, dayName, onOpenFan }) => {
     const { t } = useTranslation();
     const session = useSession();
-    const [period, setPeriod] = useState<'day' | 'season'>('day');
+    const demo = useFantasyDemo();
+    const [period, setPeriod] = useState<Period>('day');
     const [rivals, setRivals] = useState<Rival[] | null>(null);
     const [leagues, setLeagues] = useState<PrivateLeague[]>([]);
     const [scope, setScope] = useState<string>('all');
     const [code, setCode] = useState('');
     const [name, setName] = useState('');
     const [message, setMessage] = useState<string | null>(null);
+    const selected = scope === 'all' ? undefined : leagues.find((l) => l.id === scope);
+    // La semana sale solo si el servidor la tiene (con 404, 503 o error no se ofrece)
+    const weeks = useLeagueWeeks(day.league, selected?.members, !!session && !!selected);
+    const hasWeeks = !!selected && weeks.isSuccess && weeks.data.weeks.length > 0;
+    useEffect(() => {
+        if (period === 'week' && !hasWeeks && !(selected && weeks.isPending)) setPeriod('day');
+    }, [period, hasWeeks, selected, weeks.isPending]);
 
     const load = async () => {
         if (!session) return;
@@ -35,12 +62,15 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: O
         load();
     }, [session?.user.id, day.date, scope]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Solo en el modo de prueba (sin cuenta): no hay tabla, pero la ayuda sí
+    // Solo en el modo de prueba (sin cuenta): no hay tabla, pero la ayuda sí (y una liga inventada con su semana)
     if (!session)
         return (
-            <div className="flex items-start gap-2">
-                <p className="card flex-1 p-4 text-sm text-muted">{t('fantasyHelp.demo')}</p>
-                <HelpButton topic="table" />
+            <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                    <p className="card flex-1 p-4 text-sm text-muted">{t('fantasyHelp.demo')}</p>
+                    <HelpButton topic="table" />
+                </div>
+                {demo && <DemoLeague day={day} dayName={dayName} />}
             </div>
         );
 
@@ -61,16 +91,7 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: O
                 </div>
             )}
             <div className="flex flex-wrap items-center gap-2">
-                <Segmented<'day' | 'season'>
-                    size="sm"
-                    label={t('fantasy.fans.period')}
-                    value={period}
-                    onChange={setPeriod}
-                    options={[
-                        { value: 'day', label: dayName },
-                        { value: 'season', label: t('fantasy.fans.season') }
-                    ]}
-                />
+                <PeriodSwitch value={period} onChange={setPeriod} dayName={dayName} week={hasWeeks} />
                 {leagues.length > 0 && (
                     <Segmented<string>
                         size="sm"
@@ -84,6 +105,8 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: O
             </div>
             {period === 'season' ? (
                 <SeasonTable league={day.league} members={scope === 'all' ? undefined : leagues.find((l) => l.id === scope)?.members} onOpen={onOpenFan} />
+            ) : period === 'week' && selected ? (
+                <LeagueWeeks fantasyLeague={day.league} members={selected.members} ownId={session.user.id} onOpen={onOpenFan} />
             ) : (
                 <ol className="card divide-y divide-line/10 overflow-hidden">
                     {ranking.map((row) => (
@@ -108,6 +131,10 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: O
                     day={ranking.map((row) => ({ userId: row.userId, name: row.name, points: row.points }))}
                     onLeft={() => {
                         setScope('all');
+                        load();
+                    }}
+                    onChanged={(change) => {
+                        if (change === 'deleted') setScope('all');
                         load();
                     }}
                 />
@@ -155,6 +182,46 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: O
                     </button>
                 </form>
                 {message && <p className="select-text text-sm font-semibold sm:col-span-2">{message}</p>}
+            </div>
+        </section>
+    );
+};
+
+/**
+ * Solo en el modo de prueba (sin cuenta, en desarrollo): una liga inventada para ver la semana y las herramientas del
+ * dueño. Los cambios se ven en la pantalla y no se guardan.
+ */
+const DemoLeague: React.FC<{ day: FantasyDay; dayName: string }> = ({ day, dayName }) => {
+    const { t } = useTranslation();
+    const [league, setLeague] = useState<PrivateLeague | null>(() => ({ ...DEMO_LEAGUE, members: [...DEMO_LEAGUE.members] }));
+    const [period, setPeriod] = useState<Period>('week');
+    if (!league) return null;
+    const names: Record<string, string | null> = { ...DEMO_NAMES, [DEMO_USER]: null };
+    const wait = () => new Promise((resolve) => setTimeout(resolve, 400));
+    const actions: OwnerActions = {
+        rename: async (_code, next) => {
+            await wait();
+            setLeague((current) => current && { ...current, name: next });
+        },
+        remove: async (_code, userId) => {
+            await wait();
+            setLeague((current) => current && { ...current, members: current.members.filter((id) => id !== userId) });
+        },
+        destroy: async () => {
+            await wait();
+            setLeague(null);
+        }
+    };
+    return (
+        <section className="space-y-3" aria-label={league.name}>
+            <PeriodSwitch value={period} onChange={setPeriod} dayName={dayName} week />
+            {period === 'week' && <LeagueWeeks demo names={names} fantasyLeague={day.league} members={league.members} ownId={DEMO_USER} onOpen={() => undefined} />}
+            <div className="card space-y-3 p-4">
+                <div className="min-w-0">
+                    <p className="truncate text-lg font-extrabold">{league.name}</p>
+                    <p className="text-xs text-muted">{t('leagueSummary.members', { count: league.members.length })}</p>
+                </div>
+                <LeagueOwnerTools league={league} fantasyLeague={day.league} ownId={DEMO_USER} onChanged={() => undefined} actions={actions} names={names} />
             </div>
         </section>
     );

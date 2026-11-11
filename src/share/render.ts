@@ -58,7 +58,36 @@ export interface StandingsPost {
     rows: { rank: number; abbrev: string; name: string; color: string; wins: number; losses: number; gamesBack: string }[];
 }
 
-export type PostData = ResultPost | PlayerPost | StandingsPost;
+/** Mi equipo del Fantasy: la alineación con fotos, la corona del capitán, precios, créditos y (con juegos) los puntos */
+export interface FantasyPost {
+    kind: 'fantasy';
+    league: string;
+    dateLabel: string;
+    title: string;
+    /** «45 de 50 créditos» o «Sin tope de créditos» */
+    credits: string;
+    /** Total del día (solo cuando ya empezó algún juego del equipo) */
+    total: string | null;
+    totalLabel: string;
+    captainLabel: string;
+    /** «Pronósticos: +20» */
+    picks?: string | null;
+    players: {
+        personId: number;
+        name: string;
+        teamId: number | null;
+        teamAbbrev: string;
+        color: string;
+        logo?: string | null;
+        /** «SS», «Lanzador» */
+        position: string;
+        price: string | null;
+        points: string | null;
+        captain: boolean;
+    }[];
+}
+
+export type PostData = ResultPost | PlayerPost | StandingsPost | FantasyPost;
 
 export interface RenderOptions {
     format: ShareFormat;
@@ -110,10 +139,10 @@ const loadImage = (src: string, timeout = 6000): Promise<HTMLImageElement | null
         img.src = src;
     });
 
-/** La mejor foto que cargue: uniforme del equipo, MLB o MiLB (ver lib/photos.ts) */
-const loadPlayerPhoto = async (data: PlayerPost) => {
+/** La mejor foto que cargue: la del uniforme del equipo u otra de respaldo (ver lib/photos.ts) */
+const loadPlayerPhoto = async (data: Pick<PlayerPost, 'personId' | 'name' | 'teamId'>, size = 720) => {
     if (!data.personId) return null;
-    const sources = photoSources(data.personId, data.name, data.teamId, await loadPhotoIndex(), 720);
+    const sources = photoSources(data.personId, data.name, data.teamId, await loadPhotoIndex(), size);
     for (const source of sources) {
         const img = await loadImage(source.url);
         if (img) return img;
@@ -593,6 +622,132 @@ const drawStandings = async (ctx: CanvasRenderingContext2D, data: StandingsPost,
     footer(ctx, H, pal, opts.labels.site, story ? 200 : 60);
 };
 
+/** Corona del capitán (dorada, con un círculo oscuro detrás para que se vea sobre cualquier fondo) */
+const crown = (ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, size * 0.72, 0, Math.PI * 2);
+    ctx.fillStyle = '#14151a';
+    ctx.fill();
+    const w = size;
+    const h = size * 0.72;
+    const x = cx - w / 2;
+    const y = cy - h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y + h);
+    ctx.lineTo(x, y + h * 0.25);
+    ctx.lineTo(x + w * 0.28, y + h * 0.58);
+    ctx.lineTo(x + w * 0.5, y);
+    ctx.lineTo(x + w * 0.72, y + h * 0.58);
+    ctx.lineTo(x + w, y + h * 0.25);
+    ctx.lineTo(x + w, y + h);
+    ctx.closePath();
+    ctx.fillStyle = '#f2b84b';
+    ctx.fill();
+    ctx.restore();
+};
+
+const drawFantasy = async (ctx: CanvasRenderingContext2D, data: FantasyPost, H: number, opts: RenderOptions) => {
+    const story = opts.format === 'story';
+    let pal = palette(opts.style, '#1e4fd8', '#f2b84b');
+    const hasPhoto = await background(ctx, H, pal, opts.style, opts.photo);
+    if (hasPhoto) pal = { ...pal, ink: '#ffffff', muted: 'rgba(255,255,255,0.82)', panel: 'rgba(0,0,0,0.38)' };
+    else if (opts.style === 'color') {
+        // El degradado de la cabecera del Fantasy
+        const gradient = ctx.createLinearGradient(0, 0, W, H);
+        gradient.addColorStop(0, '#1e4fd8');
+        gradient.addColorStop(0.55, '#6d28d9');
+        gradient.addColorStop(1, '#e11d48');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, W, H);
+        grain(ctx, H, 0.08);
+        pal = { ...pal, ink: '#ffffff', muted: 'rgba(255,255,255,0.8)', panel: 'rgba(255,255,255,0.14)', seam: 'rgba(255,255,255,0.16)' };
+    }
+
+    const top = story ? 240 : 120;
+    header(ctx, top, pal, data.league, data.dateLabel);
+    if (!hasPhoto) seams(ctx, W + 60, story ? 520 : 360, story ? 420 : 300, pal.seam, 7);
+
+    let y = top + (story ? 150 : 105);
+    ctx.fillStyle = pal.ink;
+    const titleWidth = data.total ? W - 160 - 300 : W - 160;
+    fitFont(ctx, data.title.toUpperCase(), titleWidth, story ? 120 : 92, 900);
+    ctx.fillText(data.title.toUpperCase(), 80, y);
+    if (data.total) {
+        ctx.textAlign = 'right';
+        ctx.font = font(800, story ? 150 : 112, DISPLAY);
+        ctx.fillText(data.total, W - 80, y + (story ? 10 : 6));
+        ctx.fillStyle = pal.muted;
+        ctx.font = font(700, story ? 26 : 22);
+        ctx.fillText(data.totalLabel.toUpperCase(), W - 80, y + (story ? 52 : 40));
+        ctx.textAlign = 'left';
+    }
+    y += story ? 56 : 44;
+    ctx.fillStyle = pal.muted;
+    ctx.font = font(600, story ? 34 : 28);
+    ctx.fillText([data.credits, data.picks].filter(Boolean).join(' · '), 80, y);
+    y += story ? 50 : 34;
+
+    const rows = data.players.slice(0, 7);
+    const bottom = story ? 300 : 110;
+    const rowH = Math.min(story ? 178 : 122, (H - y - bottom) / Math.max(1, rows.length));
+    const photos = await Promise.all(rows.map((row) => loadPlayerPhoto(row, 240)));
+    rows.forEach((row, index) => {
+        const ry = y + index * rowH;
+        const boxH = rowH - (story ? 18 : 12);
+        roundRect(ctx, 80, ry, W - 160, boxH, 30);
+        ctx.fillStyle = row.captain ? 'rgba(242,184,75,0.28)' : pal.panel;
+        ctx.fill();
+        const mid = ry + boxH / 2;
+        const size = boxH - 24;
+        const px = 104;
+        // Foto en un círculo con el color de su equipo detrás
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(px + size / 2, mid, size / 2, 0, Math.PI * 2);
+        ctx.fillStyle = row.color || '#2563eb';
+        ctx.fill();
+        const photo = photos[index];
+        if (photo) {
+            ctx.clip();
+            const side = Math.min(photo.naturalWidth, photo.naturalHeight);
+            ctx.drawImage(photo, (photo.naturalWidth - side) / 2, (photo.naturalHeight - side) * 0.15, side, side, px, mid - size / 2, size, size);
+        } else {
+            ctx.fillStyle = inkOn(row.color || '#2563eb');
+            ctx.font = font(800, size * 0.34);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(row.teamAbbrev, px + size / 2, mid + 1);
+        }
+        ctx.restore();
+        if (row.captain) crown(ctx, px + size - size * 0.12, mid - size / 2 + size * 0.14, size * 0.34);
+
+        const textX = px + size + 28;
+        const right = W - 112;
+        const pointsWidth = row.points ? 150 : 0;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle = pal.ink;
+        fitFont(ctx, row.name, right - textX - pointsWidth - 20, story ? 50 : 38, 800);
+        ctx.fillText(row.name, textX, mid - (story ? 4 : 2));
+        ctx.fillStyle = pal.muted;
+        ctx.font = font(600, story ? 30 : 24);
+        const detail = [row.teamAbbrev, row.position, row.price, row.captain ? data.captainLabel : null].filter(Boolean).join(' · ');
+        ctx.fillText(detail, textX, mid + (story ? 40 : 30));
+        if (row.points) {
+            ctx.fillStyle = pal.ink;
+            ctx.font = font(800, story ? 80 : 60, DISPLAY);
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(row.points, right, mid + 4);
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
+        }
+    });
+
+    footer(ctx, H, pal, opts.labels.site, story ? 200 : 50);
+};
+
 /** Dibuja el post y devuelve el canvas listo para exportar */
 export const renderPost = async (data: PostData, opts: RenderOptions): Promise<HTMLCanvasElement> => {
     await ensureFonts();
@@ -604,6 +759,7 @@ export const renderPost = async (data: PostData, opts: RenderOptions): Promise<H
     if (!ctx) throw new Error('canvas no disponible');
     if (data.kind === 'result') await drawResult(ctx, data, H, opts);
     else if (data.kind === 'player') await drawPlayer(ctx, data, H, opts);
+    else if (data.kind === 'fantasy') await drawFantasy(ctx, data, H, opts);
     else await drawStandings(ctx, data, H, opts);
     return canvas;
 };

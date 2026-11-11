@@ -62,7 +62,7 @@ export const isFanId = (value: string | null | undefined): value is string => !!
 
 // ---------------------------------------------------------------- servidor
 
-const getJson = async <T>(path: string, signal?: AbortSignal): Promise<T> => {
+export const getJson = async <T>(path: string, signal?: AbortSignal): Promise<T> => {
     const response = await fetch(path, { signal, headers: { Accept: 'application/json' } }).catch((error: Error) => {
         if (error.name === 'AbortError') throw error;
         throw new ApiError(error.message, typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'network');
@@ -75,7 +75,7 @@ const getJson = async <T>(path: string, signal?: AbortSignal): Promise<T> => {
 };
 
 // Un perfil que no existe o las cuentas apagadas no se arreglan reintentando
-const retry = (failureCount: number, error: Error) => !(error instanceof ApiError && [400, 404, 503].includes(error.status)) && failureCount < 2;
+export const retry = (failureCount: number, error: Error) => !(error instanceof ApiError && [400, 404, 503].includes(error.status)) && failureCount < 2;
 
 /** % de elección del día (solo de los juegos que ya empezaron), como el «% drafted» de los fantasy */
 export interface FantasyOwners {
