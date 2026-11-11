@@ -289,8 +289,9 @@ export const PointsChart: React.FC<{ days: FanStatsDay[]; own: boolean; best: st
                                     accessibilityRole="image"
                                     accessibilityLabel={`${summary}. ${days.map(barText).join('; ')}`}
                                     onPress={(event) => {
-                                        const index = Math.floor(event.nativeEvent.locationX / (step || 1));
-                                        setSelected((current) => (index < 0 || index >= days.length || current === index ? null : index));
+                                        // Con el teclado (en la web) no hay punto tocado: se quita la marca
+                                        const index = Math.floor(Number(event.nativeEvent.locationX) / (step || 1));
+                                        setSelected((current) => (!Number.isFinite(index) || index < 0 || index >= days.length || current === index ? null : index));
                                     }}
                                 >
                                     <Svg width={inner} height={H}>
