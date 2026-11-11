@@ -1,13 +1,13 @@
 // Fantasy v3 (igual que la web): «Mi temporada» (/api/v2/fantasy/fan/:id/stats), «Ideas para hoy»
 // (/api/v2/fantasy/trends) y la tabla por semanas de una liga privada (/api/v2/fantasy/weeks). Todo es opcional: si el
 // servidor no tiene la ruta (404), no tiene cuentas (503) o falla, la pantalla esconde esa sección. Los logros los da el
-// servidor; sin él, se sacan del perfil como antes (achievementsOf).
+// servidor; sin él, se sacan del perfil como antes (achievementList), igual que la web.
 import { useQuery } from '@tanstack/react-query';
 import type { LeagueId } from '../types';
 import { ApiError, networkErrorCode } from './api';
 import { API_BASE } from './config';
 import { RULES, type PlayerStatus } from './fantasy';
-import type { FanDay, FanProfileData } from '../components/fantasy/fans';
+import type { FanProfileData } from '../components/fantasy/fans';
 
 // ---------------------------------------------------------------- tipos (los del contrato)
 
@@ -63,6 +63,27 @@ export const ACHIEVEMENT_IDS = [
     'weekChampion'
 ] as const;
 export type AchievementId = (typeof ACHIEVEMENT_IDS)[number];
+
+/** El dibujo de cada logro (los mismos de la web) */
+export const ACHIEVEMENT_ICONS: Record<AchievementId, string> = {
+    firstTeam: '⚾',
+    days10: '📅',
+    days30: '🗓️',
+    day50: '🔥',
+    day100: '💯',
+    day150: '🚀',
+    streak3: '⚡',
+    streak7: '🏃',
+    streak14: '🏅',
+    perfectPicks: '🎯',
+    captainMvp: '👑',
+    season500: '🏆',
+    season1000: '💎',
+    top10Day: '🔟',
+    dayLeader: '🥇',
+    bargain: '💰',
+    weekChampion: '🏟️'
+};
 export const isAchievementId = (id: unknown): id is AchievementId => typeof id === 'string' && (ACHIEVEMENT_IDS as readonly string[]).includes(id);
 
 export interface TrendItem {
@@ -154,90 +175,134 @@ export const normalizeStats = (raw: Partial<FanStats> | null | undefined): FanSt
 /** Nunca jugó esta temporada (el estado vacío de «Mi temporada») */
 export const statsEmpty = (stats: FanStats) => stats.totals.days === 0 && !stats.days.some((day) => day.total !== 0);
 
-// ---------------------------------------------------------------- logros
+// ---------------------------------------------------------------- respaldo con el perfil (igual que la web)
 
 const DAY_MS = 86400000;
-const playedDay = (day: FanDay) => day.lineup.length > 0 || day.picksMade > 0;
+const round1 = (value: number) => Math.round(value * 10) / 10;
 
-/** Racha más larga de días seguidos jugando (los del perfil: días del calendario, como antes) */
-const longestStreak = (days: FanDay[]) => {
-    const dates = days
-        .filter(playedDay)
-        .map((day) => Date.parse(`${day.date}T12:00:00Z`))
-        .sort((a, b) => a - b);
-    let best = 0;
+/** Racha de días seguidos jugando (días del calendario, como los logros de antes): la actual y la más larga */
+const calendarStreaks = (dates: string[]) => {
+    const times = [...new Set(dates)].map((date) => Date.parse(`${date}T12:00:00Z`)).sort((a, b) => a - b);
+    let longest = 0;
     let run = 0;
     let previous: number | null = null;
-    for (const time of dates) {
+    for (const time of times) {
         run = previous !== null && Math.round((time - previous) / DAY_MS) === 1 ? run + 1 : 1;
-        best = Math.max(best, run);
+        longest = Math.max(longest, run);
         previous = time;
     }
-    return best;
+    return { current: run, longest };
 };
 
-/** Lo que hace falta para calcular los logros en el teléfono (de /stats sin logros o del perfil de siempre) */
-interface SeasonSummary {
-    days: number;
-    points: number;
-    best: number;
-    longest: number;
-    /** null: no se sabe (no se muestra) */
-    perfectPicks: boolean | null;
-}
-
-const fromSummary = (summary: SeasonSummary): AchievementState[] => {
-    const count = (id: AchievementId, goal: number, value: number): AchievementState => ({ id, unlockedAt: null, progress: { value: Math.max(0, Math.min(Math.round(value * 10) / 10, goal)), goal } });
-    const states = [
-        count('firstTeam', 1, summary.days),
-        count('days10', 10, summary.days),
-        count('days30', 30, summary.days),
-        count('day50', 50, summary.best),
-        count('day100', 100, summary.best),
-        count('day150', 150, summary.best),
-        count('streak3', 3, summary.longest),
-        count('streak7', 7, summary.longest),
-        count('streak14', 14, summary.longest),
-        // Los de sí o no van sin avance (como en el servidor); logrado, «1 de 1» para que cuente sin fecha
-        ...(summary.perfectPicks === null ? [] : [{ id: 'perfectPicks', unlockedAt: null, progress: summary.perfectPicks ? { value: 1, goal: 1 } : null }]),
-        count('season500', 500, summary.points),
-        count('season1000', 1000, summary.points)
-    ];
-    return states;
+const median = (values: number[]) => {
+    if (!values.length) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return round1(sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2);
 };
 
-/** Ya lo tiene: con fecha, o con lo que lleva igual o más que la meta */
-export const achievementDone = (state: AchievementState) => !!state.unlockedAt || (!!state.progress && state.progress.value >= state.progress.goal);
-
-/**
- * Los logros que se muestran: los del servidor (todas las definiciones, logradas o no) o, sin ellos, los que se pueden
- * calcular en el teléfono: con /stats sin logros, con sus totales; sin /stats, con el perfil (40 días, como antes).
- * Los que solo sabe el servidor (capitán estrella, top 10, líder del día, ganga, campeón de la semana) no salen.
- */
-export const achievementsOf = (stats: FanStats | null | undefined, profile: Pick<FanProfileData, 'season' | 'days'> | null | undefined): { list: AchievementState[]; source: 'server' | 'client' } | null => {
-    const known = (stats?.achievements ?? []).filter((item) => isAchievementId(item.id));
-    if (known.length) return { list: [...known].sort((a, b) => ACHIEVEMENT_IDS.indexOf(a.id as AchievementId) - ACHIEVEMENT_IDS.indexOf(b.id as AchievementId)), source: 'server' };
-    if (stats) {
-        return {
-            list: fromSummary({ days: stats.totals.days, points: stats.totals.total, best: stats.totals.best?.total ?? Math.max(0, ...stats.days.map((day) => day.total)), longest: stats.streak.longest, perfectPicks: null }),
-            source: 'client'
-        };
-    }
-    if (!profile) return null;
-    const finished = profile.days.filter((day) => day.final);
-    const best = Math.max(0, profile.season.best?.points ?? 0, ...finished.map((day) => day.total));
+/** Sin el servidor nuevo: lo que dice el perfil (sus últimos días y la temporada); capitán, pronósticos y peloteros no se saben */
+export const statsFromProfile = (profile: FanProfileData): FanStats => {
+    const played = profile.days.filter((day) => day.final && (day.lineup.length > 0 || day.picksMade > 0));
+    const days = played.map((day) => ({ date: day.date, team: day.team, picks: day.picks, total: day.total, rank: null, players: 0 })).sort((a, b) => a.date.localeCompare(b.date));
+    const best = profile.season.best ? { date: profile.season.best.date, total: profile.season.best.points } : null;
+    const worst = days.length ? days.reduce((low, day) => (day.total < low.total ? day : low)) : null;
     return {
-        list: fromSummary({
+        userId: profile.userId,
+        league: profile.league,
+        season: 0,
+        days,
+        totals: {
             days: profile.season.days,
-            points: profile.season.points,
+            total: round1(profile.season.points),
+            avg: profile.season.days ? round1(profile.season.points / profile.season.days) : 0,
+            median: median(days.map((day) => day.total)),
             best,
-            longest: longestStreak(profile.days),
-            // Todos los pronósticos de un día acertados (al menos 3)
-            perfectPicks: finished.some((day) => day.picksMade >= 3 && day.picks === day.picksMade * RULES.pick)
-        }),
-        source: 'client'
+            worst: worst ? { date: worst.date, total: worst.total } : null
+        },
+        streak: calendarStreaks(days.map((day) => day.date)),
+        captain: { days: 0, avg: 0, bonus: 0, best: null },
+        picks: { made: 0, hits: 0, pct: null },
+        players: [],
+        achievements: []
     };
 };
+
+/** La temporada que se muestra: la del servidor si llegó (`full`); si no (404, 503, error), la del perfil */
+export const seasonData = (stats: FanStats | null | undefined, profile: FanProfileData | null | undefined): { stats: FanStats; full: boolean } | null => {
+    if (stats) return { stats, full: true };
+    if (profile) return { stats: statsFromProfile(profile), full: false };
+    return null;
+};
+
+// ---------------------------------------------------------------- logros
+
+/** Un logro como se muestra: logrado (con su día si se sabe) o con lo que lleva */
+export interface AchievementView {
+    id: AchievementId;
+    done: boolean;
+    /** Cuándo se desbloqueó (null si no se sabe: el cálculo de respaldo no lo dice) */
+    date: string | null;
+    progress: { value: number; goal: number } | null;
+}
+
+const cleanProgress = (progress: AchievementState['progress']) => (progress && progress.goal > 0 ? { value: Math.min(progress.value, progress.goal), goal: progress.goal } : null);
+
+/** Los del servidor, en su orden (los que la app no conoce no se muestran) */
+export const achievementsFromServer = (items: AchievementState[]): AchievementView[] => {
+    const byId = new Map(items.filter((item) => isAchievementId(item.id)).map((item) => [item.id as AchievementId, item]));
+    return ACHIEVEMENT_IDS.filter((id) => byId.has(id)).map((id) => {
+        const item = byId.get(id)!;
+        const done = typeof item.unlockedAt === 'string' && item.unlockedAt !== '';
+        return { id, done, date: done ? item.unlockedAt : null, progress: cleanProgress(item.progress) };
+    });
+};
+
+/**
+ * Sin el servidor: el cálculo de siempre con los 40 días del perfil, con los ids del servidor (solo los que se pueden
+ * saber así: primer equipo, 10 días, 50 y 100 en un día, rachas de 3 y 7, pronóstico perfecto y 500 puntos)
+ */
+export const achievementsFallback = (profile: Pick<FanProfileData, 'season' | 'days'>): AchievementView[] => {
+    const finished = profile.days.filter((day) => day.final);
+    const best = Math.max(0, ...finished.map((day) => day.total));
+    const streak = calendarStreaks(profile.days.filter((day) => day.lineup.length > 0 || day.picksMade > 0).map((day) => day.date)).longest;
+    const count = (id: AchievementId, goal: number, value: number): AchievementView => {
+        const done = value >= goal;
+        return { id, done, date: null, progress: done ? null : { value: Math.min(value, goal), goal } };
+    };
+    const flag = (id: AchievementId, done: boolean): AchievementView => ({ id, done, date: null, progress: null });
+    return [
+        count('firstTeam', 1, profile.season.days),
+        count('days10', 10, profile.season.days),
+        flag('day50', best >= 50),
+        flag('day100', best >= 100),
+        count('streak3', 3, streak),
+        count('streak7', 7, streak),
+        // Todos los pronósticos de un día acertados (al menos 3)
+        flag('perfectPicks', finished.some((day) => day.picksMade >= 3 && day.picks === day.picksMade * RULES.pick)),
+        count('season500', 500, Math.round(profile.season.points))
+    ];
+};
+
+/**
+ * «Campeón de la semana» lo dice la app: el servidor no ve las ligas privadas. Con la fecha de la primera semana que
+ * ganó (de /weeks de sus ligas) el logro queda desbloqueado.
+ */
+export const withWeekTitle = (items: AchievementView[], date: string | null | undefined): AchievementView[] => {
+    if (!date) return items;
+    const unlocked: AchievementView = { id: 'weekChampion', done: true, date, progress: null };
+    if (!items.some((item) => item.id === 'weekChampion')) return items.length ? [...items, unlocked] : items;
+    return items.map((item) => (item.id === 'weekChampion' && !item.done ? unlocked : item));
+};
+
+/** Los logros que se muestran (perfil y Mi temporada): los del servidor y, si no llegaron, el cálculo de respaldo */
+export const achievementList = (stats: FanStats | null | undefined, profile: Pick<FanProfileData, 'season' | 'days'> | null | undefined): AchievementView[] => {
+    const server = stats ? achievementsFromServer(stats.achievements) : [];
+    if (server.length) return server;
+    return profile ? achievementsFallback(profile) : [];
+};
+
+// ---------------------------------------------------------------- semanas
 
 /** «Esta semana», «La semana pasada», «Hace 2 semanas» (índice en la lista de la más nueva a la más vieja) */
 export const weekName = (index: number, t: (key: string, options?: Record<string, unknown>) => string) =>
@@ -251,15 +316,12 @@ export const lastChampion = (weeks: LeagueWeek[]) => {
     return { week, userId: week.champion!, total: row?.total ?? 0 };
 };
 
-/** Las semanas que ganó en sus ligas privadas (el domingo de cada una), de la más vieja a la más nueva */
-export const weekTitles = (leagues: LeagueWeek[][], userId: string) => [...new Set(leagues.flat().filter((week) => week.champion === userId).map((week) => week.end))].sort();
-
-/**
- * «Campeón de la semana»: la base no deja que el servidor vea las ligas privadas, así que lo marca el teléfono cuando
- * /weeks dice que ganaste una semana en una de tus ligas (con el domingo de la primera como fecha).
- */
-export const withWeekTitles = (list: AchievementState[], titles: string[]) =>
-    titles.length ? list.map((item) => (item.id === 'weekChampion' && !achievementDone(item) ? { ...item, unlockedAt: titles[0] } : item)) : list;
+/** El domingo de la primera semana que ganó en una de sus ligas (null si ninguna) */
+export const weekTitle = (weeks: LeagueWeek[], userId: string) =>
+    weeks
+        .filter((week) => !!week.champion && week.champion.toLowerCase() === userId.toLowerCase())
+        .map((week) => week.end)
+        .sort()[0] ?? null;
 
 // ---------------------------------------------------------------- servidor
 

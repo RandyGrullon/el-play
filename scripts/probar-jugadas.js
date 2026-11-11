@@ -1737,75 +1737,109 @@ const statsLib = require(compileTo('lib/fantasyStats.ts'));
         assert.strictEqual(showGuide(false, true, { lineup: [1] }), false);
     });
 
-    it('logros: los del servidor (en su orden y sin ids desconocidos); sin ellos, los que se calculan en el teléfono', () => {
-        const { achievementsOf, achievementDone, normalizeStats, statsEmpty, ACHIEVEMENT_IDS } = statsLib;
+    it('logros: los del servidor (en su orden y sin ids desconocidos); sin ellos, el cálculo de antes con el perfil', () => {
+        const { achievementList, achievementsFromServer, normalizeStats, statsEmpty, ACHIEVEMENT_IDS, ACHIEVEMENT_ICONS } = statsLib;
+        assert.strictEqual(ACHIEVEMENT_IDS.length, 17);
+        assert.ok(ACHIEVEMENT_IDS.every((id) => typeof ACHIEVEMENT_ICONS[id] === 'string'));
         const server = normalizeStats({
             userId: 'fan-de-prueba',
             totals: { days: 3, total: 120 },
             achievements: [
                 { id: 'season500', unlockedAt: null, progress: { value: 120, goal: 500 } },
                 { id: 'nuevoLogro', unlockedAt: '2099-10-20', progress: null },
-                { id: 'firstTeam', unlockedAt: '2099-10-18', progress: null }
+                { id: 'firstTeam', unlockedAt: '2099-10-18', progress: null },
+                { id: 'captainMvp', unlockedAt: null, progress: null }
             ]
         });
-        const fromServer = achievementsOf(server, null);
-        assert.strictEqual(fromServer.source, 'server');
-        assert.deepStrictEqual(fromServer.list.map((item) => item.id), ['firstTeam', 'season500']);
-        assert.strictEqual(achievementDone(fromServer.list[0]), true);
-        assert.strictEqual(achievementDone(fromServer.list[1]), false);
-        assert.strictEqual(ACHIEVEMENT_IDS.length, 17);
-        // «Campeón de la semana» lo marca el teléfono con /weeks de sus ligas (el domingo de la primera que ganó)
-        const { weekTitles, withWeekTitles } = statsLib;
-        const semana = (start, end, champion) => ({ start, end, champion, rows: [] });
-        const titulos = weekTitles([[semana('2099-10-19', '2099-10-25', null), semana('2099-10-12', '2099-10-18', 'fan-yo')], [semana('2099-10-05', '2099-10-11', 'fan-yo'), semana('2099-10-12', '2099-10-18', 'fan-otro')]], 'fan-yo');
-        assert.deepStrictEqual(titulos, ['2099-10-11', '2099-10-18']);
-        const conCampeon = withWeekTitles([{ id: 'weekChampion', unlockedAt: null, progress: null }, { id: 'firstTeam', unlockedAt: null, progress: null }], titulos);
-        assert.deepStrictEqual(conCampeon.map((item) => item.unlockedAt), ['2099-10-11', null]);
-        assert.deepStrictEqual(withWeekTitles(conCampeon, []), conCampeon);
-        // El campeón de la semana pasada: el de la más nueva que ya terminó (la de ahora no tiene)
-        const { lastChampion, weekName } = statsLib;
-        const fila = (userId, total, rank) => ({ userId, total, days: 3, rank });
-        const campeon = lastChampion([
-            { start: '2099-10-12', end: '2099-10-18', champion: 'fan-yo', rows: [fila('fan-otro', 40, 2), fila('fan-yo', 55.5, 1)] },
-            { start: '2099-10-19', end: '2099-10-25', champion: null, rows: [fila('fan-otro', 12, 1)] }
+        assert.deepStrictEqual(achievementList(server, null), [
+            { id: 'firstTeam', done: true, date: '2099-10-18', progress: null },
+            { id: 'captainMvp', done: false, date: null, progress: null },
+            { id: 'season500', done: false, date: null, progress: { value: 120, goal: 500 } }
         ]);
-        assert.deepStrictEqual([campeon.userId, campeon.total, campeon.week.end], ['fan-yo', 55.5, '2099-10-18']);
-        assert.strictEqual(lastChampion([{ start: '2099-10-19', end: '2099-10-25', champion: null, rows: [] }]), null);
-        const tk = (key, options) => key + (options ? JSON.stringify(options) : '');
-        assert.deepStrictEqual([0, 1, 3].map((index) => weekName(index, tk)), ['fantasyLeagues.thisWeek', 'fantasyLeagues.lastWeek', 'fantasyLeagues.weeksAgo{"count":3}']);
+        // El avance no pasa de la meta
+        assert.deepStrictEqual(achievementsFromServer([{ id: 'days10', unlockedAt: null, progress: { value: 14, goal: 10 } }])[0].progress, { value: 10, goal: 10 });
 
-        // /stats sin logros: con sus totales (sin «pronóstico perfecto», que no se sabe)
-        const sinLogros = normalizeStats({ totals: { days: 12, total: 640, best: { date: '2099-10-02', total: 104 } }, streak: { current: 2, longest: 8 } });
-        const calc = achievementsOf(sinLogros, null);
-        assert.strictEqual(calc.source, 'client');
-        const done = (states) => states.filter(achievementDone).map((item) => item.id);
-        assert.deepStrictEqual(done(calc.list), ['firstTeam', 'days10', 'day50', 'day100', 'streak3', 'streak7', 'season500']);
-        assert.ok(!calc.list.some((item) => ['perfectPicks', 'captainMvp', 'top10Day', 'dayLeader', 'bargain', 'weekChampion'].includes(item.id)));
-        partial(calc.list.find((item) => item.id === 'days30'), { progress: { value: 12, goal: 30 } });
-
-        // Sin /stats: del perfil (40 días), como antes
+        // Sin el servidor (o sin sus logros): los 8 de antes con los ids nuevos, sin fecha
         const fanDay = (date, total, extra = {}) => ({ date, final: true, live: false, team: total, picks: 0, total, lineup: [1], captain: null, picksMade: 0, ...extra });
         const profile = {
+            userId: 'fan-de-prueba',
+            league: 'lidom',
+            name: 'Fanático de Prueba',
             season: { points: 160, days: 4, best: { date: '2099-10-03', points: 62 } },
             days: [fanDay('2099-10-05', 30, { picks: 30, picksMade: 3 }), fanDay('2099-10-04', 20), fanDay('2099-10-03', 62), fanDay('2099-10-01', 48)]
         };
-        const old = achievementsOf(null, profile);
-        assert.strictEqual(old.source, 'client');
-        assert.deepStrictEqual(done(old.list), ['firstTeam', 'day50', 'streak3', 'perfectPicks']);
-        partial(old.list.find((item) => item.id === 'days10'), { progress: { value: 4, goal: 10 } });
-        partial(old.list.find((item) => item.id === 'day100'), { progress: { value: 62, goal: 100 } });
-        partial(old.list.find((item) => item.id === 'season500'), { progress: { value: 160, goal: 500 } });
-        assert.strictEqual(achievementsOf(null, null), null);
+        const old = achievementList(null, profile);
+        assert.deepStrictEqual(
+            old.map((item) => [item.id, item.done, item.date]),
+            [
+                ['firstTeam', true, null],
+                ['days10', false, null],
+                ['day50', true, null],
+                ['day100', false, null],
+                ['streak3', true, null],
+                ['streak7', false, null],
+                ['perfectPicks', true, null],
+                ['season500', false, null]
+            ]
+        );
+        // Lo que lleva solo en los que se cuentan y no tiene todavía
+        assert.deepStrictEqual(old.map((item) => item.progress), [null, { value: 4, goal: 10 }, null, null, null, { value: 3, goal: 7 }, null, { value: 160, goal: 500 }]);
+        assert.deepStrictEqual(achievementList(normalizeStats({ totals: { days: 4 } }), profile), old);
+        assert.deepStrictEqual(achievementList(null, null), []);
         // Un pronóstico fallado: no es perfecto
-        assert.ok(!done(achievementsOf(null, { ...profile, days: [fanDay('2099-10-05', 20, { picks: 20, picksMade: 3 })] }).list).includes('perfectPicks'));
+        assert.strictEqual(achievementList(null, { ...profile, days: [fanDay('2099-10-05', 20, { picks: 20, picksMade: 3 })] }).find((item) => item.id === 'perfectPicks').done, false);
 
         // Lo que llega a medias no rompe y el fanático nuevo se ve vacío
         const raro = normalizeStats({ userId: 'fan-raro', days: [{ date: 'mal' }, { date: '2099-10-02', total: 'x' }] });
         assert.deepStrictEqual(raro.days, [{ date: '2099-10-02', team: 0, picks: 0, total: 0, rank: null, players: 0 }]);
         partial(raro, { totals: { days: 1, total: 0, best: null }, streak: { current: 0, longest: 0 }, picks: { made: 0, pct: null }, players: [], achievements: [] });
         assert.strictEqual(statsEmpty(normalizeStats({ userId: 'fan-nuevo', days: [], totals: { days: 0, total: 0 } })), true);
-        assert.strictEqual(statsEmpty(sinLogros), false);
         assert.strictEqual(normalizeStats(null), null);
+    });
+
+    it('logros: «Campeón de la semana» lo pone la app con /weeks de sus ligas (el domingo de la primera que ganó)', () => {
+        const { weekTitle, withWeekTitle, lastChampion, weekName } = statsLib;
+        const semana = (start, end, champion, rows = []) => ({ start, end, champion, rows });
+        const semanas = [semana('2099-10-19', '2099-10-25', null), semana('2099-10-12', '2099-10-18', 'FAN-YO'), semana('2099-10-05', '2099-10-11', 'fan-yo')];
+        assert.strictEqual(weekTitle(semanas, 'fan-yo'), '2099-10-11');
+        assert.strictEqual(weekTitle(semanas, 'fan-otro'), null);
+        const lista = [
+            { id: 'firstTeam', done: true, date: '2099-10-01', progress: null },
+            { id: 'weekChampion', done: false, date: null, progress: null }
+        ];
+        assert.deepStrictEqual(withWeekTitle(lista, '2099-10-11')[1], { id: 'weekChampion', done: true, date: '2099-10-11', progress: null });
+        assert.strictEqual(withWeekTitle(lista, null), lista);
+        // El respaldo no lo trae: se agrega al final (si hay logros que mostrar)
+        assert.deepStrictEqual(withWeekTitle([lista[0]], '2099-10-11').map((item) => item.id), ['firstTeam', 'weekChampion']);
+        assert.deepStrictEqual(withWeekTitle([], '2099-10-11'), []);
+        // El campeón de la semana pasada: el de la más nueva que ya terminó (la de ahora no tiene)
+        const fila = (userId, total, rank) => ({ userId, total, days: 3, rank });
+        const campeon = lastChampion([semana('2099-10-12', '2099-10-18', 'fan-yo', [fila('fan-otro', 40, 2), fila('fan-yo', 55.5, 1)]), semana('2099-10-19', '2099-10-25', null, [fila('fan-otro', 12, 1)])]);
+        assert.deepStrictEqual([campeon.userId, campeon.total, campeon.week.end], ['fan-yo', 55.5, '2099-10-18']);
+        assert.strictEqual(lastChampion([semana('2099-10-19', '2099-10-25', null)]), null);
+        const tk = (key, options) => key + (options ? JSON.stringify(options) : '');
+        assert.deepStrictEqual([0, 1, 3].map((index) => weekName(index, tk)), ['fantasyLeagues.thisWeek', 'fantasyLeagues.lastWeek', 'fantasyLeagues.weeksAgo{"count":3}']);
+    });
+
+    it('mi temporada sin el servidor: se arma con el perfil (días terminados, rachas del calendario y mediana)', () => {
+        const { seasonData, statsFromProfile } = statsLib;
+        const fanDay = (date, total, extra = {}) => ({ date, final: true, live: false, team: total, picks: 0, total, lineup: [1], captain: null, picksMade: 0, ...extra });
+        const profile = {
+            userId: 'fan-de-prueba',
+            league: 'lidom',
+            name: null,
+            season: { points: 131, days: 4, best: { date: '2099-10-03', points: 62 } },
+            days: [fanDay('2099-10-06', 9, { final: false, live: true }), fanDay('2099-10-04', 21), fanDay('2099-10-03', 62), fanDay('2099-10-01', 48), fanDay('2099-09-30', 0, { lineup: [], picksMade: 0 })]
+        };
+        const stats = statsFromProfile(profile);
+        assert.deepStrictEqual(stats.days.map((day) => day.date), ['2099-10-01', '2099-10-03', '2099-10-04']);
+        partial(stats.totals, { days: 4, total: 131, avg: 32.8, median: 48, best: { date: '2099-10-03', total: 62 }, worst: { date: '2099-10-04', total: 21 } });
+        assert.deepStrictEqual(stats.streak, { current: 2, longest: 2 });
+        assert.deepStrictEqual([stats.players, stats.picks.made, stats.captain.days], [[], 0, 0]);
+        assert.strictEqual(seasonData(null, profile).full, false);
+        const server = { ...stats, season: 2099 };
+        assert.deepStrictEqual(seasonData(server, profile), { stats: server, full: true });
+        assert.strictEqual(seasonData(null, null), null);
     });
 }
 

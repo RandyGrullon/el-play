@@ -24,7 +24,7 @@ import { FanAvatar } from '../../fantasy/FanSearch';
 import { isFanId, useFanEntry } from '../../fantasy/fans';
 import { useOpenPlayer } from '../../fantasy/shared';
 import { useLocalText } from '../../fantasy/texts';
-import { SeasonStats } from '../../fantasy/SeasonStats';
+import { PROFILE_KPIS, SeasonStats } from '../../fantasy/SeasonStats';
 import { shareLink } from '../../share/ShareSheet';
 import { CountUp, Enter, GradientCard, GrowBar, LineChart, MOTION_EASE, ModuleHeader, ProNote, ProSegmented, StatTile, teamInk, useInView, useMotion, useProColors, type LineSeries } from '../kit';
 import { Num, PartChip, PartChips, fmtPts, fmtSignedPts, ordinal } from '../fantasy/bits';
@@ -167,7 +167,7 @@ export const ProFanProfile: React.FC<ProFanProfileProps> = ({ userId, league, on
                             />
                             <SeasonChart name={title} own={own} series={seriesOf(profile)} mine={!own && myFan.data ? seriesOf(myFan.data) : null} daily={season.data?.daily ?? []} today={today} todayDay={todayQuery.data} />
                             {/* Su temporada entera (v3): capitán, pronósticos, los que más usó y los logros del servidor */}
-                            <SeasonStats userId={userId} league={league} own={own} fallback="badges" />
+                            <SeasonStats userId={userId} league={league} own={own} kpis={PROFILE_KPIS} fallback="badges" titled />
                             <TodayTeam league={league} userId={userId} own={own} detail={detail.data} detailPending={detail.isPending} detailMissing={detailMissing} todayDay={todayQuery.data} today={today} />
                             {canCompare && (
                                 <View

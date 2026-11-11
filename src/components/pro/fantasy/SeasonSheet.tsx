@@ -89,7 +89,7 @@ export const SeasonSheet: React.FC<SeasonSheetProps> = ({ open, league, userId, 
 
     return (
         <Sheet open={open} onClose={onClose} title={full ? `${t('fantasyStats.title')} · ${seasonName}` : t('pro.fantasy.season.title', { season: seasonName })}>
-            {full ? <SeasonStats userId={userId} league={league} own bare fallback="none" /> : null}
+            {full ? <SeasonStats userId={userId} league={league} own onBuild={onClose} /> : null}
             {fan.fetchStatus === 'paused' && !profile ? (
                 <OfflineState />
             ) : fan.isPending || season.isPending ? (

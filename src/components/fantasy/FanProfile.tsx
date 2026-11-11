@@ -15,7 +15,7 @@ import { TeamLink, teamTextLink } from '../stats/common';
 import { useFanEntry, useFanProfile, useSeasonRanking, withRanks, type FanDay, type FanProfileData } from './fans';
 import { gameStatus, lineText, teamOf, useOpenPlayer } from './shared';
 import { useLocalText } from './texts';
-import { SeasonStats } from './SeasonStats';
+import { PROFILE_KPIS, SeasonStats } from './SeasonStats';
 
 const round = (value: number) => Math.round(value * 10) / 10;
 const initialOf = (name: string | null | undefined) => (name ? Array.from(name.trim())[0]?.toLocaleUpperCase() : '') || '';
@@ -112,8 +112,8 @@ export const FanProfileView: React.FC<{ userId: string; league: LeagueId }> = ({
                 <ErrorState message={notFound ? L('fans.notFound') : errorText(query.error)} onRetry={notFound ? undefined : () => query.refetch()} />
             ) : profile ? (
                 <>
-                    {/* Su temporada entera (con los logros del servidor); sin esa ruta, solo los logros como antes */}
-                    <SeasonStats userId={userId} league={league} own={own} fallback="badges" />
+                    {/* Su temporada (v3): lo que la cabecera no dice, la gráfica, capitán, pronósticos, peloteros y logros */}
+                    <SeasonStats userId={userId} league={league} own={own} kpis={PROFILE_KPIS} titled />
 
                     <View style={{ gap: 8 }}>
                         <Txt eyebrow accessibilityRole="header">

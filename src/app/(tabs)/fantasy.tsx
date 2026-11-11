@@ -203,6 +203,7 @@ export default function FantasyScreen() {
                     {tab === 'fans' ? (
                         <FanSearch league={activeLeague} onOpen={openFan} />
                     ) : tab === 'season' && session ? (
+                        // La temporada no depende del día: sale aunque hoy no haya juegos
                         <SeasonStats userId={session.user.id} league={activeLeague} own onBuild={() => setTab('team')} />
                     ) : offline ? (
                         <OfflineState />
