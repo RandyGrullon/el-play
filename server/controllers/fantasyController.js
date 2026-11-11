@@ -2,6 +2,7 @@ const { LEAGUES, isLeague } = require('../config/constants');
 const fans = require('../services/fantasyFans');
 const accounts = require('../services/pro/accounts');
 const stats = require('../services/fantasyStats');
+const trends = require('../services/fantasyTrends');
 
 const leagueFrom = (req) => (isLeague(req.query.league) ? req.query.league : 'lidom');
 /** AAAA-MM-DD que existe (2026-13-45 no) */
@@ -112,6 +113,22 @@ const getFantasyFanStats = async (req, res, next) => {
     }
 };
 
+// Ideas para escoger: solo peloteros de juegos que no se han cerrado; lo de los demás fanáticos, de ayer
+const getFantasyTrends = async (req, res, next) => {
+    try {
+        const date = typeof req.query.date === 'string' && realDay(req.query.date) ? req.query.date : undefined;
+        if (req.query.date && !date) return res.set('Cache-Control', 'no-store').status(400).json({ error: 'invalid_date' });
+        if (accountsOff(res)) return;
+        const league = leagueFrom(req);
+        const data = await trends.dayTrends(league, date || fans.todayIn(LEAGUES[league].timeZone));
+        cacheFor(res, trends.trendsTtl(data));
+        const { partial, nextLockAt, updatedAt, ...body } = data;
+        res.json({ ...body, partial, updatedAt });
+    } catch (error) {
+        if (!accountsFailure(res, error)) next(error);
+    }
+};
+
 // Semanas (lunes a domingo, en la hora de la liga) de una liga privada: la actual y las 3 anteriores
 const getFantasyWeeks = async (req, res, next) => {
     try {
@@ -127,4 +144,4 @@ const getFantasyWeeks = async (req, res, next) => {
     }
 };
 
-module.exports = { getFantasyDay, getFantasyFan, getFantasySeason, getFantasyOwners, getFantasyFanStats, getFantasyWeeks };
+module.exports = { getFantasyDay, getFantasyFan, getFantasySeason, getFantasyOwners, getFantasyFanStats, getFantasyTrends, getFantasyWeeks };
