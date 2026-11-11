@@ -2,7 +2,8 @@
 // playEventsNew.test.ts): el vuelo del jonrón a escala (src/lib/flight.ts), los corredores que anotan en un hit o una
 // base por bolas (src/lib/runners.ts), lo que lleva cada jugada (src/lib/playEvents.ts) y, de paso, los juegos
 // suspendidos en espera (src/lib/baseball.ts y src/lib/polling.ts) y los avisos de los juegos y del Fantasy
-// (src/lib/gameAlerts.ts: qué se programa, qué se avisa y que no se repita). La app no tiene corredor de pruebas: los .ts se
+// (src/lib/gameAlerts.ts: qué se programa, qué se avisa y que no se repita) y cuándo se busca y se avisa una versión nueva
+// sin reinstalar (src/lib/appUpdate.ts). La app no tiene corredor de pruebas: los .ts se
 // pasan a JavaScript con el TypeScript del proyecto en una carpeta temporal y se prueban con node:assert.
 //
 // Uso:  node scripts/probar-jugadas.js
@@ -22,7 +23,7 @@ const compile = (name) => {
     const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } });
     fs.writeFileSync(path.join(OUT, `${name}.js`), outputText);
 };
-['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts', 'field', 'spray', 'swipeBack'].forEach(compile);
+['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts', 'field', 'spray', 'swipeBack', 'appUpdate'].forEach(compile);
 // playEvents usa el modo PRO de la cuenta (React Native): aquí siempre Lite
 fs.writeFileSync(path.join(OUT, 'pro.js'), 'exports.proActive = () => false;\n');
 
@@ -1118,6 +1119,76 @@ it('terminar de irse: rápido si se soltó con impulso, entre 120 y 280 ms', () 
     assert.strictEqual(swipe.swipeOutMs(1200, 0), 280);
     assert.strictEqual(swipe.swipeOutMs(0, 0), 120);
     assert.strictEqual(swipe.swipeOutMs(-50, 0), 120);
+});
+
+// ---------------------------------------------------------------- actualizar sin reinstalar (src/lib/appUpdate.ts)
+console.log('actualizar sin reinstalar');
+const upd = require(path.join(OUT, 'appUpdate.js'));
+const MIN = 60 * 1000;
+const AHORA = Date.UTC(2026, 10, 11, 20, 0);
+
+it('solo en un build de iPhone o Android con expo-updates: nada en la web, en desarrollo ni en Expo Go', () => {
+    const build = { os: 'android', dev: false, expoGo: false, native: true };
+    assert.strictEqual(upd.canUseUpdates(build), true);
+    assert.strictEqual(upd.canUseUpdates({ ...build, os: 'ios' }), true);
+    assert.strictEqual(upd.canUseUpdates({ ...build, os: 'web' }), false);
+    assert.strictEqual(upd.canUseUpdates({ ...build, dev: true }), false);
+    assert.strictEqual(upd.canUseUpdates({ ...build, expoGo: true }), false);
+    // Un build de antes de instalar expo-updates (sin su módulo nativo)
+    assert.strictEqual(upd.canUseUpdates({ ...build, native: false }), false);
+});
+
+it('buscar como mucho cada 15 minutos (al abrir y al volver a la app)', () => {
+    assert.strictEqual(upd.UPDATE_CHECK_MS, 15 * MIN);
+    const libre = { now: AHORA, lastCheck: null, busy: false, ready: false };
+    // La primera vez se busca
+    assert.strictEqual(upd.shouldCheck(libre), true);
+    // Volver a los 14:59 no; a los 15 minutos sí
+    assert.strictEqual(upd.shouldCheck({ ...libre, lastCheck: AHORA - 15 * MIN + 1000 }), false);
+    assert.strictEqual(upd.shouldCheck({ ...libre, lastCheck: AHORA - 15 * MIN }), true);
+    assert.strictEqual(upd.shouldCheck({ ...libre, lastCheck: AHORA - 180 * MIN }), true);
+    // Nunca dos a la vez ni con una versión ya bajada
+    assert.strictEqual(upd.shouldCheck({ ...libre, busy: true }), false);
+    assert.strictEqual(upd.shouldCheck({ ...libre, ready: true }), false);
+    assert.strictEqual(upd.shouldCheck({ ...libre, lastCheck: AHORA - 60 * MIN, busy: true }), false);
+    // La hora del teléfono se atrasó: se busca (si no, no se buscaría hasta que la hora la alcance)
+    assert.strictEqual(upd.shouldCheck({ ...libre, lastCheck: AHORA + 60 * MIN }), true);
+});
+
+it('la última búsqueda es la más nueva: la de la app o la del teléfono al abrir', () => {
+    assert.strictEqual(upd.lastCheckOf(null, undefined), null);
+    assert.strictEqual(upd.lastCheckOf(AHORA, null), AHORA);
+    assert.strictEqual(upd.lastCheckOf(null, AHORA), AHORA);
+    assert.strictEqual(upd.lastCheckOf(AHORA - 5 * MIN, AHORA), AHORA);
+    assert.strictEqual(upd.lastCheckOf(NaN, AHORA - MIN), AHORA - MIN);
+    // El teléfono ya buscó al abrir: la app no repite antes de los 15 minutos
+    const libre = { busy: false, ready: false };
+    assert.strictEqual(upd.shouldCheck({ ...libre, now: AHORA + 10 * MIN, lastCheck: upd.lastCheckOf(null, AHORA) }), false);
+    assert.strictEqual(upd.shouldCheck({ ...libre, now: AHORA + 16 * MIN, lastCheck: upd.lastCheckOf(null, AHORA) }), true);
+});
+
+it('el aviso: con la versión nueva ya bajada; nunca encima de una animación de jugada ni de otro aviso; cerrado no sale', () => {
+    const lista = { ready: true, dismissed: false, animating: false, toast: false };
+    assert.strictEqual(upd.showUpdateBanner(lista), true);
+    assert.strictEqual(upd.showUpdateBanner({ ...lista, ready: false }), false);
+    assert.strictEqual(upd.showUpdateBanner({ ...lista, animating: true }), false);
+    assert.strictEqual(upd.showUpdateBanner({ ...lista, toast: true }), false);
+    assert.strictEqual(upd.showUpdateBanner({ ...lista, dismissed: true }), false);
+});
+
+it('la configuración: runtime por fingerprint, apagado hasta update:configure, canales y textos en los dos idiomas', () => {
+    const { expo } = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
+    assert.deepStrictEqual(expo.runtimeVersion, { policy: 'fingerprint' });
+    partial(expo.updates, { checkAutomatically: 'ON_LOAD', fallbackToCacheTimeout: 0 });
+    // Sin `enabled` a mano: queda encendido solo cuando `eas update:configure` agregue la url
+    assert.strictEqual(expo.updates.enabled, undefined);
+    const { build } = JSON.parse(fs.readFileSync(path.join(ROOT, 'eas.json'), 'utf8'));
+    assert.strictEqual(build.preview.channel, 'preview');
+    assert.strictEqual(build.production.channel, 'production');
+    ['es', 'en'].forEach((lng) => {
+        const { update } = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'locales', `${lng}.json`), 'utf8'));
+        ['available', 'reload', 'updating'].forEach((key) => assert.ok(update[key] && !/MLB/i.test(update[key]), `${lng}: update.${key}`));
+    });
 });
 
 // ---------------------------------------------------------------- Fantasy (src/lib/fantasy*.ts)

@@ -29,6 +29,7 @@ import { StoryRecap } from '../../components/gamecast/StoryRecap';
 import { PlayAnimation } from '../../components/gamecast/PlayAnimation';
 import { ReplayContext } from '../../components/gamecast/replay';
 import { useReplayHost } from '../../components/gamecast/ReplayHost';
+import { useHoldUpdateBanner } from '../../hooks/useAppUpdate';
 import { Bases, OutsDots } from '../../components/game/Bases';
 import { DelayBanner } from '../../components/game/Delay';
 import { RainOverlay, useRainToggle } from '../../components/game/RainOverlay';
@@ -424,6 +425,8 @@ export default function GameScreen() {
     const [plays, setPlays] = useState<PlayEvent[]>([]);
     // Repetir una jugada del historial (Lite y PRO): una a la vez, con pausa entre repeticiones y encima de la hoja abierta
     const replay = useReplayHost(game, plays.length > 0);
+    // El aviso «Hay una versión nueva» no sale encima de una animación en vivo ni de una repetición: espera a que terminen
+    useHoldUpdateBanner(plays.length > 0 || replay.playing);
     const readAt = query.dataUpdatedAt;
     // Si este juego se sigue en segundo plano, cada lectura nueva va a la pantalla bloqueada / notificación
     useFollowSync(game, readAt);

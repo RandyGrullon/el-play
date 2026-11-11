@@ -145,3 +145,44 @@ npx eas-cli@latest submit --platform ios
 - Las notificaciones son locales (las programa el propio teléfono): no hace falta Firebase ni certificado de push.
 
 Todo el detalle (cuentas, credenciales, ficha de tienda, privacidad y revisión) está en [docs/TIENDAS.md](docs/TIENDAS.md).
+
+## Actualizar sin reinstalar
+
+Los cambios de JavaScript (pantallas, textos, imágenes, lógica) llegan a los teléfonos con **EAS Update** (`expo-updates`), sin build nuevo ni revisión de las tiendas. La app busca una versión nueva al abrirse y al volver a ella (como mucho cada 15 minutos), la baja sola y avisa «Hay una versión nueva de El Play» con el botón **Actualizar**, nunca encima de una animación de jugada. Si no se toca, queda puesta la próxima vez que se abra la app. En la web, en desarrollo, en Expo Go y mientras no esté configurado no hace nada.
+
+### Una sola vez
+
+1. Conectar el proyecto con EAS Update. Agrega `extra.eas.projectId` y `updates.url` a `app.json` (guarda ese cambio en git). Deja `runtimeVersion` (`fingerprint`) y los `channel` de `eas.json` (`preview` y `production`) como están:
+
+   ```bash
+   npx eas-cli@latest update:configure
+   ```
+
+2. `eas update` **no** lee el `env` de `eas.json` (eso es solo para los builds): las variables `EXPO_PUBLIC_*` tienen que estar en EAS. La llave anónima ya va ahí ([docs/TIENDAS.md](docs/TIENDAS.md#4-variables-de-entorno-en-eas), opción A); agrega las otras dos:
+
+   ```bash
+   npx eas-cli@latest env:set --name EXPO_PUBLIC_API_URL --value https://elplay.grullonb.com --environment production --environment preview --visibility plaintext
+   npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_URL --value https://dopiehplwzfzgvaonynm.supabase.co --environment production --environment preview --visibility plaintext
+   ```
+
+3. Un build nuevo por plataforma y perfil, **después** del paso 1: `expo-updates` es nativo y los builds de antes no lo traen (nunca van a recibir una actualización). Instala esos builds en los teléfonos:
+
+   ```bash
+   npx eas-cli@latest build --profile preview --platform android
+   npx eas-cli@latest build --profile production --platform all
+   ```
+
+   El de `development` puede seguir igual: en desarrollo el código llega del servidor de desarrollo.
+
+### En cada versión
+
+```bash
+npx eas-cli@latest update --channel production --environment production --message "…"
+npx eas-cli@latest update --channel preview --environment preview --message "…"
+```
+
+Para probar: instala el APK de `preview`, publica en `preview`, cierra y abre la app (o sal y vuelve): sale el aviso.
+
+### Lo que sigue necesitando un build nuevo
+
+Todo lo nativo: agregar, quitar o subir de versión una librería con código nativo (y subir de SDK), y los cambios en `app.json` (nombre, ícono, splash, permisos, plugins, `scheme`…). `runtimeVersion` con la política `fingerprint` lo detecta solo: con un cambio así el runtime cambia y la actualización solo llega a los builds hechos con ese mismo runtime; los teléfonos con el build viejo siguen con lo que tenían, sin romperse, hasta instalar el nuevo. Por eso, si cambiaste algo nativo: primero `eas build`, después `eas update`. En expo.dev cada build y cada actualización muestran su *runtime version*; si una actualización no llega, compáralos. Haz los builds y las actualizaciones desde la misma carpeta y con `npm install` al día, para que los dos calculen el mismo runtime.
