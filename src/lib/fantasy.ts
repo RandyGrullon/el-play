@@ -323,6 +323,8 @@ const subscribe = (listener: () => void) => {
 
 export const entryKey = (league: LeagueId, date: string) => `${league}:${date}`;
 const EMPTY: DayEntry = { lineup: [], captain: null, picks: {}, savedAt: 0 };
+/** El día sin equipo ni pronósticos */
+export const EMPTY_ENTRY: DayEntry = EMPTY;
 
 export const useFantasyStore = () => useSyncExternalStore(subscribe, load, () => ({}) as Store);
 export const useEntry = (league: LeagueId, date: string | undefined) => {
@@ -339,6 +341,7 @@ export const setStoreOwner = (id: string | null) => {
     if (id === owner) return;
     owner = id;
     store = null;
+    undoSlot = null;
     listeners.forEach((listener) => listener());
 };
 
@@ -367,10 +370,91 @@ export const withoutMissing = (day: FantasyDay, entry: DayEntry): DayEntry => {
     return { ...entry, lineup, captain: entry.captain !== null && lineup.includes(entry.captain) ? entry.captain : null };
 };
 
-const update = (day: FantasyDay, change: (entry: DayEntry) => DayEntry) => {
+// ---------------------------------------------------------------- deshacer (un paso, igual que la web)
+
+/** Qué fue el último cambio que se puede deshacer */
+export type UndoKind = 'add' | 'remove' | 'captain' | 'fill' | 'suggested' | 'copy';
+type LineupState = Pick<DayEntry, 'lineup' | 'captain'>;
+interface UndoSlot {
+    key: string;
+    kind: UndoKind;
+    before: LineupState;
+    after: LineupState;
+}
+let undoSlot: UndoSlot | null = null;
+/** Mientras corre withUndo, los cambios de adentro no se anotan uno por uno (cuenta el conjunto) */
+let undoBatch: { key: string; kind: UndoKind; before: LineupState } | null = null;
+
+const sameLineup = (a: LineupState, b: LineupState) => a.captain === b.captain && a.lineup.length === b.lineup.length && a.lineup.every((id, index) => b.lineup[index] === id);
+const lineupState = (entry: LineupState): LineupState => ({ lineup: [...entry.lineup], captain: entry.captain });
+
+const update = (day: FantasyDay, change: (entry: DayEntry) => DayEntry, kind?: UndoKind) => {
     const all = load();
     const key = entryKey(day.league, day.date);
-    save({ ...all, [key]: { ...withoutMissing(day, change(all[key] ?? EMPTY)), savedAt: Date.now() } });
+    const before = all[key] ?? EMPTY;
+    const next = { ...withoutMissing(day, change(before)), savedAt: Date.now() };
+    if (kind && !undoBatch && !sameLineup(before, next)) undoSlot = { key, kind, before: lineupState(before), after: lineupState(next) };
+    save({ ...all, [key]: next });
+};
+
+/** Varios cambios que se deshacen juntos (cambiar a uno por otro: quitar, agregar y pasarle la corona) */
+export const withUndo = <T>(day: FantasyDay, kind: UndoKind, run: () => T): T => {
+    const key = entryKey(day.league, day.date);
+    const outer = !undoBatch;
+    if (outer) undoBatch = { key, kind, before: lineupState(load()[key] ?? EMPTY) };
+    try {
+        return run();
+    } finally {
+        if (outer && undoBatch) {
+            const after = lineupState(load()[key] ?? EMPTY);
+            if (!sameLineup(undoBatch.before, after)) undoSlot = { key, kind, before: undoBatch.before, after };
+            undoBatch = null;
+            listeners.forEach((listener) => listener());
+        }
+    }
+};
+
+/**
+ * Se puede deshacer mientras nada de lo que cambió se haya cerrado: los que entraron o salieron y, si cambió la corona,
+ * el capitán de antes y el de después. Uno que ya no sale en el día no se cierra.
+ */
+export const undoAllowed = (day: FantasyDay, before: LineupState, after: LineupState, now = Date.now()) => {
+    const involved = new Set([...before.lineup.filter((id) => !after.lineup.includes(id)), ...after.lineup.filter((id) => !before.lineup.includes(id))]);
+    if (before.captain !== after.captain) {
+        if (before.captain !== null) involved.add(before.captain);
+        if (after.captain !== null) involved.add(after.captain);
+    }
+    return [...involved].every((id) => {
+        const player = day.players.find((p) => p.id === id);
+        return !player || !isLocked(day, player, now);
+    });
+};
+
+/**
+ * El último cambio de ese día si todavía se puede deshacer (el equipo sigue como quedó y nada de eso se cerró), con el
+ * pelotero que entró o salió para el texto («Deshacer: agregaste a …»)
+ */
+export const undoState = (day: FantasyDay, entry: LineupState, now = Date.now()): { kind: UndoKind; playerId: number | null } | null => {
+    const slot = undoSlot;
+    if (!slot || slot.key !== entryKey(day.league, day.date) || !sameLineup(slot.after, entry)) return null;
+    if (!undoAllowed(day, slot.before, slot.after, now)) return null;
+    const moved = slot.kind === 'remove' ? slot.before.lineup.find((id) => !slot.after.lineup.includes(id)) : slot.after.lineup.find((id) => !slot.before.lineup.includes(id));
+    return { kind: slot.kind, playerId: moved ?? null };
+};
+
+/** Deshace el último cambio (un solo paso): vuelven el equipo y la corona de antes; los pronósticos no se tocan */
+export const undoLast = (day: FantasyDay, now = Date.now()) => {
+    const slot = undoSlot;
+    if (!slot || !undoState(day, load()[slot.key] ?? EMPTY, now)) return false;
+    undoSlot = null;
+    update(day, (current) => ({ ...current, lineup: [...slot.before.lineup], captain: slot.before.captain }));
+    return true;
+};
+
+/** Se olvida el último cambio */
+export const clearUndo = () => {
+    undoSlot = null;
+    undoBatch = null;
 };
 
 /** Arregla el equipo guardado que quedó con más de 6 (lo dejó así la versión de antes): se vuelve a guardar */
@@ -447,7 +531,7 @@ export const canAdd = (day: FantasyDay, entry: DayEntry, player: FantasyPlayer, 
 
 export const addPlayer = (day: FantasyDay, entry: DayEntry, player: FantasyPlayer) => {
     if (canAdd(day, entry, player)) return false;
-    update(day, (current) => ({ ...current, lineup: [...current.lineup, player.id] }));
+    update(day, (current) => ({ ...current, lineup: [...current.lineup, player.id] }), 'add');
     return true;
 };
 
@@ -455,11 +539,15 @@ export const addPlayer = (day: FantasyDay, entry: DayEntry, player: FantasyPlaye
 export const removeId = (day: FantasyDay, id: number, now = Date.now()) => {
     const player = day.players.find((p) => p.id === id);
     if (player && isLocked(day, player, now)) return false;
-    update(day, (current) => ({
-        ...current,
-        lineup: current.lineup.filter((value) => value !== id),
-        captain: current.captain === id ? null : current.captain
-    }));
+    update(
+        day,
+        (current) => ({
+            ...current,
+            lineup: current.lineup.filter((value) => value !== id),
+            captain: current.captain === id ? null : current.captain
+        }),
+        'remove'
+    );
     return true;
 };
 
@@ -469,7 +557,7 @@ export const removePlayer = (day: FantasyDay, player: FantasyPlayer) => removeId
 export const setCaptain = (day: FantasyDay, entry: DayEntry, player: FantasyPlayer) => {
     const current = day.players.find((p) => p.id === entry.captain);
     if (isLocked(day, player) || (current && isLocked(day, current))) return false;
-    update(day, (value) => ({ ...value, captain: value.captain === player.id ? null : player.id }));
+    update(day, (value) => ({ ...value, captain: value.captain === player.id ? null : player.id }), 'captain');
     return true;
 };
 
@@ -477,7 +565,7 @@ export const setCaptain = (day: FantasyDay, entry: DayEntry, player: FantasyPlay
  * Pone un equipo entero (el sugerido): los peloteros ya cerrados se quedan y el capitán cerrado no se cambia; del
  * resto entra lo que se pide si su juego no ha empezado. Igual que la web.
  */
-export const applyLineup = (day: FantasyDay, lineup: number[], captain: number | null, now = Date.now()) => {
+export const applyLineup = (day: FantasyDay, lineup: number[], captain: number | null, now = Date.now(), kind: UndoKind = 'suggested') => {
     const find = (id: number | null) => (id === null ? undefined : day.players.find((p) => p.id === id));
     const locked = (id: number | null) => {
         const player = find(id);
@@ -489,8 +577,11 @@ export const applyLineup = (day: FantasyDay, lineup: number[], captain: number |
         const captainLocked = current.captain !== null && current.lineup.includes(current.captain) && locked(current.captain);
         const nextCaptain = captainLocked ? current.captain : captain !== null && next.includes(captain) && !locked(captain) ? captain : current.captain !== null && next.includes(current.captain) ? current.captain : null;
         return { ...current, lineup: next, captain: nextCaptain };
-    });
+    }, kind);
 };
+
+/** Pone el equipo y la corona tal cual (lo ya revisado, como «Copiar mi equipo de ayer»), con su deshacer */
+export const putLineup = (day: FantasyDay, lineup: number[], captain: number | null, kind: UndoKind) => update(day, (current) => ({ ...current, lineup: [...lineup], captain }), kind);
 
 export const setPick = (day: FantasyDay, game: FantasyGame, teamId: number) => {
     if (gameStarted(game) || isPostponed(game)) return false;

@@ -1524,6 +1524,255 @@ const helpLib = require(compileTo('lib/fantasyHelp.ts'));
     });
 }
 
+// ---------------------------------------------------------------- Fantasy v3 (src/lib/fantasyQuick.ts y fantasyStats.ts)
+// «Copiar mi equipo de ayer», «Deshacer», las razones de «Ideas para hoy» y los logros sin el servidor. Datos de mentira.
+console.log('Fantasy v3');
+const quickLib = require(compileTo('lib/fantasyQuick.ts'));
+const statsLib = require(compileTo('lib/fantasyStats.ts'));
+{
+    const { getStore, replaceStore, addPlayer, removePlayer, setCaptain, applyLineup, setPick, undoState, undoLast, withUndo, clearUndo, entryKey } = fantasyLib;
+    const { copyPlan, copyIntoDay, previousEntry, canOfferCopy, ideaRow, ideaRows, showGuide } = quickLib;
+    const LATER = '2099-10-21T23:00:00Z';
+    const PAST = '2000-01-01T00:00:00Z';
+    // Tres juegos: 1 (AAA-BBB) y 2 (CCC-DDD) por empezar, 3 (EEE-FFF) ya empezado; 50 créditos y máximo 2 por equipo
+    const GAME = { 1: 1, 2: 1, 3: 2, 4: 2, 5: 3, 6: 3 };
+    const j = (id, role, teamId, price, extra = {}) => ({ id, name: `Pelotero ${id}`, teamId, gamePk: GAME[teamId], role, pos: role === 'P' ? 'P' : 'SS', starter: true, played: false, line: null, points: 0, price, proj: 5, ...extra });
+    const juego = (gamePk, away, home, date, extra = {}) => ({ gamePk, date, state: 'preview', detailedState: 'Scheduled', startTimeTBD: false, away: { id: away, abbrev: `T${away}` }, home: { id: home, abbrev: `T${home}` }, ...extra });
+    const hoy = (players, extra = {}) => ({
+        league: 'lidom',
+        date: '2099-10-21',
+        teams: { 1: { id: 1, abbrev: 'AAA' }, 2: { id: 2, abbrev: 'BBB' }, 3: { id: 3, abbrev: 'CCC' }, 4: { id: 4, abbrev: 'DDD' }, 5: { id: 5, abbrev: 'EEE' }, 6: { id: 6, abbrev: 'FFF' } },
+        scoring: { batter: {}, pitcher: {} },
+        credits: { budget: 50, min: 4, max: 12 },
+        games: [juego(1, 1, 2, LATER), juego(2, 3, 4, LATER), juego(3, 5, 6, PAST, { state: 'live' })],
+        players,
+        ...extra
+    });
+    const vacio = { lineup: [], captain: null, picks: {}, savedAt: 0 };
+    const nombres = (id) => ({ 99999999: 'Pelotero Viejo' })[id] ?? null;
+
+    it('copiar ayer: entra en el orden de ayer respetando el máximo por equipo, los cupos y quién juega hoy; la corona pasa', () => {
+        const day = hoy([j(11111111, 'B', 1, 10), j(11111112, 'B', 1, 10), j(11111113, 'B', 1, 5), j(11111114, 'B', 5, 5), j(11111115, 'P', 3, 8), j(11111116, 'P', 4, 6)]);
+        const ayer = { lineup: [11111111, 11111112, 11111113, 99999999, 11111114, 11111115, 11111116], captain: 11111112 };
+        const plan = copyPlan(day, vacio, ayer, nombres);
+        assert.deepStrictEqual(plan.added, [11111111, 11111112, 11111115]);
+        assert.deepStrictEqual(plan.lineup, [11111111, 11111112, 11111115]);
+        assert.strictEqual(plan.captain, 11111112);
+        assert.strictEqual(plan.captainCopied, true);
+        assert.deepStrictEqual(
+            plan.skipped.map((item) => [item.id, item.name, item.reason.kind]),
+            [
+                [11111113, 'Pelotero 11111113', 'team'],
+                [99999999, 'Pelotero Viejo', 'notPlaying'],
+                [11111114, 'Pelotero 11111114', 'started'],
+                [11111116, 'Pelotero 11111116', 'fullP']
+            ]
+        );
+        partial(plan.skipped[0].reason, { n: 2, team: 'AAA' });
+        // Sin nombre conocido, null (la pantalla dice «un pelotero»)
+        assert.strictEqual(copyPlan(day, vacio, { lineup: [88888888], captain: null }).skipped[0].name, null);
+    });
+
+    it('copiar ayer: los créditos mandan (dice cuánto falta) y los que ya están no se repiten', () => {
+        const day = hoy([j(22222221, 'B', 1, 12), j(22222222, 'B', 2, 12), j(22222223, 'B', 3, 12), j(22222224, 'B', 4, 12), j(22222225, 'B', 2, 4), j(22222226, 'P', 3, 6)]);
+        const ya = { lineup: [22222221], captain: null, picks: {}, savedAt: 1 };
+        const plan = copyPlan(day, ya, { lineup: [22222221, 22222222, 22222223, 22222224, 22222226, 22222225], captain: null });
+        // 12 + 12 + 12 + 12 = 48: al lanzador de 6 le faltan 4 y al bateador de 4, 2
+        assert.deepStrictEqual(plan.added, [22222222, 22222223, 22222224]);
+        assert.deepStrictEqual(plan.skipped.map((item) => item.reason), [{ kind: 'budget', short: 4 }, { kind: 'budget', short: 2 }]);
+        assert.deepStrictEqual(plan.lineup, [22222221, 22222222, 22222223, 22222224]);
+        assert.strictEqual(plan.captain, null);
+    });
+
+    it('copiar ayer: la corona de hoy ya cerrada no se cambia; la de ayer no pasa si su dueño no entró', () => {
+        const day = hoy([j(33333331, 'B', 5, 5), j(33333332, 'B', 1, 5), j(33333333, 'B', 2, 5)]);
+        const conCorona = { lineup: [33333331], captain: 33333331, picks: {}, savedAt: 1 };
+        const plan = copyPlan(day, conCorona, { lineup: [33333332], captain: 33333332 });
+        assert.deepStrictEqual(plan.lineup, [33333331, 33333332]);
+        assert.strictEqual(plan.captain, 33333331);
+        assert.strictEqual(plan.captainCopied, false);
+        const sinDueno = copyPlan(day, vacio, { lineup: [33333333, 99999999], captain: 99999999 });
+        assert.strictEqual(sinDueno.captain, null);
+        assert.strictEqual(sinDueno.captainCopied, false);
+    });
+
+    it('copiar ayer: el día que se ofrece es el último con equipo de la semana anterior (de esa liga)', () => {
+        const store = {
+            'lidom:2099-10-20': { ...vacio, lineup: [] },
+            'lidom:2099-10-19': { ...vacio, lineup: [1, 2] },
+            'lidom:2099-10-11': { ...vacio, lineup: [3] },
+            'wbc:2099-10-20': { ...vacio, lineup: [4] },
+            'lidom:2099-10-21': { ...vacio, lineup: [5] }
+        };
+        partial(previousEntry(store, 'lidom', '2099-10-21'), { date: '2099-10-19' });
+        // Más de 7 días atrás no se ofrece
+        assert.strictEqual(previousEntry(store, 'lidom', '2099-10-19'), null);
+        partial(previousEntry(store, 'lidom', '2099-10-18'), { date: '2099-10-11' });
+        assert.strictEqual(previousEntry({}, 'lidom', '2099-10-21'), null);
+        const day = hoy([j(1, 'B', 1, 5), j(2, 'B', 2, 5)]);
+        assert.strictEqual(canOfferCopy(day, { lineup: [] }, { lineup: [1, 2] }), true);
+        assert.strictEqual(canOfferCopy(day, { lineup: [1, 2] }, { lineup: [1, 2] }), false);
+        assert.strictEqual(canOfferCopy(day, { lineup: [] }, null), false);
+    });
+
+    it('copiar ayer: se guarda en el día con su deshacer («copy») y deshacer lo deja como estaba', () => {
+        replaceStore({});
+        clearUndo();
+        const day = hoy([j(44444441, 'B', 1, 5), j(44444442, 'B', 3, 5), j(44444443, 'P', 4, 5)]);
+        const plan = copyIntoDay(day, { lineup: [44444441, 44444442, 44444443], captain: 44444443 });
+        assert.deepStrictEqual(plan.added, [44444441, 44444442, 44444443]);
+        const saved = getStore()[entryKey('lidom', day.date)];
+        assert.deepStrictEqual([saved.lineup, saved.captain], [[44444441, 44444442, 44444443], 44444443]);
+        assert.deepStrictEqual(undoState(day, saved), { kind: 'copy', playerId: 44444441 });
+        assert.strictEqual(undoLast(day), true);
+        const back = getStore()[entryKey('lidom', day.date)];
+        assert.deepStrictEqual([back.lineup, back.captain], [[], null]);
+        assert.strictEqual(undoState(day, back), null);
+    });
+
+    it('deshacer: un solo paso (agregar, quitar, capitán, completar) y los pronósticos no lo borran ni se deshacen', () => {
+        replaceStore({});
+        clearUndo();
+        const a = j(55555551, 'B', 1, 5);
+        const b = j(55555552, 'B', 3, 5);
+        const day = hoy([a, b]);
+        const entry = () => getStore()[entryKey('lidom', day.date)] ?? vacio;
+        assert.strictEqual(undoState(day, entry()), null);
+        addPlayer(day, entry(), a);
+        assert.deepStrictEqual(undoState(day, entry()), { kind: 'add', playerId: 55555551 });
+        addPlayer(day, entry(), b);
+        setCaptain(day, entry(), b);
+        assert.deepStrictEqual(undoState(day, entry()), { kind: 'captain', playerId: null });
+        // Un pronóstico no es un cambio del equipo: el deshacer sigue y no toca el pronóstico
+        setPick(day, day.games[0], 1);
+        assert.strictEqual(undoState(day, entry()).kind, 'captain');
+        assert.strictEqual(undoLast(day), true);
+        assert.deepStrictEqual([entry().lineup, entry().captain, entry().picks], [[55555551, 55555552], null, { 1: 1 }]);
+        // Un paso: lo de antes ya no se deshace
+        assert.strictEqual(undoState(day, entry()), null);
+        assert.strictEqual(undoLast(day), false);
+        removePlayer(day, a);
+        assert.deepStrictEqual(undoState(day, entry()), { kind: 'remove', playerId: 55555551 });
+        undoLast(day);
+        assert.deepStrictEqual(entry().lineup, [55555551, 55555552]);
+        applyLineup(day, [55555551, 55555552], 55555551, Date.now(), 'fill');
+        assert.strictEqual(undoState(day, entry()).kind, 'fill');
+        // Si el equipo cambió por otro lado (la cuenta trajo otro), ya no se ofrece
+        replaceStore({ [entryKey('lidom', day.date)]: { ...entry(), lineup: [55555552] } });
+        assert.strictEqual(undoState(day, entry()), null);
+    });
+
+    it('deshacer: no se puede si algo de ese cambio ya se cerró; cambiar a uno por otro se deshace junto', () => {
+        replaceStore({});
+        clearUndo();
+        const a = j(66666661, 'B', 1, 5);
+        const b = j(66666662, 'B', 3, 5);
+        const day = hoy([a, b]);
+        const entry = () => getStore()[entryKey('lidom', day.date)] ?? vacio;
+        addPlayer(day, entry(), a);
+        assert.ok(undoState(day, entry()));
+        // Cuando empieza el juego de a, ya no
+        assert.strictEqual(undoState(day, entry(), Date.parse(LATER) + 1000), null);
+        assert.strictEqual(undoLast(day, Date.parse(LATER) + 1000), false);
+        setCaptain(day, entry(), a);
+        withUndo(day, 'add', () => {
+            removePlayer(day, a);
+            addPlayer(day, entry(), b);
+            setCaptain(day, entry(), b);
+        });
+        assert.deepStrictEqual(undoState(day, entry()), { kind: 'add', playerId: 66666662 });
+        undoLast(day);
+        assert.deepStrictEqual([entry().lineup, entry().captain], [[66666661], 66666661]);
+    });
+
+    it('ideas: «Agregar» da la misma razón del selector; las cerradas, pospuestas o que no salen hoy no se muestran', () => {
+        const item = (id, extra = {}) => ({ id, name: `Pelotero ${id}`, teamId: 1, role: 'B', ...extra });
+        const players = [
+            j(77777771, 'B', 1, 5),
+            j(77777772, 'B', 1, 5),
+            j(77777773, 'B', 1, 5),
+            j(77777774, 'B', 5, 5),
+            j(77777775, 'B', 3, 12),
+            j(77777776, 'P', 4, 5),
+            j(77777777, 'P', 3, 5),
+            j(77777778, 'B', 2, 5, { status: 'postponed' })
+        ];
+        const day = hoy(players);
+        const entry = { lineup: [77777771, 77777772, 77777776], captain: null, picks: {}, savedAt: 1 };
+        const rows = ideaRows(day, entry, [item(77777771), item(77777773), item(77777774), item(77777775), item(77777777), item(12121212), item(77777778)]);
+        assert.deepStrictEqual(rows.map((row) => row.player.id), [77777771, 77777773, 77777775, 77777777]);
+        assert.deepStrictEqual(rows.map((row) => [row.inTeam, row.reason && row.reason.kind]), [[true, null], [false, 'team'], [false, null], [false, 'fullP']]);
+        partial(rows[1].reason, { n: 2, team: 'AAA' });
+        // Sin créditos: cuánto falta (20 de tope, 15 gastados, cuesta 12)
+        const pobre = hoy(players, { credits: { budget: 20, min: 4, max: 12 } });
+        assert.deepStrictEqual(ideaRow(pobre, entry, item(77777775)).reason, { kind: 'budget', short: 7 });
+        // Con los 5 bateadores: el lanzador sí, otro bateador no
+        const otros = hoy([...players, j(77777779, 'B', 4, 4), j(77777780, 'B', 2, 4), j(77777781, 'B', 4, 4)]);
+        const cinco = { lineup: [77777771, 77777779, 77777775, 77777780, 77777781], captain: null, picks: {}, savedAt: 1 };
+        assert.strictEqual(ideaRow(otros, cinco, item(77777777)).reason, null);
+        assert.deepStrictEqual(ideaRow(otros, cinco, item(77777773)).reason, { kind: 'fullB', n: 5 });
+    });
+
+    it('guía: sale hoy sin equipo hasta que se cierra', () => {
+        assert.strictEqual(showGuide(false, true, { lineup: [] }), true);
+        assert.strictEqual(showGuide(true, true, { lineup: [] }), false);
+        assert.strictEqual(showGuide(false, false, { lineup: [] }), false);
+        assert.strictEqual(showGuide(false, true, { lineup: [1] }), false);
+    });
+
+    it('logros: los del servidor (en su orden y sin ids desconocidos); sin ellos, los que se calculan en el teléfono', () => {
+        const { achievementsOf, achievementDone, normalizeStats, statsEmpty, ACHIEVEMENT_IDS } = statsLib;
+        const server = normalizeStats({
+            userId: 'fan-de-prueba',
+            totals: { days: 3, total: 120 },
+            achievements: [
+                { id: 'season500', unlockedAt: null, progress: { value: 120, goal: 500 } },
+                { id: 'nuevoLogro', unlockedAt: '2099-10-20', progress: null },
+                { id: 'firstTeam', unlockedAt: '2099-10-18', progress: null }
+            ]
+        });
+        const fromServer = achievementsOf(server, null);
+        assert.strictEqual(fromServer.source, 'server');
+        assert.deepStrictEqual(fromServer.list.map((item) => item.id), ['firstTeam', 'season500']);
+        assert.strictEqual(achievementDone(fromServer.list[0]), true);
+        assert.strictEqual(achievementDone(fromServer.list[1]), false);
+        assert.strictEqual(ACHIEVEMENT_IDS.length, 17);
+
+        // /stats sin logros: con sus totales (sin «pronóstico perfecto», que no se sabe)
+        const sinLogros = normalizeStats({ totals: { days: 12, total: 640, best: { date: '2099-10-02', total: 104 } }, streak: { current: 2, longest: 8 } });
+        const calc = achievementsOf(sinLogros, null);
+        assert.strictEqual(calc.source, 'client');
+        const done = (states) => states.filter(achievementDone).map((item) => item.id);
+        assert.deepStrictEqual(done(calc.list), ['firstTeam', 'days10', 'day50', 'day100', 'streak3', 'streak7', 'season500']);
+        assert.ok(!calc.list.some((item) => ['perfectPicks', 'captainMvp', 'top10Day', 'dayLeader', 'bargain', 'weekChampion'].includes(item.id)));
+        partial(calc.list.find((item) => item.id === 'days30'), { progress: { value: 12, goal: 30 } });
+
+        // Sin /stats: del perfil (40 días), como antes
+        const fanDay = (date, total, extra = {}) => ({ date, final: true, live: false, team: total, picks: 0, total, lineup: [1], captain: null, picksMade: 0, ...extra });
+        const profile = {
+            season: { points: 160, days: 4, best: { date: '2099-10-03', points: 62 } },
+            days: [fanDay('2099-10-05', 30, { picks: 30, picksMade: 3 }), fanDay('2099-10-04', 20), fanDay('2099-10-03', 62), fanDay('2099-10-01', 48)]
+        };
+        const old = achievementsOf(null, profile);
+        assert.strictEqual(old.source, 'client');
+        assert.deepStrictEqual(done(old.list), ['firstTeam', 'day50', 'streak3', 'perfectPicks']);
+        partial(old.list.find((item) => item.id === 'days10'), { progress: { value: 4, goal: 10 } });
+        partial(old.list.find((item) => item.id === 'day100'), { progress: { value: 62, goal: 100 } });
+        partial(old.list.find((item) => item.id === 'season500'), { progress: { value: 160, goal: 500 } });
+        assert.strictEqual(achievementsOf(null, null), null);
+        // Un pronóstico fallado: no es perfecto
+        assert.ok(!done(achievementsOf(null, { ...profile, days: [fanDay('2099-10-05', 20, { picks: 20, picksMade: 3 })] }).list).includes('perfectPicks'));
+
+        // Lo que llega a medias no rompe y el fanático nuevo se ve vacío
+        const raro = normalizeStats({ userId: 'fan-raro', days: [{ date: 'mal' }, { date: '2099-10-02', total: 'x' }] });
+        assert.deepStrictEqual(raro.days, [{ date: '2099-10-02', team: 0, picks: 0, total: 0, rank: null, players: 0 }]);
+        partial(raro, { totals: { days: 1, total: 0, best: null }, streak: { current: 0, longest: 0 }, picks: { made: 0, pct: null }, players: [], achievements: [] });
+        assert.strictEqual(statsEmpty(normalizeStats({ userId: 'fan-nuevo', days: [], totals: { days: 0, total: 0 } })), true);
+        assert.strictEqual(statsEmpty(sinLogros), false);
+        assert.strictEqual(normalizeStats(null), null);
+    });
+}
+
 fs.rmSync(OUT, { recursive: true, force: true });
 if (failed) {
     console.log(`\n${failed} caso(s) fallaron`);

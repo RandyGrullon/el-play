@@ -618,16 +618,21 @@ export interface PrivateLeague {
     id: string;
     name: string;
     code: string;
+    /** Quien la creó (puede renombrarla, sacar a alguien o borrarla) */
+    owner: string | null;
     members: string[];
 }
 
 export const myLeagues = async (): Promise<PrivateLeague[]> => {
     const current = readSession();
     if (!current) return [];
-    const rows = await rest<{ league: { id: string; name: string; code: string; league_members: { user_id: string }[] } }[]>(
-        `league_members?user_id=eq.${current.user.id}&select=league:leagues(id,name,code,league_members(user_id))`
+    const rows = await rest<{ league: { id: string; name: string; code: string; owner?: string | null; league_members: { user_id: string }[] } | null }[]>(
+        `league_members?user_id=eq.${current.user.id}&select=league:leagues(id,name,code,owner,league_members(user_id))`
     );
-    return (rows || []).map(({ league }) => ({ id: league.id, name: league.name, code: league.code, members: league.league_members.map((m) => m.user_id) }));
+    return (rows || [])
+        .map(({ league }) => league)
+        .filter((league): league is NonNullable<typeof league> => !!league)
+        .map((league) => ({ id: league.id, name: league.name, code: league.code, owner: league.owner ?? null, members: league.league_members.map((m) => m.user_id) }));
 };
 
 /** Crea una liga con un código para compartir (lo genera la base de datos) */
