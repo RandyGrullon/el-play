@@ -893,9 +893,20 @@ const scheduleGame = (game, params = {}) => {
         teams: { away: side('away'), home: side('home') },
         venue: { name: TEAMS[game.homeId].venue },
         seriesDescription: 'Regular Season',
+        // De día si empieza antes de las 6 de la tarde en RD (los domingos)
+        dayNight: new Date(game.start - 4 * 3600000).getUTCHours() < 18 ? 'day' : 'night',
         linescore,
         decisions: feed.liveData.decisions
     };
+};
+
+// Un pedido de más de un mes es de toda la temporada (calendario PRO, carrera, juegos de un equipo): solo salen los días
+// de la regular simulada (del 16 de octubre al 20 de diciembre, lo que dice /league/131) y, para que cuadre con el
+// calendario del Lite, los de alrededor de hoy (3 atrás y 7 adelante)
+const SEASON_SPAN_DAYS = 31;
+const inSimulatedSeason = (day) => {
+    const opening = openingOf(day);
+    return day >= opening && day <= `${opening.slice(0, 4)}-12-20`;
 };
 
 const schedule = (params = {}) => {
@@ -903,9 +914,12 @@ const schedule = (params = {}) => {
     if (params.gameTypes === 'W') return { dates: [] };
     const start = Date.parse(`${params.startDate}T00:00:00Z`);
     const end = Date.parse(`${params.endDate}T00:00:00Z`);
+    const wholeSeason = (end - start) / DAY > SEASON_SPAN_DAYS;
+    const today = Date.parse(`${localDay(Date.now())}T00:00:00Z`);
     const dates = [];
     for (let time = start; time <= end; time += DAY) {
         const day = new Date(time).toISOString().slice(0, 10);
+        if (wholeSeason && !inSimulatedSeason(day) && (time < today - 3 * DAY || time > today + 7 * DAY)) continue;
         dates.push({ date: day, games: gamesForDay(day).map((game) => scheduleGame(game, params)) });
     }
     return { dates };
@@ -1309,7 +1323,8 @@ const get = async (url, params = {}) => {
     if ((match = path.match(/^\/people\/(\d+)\/stats$/))) return personStats(match[1], params);
     if (path === '/transactions') return transactions(params);
     if ((match = path.match(/^\/league\/(\d+)$/))) {
-        const year = new Date().getUTCFullYear();
+        // La temporada pedida (?season=, la pasada del calendario PRO) o la del año en curso
+        const year = /^\d{4}$/.test(String(params.season ?? '')) ? Number(params.season) : new Date().getUTCFullYear();
         // LIDOM simulada: la regular empezó el 16 de octubre (el simulador tiene juegos todos los días)
         const dates =
             Number(match[1]) === 131
