@@ -3,7 +3,8 @@
 // la derecha, el 1 arriba); el capitán; los pronósticos; los peloteros que más usó y los logros. Lo usan la pestaña del
 // Lite, la hoja de PRO y el perfil de cada fanático. Sin la ruta (404, 503 o error) solo salen los logros calculados en
 // el teléfono (como antes) o nada, según `fallback`.
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Pressable, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Line, Polyline, Rect, Text as SvgText } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +32,8 @@ import {
 } from 'lucide-react-native';
 import type { LeagueId } from '../../types';
 import { localeFor } from '../../lib/format';
-import { achievementDone, achievementsOf, statsEmpty, useFanStats, type AchievementState, type FanStats, type FanStatsDay } from '../../lib/fantasyStats';
+import { accountEnabled, myLeagues } from '../../lib/account';
+import { achievementDone, achievementsOf, fetchLeagueWeeks, statsEmpty, useFanStats, weekTitles, withWeekTitles, type AchievementState, type FanStats, type FanStatsDay } from '../../lib/fantasyStats';
 import { useColors } from '../../theme/theme';
 import { alpha, radius } from '../../theme/tokens';
 import { Button, Card, PlayerPhoto, Row, Skeleton, Txt } from '../ui';
@@ -66,6 +68,23 @@ const ICONS: Record<string, LucideIcon> = {
     weekChampion: Shield
 };
 
+/**
+ * Las semanas que ganaste en tus ligas privadas (de /weeks): el servidor no ve las ligas (las protege la base), así que
+ * «Campeón de la semana» lo marca el teléfono. Solo para la propia cuenta.
+ */
+const useOwnWeekTitles = (league: LeagueId, userId: string, enabled: boolean) =>
+    useQuery({
+        queryKey: ['fantasy-week-titles', league, userId],
+        queryFn: async ({ signal }) => {
+            const leagues = await myLeagues();
+            const weeks = await Promise.all(leagues.map((item) => fetchLeagueWeeks(league, item.members, signal).catch(() => [])));
+            return weekTitles(weeks, userId);
+        },
+        enabled: enabled && accountEnabled(),
+        staleTime: 10 * 60000,
+        retry: false
+    });
+
 interface SeasonStatsProps {
     userId: string;
     league: LeagueId;
@@ -88,6 +107,7 @@ export const SeasonStats: React.FC<SeasonStatsProps> = ({ userId, league, own, f
     // El perfil de siempre: los logros sin la ruta nueva (la misma consulta del resumen y del perfil)
     const profile = useFanProfile(query.isError || (query.isSuccess && !query.data) ? userId : null, league);
     const stats = query.data ?? null;
+    const titles = useOwnWeekTitles(league, userId, own && !!stats && !statsEmpty(stats));
 
     if (query.isPending && query.fetchStatus === 'fetching') {
         return (
@@ -141,7 +161,7 @@ export const SeasonStats: React.FC<SeasonStatsProps> = ({ userId, league, own, f
             <CaptainCard stats={stats} />
             <PicksCard stats={stats} />
             <PlayersCard stats={stats} own={own} />
-            {achievements ? <AchievementsGallery list={achievements.list} /> : null}
+            {achievements ? <AchievementsGallery list={achievements.source === 'server' ? withWeekTitles(achievements.list, titles.data ?? []) : achievements.list} /> : null}
         </View>
     );
 };

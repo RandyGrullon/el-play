@@ -1737,6 +1737,14 @@ const statsLib = require(compileTo('lib/fantasyStats.ts'));
         assert.strictEqual(achievementDone(fromServer.list[0]), true);
         assert.strictEqual(achievementDone(fromServer.list[1]), false);
         assert.strictEqual(ACHIEVEMENT_IDS.length, 17);
+        // «Campeón de la semana» lo marca el teléfono con /weeks de sus ligas (el domingo de la primera que ganó)
+        const { weekTitles, withWeekTitles } = statsLib;
+        const semana = (start, end, champion) => ({ start, end, champion, rows: [] });
+        const titulos = weekTitles([[semana('2099-10-19', '2099-10-25', null), semana('2099-10-12', '2099-10-18', 'fan-yo')], [semana('2099-10-05', '2099-10-11', 'fan-yo'), semana('2099-10-12', '2099-10-18', 'fan-otro')]], 'fan-yo');
+        assert.deepStrictEqual(titulos, ['2099-10-11', '2099-10-18']);
+        const conCampeon = withWeekTitles([{ id: 'weekChampion', unlockedAt: null, progress: null }, { id: 'firstTeam', unlockedAt: null, progress: null }], titulos);
+        assert.deepStrictEqual(conCampeon.map((item) => item.unlockedAt), ['2099-10-11', null]);
+        assert.deepStrictEqual(withWeekTitles(conCampeon, []), conCampeon);
 
         // /stats sin logros: con sus totales (sin «pronóstico perfecto», que no se sabe)
         const sinLogros = normalizeStats({ totals: { days: 12, total: 640, best: { date: '2099-10-02', total: 104 } }, streak: { current: 2, longest: 8 } });

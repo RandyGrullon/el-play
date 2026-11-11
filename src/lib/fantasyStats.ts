@@ -192,7 +192,8 @@ const fromSummary = (summary: SeasonSummary): AchievementState[] => {
         count('streak3', 3, summary.longest),
         count('streak7', 7, summary.longest),
         count('streak14', 14, summary.longest),
-        ...(summary.perfectPicks === null ? [] : [{ id: 'perfectPicks', unlockedAt: null, progress: { value: summary.perfectPicks ? 1 : 0, goal: 1 } }]),
+        // Los de sí o no van sin avance (como en el servidor); logrado, «1 de 1» para que cuente sin fecha
+        ...(summary.perfectPicks === null ? [] : [{ id: 'perfectPicks', unlockedAt: null, progress: summary.perfectPicks ? { value: 1, goal: 1 } : null }]),
         count('season500', 500, summary.points),
         count('season1000', 1000, summary.points)
     ];
@@ -231,6 +232,16 @@ export const achievementsOf = (stats: FanStats | null | undefined, profile: Pick
         source: 'client'
     };
 };
+
+/** Las semanas que ganó en sus ligas privadas (el domingo de cada una), de la más vieja a la más nueva */
+export const weekTitles = (leagues: LeagueWeek[][], userId: string) => [...new Set(leagues.flat().filter((week) => week.champion === userId).map((week) => week.end))].sort();
+
+/**
+ * «Campeón de la semana»: la base no deja que el servidor vea las ligas privadas, así que lo marca el teléfono cuando
+ * /weeks dice que ganaste una semana en una de tus ligas (con el domingo de la primera como fecha).
+ */
+export const withWeekTitles = (list: AchievementState[], titles: string[]) =>
+    titles.length ? list.map((item) => (item.id === 'weekChampion' && !achievementDone(item) ? { ...item, unlockedAt: titles[0] } : item)) : list;
 
 // ---------------------------------------------------------------- servidor
 
@@ -277,17 +288,23 @@ export const useFantasyTrends = (league: LeagueId, date: string | undefined, ena
 // Cuentas que se pueden pedir de una vez
 const MAX_USERS = 100;
 
+/** Los miembros en el orden de la dirección (la misma liga es la misma dirección y la misma copia en el CDN) */
+const userIds = (users: string[] | undefined) => [...new Set((users ?? []).filter((id) => UUID.test(id)).map((id) => id.toLowerCase()))].sort().slice(0, MAX_USERS).join(',');
+
+/** Semanas de lunes a domingo de una liga privada, de la actual (weeks[0]) hacia atrás */
+export const fetchLeagueWeeks = async (league: LeagueId, users: string[], signal?: AbortSignal): Promise<LeagueWeek[]> => {
+    const raw = await getJson<{ weeks?: LeagueWeek[] }>(`/api/v2/fantasy/weeks?league=${league}&users=${userIds(users)}`, signal);
+    return list<LeagueWeek>(raw.weeks)
+        .filter((week) => week && dateOf(week.start) && dateOf(week.end))
+        .map((week) => ({ start: week.start, end: week.end, champion: typeof week.champion === 'string' && week.champion ? week.champion : null, rows: list<WeekRow>(week.rows).filter((row) => row && typeof row.userId === 'string') }))
+        .sort((a, b) => b.start.localeCompare(a.start));
+};
+
 export const useLeagueWeeks = (league: LeagueId, users: string[] | undefined, enabled = true) => {
-    const ids = [...new Set((users ?? []).filter((id) => UUID.test(id)).map((id) => id.toLowerCase()))].sort().slice(0, MAX_USERS).join(',');
+    const ids = userIds(users);
     return useQuery({
         queryKey: ['fantasy-weeks', league, ids],
-        queryFn: async ({ signal }) => {
-            const raw = await getJson<{ weeks?: LeagueWeek[] }>(`/api/v2/fantasy/weeks?league=${league}&users=${ids}`, signal);
-            return list<LeagueWeek>(raw.weeks)
-                .filter((week) => week && dateOf(week.start) && dateOf(week.end))
-                .map((week) => ({ start: week.start, end: week.end, champion: typeof week.champion === 'string' && week.champion ? week.champion : null, rows: list<WeekRow>(week.rows).filter((row) => row && typeof row.userId === 'string') }))
-                .sort((a, b) => b.start.localeCompare(a.start));
-        },
+        queryFn: ({ signal }) => fetchLeagueWeeks(league, ids.split(','), signal),
         enabled: enabled && ids !== '',
         staleTime: 5 * 60000,
         retry
