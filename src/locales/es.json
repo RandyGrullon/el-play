@@ -2122,5 +2122,272 @@
       "batter": "Al bate",
       "onDeck": "En espera"
     }
+  },
+  "fantasyStats": {
+    "tab": "Mi temporada",
+    "title": "Mi temporada",
+    "titleOther": "Su temporada",
+    "kpis": "Números de la temporada",
+    "kpi": {
+      "points": "Puntos",
+      "avg": "Promedio",
+      "best": "Mejor día",
+      "days": "Días jugados",
+      "streak": "Racha actual",
+      "longest": "Racha más larga",
+      "median": "mediana {{n}}",
+      "perDay": "por día",
+      "daysUnit_one": "{{count}} día",
+      "daysUnit_other": "{{count}} días"
+    },
+    "chart": {
+      "title": "Puntos por día",
+      "showRank": "Ver mi puesto",
+      "showRankOther": "Ver su puesto",
+      "label_one": "Puntos de {{count}} día. Mejor día: {{best}} pts",
+      "label_other": "Puntos de {{count}} días. Mejor día: {{best}} pts",
+      "bar": "{{date}}: {{pts}} pts",
+      "barRank": "{{date}}: {{pts}} pts · #{{rank}} de {{players}}",
+      "legendPoints": "Puntos del día",
+      "legendRank": "Puesto del día (el 1 arriba)",
+      "rankAxis": "#{{rank}}"
+    },
+    "captain": {
+      "title": "Capitán",
+      "days": "Días con capitán",
+      "avg": "Promedio",
+      "bonus": "Puntos extra",
+      "bonusHint": "Lo que sumó la corona",
+      "best": "Mejor capitán",
+      "bestDetail": "{{pts}} pts · {{date}}",
+      "none": "Todavía no hay días con capitán."
+    },
+    "picks": {
+      "title": "Pronósticos",
+      "hits": "Aciertos",
+      "made": "Hechos",
+      "pct": "Acierto",
+      "summary": "{{hits}} de {{made}} ({{pct}} %)",
+      "none": "Todavía no hay pronósticos terminados."
+    },
+    "players": {
+      "title": "Los que más usaste",
+      "titleOther": "Los que más usó",
+      "days_one": "{{count}} día",
+      "days_other": "{{count}} días",
+      "pts": "{{pts}} pts",
+      "none": "Todavía no hay peloteros usados."
+    },
+    "badges": {
+      "title": "Logros",
+      "count": "{{done}} de {{total}}",
+      "unlocked": "Desbloqueado el {{date}}",
+      "unlockedNoDate": "Desbloqueado",
+      "locked": "Bloqueado",
+      "progress": "{{value}} de {{goal}}"
+    },
+    "achievements": {
+      "firstTeam": {
+        "title": "Primer equipo",
+        "desc": "Guarda tu primer equipo"
+      },
+      "days10": {
+        "title": "10 días",
+        "desc": "Juega 10 días de juego con equipo"
+      },
+      "days30": {
+        "title": "30 días",
+        "desc": "Juega 30 días de juego con equipo"
+      },
+      "day50": {
+        "title": "50 en un día",
+        "desc": "Haz 50 puntos o más en un día"
+      },
+      "day100": {
+        "title": "100 en un día",
+        "desc": "Haz 100 puntos o más en un día"
+      },
+      "day150": {
+        "title": "150 en un día",
+        "desc": "Haz 150 puntos o más en un día"
+      },
+      "streak3": {
+        "title": "Racha de 3",
+        "desc": "Juega 3 días de juego seguidos"
+      },
+      "streak7": {
+        "title": "Racha de 7",
+        "desc": "Juega 7 días de juego seguidos"
+      },
+      "streak14": {
+        "title": "Racha de 14",
+        "desc": "Juega 14 días de juego seguidos"
+      },
+      "perfectPicks": {
+        "title": "Pronóstico perfecto",
+        "desc": "Acierta todos tus pronósticos de un día (3 o más)"
+      },
+      "captainMvp": {
+        "title": "Capitán estrella",
+        "desc": "Tu capitán es el que más suma de tu equipo, con 15 puntos o más"
+      },
+      "season500": {
+        "title": "500 puntos",
+        "desc": "Llega a 500 puntos en la temporada"
+      },
+      "season1000": {
+        "title": "1000 puntos",
+        "desc": "Llega a 1000 puntos en la temporada"
+      },
+      "top10Day": {
+        "title": "Top 10",
+        "desc": "Termina entre los 10 primeros de un día con 10 fanáticos o más"
+      },
+      "dayLeader": {
+        "title": "Líder del día",
+        "desc": "Termina #1 de un día con 5 fanáticos o más"
+      },
+      "bargain": {
+        "title": "Ganga",
+        "desc": "Un pelotero de 5 créditos o menos te da 20 puntos o más"
+      },
+      "weekChampion": {
+        "title": "Campeón de la semana",
+        "desc": "Gana una semana en una liga privada"
+      }
+    },
+    "empty": "Todavía no tienes temporada. Arma tu equipo de hoy y aquí vas a ver tus puntos, tus rachas y tus logros.",
+    "emptyOther": "Este fanático todavía no ha jugado esta temporada.",
+    "emptyCta": "Armar mi equipo",
+    "fallback": "Faltan algunos números de la temporada: vuelve en un ratito.",
+    "error": "No pudimos cargar la temporada."
+  },
+  "fantasyIdeas": {
+    "title": "Ideas para hoy",
+    "hint": "Peloteros de hoy que todavía no se han cerrado. Toca «Agregar» y entra a tu equipo.",
+    "lists": {
+      "hot": "En racha",
+      "bargains": "Gangas",
+      "risers": "Suben de precio",
+      "fallers": "Bajan de precio",
+      "pitchers": "Lanzadores con mejor duelo",
+      "popular": "Los más elegidos ayer"
+    },
+    "why": {
+      "hot": "El mejor promedio de sus últimos 5 juegos",
+      "bargains": "Más proyección por crédito, de 7 créditos o menos",
+      "risers": "Su precio subió desde el último día de juego",
+      "fallers": "Su precio bajó desde el último día de juego",
+      "pitchers": "Abridores contra los rivales que menos batean",
+      "popular": "Los que más fanáticos pusieron en su equipo ayer"
+    },
+    "metric": {
+      "avg": "Prom. {{pts}}",
+      "value": "{{v}} pts/crédito",
+      "up": "Subió {{delta}}",
+      "down": "Bajó {{delta}}",
+      "owned": "{{pct}} % lo eligió",
+      "oppOps": "OPS del rival {{ops}}"
+    },
+    "edge": {
+      "good": "Duelo fácil",
+      "even": "Duelo parejo",
+      "tough": "Duelo difícil"
+    },
+    "add": "Agregar",
+    "added": "{{name}} entró a tu equipo",
+    "inTeam": "En tu equipo",
+    "notToday": "No juega hoy",
+    "quick": {
+      "title": "Acciones rápidas",
+      "copy": "Copiar mi equipo de ayer",
+      "copyFrom": "Copiar mi equipo del {{day}}",
+      "copied_one": "Copiamos {{count}} pelotero.",
+      "copied_other": "Copiamos {{count}} peloteros.",
+      "copiedCaptain_one": "Copiamos {{count}} pelotero y tu capitán.",
+      "copiedCaptain_other": "Copiamos {{count}} peloteros y tu capitán.",
+      "copiedNone": "No se pudo copiar a nadie.",
+      "skipped": "No se pudo: {{list}}.",
+      "skippedItem": "{{name}} ({{reason}})",
+      "notPlaying": "no juega hoy",
+      "unknown": "un pelotero",
+      "nothing": "Ya tienes a todos los de ese equipo que se pueden copiar.",
+      "undo": "Deshacer",
+      "undoWhat": {
+        "add": "Deshacer: agregaste a {{name}}",
+        "remove": "Deshacer: quitaste a {{name}}",
+        "captain": "Deshacer: cambiaste el capitán",
+        "fill": "Deshacer: completar con los mejores",
+        "suggested": "Deshacer: equipo sugerido",
+        "copy": "Deshacer: copiar el equipo de ayer"
+      },
+      "undone": "Listo: deshicimos el último cambio.",
+      "undoFailed": "Ya no se puede deshacer: un pelotero de ese cambio ya se cerró."
+    },
+    "share": {
+      "title": "Mi equipo",
+      "credits": "{{spent}} de {{budget}} créditos",
+      "noCap": "Sin tope de créditos",
+      "points": "{{pts}} pts",
+      "total": "Puntos del día",
+      "projected": "Proyección",
+      "price": "{{price}} cr",
+      "captain": "Capitán ×{{x}}",
+      "picks": "Pronósticos: +{{pts}}"
+    }
+  },
+  "fantasyLeagues": {
+    "period": "Tabla del día, de la semana o de la temporada",
+    "week": "Semana",
+    "weekRange": "{{start}} – {{end}}",
+    "thisWeek": "Esta semana",
+    "lastWeek": "La semana pasada",
+    "weeksAgo_one": "Hace {{count}} semana",
+    "weeksAgo_other": "Hace {{count}} semanas",
+    "pickWeek": "Escoger la semana",
+    "champion": "Campeón",
+    "championLast": "Campeón de la semana pasada",
+    "championPts": "{{pts}} pts en la semana",
+    "inProgress": "En juego: el campeón sale al terminar el domingo.",
+    "noChampion": "Sin campeón: nadie de la liga jugó esa semana.",
+    "days_one": "{{count}} día",
+    "days_other": "{{count}} días",
+    "empty": "Nadie de la liga ha jugado esa semana.",
+    "owner": {
+      "title": "Administrar la liga",
+      "badge": "Eres el dueño",
+      "rename": "Renombrar",
+      "renameLabel": "Nuevo nombre de la liga",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "renamed": "Listo: la liga ahora se llama {{name}}",
+      "remove": "Sacar a alguien",
+      "removeWho": "Sacar a {{name}}",
+      "removeConfirm": "¿Sacar a {{name}} de la liga? Puede volver a entrar con el código.",
+      "removeYes": "Sí, sacar",
+      "removed": "{{name}} ya no está en la liga",
+      "nobody": "No hay nadie más en la liga.",
+      "delete": "Borrar liga",
+      "deleteConfirm": "Se borra la liga para todos y no se puede deshacer. Escribe «{{name}}» para confirmar.",
+      "deleteLabel": "Escribe el nombre de la liga",
+      "deleteYes": "Borrar para siempre",
+      "deleted": "Borraste {{name}}",
+      "failed": "No se pudo. Prueba otra vez."
+    }
+  },
+  "fantasyGuide": {
+    "label": "Guía para empezar",
+    "step": "Paso {{n}} de {{total}}",
+    "s1Title_one": "Escoge {{batters}} bateadores y {{count}} lanzador",
+    "s1Title_other": "Escoge {{batters}} bateadores y {{count}} lanzadores",
+    "s1Body": "Toca un cupo vacío y elige peloteros de los juegos de hoy.",
+    "s2Title": "Nombra tu capitán (×{{x}})",
+    "s2Body": "Toca la corona de uno de tus peloteros: sus puntos valen ×{{x}}.",
+    "s3Title": "Haz tus pronósticos",
+    "s3Body": "En «Pronósticos» escoge quién gana cada juego: +{{pts}} por acierto.",
+    "next": "Siguiente",
+    "done": "Listo",
+    "how": "Ver cómo se juega",
+    "dismiss": "Cerrar la guía"
   }
 }
