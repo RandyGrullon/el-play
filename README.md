@@ -6,6 +6,8 @@ El Play es la app de béisbol dominicano en vivo: la LIDOM (y la Serie del Carib
 - Las cuentas del Fantasy están en Supabase (el mismo proyecto de la web).
 - Sin anuncios ni herramientas de rastreo. Solo el Fantasy pide cuenta.
 
+> ¿Solo quieres tenerla en tu teléfono (Expo Go o el APK que se actualiza solo)? Paso a paso en **[docs/EXPO-PASO-A-PASO.md](docs/EXPO-PASO-A-PASO.md)**.
+>
 > ¿Vas a publicar la app? La guía paso a paso está en **[docs/TIENDAS.md](docs/TIENDAS.md)**.
 
 ## Requisitos
