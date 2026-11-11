@@ -4,6 +4,13 @@
     "slug": "el-play",
     "description": "Béisbol dominicano en vivo: LIDOM pitcheo a pitcheo, posiciones, estadísticas y Fantasy.",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "elplay",

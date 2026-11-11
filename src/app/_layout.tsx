@@ -23,6 +23,7 @@ import { ThemeProvider, useColors, useTheme } from '../theme/theme';
 import { dark, light } from '../theme/tokens';
 import { AppShell, Toast } from '../components/layout';
 import { ErrorScreen } from '../components/ErrorScreen';
+import { UpdateBanner } from '../components/UpdateBanner';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 // Los errores sin atrapar van al servidor (como en la web), lo antes posible
@@ -97,6 +98,8 @@ const Navigator: React.FC = () => {
                 <Stack.Screen name="+not-found" options={SWIPE_SCREEN} />
             </Stack>
             <Toast />
+            {/* «Hay una versión nueva»: solo en un build con EAS Update (no en la web, en desarrollo ni en Expo Go) */}
+            <UpdateBanner />
         </>
     );
 };

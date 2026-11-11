@@ -570,7 +570,7 @@ Hoy «Continuar con Google» abre una ventana del navegador y vuelve a la app (n
 
 4. En App Store Connect crea la versión nueva, elige el build, escribe «Novedades» y envíala a revisión. En Play Console promueve la versión de la pista interna a producción.
 
-Cada versión pasa por revisión otra vez. (Más adelante se puede agregar EAS Update para mandar cambios de JavaScript sin pasar por las tiendas; hoy no está instalado.)
+Cada versión pasa por revisión otra vez. Los cambios que son solo de JavaScript (pantallas, textos, lógica) no necesitan nada de esto: se mandan con EAS Update, sin build ni revisión (ver «Actualizar sin reinstalar» en el [README](../README.md#actualizar-sin-reinstalar)).
 
 ## 16. Problemas comunes
 
@@ -585,5 +585,6 @@ Cada versión pasa por revisión otra vez. (Más adelante se puede agregar EAS U
 | Apple rechaza por la regla 4.8 | Esconde «Continuar con Google» en iPhone o agrega «Iniciar sesión con Apple» (sección 13). |
 | El nombre «El Play» está tomado en la App Store | Usa «El Play: Béisbol Dominicano»; en el teléfono se sigue viendo «El Play». |
 | No ves el ícono ni la pantalla de inicio nuevos | En Expo Go no salen; se ven en el APK o en el build de TestFlight. |
+| Una actualización de `eas update` no llega al teléfono | Ese build es de antes de `expo-updates` o tiene otro *runtime version* (cambió algo nativo): haz un build nuevo (README, «Actualizar sin reinstalar»). |
 
 Enlaces de referencia: [EAS Build](https://docs.expo.dev/build/introduction/) · [Variables de entorno de EAS](https://docs.expo.dev/eas/environment-variables/) · [Enviar a Google Play](https://docs.expo.dev/submit/android/) · [Enviar a App Store](https://docs.expo.dev/submit/ios/) · [Capturas de Apple](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications) · [Imágenes de Google Play](https://support.google.com/googleplay/android-developer/answer/9866151) · [Borrado de cuentas en Google Play](https://support.google.com/googleplay/android-developer/answer/13327111)
