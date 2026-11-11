@@ -1,7 +1,7 @@
 // Fantasy (igual que FantasyPage de la web): sin cuenta, la portada para entrar; con cuenta, Ayer/Hoy/Mañana,
 // los puntos del día y las pestañas Mi equipo / Pronósticos / Tabla. Todo se sincroniza con la cuenta.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, View, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +21,7 @@ import { useFanProfile } from '../../components/fantasy/fans';
 import { ProFantasy } from '../../components/pro/fantasy/ProFantasy';
 import { useLocalText } from '../../components/fantasy/texts';
 import { HowToPlayLink } from '../../components/fantasy/Help';
+import { SeasonStats } from '../../components/fantasy/SeasonStats';
 import { useSaveStatus } from '../../components/pro/fantasy/data';
 import { accountEnabled, pushEntry, syncFantasy, useSession } from '../../lib/account';
 import { dayPoints, entryKey, repairEntry, fetchFantasyDay, getStore, history, settleDay, unsettledDays, useEntry, useFantasyDay, useFantasyStore } from '../../lib/fantasy';
@@ -32,7 +33,8 @@ import type { LeagueId } from '../../types';
 import { useColors } from '../../theme/theme';
 import { radius, shadow } from '../../theme/tokens';
 
-type Tab = 'team' | 'picks' | 'table' | 'fans';
+// «Mi temporada» es del Lite; en PRO está en su hoja (el botón de la gráfica)
+type Tab = 'team' | 'picks' | 'table' | 'fans' | 'season';
 
 export default function FantasyScreen() {
     const { t, i18n } = useTranslation();
@@ -133,7 +135,7 @@ export default function FantasyScreen() {
 
     // PRO (cuenta abierta + modo PRO): la misma partida con más datos; el Lite sigue igual debajo
     if (pro && playing) {
-        return <ProFantasy league={activeLeague} query={query} date={date} onDate={setDate} today={today} tab={tab} onTab={setTab} entry={entry} counted={counted} onOpenFan={(id) => openFan(id)} />;
+        return <ProFantasy league={activeLeague} query={query} date={date} onDate={setDate} today={today} tab={tab === 'season' ? 'team' : tab} onTab={setTab} entry={entry} counted={counted} onOpenFan={(id) => openFan(id)} />;
     }
 
     return (
@@ -189,12 +191,15 @@ export default function FantasyScreen() {
                             { value: 'team', label: t('fantasy.myTeam') },
                             { value: 'picks', label: t('fantasy.picks') },
                             { value: 'table', label: t('fantasy.table') },
-                            { value: 'fans', label: L('fans.tab') }
+                            { value: 'fans', label: L('fans.tab') },
+                            { value: 'season', label: t('fantasyStats.tab') }
                         ]}
                     />
 
                     {tab === 'fans' ? (
                         <FanSearch league={activeLeague} onOpen={openFan} />
+                    ) : tab === 'season' && session ? (
+                        <SeasonStats userId={session.user.id} league={activeLeague} own onBuild={() => setTab('team')} />
                     ) : offline ? (
                         <OfflineState />
                     ) : query.isPending ? (
@@ -224,13 +229,19 @@ export default function FantasyScreen() {
     );
 }
 
-/** Las cuatro pestañas como el Segmented, pero a todo lo ancho para que quepan en 320 px */
+/** Las pestañas como el Segmented, a todo lo ancho; si no caben (320 px), se desliza de lado */
 const FantasyTabs: React.FC<{ value: Tab; onChange: (tab: Tab) => void; options: { value: Tab; label: string }[] }> = ({ value, onChange, options }) => {
     const colors = useColors();
     const { width } = useWindowDimensions();
     const roomy = width >= 400;
     return (
-        <View accessibilityRole="tablist" style={{ flexDirection: 'row', backgroundColor: colors.raised, borderRadius: radius.pill, padding: 4 }}>
+        <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            accessibilityRole="tablist"
+            style={{ flexGrow: 0, backgroundColor: colors.raised, borderRadius: radius.pill }}
+            contentContainerStyle={{ flexGrow: 1, flexDirection: 'row', padding: 4 }}
+        >
             {options.map((option) => {
                 const active = option.value === value;
                 return (
@@ -239,7 +250,7 @@ const FantasyTabs: React.FC<{ value: Tab; onChange: (tab: Tab) => void; options:
                         onPress={() => onChange(option.value)}
                         accessibilityRole="tab"
                         accessibilityState={{ selected: active }}
-                        style={[{ flexGrow: 1, flexShrink: 1, flexBasis: 'auto', minWidth: 0, alignItems: 'center', borderRadius: radius.pill, paddingHorizontal: roomy ? 8 : 4, paddingVertical: 7 }, active && [{ backgroundColor: colors.surface }, shadow('card')]]}
+                        style={[{ flexGrow: 1, flexShrink: 0, flexBasis: 'auto', alignItems: 'center', borderRadius: radius.pill, paddingHorizontal: roomy ? 10 : 8, paddingVertical: 7 }, active && [{ backgroundColor: colors.surface }, shadow('card')]]}
                     >
                         <Txt size={roomy ? 14 : 13} weight="semibold" tone={active ? 'ink' : 'muted'} numberOfLines={1}>
                             {option.label}
@@ -247,6 +258,6 @@ const FantasyTabs: React.FC<{ value: Tab; onChange: (tab: Tab) => void; options:
                     </Pressable>
                 );
             })}
-        </View>
+        </ScrollView>
     );
 };

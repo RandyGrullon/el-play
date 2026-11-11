@@ -1,11 +1,15 @@
-// «Tu temporada» (hoja): tus puntos por día contra el promedio de la liga (la línea se dibuja), tu mejor día,
-// pronósticos acertados, cuántas veces tu capitán fue tu mejor pelotero y tu puesto. Hoy, si no ha cerrado, va punteado
-// con lo proyectado.
+// «Mi temporada» (hoja de PRO): con la ruta v3 (/fan/:id/stats), lo mismo que la pestaña del Lite y la web (números,
+// puntos por día con tu puesto, capitán, pronósticos, los que más usaste y logros) y, debajo, tus puntos contra el
+// promedio de la liga. Sin esa ruta, lo de antes: la línea contra la liga, tu mejor día, pronósticos acertados, cuántas
+// veces tu capitán fue tu mejor pelotero, tu puesto y los logros calculados en el teléfono. Hoy, si no ha cerrado, va
+// punteado con lo proyectado.
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { LeagueId } from '../../../types';
 import { seasonLabel } from '../../../lib/format';
+import { statsEmpty, useFanStats } from '../../../lib/fantasyStats';
+import { SeasonStats } from '../../fantasy/SeasonStats';
 import { useColors } from '../../../theme/theme';
 import { radius, shadow } from '../../../theme/tokens';
 import { ErrorState, OfflineState, Sheet, Skeleton, Txt, useErrorText } from '../../ui';
@@ -31,6 +35,8 @@ export const SeasonSheet: React.FC<SeasonSheetProps> = ({ open, league, userId, 
     const pro = useProColors();
     const errorText = useErrorText();
     const fan = useFanProfilePro(userId, league, open);
+    const v3 = useFanStats(userId, league, open);
+    const full = !!v3.data && !statsEmpty(v3.data);
     const season = useSeasonTable(league, undefined, open);
     const profile = fan.data;
     const mine = season.data?.ranking.find((row) => row.userId === userId);
@@ -82,7 +88,8 @@ export const SeasonSheet: React.FC<SeasonSheetProps> = ({ open, league, userId, 
     const pct = (value: number) => `${Math.round(value)}%`;
 
     return (
-        <Sheet open={open} onClose={onClose} title={t('pro.fantasy.season.title', { season: seasonName })}>
+        <Sheet open={open} onClose={onClose} title={full ? `${t('fantasyStats.title')} · ${seasonName}` : t('pro.fantasy.season.title', { season: seasonName })}>
+            {full ? <SeasonStats userId={userId} league={league} own bare fallback="none" /> : null}
             {fan.fetchStatus === 'paused' && !profile ? (
                 <OfflineState />
             ) : fan.isPending || season.isPending ? (
@@ -94,14 +101,18 @@ export const SeasonSheet: React.FC<SeasonSheetProps> = ({ open, league, userId, 
             ) : fan.isError && !profile ? (
                 <ErrorState message={errorText(fan.error)} onRetry={() => fan.refetch()} />
             ) : !profile || !profile.season.days ? (
-                <ProNote tone="pending" title={t('pro.fantasy.season.emptyTitle')}>
-                    {t('pro.fantasy.season.empty')}
-                </ProNote>
+                full ? null : (
+                    <ProNote tone="pending" title={t('pro.fantasy.season.emptyTitle')}>
+                        {t('pro.fantasy.season.empty')}
+                    </ProNote>
+                )
             ) : (
                 <>
+                    {!full && (
                     <Txt size={13} tone="muted" style={{ marginTop: -4 }}>
                         {t('pro.fantasy.season.sub', { count: profile.season.days, pts: fmtPts(profile.season.points), team: fmtPts(team), picks: fmtPts(picks) })}
                     </Txt>
+                    )}
                     <View style={[{ gap: 10, borderRadius: radius.card, backgroundColor: colors.surface, padding: 16 }, shadow('card')]}>
                         <ModuleHeader title={t('pro.fantasy.season.chartTitle')} aside={t('pro.fantasy.season.chartAside')} />
                         <LineChart
@@ -139,6 +150,7 @@ export const SeasonSheet: React.FC<SeasonSheetProps> = ({ open, league, userId, 
                             </Txt>
                         )}
                     </View>
+                    {!full && (
                     <View style={{ gap: 8 }}>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                             <StatTile
@@ -175,11 +187,14 @@ export const SeasonSheet: React.FC<SeasonSheetProps> = ({ open, league, userId, 
                             </View>
                         ) : null}
                     </View>
-                    {proData?.average !== null && proData?.average !== undefined && profile.season.days > 1 ? (
+                    )}
+                    {!full && proData?.average !== null && proData?.average !== undefined && profile.season.days > 1 ? (
                         <Txt size={12} tone="muted">
                             {t('pro.fantasy.season.average', { pts: fmtPts(proData.average) })}
                         </Txt>
                     ) : null}
+                    {/* Sin la ruta v3: los logros como antes (calculados con el perfil) */}
+                    {!v3.data && v3.isError ? <SeasonStats userId={userId} league={league} own fallback="badges" /> : null}
                 </>
             )}
         </Sheet>
