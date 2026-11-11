@@ -22,6 +22,7 @@ import { ProFantasy } from '../../components/pro/fantasy/ProFantasy';
 import { useLocalText } from '../../components/fantasy/texts';
 import { HowToPlayLink } from '../../components/fantasy/Help';
 import { SeasonStats } from '../../components/fantasy/SeasonStats';
+import { FirstGuide } from '../../components/fantasy/FirstGuide';
 import { useSaveStatus } from '../../components/pro/fantasy/data';
 import { accountEnabled, pushEntry, syncFantasy, useSession } from '../../lib/account';
 import { dayPoints, entryKey, repairEntry, fetchFantasyDay, getStore, history, settleDay, unsettledDays, useEntry, useFantasyDay, useFantasyStore } from '../../lib/fantasy';
@@ -181,6 +182,8 @@ export default function FantasyScreen() {
                             ))}
                         </View>
                     )}
+
+                    {day && <FirstGuide day={day} entry={entry} isToday={!date || date === today} />}
 
                     <SummaryCard points={points} picks={picks} season={season} past={past} />
 

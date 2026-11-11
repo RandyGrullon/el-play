@@ -25,6 +25,7 @@ import { useLocalText } from '../../fantasy/texts';
 import { HowToPlayLink } from '../../fantasy/Help';
 import { IdeasSection } from '../../fantasy/Ideas';
 import { QuickActions } from '../../fantasy/QuickActions';
+import { FirstGuide } from '../../fantasy/FirstGuide';
 import { fantasyShareRequest } from '../../fantasy/ShareTeam';
 import { useShare } from '../../share/ShareSheet';
 import { ProNote, ProSegmented, ScreenTitle, useNow } from '../kit';
@@ -246,6 +247,8 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
                         })}
                     </View>
                 )}
+
+                {day && <FirstGuide day={day} entry={entry} isToday={isToday} />}
 
                 <ProSegmented<FantasyTab>
                     value={tab}
