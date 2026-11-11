@@ -1584,7 +1584,7 @@ const statsLib = require(compileTo('lib/fantasyStats.ts'));
         assert.strictEqual(plan.captain, null);
     });
 
-    it('copiar ayer: la corona de hoy ya cerrada no se cambia; la de ayer no pasa si su dueño no entró', () => {
+    it('copiar ayer: la corona de ayer no pasa si hoy ya hay capitán o si su dueño no entró', () => {
         const day = hoy([j(33333331, 'B', 5, 5), j(33333332, 'B', 1, 5), j(33333333, 'B', 2, 5)]);
         const conCorona = { lineup: [33333331], captain: 33333331, picks: {}, savedAt: 1 };
         const plan = copyPlan(day, conCorona, { lineup: [33333332], captain: 33333332 });
@@ -1594,6 +1594,9 @@ const statsLib = require(compileTo('lib/fantasyStats.ts'));
         const sinDueno = copyPlan(day, vacio, { lineup: [33333333, 99999999], captain: 99999999 });
         assert.strictEqual(sinDueno.captain, null);
         assert.strictEqual(sinDueno.captainCopied, false);
+        // Con capitán abierto hoy, tampoco: se queda el de hoy
+        const abierto = copyPlan(day, { lineup: [33333333], captain: 33333333, picks: {}, savedAt: 1 }, { lineup: [33333332], captain: 33333332 });
+        assert.deepStrictEqual([abierto.lineup, abierto.captain, abierto.captainCopied], [[33333333, 33333332], 33333333, false]);
     });
 
     it('copiar ayer: el día que se ofrece es el último con equipo de la semana anterior (de esa liga)', () => {
@@ -1613,6 +1616,9 @@ const statsLib = require(compileTo('lib/fantasyStats.ts'));
         assert.strictEqual(canOfferCopy(day, { lineup: [] }, { lineup: [1, 2] }), true);
         assert.strictEqual(canOfferCopy(day, { lineup: [1, 2] }, { lineup: [1, 2] }), false);
         assert.strictEqual(canOfferCopy(day, { lineup: [] }, null), false);
+        // Equipo lleno: no hay nada que copiar
+        const lleno = hoy([j(1, 'B', 1, 5), j(2, 'B', 2, 5), j(3, 'B', 3, 5), j(4, 'B', 4, 5), j(5, 'B', 1, 5), j(6, 'P', 2, 5), j(7, 'B', 3, 5)]);
+        assert.strictEqual(canOfferCopy(lleno, { lineup: [1, 2, 3, 4, 5, 6] }, { lineup: [7] }), false);
     });
 
     it('copiar ayer: se guarda en el día con su deshacer («copy») y deshacer lo deja como estaba', () => {
@@ -1685,7 +1691,7 @@ const statsLib = require(compileTo('lib/fantasyStats.ts'));
         assert.deepStrictEqual([entry().lineup, entry().captain], [[66666661], 66666661]);
     });
 
-    it('ideas: «Agregar» da la misma razón del selector; las cerradas, pospuestas o que no salen hoy no se muestran', () => {
+    it('ideas: «Agregar» da la misma razón del selector (también ya empezó, pospuesto y «no juega hoy»)', () => {
         const item = (id, extra = {}) => ({ id, name: `Pelotero ${id}`, teamId: 1, role: 'B', ...extra });
         const players = [
             j(77777771, 'B', 1, 5),
@@ -1700,8 +1706,19 @@ const statsLib = require(compileTo('lib/fantasyStats.ts'));
         const day = hoy(players);
         const entry = { lineup: [77777771, 77777772, 77777776], captain: null, picks: {}, savedAt: 1 };
         const rows = ideaRows(day, entry, [item(77777771), item(77777773), item(77777774), item(77777775), item(77777777), item(12121212), item(77777778)]);
-        assert.deepStrictEqual(rows.map((row) => row.player.id), [77777771, 77777773, 77777775, 77777777]);
-        assert.deepStrictEqual(rows.map((row) => [row.inTeam, row.reason && row.reason.kind]), [[true, null], [false, 'team'], [false, null], [false, 'fullP']]);
+        assert.deepStrictEqual(
+            rows.map((row) => [row.item.id, row.inTeam, row.reason && row.reason.kind]),
+            [
+                [77777771, true, null],
+                [77777773, false, 'team'],
+                [77777774, false, 'started'],
+                [77777775, false, null],
+                [77777777, false, 'fullP'],
+                [12121212, false, 'notPlaying'],
+                [77777778, false, 'postponed']
+            ]
+        );
+        assert.strictEqual(rows[5].player, null);
         partial(rows[1].reason, { n: 2, team: 'AAA' });
         // Sin créditos: cuánto falta (20 de tope, 15 gastados, cuesta 12)
         const pobre = hoy(players, { credits: { budget: 20, min: 4, max: 12 } });

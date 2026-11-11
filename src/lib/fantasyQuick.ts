@@ -1,7 +1,7 @@
 // Fantasy v3 en «Mi equipo» (igual que la web): «Copiar mi equipo de ayer», las tarjetas de «Ideas para hoy» (con el
 // mismo «por qué no» del selector) y la guía de la primera vez. Lógica pura más lo que guarda el teléfono.
 import { EMPTY_ENTRY, canAdd, entryKey, getStore, isLocked, playerPostponed, putLineup, type DayEntry, type FantasyDay, type FantasyPlayer } from './fantasy';
-import { reasonFrom, type PickReason } from './fantasyPicker';
+import { reasonFrom, slotsLeft, type PickReason } from './fantasyPicker';
 import type { TrendItem } from './fantasyStats';
 import type { LeagueId } from '../types';
 import { getItem, setItem } from './storage';
@@ -33,7 +33,7 @@ const DAY_MS = 86400000;
 /**
  * Lo que queda al copiar `from` sobre el equipo de hoy: entra cada uno de los copiados que juega hoy y no se ha cerrado,
  * en su orden, respetando cupos por rol, el máximo por equipo y los créditos (canAdd, lo mismo del selector). Los que ya
- * estaban se quedan. La corona pasa si su dueño quedó en el equipo y ni él ni el capitán de hoy se han cerrado.
+ * estaban se quedan. La corona pasa si hoy no hay otro capitán escogido y su dueño entró y no se ha cerrado (como la web).
  */
 export const copyPlan = (day: FantasyDay, entry: Pick<DayEntry, 'lineup' | 'captain' | 'picks' | 'savedAt'>, from: Pick<DayEntry, 'lineup' | 'captain'>, nameOf: (id: number) => string | null | undefined = () => null, now = Date.now()): CopyPlan => {
     let current: DayEntry = { lineup: [...entry.lineup], captain: entry.captain, picks: entry.picks ?? {}, savedAt: entry.savedAt ?? 0 };
@@ -55,15 +55,10 @@ export const copyPlan = (day: FantasyDay, entry: Pick<DayEntry, 'lineup' | 'capt
         const reason = reasonFrom(day, current, player, problem);
         if (reason) skipped.push({ id, name: player.name, reason });
     }
-    const find = (id: number | null) => (id === null ? undefined : day.players.find((p) => p.id === id));
-    const lockedNow = (id: number | null) => {
-        const player = find(id);
-        return !!player && isLocked(day, player, now);
-    };
-    const candidate = from.captain;
-    const currentCaptain = current.captain !== null && current.lineup.includes(current.captain) ? current.captain : null;
-    const captainCopied = candidate !== null && current.lineup.includes(candidate) && !lockedNow(candidate) && !lockedNow(currentCaptain) && candidate !== currentCaptain;
-    return { lineup: current.lineup, captain: captainCopied ? candidate : currentCaptain, added, skipped, captainCopied };
+    const chosen = entry.captain !== null && entry.lineup.includes(entry.captain) ? entry.captain : null;
+    const candidate = from.captain !== null ? day.players.find((p) => p.id === from.captain) : undefined;
+    const captainCopied = chosen === null && !!candidate && current.lineup.includes(candidate.id) && !isLocked(day, candidate, now) && !playerPostponed(day, candidate);
+    return { lineup: current.lineup, captain: captainCopied ? candidate!.id : chosen, added, skipped, captainCopied };
 };
 
 /** El último día antes de `date` (hasta `maxDays` atrás) en que tuviste equipo: el que se ofrece copiar */
@@ -77,38 +72,43 @@ export const previousEntry = (store: Record<string, DayEntry>, league: LeagueId,
     return found[0] ?? null;
 };
 
-/** Hay algo que se podría copiar: un día anterior con equipo y cupo libre hoy con alguien abierto */
-export const canOfferCopy = (day: FantasyDay, entry: Pick<DayEntry, 'lineup'>, from: Pick<DayEntry, 'lineup'> | null | undefined, now = Date.now()) =>
-    !!from?.lineup.length && from.lineup.some((id) => !entry.lineup.includes(id)) && day.players.some((player) => !isLocked(day, player, now) && !playerPostponed(day, player));
+/** Hay algo que se podría copiar: un día anterior con equipo, cupo libre hoy y alguien abierto */
+export const canOfferCopy = (day: FantasyDay, entry: Pick<DayEntry, 'lineup'>, from: Pick<DayEntry, 'lineup'> | null | undefined, now = Date.now()) => {
+    const slots = slotsLeft(day, entry);
+    return !!from?.lineup.length && slots.batters + slots.pitchers > 0 && from.lineup.some((id) => !entry.lineup.includes(id)) && day.players.some((player) => !isLocked(day, player, now) && !playerPostponed(day, player));
+};
 
 /** Copia sobre el equipo de hoy (con su deshacer) y dice qué pasó */
 export const copyIntoDay = (day: FantasyDay, from: Pick<DayEntry, 'lineup' | 'captain'>, nameOf?: (id: number) => string | null | undefined, now = Date.now()): CopyPlan => {
     const current = getStore()[entryKey(day.league, day.date)] ?? EMPTY_ENTRY;
     const plan = copyPlan(day, current, from, nameOf, now);
-    if (plan.added.length || plan.captain !== current.captain) putLineup(day, plan.lineup, plan.captain, 'copy');
+    if (plan.added.length || plan.captainCopied) putLineup(day, plan.lineup, plan.captain, 'copy');
     return plan;
 };
 
 // ---------------------------------------------------------------- ideas para hoy
 
+/** Por qué no se puede agregar una idea: lo mismo del selector o que ya no sale en el día («No juega hoy») */
+export type IdeaReason = PickReason | { kind: 'notPlaying' };
+
 export interface IdeaRow {
     item: TrendItem;
-    /** El pelotero en el día (lo de hoy manda: precio, estado y cierre) */
-    player: FantasyPlayer;
+    /** El pelotero en el día (lo de hoy manda: precio, estado y cierre); null si ya no sale */
+    player: FantasyPlayer | null;
     inTeam: boolean;
     /** Por qué no se puede agregar (el mismo texto del selector); null si se puede o ya está */
-    reason: PickReason | null;
+    reason: IdeaReason | null;
 }
 
-/** La tarjeta de una idea; null si ya no sirve hoy (no sale en el día, ya se cerró o su juego se pospuso) */
-export const ideaRow = (day: FantasyDay, entry: DayEntry, item: TrendItem, now = Date.now()): IdeaRow | null => {
-    const player = day.players.find((p) => p.id === item.id);
-    if (!player || playerPostponed(day, player) || isLocked(day, player, now)) return null;
+/** Cómo está una idea con el equipo de ahora (igual que ideaState de la web) */
+export const ideaRow = (day: FantasyDay, entry: DayEntry, item: Pick<TrendItem, 'id'> & Partial<TrendItem>, now = Date.now()): IdeaRow => {
+    const player = day.players.find((p) => p.id === item.id) ?? null;
+    if (!player) return { item: item as TrendItem, player: null, inTeam: false, reason: { kind: 'notPlaying' } };
     const inTeam = entry.lineup.includes(player.id);
-    return { item, player, inTeam, reason: inTeam ? null : reasonFrom(day, entry, player, canAdd(day, entry, player, now)) };
+    return { item: item as TrendItem, player, inTeam, reason: inTeam ? null : reasonFrom(day, entry, player, canAdd(day, entry, player, now)) };
 };
 
-export const ideaRows = (day: FantasyDay, entry: DayEntry, items: TrendItem[], now = Date.now()) => items.map((item) => ideaRow(day, entry, item, now)).filter((row): row is IdeaRow => !!row);
+export const ideaRows = (day: FantasyDay, entry: DayEntry, items: TrendItem[], now = Date.now()) => items.map((item) => ideaRow(day, entry, item, now));
 
 // ---------------------------------------------------------------- guía de la primera vez
 

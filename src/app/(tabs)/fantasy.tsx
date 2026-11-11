@@ -183,9 +183,10 @@ export default function FantasyScreen() {
                         </View>
                     )}
 
-                    {day && <FirstGuide day={day} entry={entry} isToday={!date || date === today} />}
-
                     <SummaryCard points={points} picks={picks} season={season} past={past} />
+
+                    {/* Guía para empezar: hoy sin equipo y nunca cerrada (como la web, entre el resumen y las pestañas) */}
+                    {day && <FirstGuide day={day} entry={entry} isToday={!date || date === today} />}
 
                     <FantasyTabs
                         value={tab}

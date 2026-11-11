@@ -73,6 +73,10 @@ export interface TrendItem {
     price?: number;
     proj?: number;
     status?: PlayerStatus;
+    /** Abridor estimado por la rotación (se ve «Le toca abrir») */
+    estimated?: boolean;
+    pos?: string;
+    gamePk?: number;
     opp?: { id: number; abbrev: string; home: boolean } | null;
     last5?: number[];
     /** Lo que lo pone en la lista (según la lista) */
@@ -81,6 +85,8 @@ export interface TrendItem {
     priceDelta?: number | null;
     matchup?: { oppOps: string | null; edge: 'good' | 'even' | 'tough' };
     owned?: number;
+    /** Lanzadores: proyección por el duelo (con lo que se ordena) */
+    score?: number;
 }
 
 export const TREND_LISTS = ['hot', 'bargains', 'risers', 'fallers', 'pitchers', 'popular'] as const;
