@@ -107,7 +107,7 @@ export const SmartActions: React.FC<{ day: FantasyDay; entry: DayEntry }> = ({ d
     const fill = () => {
         const best = bestLineup(day, { metric: 'proj', keep: entry.lineup, captain: entry.captain });
         if (best) {
-            applyLineup(day, best.lineup, best.captain);
+            applyLineup(day, best.lineup, best.captain, Date.now(), 'fill');
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         } else showToast(t('fantasy.smart.none'));
     };

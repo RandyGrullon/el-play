@@ -23,6 +23,8 @@ import { pointParts } from '../pro/fantasy/logic';
 import type { SaveStatus } from '../pro/fantasy/data';
 import { SaveLine, StatusBadge, lockText } from './PlayerBits';
 import { HelpButton } from './Help';
+import { IdeasSection } from './Ideas';
+import { QuickActions } from './QuickActions';
 
 export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; counted: CountedEntry; saveStatus: SaveStatus; onPick: (role: 'B' | 'P') => void }> = ({ day, entry, counted, saveStatus, onPick }) => {
     const { t, i18n } = useTranslation();
@@ -70,6 +72,7 @@ export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; counted: Coun
             <LockNotice day={day} entry={entry} />
             <CreditsMeter day={day} entry={entry} />
             <SmartActions day={day} entry={entry} />
+            <QuickActions day={day} entry={entry} />
             <View style={{ gap: 10 }}>
                 {slots.map((slot, index) =>
                     typeof slot === 'string' ? (
@@ -97,6 +100,8 @@ export const TeamTab: React.FC<{ day: FantasyDay; entry: DayEntry; counted: Coun
                     <MissingSlot key={id} day={day} id={id} />
                 ))}
             </View>
+
+            <IdeasSection day={day} entry={entry} />
 
             <IdealCard day={day} entry={counted.entry} />
 

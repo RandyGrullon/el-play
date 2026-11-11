@@ -9,7 +9,7 @@ import Animated from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { ArrowDownWideNarrow, Check, Crown, Lock, Plus, Search, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { addPlayer, canAdd, removePlayer, rulesOf, setCaptain, type DayEntry, type FantasyDay, type FantasyPlayer, type PlayerStatus } from '../../../lib/fantasy';
+import { addPlayer, canAdd, removePlayer, rulesOf, setCaptain, withUndo, type DayEntry, type FantasyDay, type FantasyPlayer, type PlayerStatus } from '../../../lib/fantasy';
 import { DEFAULT_FILTERS, badgeOf, isFiltered, pickerGames, pickerOptions, pickerRows, roleFull, slotsLeft, sortValue, type PickExtras, type PickFilters, type PickRow, type PickSort } from '../../../lib/fantasyPicker';
 import { useColors } from '../../../theme/theme';
 import { alpha, radius, shadow } from '../../../theme/tokens';
@@ -105,9 +105,12 @@ export const Scouting: React.FC<ScoutingProps> = ({ day, entry, role, onRole, re
         if (replacing) {
             const wasCaptain = entry.captain === replacing.id;
             if (canAdd(day, base, player)) return;
-            removePlayer(day, replacing);
-            addPlayer(day, base, player);
-            if (wasCaptain) setCaptain(day, base, player);
+            // Cambiar a uno por otro se deshace de una vez
+            withUndo(day, 'add', () => {
+                removePlayer(day, replacing);
+                addPlayer(day, base, player);
+                if (wasCaptain) setCaptain(day, base, player);
+            });
             onCancelReplace();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
             return;

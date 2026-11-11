@@ -23,6 +23,8 @@ import { useFanProfile } from '../../fantasy/fans';
 import { shift, useOpenPlayer } from '../../fantasy/shared';
 import { useLocalText } from '../../fantasy/texts';
 import { HowToPlayLink } from '../../fantasy/Help';
+import { IdeasSection } from '../../fantasy/Ideas';
+import { QuickActions } from '../../fantasy/QuickActions';
 import { ProNote, ProSegmented, ScreenTitle, useNow } from '../kit';
 import { ProFans } from '../fanaticos/ProFans';
 import { fmtPts } from './bits';
@@ -317,7 +319,9 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
                                 saveStatus={saveStatus}
                                 onOpenSeason={() => setSheet('season')}
                             />
+                            <QuickActions day={day} entry={entry} />
                             <TeamGrid day={day} entry={entry} counted={counted} prevDay={before} projection={projection} scout={scout.rows} form={form.data?.players} now={now} onPick={pick} onChange={change} onInfo={onInfo} />
+                            <IdeasSection day={day} entry={entry} />
                             {isToday && !day.games.some((game) => game.state === 'live') && prevFinished && before && beforeEntry ? <ReplayYesterday day={before} entry={beforeEntry} /> : null}
                             <LiveNow league={league} day={day} entry={entry} userId={userId} />
                             {finished ? (
