@@ -14,6 +14,8 @@ export interface TrendItem {
     name: string;
     teamId: number;
     role: 'B' | 'P';
+    pos?: string | null;
+    gamePk?: number | null;
     price?: number;
     proj?: number;
     status?: PlayerStatus;
@@ -25,6 +27,8 @@ export interface TrendItem {
     value?: number;
     priceDelta?: number | null;
     matchup?: { oppOps: string | null; edge: MatchupEdge };
+    /** Lanzadores: proyección por el duelo (con lo que se ordenan) */
+    score?: number;
     /** % que lo eligió ayer */
     owned?: number;
 }

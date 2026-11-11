@@ -3,7 +3,7 @@
 // son funciones de Supabase (supabase/2026-11-11-ligas.sql). Si el servidor o la base todavía no las tienen, no salen.
 import { useQuery } from '@tanstack/react-query';
 import type { LeagueId } from '../types';
-import { AccountError, rest } from './account';
+import { AccountError, myLeagues, rest } from './account';
 import { getJson, isFanId, retry } from './fans';
 
 export interface WeekRow {
@@ -52,7 +52,7 @@ export const sortWeeks = (weeks: LeagueWeek[]) => [...weeks].sort((a, b) => b.st
 export const useLeagueWeeks = (league: LeagueId, members: string[] | undefined, enabled = true, demo = false) => {
     const ids = members ? memberIds(members).join(',') : '';
     return useQuery({
-        queryKey: ['fantasy-weeks', league, demo ? 'demo' : ids],
+        queryKey: ['fantasy-weeks', league, demo ? `demo:${ids}` : ids],
         queryFn: async ({ signal }) =>
             cleanWeeks(demo ? (await import('./fantasyDemoData')).demoWeeks(members ?? []) : await getJson<LeagueWeeks>(`/api/v2/fantasy/weeks?league=${league}&users=${ids}`, signal)),
         enabled: enabled && (demo || ids !== ''),
@@ -72,6 +72,35 @@ export const lastChampion = (weeks: LeagueWeek[]) => {
     const row = week.rows.find((item) => item.userId === week.champion);
     return { week, userId: week.champion!, total: row?.total ?? 0 };
 };
+
+/**
+ * El domingo de la primera semana que ganó en una de sus ligas (null si ninguna). El servidor no puede dar el logro
+ * «Campeón de la semana» (las ligas privadas solo las ve cada miembro), así que lo dice la app con /weeks de sus ligas.
+ */
+export const weekTitle = (weeks: LeagueWeek[], userId: string) =>
+    weeks
+        .filter((week) => !!week.champion && week.champion.toLowerCase() === userId.toLowerCase())
+        .map((week) => week.end)
+        .sort()[0] ?? null;
+
+export const useWeekTitle = (league: LeagueId, userId: string | null, enabled: boolean) =>
+    useQuery({
+        queryKey: ['fantasy-week-title', league, userId],
+        queryFn: async ({ signal }) => {
+            const titles: string[] = [];
+            for (const item of await myLeagues()) {
+                const ids = memberIds(item.members).join(',');
+                if (!ids) continue;
+                const data = await getJson<LeagueWeeks>(`/api/v2/fantasy/weeks?league=${league}&users=${ids}`, signal).catch(() => null);
+                const title = weekTitle(cleanWeeks(data).weeks, userId!);
+                if (title) titles.push(title);
+            }
+            return titles.sort()[0] ?? null;
+        },
+        enabled: enabled && isFanId(userId),
+        staleTime: 10 * 60000,
+        retry: false
+    });
 
 // ---------------------------------------------------------------- herramientas del dueño
 

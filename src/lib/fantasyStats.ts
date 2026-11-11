@@ -242,6 +242,17 @@ export const achievementsFallback = (profile: FanProfileData): AchievementView[]
         .filter((item) => FALLBACK_IDS[item.key])
         .map((item) => ({ id: FALLBACK_IDS[item.key], done: item.done, date: null, progress: item.progress && !item.done ? item.progress : null }));
 
+/**
+ * «Campeón de la semana» lo dice la app: el servidor no ve las ligas privadas. Con la fecha de la primera semana que
+ * ganó (de /weeks de sus ligas) el logro queda desbloqueado.
+ */
+export const withWeekTitle = (items: AchievementView[], date: string | null | undefined): AchievementView[] => {
+    if (!date) return items;
+    const unlocked: AchievementView = { id: 'weekChampion', done: true, date, progress: null };
+    if (!items.some((item) => item.id === 'weekChampion')) return items.length ? [...items, unlocked] : items;
+    return items.map((item) => (item.id === 'weekChampion' && !item.done ? unlocked : item));
+};
+
 /** Los logros que se muestran (perfil y Mi temporada): los del servidor y, si no llegaron, el cálculo de respaldo */
 export const achievementList = (stats: FanStats | null | undefined, profile: FanProfileData | null | undefined): AchievementView[] => {
     const server = stats ? achievementsFromServer(stats.achievements) : [];
