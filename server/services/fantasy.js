@@ -253,6 +253,26 @@ const recentPitching = (games, day) => {
 const RESTING_DAYS = 4;
 const LAST_GAMES = 5;
 
+// La liga casi nunca anuncia abridores antes del juego: si no hay probable, se estima por la rotación. Hace falta un
+// mínimo de aperturas en los 10 días anteriores; de los que abrieron las últimas 5 (sin los de las 2 más recientes), le
+// toca al que lleva más días sin abrir, si ya descansó más de 4.
+const ROTATION_MIN_STARTS = 4;
+const ROTATION_SPAN = 5;
+
+/** Al que le toca abrir por la rotación (`starts` = quién abrió cada juego, del más viejo al más nuevo), o null */
+const rotationStarter = (starts, recent) => {
+    if (!recent || !Array.isArray(starts) || starts.length < ROTATION_MIN_STARTS) return null;
+    const justStarted = new Set(starts.slice(-2));
+    let best = null;
+    for (const id of new Set(starts.slice(-ROTATION_SPAN))) {
+        if (justStarted.has(id)) continue;
+        const ago = recent.get(id)?.startedAgo;
+        if (ago === undefined || ago <= RESTING_DAYS) continue;
+        if (!best || ago > best.ago) best = { id, ago };
+    }
+    return best ? best.id : null;
+};
+
 /** Reglas del día tal como las aplica el servidor (las mismas de fantasyScore): la app las muestra sin escribirlas a mano */
 const rulesOf = (day, league, frozen) => {
     const b = SCORING.batter;
@@ -349,7 +369,9 @@ const fantasyDay = async (leagueKey, date) => {
             last,
             lineup: new Set((last?.players || []).filter((player) => player.role === 'B' && player.starter).map((player) => player.id)),
             opener: last?.pitchers?.[0] ?? null,
-            recent: outings.every((game) => game.pitchers) ? recentPitching(outings, day) : null
+            recent: outings.every((game) => game.pitchers) ? recentPitching(outings, day) : null,
+            // Quién abrió cada juego (del más viejo al más nuevo): para estimar la rotación
+            starts: outings.every((game) => game.pitchers) ? outings.map((game) => game.pitchers?.[0]).filter(Boolean) : []
         });
     }
 
@@ -432,6 +454,17 @@ const fantasyDay = async (leagueKey, date) => {
     }
     const gameByPk = new Map(games.map((game) => [game.gamePk, game]));
 
+    // Abridor estimado por la rotación: solo en el juego del equipo en el fantasy, si no ha empezado y no hay probable
+    for (const [teamId, game] of gameOfTeam) {
+        if (game.status !== 'scheduled') continue;
+        const side = game.home.id === teamId ? 'home' : 'away';
+        if (game.probables?.[side]) continue;
+        const ctx = context.get(teamId);
+        const estimated = ctx ? rotationStarter(ctx.starts, ctx.recent) : null;
+        if (!estimated) continue;
+        game.rotation = { away: null, home: null, ...game.rotation, [side]: estimated };
+    }
+
     const { table, previous, failed: pricesFailed } = await pricing;
     const priceMaps = table ? { B: new Map(table.prices.B), P: new Map(table.prices.P) } : null;
     const previousMaps = previous ? { B: new Map(previous.prices.B), P: new Map(previous.prices.P) } : null;
@@ -453,8 +486,10 @@ const fantasyDay = async (leagueKey, date) => {
             // Si va a jugar: con el juego empezado, lo que pasó; antes, la alineación anunciada (o la del último juego)
             // y el abridor probable
             let lineup;
+            // Le toca abrir según la rotación (no lo anunció la liga): sale «probable» con `estimated`
+            const byRotation = !player.line && pitcher && !game.probables?.[side] && game.rotation?.[side] === player.id;
             if (player.line) lineup = pitcher ? (player.starter ? 'probable' : resting) : player.starter ? 'confirmed' : 'bench';
-            else if (pitcher) lineup = game.probables?.[side] === player.id ? 'probable' : resting;
+            else if (pitcher) lineup = game.probables?.[side] === player.id || byRotation ? 'probable' : resting;
             else {
                 const announced = posted.get(`${game.gamePk}:${player.teamId}`);
                 lineup = announced ? (announced.has(player.id) ? 'confirmed' : 'bench') : ctx.lineup?.has(player.id) ? 'expected' : 'bench';
@@ -477,7 +512,8 @@ const fantasyDay = async (leagueKey, date) => {
                 ...base,
                 ...(priceMaps ? { price } : {}),
                 // Lo que se espera de él hoy (con lo de antes de hoy; sube a ×1 cuando se sabe que juega)
-                ...(table?.ppg ? { proj: projectionOf(table, { ...base, ...recent, ...(rest ? { rest: true } : {}), status: status === 'postponed' ? 'postponed' : lineup }) } : {}),
+                ...(table?.ppg ? { proj: projectionOf(table, { ...base, ...recent, ...(rest ? { rest: true } : {}), status: status === 'postponed' ? 'postponed' : byRotation ? 'rotation' : lineup }) } : {}),
+                ...(byRotation && status === 'probable' ? { estimated: true } : {}),
                 opp: opponent?.id ? { id: opponent.id, abbrev: opponent.abbrev || teamAbbrev(opponent.id), home: side === 'home' } : null,
                 status,
                 last5: (pointsByGame.get(player.id) || []).slice(-LAST_GAMES),

@@ -23,6 +23,25 @@ const readFlag = () => {
 /** En modo de prueba y sin cuenta abierta (con cuenta se juega de verdad) */
 export const fantasyDemo = (hasSession: boolean) => !hasSession && readFlag();
 
+/**
+ * Liga privada de prueba (Fantasy v3): para ver la semana y las herramientas del dueño sin cuenta. Los nombres y las
+ * cuentas son inventados; la primera cuenta es la de quien prueba (el dueño).
+ */
+export const DEMO_USER = '00000000-0000-4000-8000-000000000000';
+export const DEMO_LEAGUE = {
+    id: 'demo-liga',
+    name: 'Liga de los panas',
+    code: 'PANA26',
+    owner: DEMO_USER,
+    members: [DEMO_USER, '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000004']
+};
+export const DEMO_NAMES: Record<string, string> = {
+    '00000000-0000-4000-8000-000000000001': 'Ana Prueba',
+    '00000000-0000-4000-8000-000000000002': 'Beto Prueba',
+    '00000000-0000-4000-8000-000000000003': 'Carla Prueba',
+    '00000000-0000-4000-8000-000000000004': 'Dani Prueba'
+};
+
 /** Guardado simulado: tarda un poco y, sin red (DevTools u «offline» de Playwright), falla como sin conexión */
 export const demoPush = (): Promise<EntryHistory | null> =>
     new Promise((resolve, reject) => {

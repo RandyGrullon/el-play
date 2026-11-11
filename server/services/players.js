@@ -367,4 +367,4 @@ const fetchTransactions = async (leagueKey, now = Date.now()) => {
     return { league: league.id, transactions: items.slice(0, 60) };
 };
 
-module.exports = { fetchPlayers, fetchPlayer, fetchPlayerPitches, fetchTransactions, hittingOf, pitchingOf, pointsOf };
+module.exports = { fetchPlayers, fetchPlayer, fetchPlayerPitches, fetchTransactions, hittingOf, pitchingOf, pointsOf, teamInfo };

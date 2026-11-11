@@ -28,7 +28,7 @@ const hasPlayed = (player: FantasyPlayer) =>
 
 /** Estado del pelotero: el que manda el servidor o, si no viene, el que se saca del día */
 export const statusOf = (day: FantasyDay, player: FantasyPlayer, now = Date.now()): PlayerStatus | null => {
-    if (player.status) return player.status;
+    if (player.status) return player.status === 'probable' && player.estimated ? 'rotation' : player.status;
     if (isPostponed(day, player)) return 'postponed';
     const game = gameOf(day, player.gamePk);
     if (!game) return null;
@@ -45,7 +45,7 @@ export const statusOf = (day: FantasyDay, player: FantasyPlayer, now = Date.now(
     return gameStarted(game, now) ? 'confirmed' : 'expected';
 };
 
-const STARTERS = new Set<PlayerStatus>(['confirmed', 'expected', 'probable']);
+const STARTERS = new Set<PlayerStatus>(['confirmed', 'expected', 'probable', 'rotation']);
 export const isStarter = (status: PlayerStatus | null) => !!status && STARTERS.has(status);
 
 /** Su rival del día (home = él juega en casa): «LIC vs TOR» en casa, «LIC @ TOR» de visita */

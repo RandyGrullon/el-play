@@ -1,7 +1,8 @@
 // Convierte los datos de la app en el contenido de cada post
 import type { GameDetail, Leader, ScheduleGame, StandingRow } from '../types';
-import type { PlayerPost, ResultPost, StandingsPost } from './render';
+import type { FantasyPost, PlayerPost, ResultPost, StandingsPost } from './render';
 import { finalLabel, inningName, keyPlayOf, stateName } from '../lib/baseball';
+import { entryCost, isLocked, pickPoints, playerScore, rulesOf, type DayEntry, type FantasyDay, type FantasyPlayer } from '../lib/fantasy';
 import { formatShortDate, formatTime } from '../lib/format';
 import { teamDisplayName } from '../lib/teams';
 
@@ -127,6 +128,44 @@ export const playerFromPerformer = (
         label: t('share.performer'),
         context: t('share.versus', { rival: rival.abbrev, date: game.date ? formatShortDate(game.date, lang) : '' }),
         league: leagueName
+    };
+};
+
+/**
+ * Mi equipo del Fantasy (el que cuenta): fotos, corona del capitán, precios y créditos usados; cuando ya empezó algún
+ * juego del equipo, también los puntos (de cada uno y del día, con los pronósticos).
+ */
+export const fantasyTeamPost = (day: FantasyDay, entry: DayEntry, leagueName: string, points: number, t: T, lang: string): FantasyPost => {
+    const rules = rulesOf(day);
+    const number = (value: number) => new Intl.NumberFormat(lang, { maximumFractionDigits: 1 }).format(value);
+    const players = entry.lineup.map((id) => day.players.find((p) => p.id === id)).filter((p): p is FantasyPlayer => !!p);
+    const started = players.some((player) => isLocked(day, player));
+    const picks = pickPoints(day, entry);
+    return {
+        kind: 'fantasy',
+        league: leagueName,
+        dateLabel: formatShortDate(`${day.date}T16:00:00Z`, lang),
+        title: t('fantasyIdeas.share.title'),
+        credits: rules.budget === null ? t('fantasyIdeas.share.noCap') : t('fantasyIdeas.share.credits', { spent: number(entryCost(day, entry)), budget: number(rules.budget) }),
+        total: started ? number(Math.round(points * 10) / 10) : null,
+        totalLabel: t('fantasyIdeas.share.total'),
+        captainLabel: t('fantasyIdeas.share.captain', { x: number(rules.captain) }),
+        picks: picks > 0 ? t('fantasyIdeas.share.picks', { pts: number(picks) }) : null,
+        players: players.map((player) => {
+            const team = day.teams[player.teamId];
+            return {
+                personId: player.id,
+                name: player.name,
+                teamId: player.teamId,
+                teamAbbrev: team?.abbrev ?? '',
+                color: team?.color ?? '#2563eb',
+                logo: team?.logo ?? null,
+                position: player.role === 'P' ? t('fantasy.pitcher') : player.pos || t('fantasy.batter'),
+                price: rules.budget !== null && player.price !== undefined ? t('fantasyIdeas.share.price', { price: number(player.price) }) : null,
+                points: isLocked(day, player) ? number(playerScore(entry, player, rules.captain)) : null,
+                captain: entry.captain === player.id
+            };
+        })
     };
 };
 

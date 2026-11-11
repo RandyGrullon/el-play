@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { RotateCcw } from 'lucide-react';
 import type { OutVariant, PlayEvent } from '../../lib/playEvents';
 import { inkOn } from './GameHero';
 import { PlayerPhoto } from '../ui/PlayerPhoto';
@@ -11,7 +12,8 @@ import { surname } from '../../lib/format';
 // Animaciones de jugada en el juego en vivo: fin de entrada, ponche, hit, doble, triple, jonrón, base por bolas, robo,
 // cambio de lanzador y cambio en el marcador, más la victoria (o el dejado en el terreno) al terminar el juego y el
 // campeonato cuando ese juego da el título; con el logo y los colores del equipo protagonista. Se cierran solas o al
-// tocarlas y no tapan la barra de abajo. Con «menos movimiento» en el sistema solo aparecen y desaparecen.
+// tocarlas y no tapan la barra de abajo. Con «menos movimiento» en el sistema solo aparecen y desaparecen. La
+// repetición de una jugada del historial sale encima de la hoja abierta y con la etiqueta «Repetición».
 
 const HOLD: Record<PlayEvent['kind'], number> = {
     inning: 2800,
@@ -129,6 +131,9 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
         const timers: number[] = [];
         let raf = 0;
         let closed = false;
+
+        // Repetición: la etiqueta baja un poco después de que entra la jugada
+        anim(q('.pa-replay'), [{ transform: 'translateY(-8px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 180 });
 
         if (runner) {
             const card = q('.pa-hitcard');
@@ -342,6 +347,7 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
             if (closed) return;
             closed = true;
             const out = 380;
+            anim(q('.pa-replay'), [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
             if (runner || kind === 'steal') {
                 anim(q('.pa-hitcard'), [{ transform: 'none', opacity: 1 }, { transform: 'translateX(-115%) skewX(8deg)', opacity: 0 }], { duration: out });
             } else if (kind === 'pinchHitter' || kind === 'pinchRunner' || kind === 'pitchingChange') {
@@ -780,9 +786,15 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
     }
 
     return createPortal(
-        <div className="pa-root" aria-live="polite">
+        <div className={`pa-root${event.replay ? ' pa-root-replay' : ''}`} aria-live="polite">
             <div ref={root} className={`pa-stage${flight !== null ? ' pa-stage-tall' : ''}`} role="button" tabIndex={-1} aria-label={t('anim.close')}>
                 {body}
+                {event.replay && (
+                    <span className="pa-replay">
+                        <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                        {t('anim.replay')}
+                    </span>
+                )}
             </div>
         </div>,
         document.body

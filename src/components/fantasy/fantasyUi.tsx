@@ -8,7 +8,7 @@ import { inningName } from '../../lib/baseball';
 import { gameStarted, type FantasyDay, type FantasyPlayer, type PlayerStatus } from '../../lib/fantasy';
 import { HELP_FOR, type HelpTopic } from '../../lib/fantasyHelp';
 import { useFantasyOwners } from '../../lib/fans';
-import { formatTime } from '../../lib/format';
+import { formatTime, localeFor } from '../../lib/format';
 
 /** Créditos y puntos con la coma o el punto del idioma (8,5 / 8.5) */
 export const credits = (value: number, language: string) => new Intl.NumberFormat(language, { maximumFractionDigits: 1 }).format(value);
@@ -52,6 +52,22 @@ export const useOwners = (day: FantasyDay) => {
 export const FantasyHelpContext = createContext<((topic?: HelpTopic) => void) | null>(null);
 export const useOpenHelp = () => useContext(FantasyHelpContext);
 
+/** Modo de prueba (solo en desarrollo): las secciones nuevas usan datos inventados en vez del servidor */
+export const FantasyDemoContext = createContext(false);
+export const useFantasyDemo = () => useContext(FantasyDemoContext);
+
+/** Lo que la página del Fantasy da a sus pantallas: abrir la ayuda y si está en el modo de prueba */
+export const FantasyProviders: React.FC<{ help: (topic?: HelpTopic) => void; demo: boolean; children: React.ReactNode }> = ({ help, demo, children }) => (
+    <FantasyHelpContext.Provider value={help}>
+        <FantasyDemoContext.Provider value={demo}>{children}</FantasyDemoContext.Provider>
+    </FantasyHelpContext.Provider>
+);
+
+/** «vie, 16 oct» (los días vienen sin hora) */
+export const shortDay = (day: string, lang: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString(localeFor(lang), { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+/** «16 oct» */
+export const dayMonth = (day: string, lang: string) => new Date(`${day.slice(0, 10)}T12:00:00Z`).toLocaleDateString(localeFor(lang), { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
 /** El «?» al lado de Créditos, Capitán, Pronósticos y Tabla: abre la ayuda en su pregunta */
 export const HelpButton: React.FC<{ topic: keyof typeof HELP_FOR; className?: string }> = ({ topic, className = '' }) => {
     const { t } = useTranslation();
@@ -74,6 +90,7 @@ export const HelpButton: React.FC<{ topic: keyof typeof HELP_FOR; className?: st
 const STATUS_TONE: Record<PlayerStatus | 'started', string> = {
     confirmed: 'bg-ball/15 text-ink',
     probable: 'bg-ball/15 text-ink',
+    rotation: 'bg-accent/10 text-accent-ink',
     expected: 'bg-accent/10 text-accent-ink',
     bench: 'bg-raised text-muted',
     bullpen: 'bg-raised text-muted',
@@ -83,7 +100,7 @@ const STATUS_TONE: Record<PlayerStatus | 'started', string> = {
     started: 'bg-raised text-faint'
 };
 
-/** Confirmado / Esperado / Banca / Abridor probable / Bullpen / Descansando / Pospuesto / No jugó / Ya empezó */
+/** Confirmado / Esperado / Banca / Abridor probable / Le toca abrir / Bullpen / Descansando / Pospuesto / No jugó / Ya empezó */
 export const StatusBadge: React.FC<{ status: PlayerStatus | 'started' | null; className?: string }> = ({ status, className = '' }) => {
     const { t } = useTranslation();
     if (!status) return null;

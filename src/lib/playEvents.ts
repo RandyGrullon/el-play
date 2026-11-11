@@ -1,7 +1,7 @@
 // Jugadas que disparan una animación en la pantalla del juego en vivo: se comparan dos lecturas seguidas del
 // juego y solo cuenta lo nuevo (al abrir el juego no se repite nada de lo que ya pasó).
 import type { AtBat, GameDetail, GameTeam, LeagueId, PitcherLine, Pitch, SeriesStatus } from '../types';
-import { basesOf, type Bases } from './runners';
+import { basesOf, basesOfMask, type Bases } from './runners';
 
 export type PlayKind =
     | 'inning'
@@ -85,6 +85,8 @@ export interface PlayEvent {
     change?: { in: PlayPerson; out: PlayPerson | null; line: PitcherLine | null };
     /** Cambio en el marcador (el protagonista es el equipo que anotó) y cómo estaba antes */
     lead?: { change: LeadChange; before: { away: number; home: number } };
+    /** Repetición pedida desde el historial de jugadas (no está pasando ahora) */
+    replay?: boolean;
 }
 
 /** Tipo de out según el evento de MLB y, en los «field_out», la trayectoria del batazo (o la etiqueta de MLB) */
@@ -216,6 +218,53 @@ const absEvents = (prev: GameDetail, next: GameDetail): PlayEvent[] => {
     return events;
 };
 
+const scoreOf = (atBat: AtBat | undefined, top: boolean) => (atBat ? (top ? atBat.away : atBat.home) : 0);
+
+/**
+ * Animación del resultado de un turno terminado (hit, jonrón, ponche, out con su tipo, base por bolas o golpeado): la
+ * misma en vivo y al repetirla desde el historial. `bases`: quién estaba en base antes (null si no se sabe). Las
+ * carreras de antes y de después salen del marcador de ese turno y del anterior. null si el resultado no se anima.
+ */
+const atBatEvent = (game: GameDetail, atBat: AtBat, bases: Bases | null): PlayEvent | null => {
+    const variant = outVariant(atBat);
+    const walk = atBat.event ? WALKS[atBat.event] : undefined;
+    const kind = playKind(atBat) ?? (variant ? 'out' : walk ? 'walk' : null);
+    if (!kind) return null;
+    const batting = atBat.top ? game.away : game.home;
+    const fielding = atBat.top ? game.home : game.away;
+    // El out lo celebra el equipo que lo hizo (como el ponche)
+    const defense = kind === 'k' || kind === 'out';
+    // Jugadas en las que corren las bases (la base por bolas solo empuja a los forzados)
+    const moves = kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'hr' || kind === 'walk';
+    const after = scoreOf(atBat, atBat.top);
+    const before = scoreOf(game.atBats.find((other) => other.i === atBat.i - 1), atBat.top);
+    return {
+        key: `ab-${atBat.i}`,
+        kind,
+        team: defense ? fielding : batting,
+        rival: defense ? batting : fielding,
+        out: kind === 'out' && variant ? { variant, outs: atBat.outs ?? 0 } : undefined,
+        walk,
+        away: game.away,
+        home: game.home,
+        atBat,
+        inning: null,
+        venue: game.venue,
+        bases: moves ? bases : null,
+        runs: moves && after !== null && before !== null && after >= before ? { before, after } : null,
+        strikeouts:
+            kind === 'k'
+                ? game.atBats.filter((other) => other.complete && other.i <= atBat.i && other.pitcher.id === atBat.pitcher.id && playKind(other) === 'k').length
+                : undefined
+    };
+};
+
+/** El turno que dejó en el terreno al local (ganó en la baja de la última entrada o en extra); null si no fue así */
+const walkoffAtBat = (game: GameDetail): AtBat | null => {
+    const last = game.atBats[game.atBats.length - 1];
+    return game.state === 'final' && game.home.isWinner && !!last && !last.top && last.inning >= (game.scheduledInnings || 9) ? last : null;
+};
+
 export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDetail): PlayEvent[] => {
     // Solo si ya se estaba viendo este juego en vivo (un jonrón que deja en el terreno sí sale aunque el juego ya diga «final»)
     if (!prev || prev.gamePk !== next.gamePk || prev.state !== 'live') return [];
@@ -227,46 +276,14 @@ export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDet
     const sides = (atBat: AtBat) => ({ batting: atBat.top ? next.away : next.home, fielding: atBat.top ? next.home : next.away });
     // Los corredores de la lectura anterior son los de antes de la primera jugada nueva (de las siguientes no se sabe)
     let basesKnown = true;
-    const scoreOf = (atBat: AtBat | undefined, top: boolean) => (atBat ? (top ? atBat.away : atBat.home) : 0);
 
     for (const atBat of next.atBats) {
         if (!atBat.complete || done.has(atBat.i)) continue;
         // Cualquier turno nuevo cambia las bases para los siguientes
         const firstNew = basesKnown;
         basesKnown = false;
-        const variant = outVariant(atBat);
-        const walk = atBat.event ? WALKS[atBat.event] : undefined;
-        const kind = playKind(atBat) ?? (variant ? 'out' : walk ? 'walk' : null);
-        if (!kind) continue;
-        const { batting, fielding } = sides(atBat);
-        // El out lo celebra el equipo que lo hizo (como el ponche)
-        const defense = kind === 'k' || kind === 'out';
-        // Jugadas en las que corren las bases (la base por bolas solo empuja a los forzados)
-        const moves = kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'hr' || kind === 'walk';
-        const after = scoreOf(atBat, atBat.top);
-        const before = scoreOf(next.atBats.find((other) => other.i === atBat.i - 1), atBat.top);
-        ordered.push({
-            order: orderOf(atBat, 999),
-            event: {
-                key: `ab-${atBat.i}`,
-                kind,
-                team: defense ? fielding : batting,
-                rival: defense ? batting : fielding,
-                out: kind === 'out' && variant ? { variant, outs: atBat.outs ?? 0 } : undefined,
-                walk,
-                away: next.away,
-                home: next.home,
-                atBat,
-                inning: null,
-                venue: next.venue,
-                bases: moves && firstNew ? basesOf(prev.runners) : null,
-                runs: moves && after !== null && before !== null && after >= before ? { before, after } : null,
-                strikeouts:
-                    kind === 'k'
-                        ? next.atBats.filter((other) => other.complete && other.i <= atBat.i && other.pitcher.id === atBat.pitcher.id && playKind(other) === 'k').length
-                        : undefined
-            }
-        });
+        const event = atBatEvent(next, atBat, firstNew ? basesOf(prev.runners) : null);
+        if (event) ordered.push({ order: orderOf(atBat, 999), event });
     }
 
     // Acciones nuevas dentro de los turnos: emergentes (PH / PR), robos y cambios de lanzador
@@ -331,8 +348,7 @@ export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDet
         if (winner) {
             const { champion, record } = titleClinch(next.series ?? prev.series, winner.id);
             // En el terreno: el local gana en la baja de la última entrada (si iba arriba, esa baja no se juega)
-            const last = next.atBats[next.atBats.length - 1];
-            const walkoff = winner === next.home && !!last && !last.top && last.inning >= (next.scheduledInnings || 9);
+            const walkoff = winner === next.home ? walkoffAtBat(next) : null;
             events.push({
                 key: `final-${next.gamePk}`,
                 kind: champion ? 'champion' : walkoff ? 'walkoff' : 'win',
@@ -340,7 +356,7 @@ export const newPlayEvents = (prev: GameDetail | null | undefined, next: GameDet
                 rival: winner === next.home ? next.away : next.home,
                 away: next.away,
                 home: next.home,
-                atBat: walkoff ? last : null,
+                atBat: walkoff,
                 inning: null,
                 league: next.league,
                 seriesRecord: record
@@ -377,4 +393,47 @@ export const forMode = (events: PlayEvent[], mode: 'all' | 'smart' | 'off', favo
     if (mode === 'off') return [];
     if (mode === 'all' || (favoriteTeamId !== null && teamIds.includes(favoriteTeamId))) return events;
     return events.filter((event) => BIG.includes(event.kind));
+};
+
+/**
+ * Repetición de una jugada ya hecha, pedida desde el historial: la misma animación que salió en vivo, armada para ese
+ * turno. Las bases de antes salen del turno anterior de la misma media entrada (su `post`; vacías en el primero de la
+ * media) y el turno que dejó en el terreno al local repite «¡En el terreno!». null si el turno no terminó o su
+ * resultado no se anima. No pasa por «Más» (una repetición pedida sale aunque sea de las chicas).
+ */
+export const replayEventOf = (game: GameDetail, atBatIndex: number): PlayEvent | null => {
+    const atBat = game.atBats.find((item) => item.i === atBatIndex);
+    if (!atBat?.complete) return null;
+    const key = `replay-${atBat.i}`;
+    if (walkoffAtBat(game) === atBat) {
+        return { key, kind: 'walkoff', team: game.home, rival: game.away, away: game.away, home: game.home, atBat, inning: null, league: game.league, replay: true };
+    }
+    const previous = game.atBats.find((item) => item.i === atBat.i - 1);
+    const sameHalf = !!previous && previous.inning === atBat.inning && previous.top === atBat.top;
+    const event = atBatEvent(game, atBat, sameHalf ? basesOfMask(previous.post) : { first: false, second: false, third: false });
+    return event && { ...event, key, replay: true };
+};
+
+/** Pausa después de una repetición antes de poder pedir otra */
+export const REPLAY_COOLDOWN_MS = 1200;
+
+/** Candado de las repeticiones de una pantalla de juego: si hay una saliendo y desde cuándo se puede pedir otra */
+export interface ReplayGateState {
+    playing: boolean;
+    readyAt: number;
+}
+
+const replayAllowed = (state: ReplayGateState, now: number) => !state.playing && now >= state.readyAt;
+
+/**
+ * Una repetición a la vez y con pausa entre una y otra: mientras sale, los toques se ignoran (ni la reinician ni hacen
+ * cola) y, al terminar (sola o tocándola), hay que esperar REPLAY_COOLDOWN_MS. Lógica pura: `now` lo pone quien llama.
+ */
+export const replayGate = {
+    idle: { playing: false, readyAt: 0 } as ReplayGateState,
+    allowed: replayAllowed,
+    /** El estado con la repetición saliendo, o null si el toque se ignora */
+    start: (state: ReplayGateState, now: number): ReplayGateState | null => (replayAllowed(state, now) ? { playing: true, readyAt: state.readyAt } : null),
+    /** Terminó: empieza la pausa (si ya había terminado, no la alarga) */
+    end: (state: ReplayGateState, now: number): ReplayGateState => (state.playing ? { playing: false, readyAt: now + REPLAY_COOLDOWN_MS } : state)
 };

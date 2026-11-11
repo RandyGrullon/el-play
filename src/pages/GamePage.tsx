@@ -24,7 +24,7 @@ import { StoryRecap } from '../components/gamecast/StoryRecap';
 import { StrikeZone } from '../components/game/StrikeZone';
 import { SprayChart } from '../components/game/SprayChart';
 import { PlayAnimation } from '../components/gamecast/PlayAnimation';
-import { forMode, newPlayEvents, type PlayEvent } from '../lib/playEvents';
+import { forMode, newPlayEvents, REPLAY_COOLDOWN_MS, replayEventOf, replayGate, type PlayEvent } from '../lib/playEvents';
 import { StrikeZonePanel } from '../components/game/StrikeZonePanel';
 import { InningBreakMini } from '../components/game/InningBreak';
 import { WinProbabilityCard } from '../components/game/WinProbability';
@@ -386,6 +386,38 @@ export const GamePage: React.FC = () => {
         });
     }, [game, animationMode, favoriteTeamId]);
 
+    // Repetir una jugada del historial (encima de la hoja abierta): una a la vez y con una pausa entre repeticiones, para
+    // que tocar varias veces no la reinicie ni la ponga en cola. El candado es de esta pantalla de juego, en memoria.
+    const gate = useRef(replayGate.idle);
+    const [replay, setReplay] = useState<PlayEvent | null>(null);
+    const [replayCooling, setReplayCooling] = useState(false);
+    const cooldown = useRef(0);
+    useEffect(() => {
+        gate.current = replayGate.idle;
+        setReplay(null);
+        setReplayCooling(false);
+        return () => window.clearTimeout(cooldown.current);
+    }, [gamePk]);
+    // Con las animaciones apagadas en «Más» o si el sistema pide menos movimiento, el historial no ofrece repetir
+    const canReplay = playAnimations && !reducedMotion;
+    const startReplay = (atBatIndex: number) => {
+        // Con una animación en vivo saliendo, el toque también se ignora
+        if (!game || !canReplay || plays.length > 0) return;
+        const event = replayEventOf(game, atBatIndex);
+        const started = event ? replayGate.start(gate.current, Date.now()) : null;
+        if (!event || !started) return;
+        gate.current = started;
+        setReplay(event);
+    };
+    const endReplay = () => {
+        gate.current = replayGate.end(gate.current, Date.now());
+        setReplay(null);
+        setReplayCooling(true);
+        window.clearTimeout(cooldown.current);
+        cooldown.current = window.setTimeout(() => setReplayCooling(false), REPLAY_COOLDOWN_MS);
+    };
+    const replayLocked = !!replay || replayCooling || plays.length > 0;
+
     useEffect(() => {
         if (game && gamePk && tracked.current !== gamePk) {
             tracked.current = gamePk;
@@ -464,7 +496,12 @@ export const GamePage: React.FC = () => {
 
             <RainOverlay active={canRain && !rainOff} />
 
-            {plays[0] && <PlayAnimation key={plays[0].key} event={plays[0]} onDone={() => setPlays((queue) => queue.slice(1))} />}
+            {/* La repetición va primero: lo que llegue en vivo mientras sale espera en su cola */}
+            {replay ? (
+                <PlayAnimation key={replay.key} event={replay} onDone={endReplay} />
+            ) : (
+                plays[0] && <PlayAnimation key={plays[0].key} event={plays[0]} onDone={() => setPlays((queue) => queue.slice(1))} />
+            )}
 
             {game && (
                 <>
@@ -476,7 +513,7 @@ export const GamePage: React.FC = () => {
                         </div>
                     </BottomSheet>
                     <BottomSheet open={sheet === 'plays'} onClose={() => setSheet(null)} title={t('plays.title')} tall>
-                        <PlayByPlay game={game} />
+                        <PlayByPlay game={game} replay={canReplay ? { locked: replayLocked, onReplay: startReplay } : undefined} />
                     </BottomSheet>
                     <BottomSheet open={sheet === 'box'} onClose={() => setSheet(null)} title={t('game.tabs.box')} tall>
                         <BoxScore game={game} />

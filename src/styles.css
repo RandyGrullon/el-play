@@ -303,6 +303,13 @@
 /* ---------- Animaciones de jugada (juego en vivo) ---------- */
 .pa-root { position: fixed; left: 0; right: 0; top: 0; z-index: 45; display: flex; justify-content: center; pointer-events: none; }
 .pa-stage { position: relative; width: 100%; max-width: 480px; height: calc(430px + env(safe-area-inset-top, 0px)); pointer-events: auto; cursor: pointer; outline: none; }
+/* Repetición pedida desde el historial: encima de la hoja abierta (z 50) y con su etiqueta, para que no parezca en vivo */
+.pa-root-replay { z-index: 51; }
+.pa-replay {
+    position: absolute; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 14px); z-index: 2; width: max-content; margin-inline: auto;
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 9999px; background: rgb(0 0 0 / 0.62); color: #fff;
+    font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; pointer-events: none; backdrop-filter: blur(6px);
+}
 .pa-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.85; }
 .pa-big { font-family: 'Barlow Condensed', 'Outfit', sans-serif; font-weight: 800; line-height: 0.85; letter-spacing: 0.01em; }
 .pa-sub { font-size: 13px; font-weight: 600; opacity: 0.9; }
