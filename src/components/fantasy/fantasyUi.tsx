@@ -8,7 +8,7 @@ import { inningName } from '../../lib/baseball';
 import { gameStarted, type FantasyDay, type FantasyPlayer, type PlayerStatus } from '../../lib/fantasy';
 import { HELP_FOR, type HelpTopic } from '../../lib/fantasyHelp';
 import { useFantasyOwners } from '../../lib/fans';
-import { formatTime } from '../../lib/format';
+import { formatTime, localeFor } from '../../lib/format';
 
 /** Créditos y puntos con la coma o el punto del idioma (8,5 / 8.5) */
 export const credits = (value: number, language: string) => new Intl.NumberFormat(language, { maximumFractionDigits: 1 }).format(value);
@@ -51,6 +51,15 @@ export const useOwners = (day: FantasyDay) => {
 /** Abre «Cómo se juega» (en una pregunta o sección); lo da la página del Fantasy */
 export const FantasyHelpContext = createContext<((topic?: HelpTopic) => void) | null>(null);
 export const useOpenHelp = () => useContext(FantasyHelpContext);
+
+/** Modo de prueba (solo en desarrollo): las secciones nuevas usan datos inventados en vez del servidor */
+export const FantasyDemoContext = createContext(false);
+export const useFantasyDemo = () => useContext(FantasyDemoContext);
+
+/** «vie, 16 oct» (los días vienen sin hora) */
+export const shortDay = (day: string, lang: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString(localeFor(lang), { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+/** «16 oct» */
+export const dayMonth = (day: string, lang: string) => new Date(`${day.slice(0, 10)}T12:00:00Z`).toLocaleDateString(localeFor(lang), { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
 /** El «?» al lado de Créditos, Capitán, Pronósticos y Tabla: abre la ayuda en su pregunta */
 export const HelpButton: React.FC<{ topic: keyof typeof HELP_FOR; className?: string }> = ({ topic, className = '' }) => {

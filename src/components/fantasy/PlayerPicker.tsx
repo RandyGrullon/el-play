@@ -63,7 +63,7 @@ export const needText = (t: T, lang: string, day: FantasyDay, entry: DayEntry) =
 };
 
 /** Barritas de sus últimos 5 juegos (del más viejo al más nuevo); los negativos en rojo */
-const Sparkline: React.FC<{ values: number[]; label: string }> = ({ values, label }) => {
+export const Sparkline: React.FC<{ values: number[]; label: string }> = ({ values, label }) => {
     const top = Math.max(1, ...values);
     const bottom = Math.min(0, ...values);
     return (
