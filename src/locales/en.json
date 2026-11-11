@@ -2031,5 +2031,272 @@
       "local": "Saved in this browser"
     },
     "demo": "Test mode (development only): your team is saved in this browser and doesn't appear in the standings."
+  },
+  "fantasyStats": {
+    "tab": "My season",
+    "title": "My season",
+    "titleOther": "Their season",
+    "kpis": "Season numbers",
+    "kpi": {
+      "points": "Points",
+      "avg": "Average",
+      "best": "Best day",
+      "days": "Days played",
+      "streak": "Current streak",
+      "longest": "Longest streak",
+      "median": "median {{n}}",
+      "perDay": "per day",
+      "daysUnit_one": "{{count}} day",
+      "daysUnit_other": "{{count}} days"
+    },
+    "chart": {
+      "title": "Points per day",
+      "showRank": "Show my rank",
+      "showRankOther": "Show their rank",
+      "label_one": "Points of {{count}} day. Best day: {{best}} pts",
+      "label_other": "Points of {{count}} days. Best day: {{best}} pts",
+      "bar": "{{date}}: {{pts}} pts",
+      "barRank": "{{date}}: {{pts}} pts · #{{rank}} of {{players}}",
+      "legendPoints": "Points of the day",
+      "legendRank": "Rank of the day (1 on top)",
+      "rankAxis": "#{{rank}}"
+    },
+    "captain": {
+      "title": "Captain",
+      "days": "Days with a captain",
+      "avg": "Average",
+      "bonus": "Extra points",
+      "bonusHint": "What the crown added",
+      "best": "Best captain",
+      "bestDetail": "{{pts}} pts · {{date}}",
+      "none": "No days with a captain yet."
+    },
+    "picks": {
+      "title": "Picks",
+      "hits": "Right",
+      "made": "Made",
+      "pct": "Hit rate",
+      "summary": "{{hits}} of {{made}} ({{pct}}%)",
+      "none": "No finished picks yet."
+    },
+    "players": {
+      "title": "Your most used",
+      "titleOther": "Their most used",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "pts": "{{pts}} pts",
+      "none": "No players used yet."
+    },
+    "badges": {
+      "title": "Achievements",
+      "count": "{{done}} of {{total}}",
+      "unlocked": "Unlocked on {{date}}",
+      "unlockedNoDate": "Unlocked",
+      "locked": "Locked",
+      "progress": "{{value}} of {{goal}}"
+    },
+    "achievements": {
+      "firstTeam": {
+        "title": "First team",
+        "desc": "Save your first team"
+      },
+      "days10": {
+        "title": "10 days",
+        "desc": "Play 10 game days with a team"
+      },
+      "days30": {
+        "title": "30 days",
+        "desc": "Play 30 game days with a team"
+      },
+      "day50": {
+        "title": "50 in a day",
+        "desc": "Score 50 points or more in a day"
+      },
+      "day100": {
+        "title": "100 in a day",
+        "desc": "Score 100 points or more in a day"
+      },
+      "day150": {
+        "title": "150 in a day",
+        "desc": "Score 150 points or more in a day"
+      },
+      "streak3": {
+        "title": "3-day streak",
+        "desc": "Play 3 game days in a row"
+      },
+      "streak7": {
+        "title": "7-day streak",
+        "desc": "Play 7 game days in a row"
+      },
+      "streak14": {
+        "title": "14-day streak",
+        "desc": "Play 14 game days in a row"
+      },
+      "perfectPicks": {
+        "title": "Perfect picks",
+        "desc": "Get all your picks right on a day (3 or more)"
+      },
+      "captainMvp": {
+        "title": "Star captain",
+        "desc": "Your captain is your top scorer, with 15 points or more"
+      },
+      "season500": {
+        "title": "500 points",
+        "desc": "Reach 500 points in the season"
+      },
+      "season1000": {
+        "title": "1000 points",
+        "desc": "Reach 1000 points in the season"
+      },
+      "top10Day": {
+        "title": "Top 10",
+        "desc": "Finish in the top 10 of a day with 10 or more fans"
+      },
+      "dayLeader": {
+        "title": "Day leader",
+        "desc": "Finish #1 of a day with 5 or more fans"
+      },
+      "bargain": {
+        "title": "Bargain",
+        "desc": "A player priced 5 credits or less scores 20 or more for you"
+      },
+      "weekChampion": {
+        "title": "Week champion",
+        "desc": "Win a week in a private league"
+      }
+    },
+    "empty": "You don't have a season yet. Build today's team and you'll see your points, streaks and achievements here.",
+    "emptyOther": "This fan hasn't played this season yet.",
+    "emptyCta": "Build my team",
+    "fallback": "Some season numbers are missing: check back in a bit.",
+    "error": "We couldn't load the season."
+  },
+  "fantasyIdeas": {
+    "title": "Ideas for today",
+    "hint": "Today's players who aren't locked yet. Tap «Add» to put them on your team.",
+    "lists": {
+      "hot": "On fire",
+      "bargains": "Bargains",
+      "risers": "Price going up",
+      "fallers": "Price going down",
+      "pitchers": "Pitchers with the best matchup",
+      "popular": "Most picked yesterday"
+    },
+    "why": {
+      "hot": "Best average of their last 5 games",
+      "bargains": "Most projection per credit, 7 credits or less",
+      "risers": "Their price went up since the last game day",
+      "fallers": "Their price went down since the last game day",
+      "pitchers": "Starters facing the weakest-hitting opponents",
+      "popular": "The ones most fans put on their team yesterday"
+    },
+    "metric": {
+      "avg": "Avg. {{pts}}",
+      "value": "{{v}} pts/credit",
+      "up": "Up {{delta}}",
+      "down": "Down {{delta}}",
+      "owned": "{{pct}}% picked him",
+      "oppOps": "Opponent OPS {{ops}}"
+    },
+    "edge": {
+      "good": "Easy matchup",
+      "even": "Even matchup",
+      "tough": "Tough matchup"
+    },
+    "add": "Add",
+    "added": "{{name}} joined your team",
+    "inTeam": "On your team",
+    "notToday": "Doesn't play today",
+    "quick": {
+      "title": "Quick actions",
+      "copy": "Copy yesterday's team",
+      "copyFrom": "Copy my team from {{day}}",
+      "copied_one": "Copied {{count}} player.",
+      "copied_other": "Copied {{count}} players.",
+      "copiedCaptain_one": "Copied {{count}} player and your captain.",
+      "copiedCaptain_other": "Copied {{count}} players and your captain.",
+      "copiedNone": "Couldn't copy anyone.",
+      "skipped": "Couldn't copy: {{list}}.",
+      "skippedItem": "{{name}} ({{reason}})",
+      "notPlaying": "doesn't play today",
+      "unknown": "a player",
+      "nothing": "You already have everyone from that team who can be copied.",
+      "undo": "Undo",
+      "undoWhat": {
+        "add": "Undo: you added {{name}}",
+        "remove": "Undo: you removed {{name}}",
+        "captain": "Undo: you changed the captain",
+        "fill": "Undo: fill with the best",
+        "suggested": "Undo: suggested team",
+        "copy": "Undo: copy yesterday's team"
+      },
+      "undone": "Done: the last change was undone.",
+      "undoFailed": "Can't undo anymore: a player in that change is already locked."
+    },
+    "share": {
+      "title": "My team",
+      "credits": "{{spent}} of {{budget}} credits",
+      "noCap": "No credit cap",
+      "points": "{{pts}} pts",
+      "total": "Points of the day",
+      "projected": "Projection",
+      "price": "{{price}} cr",
+      "captain": "Captain ×{{x}}",
+      "picks": "Picks: +{{pts}}"
+    }
+  },
+  "fantasyLeagues": {
+    "period": "Standings of the day, the week or the season",
+    "week": "Week",
+    "weekRange": "{{start}} – {{end}}",
+    "thisWeek": "This week",
+    "lastWeek": "Last week",
+    "weeksAgo_one": "{{count}} week ago",
+    "weeksAgo_other": "{{count}} weeks ago",
+    "pickWeek": "Choose the week",
+    "champion": "Champion",
+    "championLast": "Last week's champion",
+    "championPts": "{{pts}} pts in the week",
+    "inProgress": "In play: the champion is decided when Sunday ends.",
+    "noChampion": "No champion: nobody in the league played that week.",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "empty": "Nobody in the league played that week.",
+    "owner": {
+      "title": "Manage the league",
+      "badge": "You're the owner",
+      "rename": "Rename",
+      "renameLabel": "New league name",
+      "save": "Save",
+      "cancel": "Cancel",
+      "renamed": "Done: the league is now called {{name}}",
+      "remove": "Remove someone",
+      "removeWho": "Remove {{name}}",
+      "removeConfirm": "Remove {{name}} from the league? They can join again with the code.",
+      "removeYes": "Yes, remove",
+      "removed": "{{name}} is no longer in the league",
+      "nobody": "There's nobody else in the league.",
+      "delete": "Delete league",
+      "deleteConfirm": "The league is deleted for everyone and this cannot be undone. Type «{{name}}» to confirm.",
+      "deleteLabel": "Type the league name",
+      "deleteYes": "Delete forever",
+      "deleted": "You deleted {{name}}",
+      "failed": "That didn't work. Try again."
+    }
+  },
+  "fantasyGuide": {
+    "label": "Getting started",
+    "step": "Step {{n}} of {{total}}",
+    "s1Title_one": "Pick {{batters}} batters and {{count}} pitcher",
+    "s1Title_other": "Pick {{batters}} batters and {{count}} pitchers",
+    "s1Body": "Tap an empty slot and choose players from today's games.",
+    "s2Title": "Name your captain (×{{x}})",
+    "s2Body": "Tap the crown on one of your players: their points count ×{{x}}.",
+    "s3Title": "Make your picks",
+    "s3Body": "In «Picks», choose who wins each game: +{{pts}} for each one you get right.",
+    "next": "Next",
+    "done": "Done",
+    "how": "See how to play",
+    "dismiss": "Close the guide"
   }
 }
