@@ -1,5 +1,6 @@
 // Convierte los datos de la app en el contenido de la imagen para compartir (igual que el-play/src/share/subjects.ts):
-// el resultado de un juego, un pelotero (figura del juego o líder de una categoría) y la tabla de posiciones.
+// el resultado de un juego, un pelotero (figura del juego o líder de una categoría), la tabla de posiciones y tu equipo del
+// Fantasy (lo arma src/components/fantasy/ShareTeam.tsx).
 import type { GameDetail, Leader, ScheduleGame, StandingRow, TopPerformer } from '../../types';
 import { finalLabel, inningName, keyPlayOf, stateName } from '../../lib/baseball';
 import { formatShortDate, formatTime } from '../../lib/format';
@@ -57,7 +58,27 @@ export interface StandingsPost {
     rows: { rank: number; abbrev: string; name: string; color: string; wins: number; losses: number; gamesBack: string }[];
 }
 
-export type PostData = ResultPost | PlayerPost | StandingsPost;
+/** Tu equipo del Fantasy: las 6 fotos con la corona, el precio de cada uno, los créditos usados y (con juegos) los puntos */
+export interface FantasyPost {
+    kind: 'fantasy';
+    league: string;
+    /** «Mi equipo» y el día */
+    title: string;
+    dateLabel: string;
+    color: string;
+    slots: { id: number; name: string; teamId: number | null; abbrev: string; logo?: string | null; color: string; price: string | null; points: string | null; captain: boolean }[];
+    /** «45 de 50 créditos» o «Sin tope de créditos» */
+    credits: string;
+    /** «Capitán ×1,5» */
+    captain: string;
+    /** Los puntos del día (después de los juegos) o la proyección */
+    total: string | null;
+    totalLabel: string;
+    /** «Pronósticos: +20» */
+    picks: string | null;
+}
+
+export type PostData = ResultPost | PlayerPost | StandingsPost | FantasyPost;
 
 const statusOf = (
     state: 'preview' | 'live' | 'final',

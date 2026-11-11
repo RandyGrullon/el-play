@@ -166,7 +166,7 @@ export default function FantasyScreen() {
                             </Txt>
                         )}
                     </Pressable>
-                    {playing && day && day.players.some((p) => entry.lineup.includes(p.id)) && <ShareTeam day={day} entry={entry} points={points + picks} />}
+                    {playing && day && day.players.some((p) => entry.lineup.includes(p.id)) && <ShareTeam day={day} entry={entry} counted={counted.entry} />}
                 </Row>
             </Row>
 

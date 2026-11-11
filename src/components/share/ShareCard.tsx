@@ -6,11 +6,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { fonts, inkOn } from '../../theme/tokens';
 import { PlayerPhoto, TeamLogo, Txt } from '../ui';
 import { LogoMark } from '../feed/LogoMark';
-import type { PlayerPost, PostData, PostTeam, ResultPost, StandingsPost } from './subjects';
+import { Crown } from 'lucide-react-native';
+import type { FantasyPost, PlayerPost, PostData, PostTeam, ResultPost, StandingsPost } from './subjects';
 
 // La imagen para compartir (lo que dibuja el <canvas> de la web), hecha con vistas para capturarla con captureRef.
 // Historia 9:16 y post 4:5; tres estilos: color del equipo, noche y papel. Se diseña a 360 de ancho y se escala.
-// Resultado de un juego, un pelotero o la tabla de posiciones (en el color del líder). Con una foto de fondo (la que
+// Resultado de un juego, un pelotero, la tabla de posiciones (en el color del líder) o tu equipo del Fantasy. Con una foto de fondo (la que
 // escoja el usuario) va la foto con un velo oscuro y todo en blanco, como en la web.
 
 export type ShareFormat = 'story' | 'post';
@@ -67,7 +68,7 @@ export const ShareCard: React.FC<CardProps> = ({ ref, data, format, style, width
     const story = format === 'story';
     const height = width * (story ? 16 / 9 : 5 / 4);
     const s = (value: number) => (value * width) / 360;
-    const color = data.kind === 'result' ? winnerOf(data).color : data.kind === 'player' ? data.color : data.rows[0]?.color || '#2563eb';
+    const color = data.kind === 'result' ? winnerOf(data).color : data.kind === 'player' || data.kind === 'fantasy' ? data.color : data.rows[0]?.color || '#2563eb';
     const base = palette(style, color);
     const pal = photo ? { ...base, ink: '#ffffff', muted: 'rgba(255,255,255,0.8)', panel: 'rgba(0,0,0,0.35)' } : base;
 
@@ -79,7 +80,7 @@ export const ShareCard: React.FC<CardProps> = ({ ref, data, format, style, width
             </Txt>
             <Txt size={s(11)} weight="semibold" color={pal.muted} numberOfLines={1} style={{ flex: 1, textAlign: 'right' }}>
                 {data.league}
-                {data.kind === 'result' && data.dateLabel ? ` · ${data.dateLabel}` : ''}
+                {(data.kind === 'result' || data.kind === 'fantasy') && data.dateLabel ? ` · ${data.dateLabel}` : ''}
             </Txt>
         </View>
     );
@@ -107,6 +108,8 @@ export const ShareCard: React.FC<CardProps> = ({ ref, data, format, style, width
                     <Result data={data} pal={pal} s={s} story={story} pill={pill} />
                 ) : data.kind === 'player' ? (
                     <Player data={data} pal={pal} s={s} story={story} pill={pill} />
+                ) : data.kind === 'fantasy' ? (
+                    <Fantasy data={data} pal={pal} s={s} story={story} pill={pill} />
                 ) : (
                     <Standings data={data} pal={pal} s={s} story={story} pill={pill} onColor={style === 'color' && !photo} />
                 )}
@@ -231,6 +234,63 @@ const Player: React.FC<PartProps<PlayerPost>> = ({ data, pal, s, story, pill }) 
         ) : null}
     </>
 );
+
+/** Tu equipo del Fantasy: 6 fotos en dos filas (la corona en el capitán, su precio y sus puntos), los créditos y el total */
+const Fantasy: React.FC<PartProps<FantasyPost>> = ({ data, pal, s, story, pill }) => {
+    const photo = s(story ? 66 : 52);
+    return (
+        <>
+            {pill(data.title.toUpperCase())}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: s(story ? 18 : 10) }}>
+                {data.slots.map((slot) => (
+                    <View key={slot.id} style={{ width: '33.33%', alignItems: 'center', gap: s(2) }}>
+                        <View>
+                            <View style={{ borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.85)', padding: s(2) }}>
+                                <PlayerPhoto personId={slot.id} name={slot.name} size={photo} team={{ id: slot.teamId, abbrev: slot.abbrev, logo: slot.logo, color: slot.color }} background="rgba(255,255,255,0.85)" />
+                            </View>
+                            {slot.captain && (
+                                <View style={{ position: 'absolute', top: -s(10), alignSelf: 'center', width: s(22), height: s(22), borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f2b84b' }}>
+                                    <Crown size={s(13)} color="#ffffff" />
+                                </View>
+                            )}
+                        </View>
+                        <Txt size={s(11)} weight="extrabold" color={pal.ink} numberOfLines={1} style={{ maxWidth: '94%' }}>
+                            {slot.name}
+                        </Txt>
+                        {slot.points !== null ? (
+                            <Txt color={pal.ink} style={{ fontFamily: fonts.condensed, fontSize: s(story ? 22 : 18), lineHeight: s(story ? 24 : 19) }}>
+                                {slot.points}
+                            </Txt>
+                        ) : null}
+                        {slot.price !== null ? (
+                            <Txt size={s(10)} weight="semibold" color={pal.muted}>
+                                {slot.price}
+                            </Txt>
+                        ) : null}
+                    </View>
+                ))}
+            </View>
+            <View style={{ borderRadius: s(16), backgroundColor: pal.panel, padding: s(14), gap: s(4) }}>
+                {data.total !== null ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: s(8) }}>
+                        <Txt size={s(11)} weight="bold" color={pal.muted} style={{ textTransform: 'uppercase', letterSpacing: 0.8, flexShrink: 1 }}>
+                            {data.totalLabel}
+                        </Txt>
+                        <Txt color={pal.ink} style={{ fontFamily: fonts.condensed, fontSize: s(story ? 44 : 34), lineHeight: s(story ? 46 : 36) }}>
+                            {data.total}
+                        </Txt>
+                    </View>
+                ) : null}
+                <Txt size={s(12)} weight="bold" color={pal.ink}>
+                    {data.credits}
+                </Txt>
+                <Txt size={s(11)} weight="semibold" color={pal.muted}>
+                    {[data.captain, data.picks].filter(Boolean).join(' · ')}
+                </Txt>
+            </View>
+        </>
+    );
+};
 
 /** La tabla: título grande, la fase o el grupo y hasta 8 equipos; el líder resalta (con un panel claro en su color) */
 const Standings: React.FC<PartProps<StandingsPost> & { onColor: boolean }> = ({ data, pal, s, story, onColor }) => {

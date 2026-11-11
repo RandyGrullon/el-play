@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { BarChart3, ChevronRight, Share2, Users } from 'lucide-react-native';
 import type { LeagueId } from '../../../types';
 import { useSession } from '../../../lib/account';
-import { dayPoints, entryKey, gameStarted, history, playerScore, rulesOf, useFantasyDay, useFantasyStore, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../../lib/fantasy';
+import { dayPoints, entryKey, history, useFantasyDay, useFantasyStore, type DayEntry, type FantasyDay, type FantasyPlayer } from '../../../lib/fantasy';
 import type { CountedEntry } from '../../../lib/fantasyCounted';
 import { formatLongDate } from '../../../lib/format';
 import { useFantasyForm, useFantasyStats, useProStandings } from '../../../lib/pro/liga';
@@ -25,6 +25,8 @@ import { useLocalText } from '../../fantasy/texts';
 import { HowToPlayLink } from '../../fantasy/Help';
 import { IdeasSection } from '../../fantasy/Ideas';
 import { QuickActions } from '../../fantasy/QuickActions';
+import { fantasyShareRequest } from '../../fantasy/ShareTeam';
+import { useShare } from '../../share/ShareSheet';
 import { ProNote, ProSegmented, ScreenTitle, useNow } from '../kit';
 import { ProFans } from '../fanaticos/ProFans';
 import { fmtPts } from './bits';
@@ -37,7 +39,6 @@ import { Picks } from './Picks';
 import { ReplayYesterday } from './ReplayYesterday';
 import { Scouting } from './Scouting';
 import { SeasonSheet } from './SeasonSheet';
-import { SHARE_SITE, ShareFantasy, type ShareCardData } from './ShareFantasy';
 import { TablePro, type OpenFan } from './TablePro';
 import { TeamGrid } from './TeamGrid';
 import { projectionOf, shortDayName, standingRows, teamFormOf } from './logic';
@@ -122,7 +123,9 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
 
     const [role, setRole] = useState<'B' | 'P'>('B');
     const [replacing, setReplacing] = useState<FantasyPlayer | null>(null);
-    const [sheet, setSheet] = useState<'season' | 'leagues' | 'share' | null>(null);
+    const [sheet, setSheet] = useState<'season' | 'leagues' | null>(null);
+    // Compartir: la hoja de siempre (historia o post) con tu equipo del día elegido, igual que el Lite
+    const { share, sheet: shareSheet } = useShare();
     const [refreshing, setRefreshing] = useState(false);
 
     // Bajar a «Escoge peloteros»: la posición del panel en la página más la de la lista dentro del panel
@@ -170,27 +173,7 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
 
     // Los puntos del día con el equipo que cuenta (los mismos de la tabla y del Lite)
     const totals = day ? dayPoints(day, entry, counted.entry) : { team: 0, picks: 0, total: 0 };
-    const captainX = rulesOf(day).captain;
-
-    // Compartir: las 6 fotos del día elegido con sus puntos
-    const lineupPlayers = day ? entry.lineup.map((id) => day.players.find((player) => player.id === id)).filter((player): player is FantasyPlayer => !!player) : [];
-    const shareData: ShareCardData | null =
-        day && lineupPlayers.length
-            ? {
-                  title: 'El Play Fantasy',
-                  subtitle: t('pro.fantasy.share.subtitle', { day: longDay(day.date, lang) }),
-                  league: t(`leagues.${league}.name`),
-                  slots: lineupPlayers.map((player) => {
-                      const game = day.games.find((item) => item.gamePk === player.gamePk);
-                      return { id: player.id, name: player.name, teamId: player.teamId, points: game && gameStarted(game, now) ? fmtPts(counted.entry.lineup.includes(player.id) ? playerScore(counted.entry, player, captainX) : 0) : null, captain: entry.captain === player.id };
-                  }),
-                  total: fmtPts(totals.total),
-                  unit: t('pro.fantasy.pts'),
-                  split: t('pro.fantasy.summary.split', { team: fmtPts(totals.team), picks: fmtPts(totals.picks) }),
-                  rank: rank ? t('pro.fantasy.share.rank', { rank: rank.rank, total: rank.total }) : null,
-                  site: SHARE_SITE
-              }
-            : null;
+    const shareRequest = day ? fantasyShareRequest(day, entry, counted.entry, t, lang) : null;
 
     const finished = !!day && day.games.length > 0 && day.games.every((game) => game.state === 'final');
     const prevFinished = !!before && before.games.length > 0 && before.games.every((game) => game.state === 'final') && !!beforeEntry?.lineup.length;
@@ -227,8 +210,8 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
                             <Pressable onPress={() => setSheet('season')} accessibilityRole="button" accessibilityLabel={t('pro.fantasy.season.open')} style={({ pressed }) => [iconButton, shadow('card'), { opacity: pressed ? 0.8 : 1 }]}>
                                 <BarChart3 size={20} color={colors.ink} />
                             </Pressable>
-                            {shareData && (
-                                <Pressable onPress={() => setSheet('share')} accessibilityRole="button" accessibilityLabel={t('pro.fantasy.share.open')} style={({ pressed }) => [iconButton, shadow('card'), { opacity: pressed ? 0.8 : 1 }]}>
+                            {shareRequest && (
+                                <Pressable onPress={() => share(shareRequest)} accessibilityRole="button" accessibilityLabel={t('pro.fantasy.share.open')} style={({ pressed }) => [iconButton, shadow('card'), { opacity: pressed ? 0.8 : 1 }]}>
                                     <Share2 size={20} color={colors.ink} />
                                 </Pressable>
                             )}
@@ -394,14 +377,7 @@ export const ProFantasy: React.FC<ProFantasyProps> = ({ league, query, date, onD
             {userId ? (
                 <LeaguesSheet open={sheet === 'leagues'} league={league} userId={userId} day={day} leagues={leagues} loading={leaguesQuery.isPending} error={leaguesQuery.error} onRetry={() => leaguesQuery.refetch()} onClose={() => setSheet(null)} />
             ) : null}
-            <ShareFantasy
-                open={sheet === 'share' && !!shareData}
-                data={shareData}
-                teams={day?.teams ?? {}}
-                fileName={`el-play-fantasy-${day?.date ?? 'hoy'}`}
-                text={shareData ? t('pro.fantasy.share.text', { total: shareData.total }) : ''}
-                onClose={() => setSheet(null)}
-            />
+            {shareSheet}
         </View>
     );
 };
