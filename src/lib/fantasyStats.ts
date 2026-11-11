@@ -239,6 +239,18 @@ export const achievementsOf = (stats: FanStats | null | undefined, profile: Pick
     };
 };
 
+/** «Esta semana», «La semana pasada», «Hace 2 semanas» (índice en la lista de la más nueva a la más vieja) */
+export const weekName = (index: number, t: (key: string, options?: Record<string, unknown>) => string) =>
+    index === 0 ? t('fantasyLeagues.thisWeek') : index === 1 ? t('fantasyLeagues.lastWeek') : t('fantasyLeagues.weeksAgo', { count: index });
+
+/** El campeón de la semana pasada: el de la semana más nueva que ya tiene campeón (con sus puntos de esa semana) */
+export const lastChampion = (weeks: LeagueWeek[]) => {
+    const week = [...weeks].sort((a, b) => b.start.localeCompare(a.start)).find((item) => item.champion);
+    if (!week) return null;
+    const row = week.rows.find((item) => item.userId === week.champion);
+    return { week, userId: week.champion!, total: row?.total ?? 0 };
+};
+
 /** Las semanas que ganó en sus ligas privadas (el domingo de cada una), de la más vieja a la más nueva */
 export const weekTitles = (leagues: LeagueWeek[][], userId: string) => [...new Set(leagues.flat().filter((week) => week.champion === userId).map((week) => week.end))].sort();
 
@@ -302,7 +314,15 @@ export const fetchLeagueWeeks = async (league: LeagueId, users: string[], signal
     const raw = await getJson<{ weeks?: LeagueWeek[] }>(`/api/v2/fantasy/weeks?league=${league}&users=${userIds(users)}`, signal);
     return list<LeagueWeek>(raw.weeks)
         .filter((week) => week && dateOf(week.start) && dateOf(week.end))
-        .map((week) => ({ start: week.start, end: week.end, champion: typeof week.champion === 'string' && week.champion ? week.champion : null, rows: list<WeekRow>(week.rows).filter((row) => row && typeof row.userId === 'string') }))
+        .map((week) => ({
+            start: week.start,
+            end: week.end,
+            champion: typeof week.champion === 'string' && week.champion ? week.champion : null,
+            rows: list<WeekRow>(week.rows)
+                .filter((row) => row && typeof row.userId === 'string')
+                .map((row) => ({ userId: row.userId, total: num(row.total), days: num(row.days), rank: num(row.rank) }))
+                .sort((a, b) => a.rank - b.rank || b.total - a.total)
+        }))
         .sort((a, b) => b.start.localeCompare(a.start));
 };
 

@@ -1762,6 +1762,17 @@ const statsLib = require(compileTo('lib/fantasyStats.ts'));
         const conCampeon = withWeekTitles([{ id: 'weekChampion', unlockedAt: null, progress: null }, { id: 'firstTeam', unlockedAt: null, progress: null }], titulos);
         assert.deepStrictEqual(conCampeon.map((item) => item.unlockedAt), ['2099-10-11', null]);
         assert.deepStrictEqual(withWeekTitles(conCampeon, []), conCampeon);
+        // El campeón de la semana pasada: el de la más nueva que ya terminó (la de ahora no tiene)
+        const { lastChampion, weekName } = statsLib;
+        const fila = (userId, total, rank) => ({ userId, total, days: 3, rank });
+        const campeon = lastChampion([
+            { start: '2099-10-12', end: '2099-10-18', champion: 'fan-yo', rows: [fila('fan-otro', 40, 2), fila('fan-yo', 55.5, 1)] },
+            { start: '2099-10-19', end: '2099-10-25', champion: null, rows: [fila('fan-otro', 12, 1)] }
+        ]);
+        assert.deepStrictEqual([campeon.userId, campeon.total, campeon.week.end], ['fan-yo', 55.5, '2099-10-18']);
+        assert.strictEqual(lastChampion([{ start: '2099-10-19', end: '2099-10-25', champion: null, rows: [] }]), null);
+        const tk = (key, options) => key + (options ? JSON.stringify(options) : '');
+        assert.deepStrictEqual([0, 1, 3].map((index) => weekName(index, tk)), ['fantasyLeagues.thisWeek', 'fantasyLeagues.lastWeek', 'fantasyLeagues.weeksAgo{"count":3}']);
 
         // /stats sin logros: con sus totales (sin «pronóstico perfecto», que no se sabe)
         const sinLogros = normalizeStats({ totals: { days: 12, total: 640, best: { date: '2099-10-02', total: 104 } }, streak: { current: 2, longest: 8 } });

@@ -1,6 +1,7 @@
-// «Tabla»: ranking del día o de la temporada (todos o una liga privada, con su resumen: campeón de la semana, racha,
-// compartir y salir), crear liga con código, unirse y nombre para la tabla. Cada fila abre el perfil del fanático.
-import React, { useState } from 'react';
+// «Tabla»: ranking del día, de la semana (solo en una liga privada, si el servidor la tiene) o de la temporada (todos o
+// una liga privada, con su resumen: campeón de la semana, racha, compartir, salir y, para el dueño, renombrar, sacar a
+// alguien y borrar), crear liga con código, unirse y nombre para la tabla. Cada fila abre el perfil del fanático.
+import React, { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -13,12 +14,16 @@ import { FanRow, SeasonTable } from './FanSearch';
 import { LeagueSummary } from './LeagueSummary';
 import { useLocalText } from './texts';
 import { HelpButton } from './Help';
+import { LeagueWeeks } from './LeagueWeeks';
+import { useLeagueWeeks } from '../../lib/fantasyStats';
+
+type Period = 'day' | 'week' | 'season';
 
 export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (userId: string) => void }> = ({ day, dayName, onOpenFan }) => {
     const { t } = useTranslation();
     const L = useLocalText();
     const session = useSession();
-    const [period, setPeriod] = useState<'day' | 'season'>('day');
+    const [period, setPeriod] = useState<Period>('day');
     const [scope, setScope] = useState<string>('all');
     const [code, setCode] = useState('');
     const [name, setName] = useState('');
@@ -37,6 +42,12 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (
         staleTime: 15000
     });
     const rivals = rivalsQuery.data ?? null;
+    // La semana sale solo si el servidor la tiene (con 404, 503 o error no se ofrece)
+    const weeks = useLeagueWeeks(day.league, members, !!session && !!current);
+    const hasWeeks = !!current && weeks.isSuccess && weeks.data.length > 0;
+    useEffect(() => {
+        if (period === 'week' && !hasWeeks && !(current && weeks.isPending)) setPeriod('day');
+    }, [period, hasWeeks, current, weeks.isPending]);
     const load = () => {
         leaguesQuery.refetch();
         rivalsQuery.refetch();
@@ -86,14 +97,11 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (
             )}
             {/* Margen vertical para que el área táctil de 44 px del Segmented no quede recortada por el ScrollView */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, marginVertical: -6, flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 6, gap: 8 }}>
-                <Segmented<'day' | 'season'>
+                <Segmented<Period>
                     small
                     value={period}
                     onChange={setPeriod}
-                    options={[
-                        { value: 'day', label: dayName },
-                        { value: 'season', label: L('fans.season') }
-                    ]}
+                    options={[{ value: 'day', label: dayName }, ...(hasWeeks ? [{ value: 'week' as const, label: t('fantasyLeagues.week') }] : []), { value: 'season', label: L('fans.season') }]}
                 />
                 {leagues.length > 0 && (
                     <Segmented<string> small value={scope} onChange={setScope} options={[{ value: 'all', label: t('fantasy.everyone') }, ...leagues.map((l) => ({ value: l.id, label: l.name }))]} />
@@ -102,6 +110,8 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (
             </ScrollView>
             {period === 'season' ? (
                 <SeasonTable league={day.league} members={scope === 'all' ? undefined : members} onOpen={onOpenFan} />
+            ) : period === 'week' && current ? (
+                <LeagueWeeks fantasyLeague={day.league} members={current.members} ownId={session.user.id} onOpen={onOpenFan} />
             ) : (
                 <Card padded={false} style={{ overflow: 'hidden' }}>
                     {rivals === null ? (
@@ -130,6 +140,10 @@ export const TableTab: React.FC<{ day: FantasyDay; dayName: string; onOpenFan: (
                     day={ranking.map((row) => ({ userId: row.userId, name: row.name, points: row.points, rank: row.rank }))}
                     onLeft={() => {
                         setScope('all');
+                        load();
+                    }}
+                    onChanged={(change) => {
+                        if (change === 'deleted') setScope('all');
                         load();
                     }}
                 />

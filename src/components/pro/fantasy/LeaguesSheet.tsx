@@ -1,5 +1,7 @@
-// Ligas privadas en una hoja: la tabla de la temporada de cada liga, sus miembros, el código para copiar o compartir,
-// comparar los equipos del día (lo de un juego que no ha empezado no se ve) y salir. Abajo, crear o unirse a otra.
+// Ligas privadas en una hoja: la tabla de cada liga del día, de la semana (si el servidor la tiene, con el campeón de la
+// semana pasada) o de la temporada, sus miembros, el código para copiar o compartir, comparar los equipos del día (lo
+// de un juego que no ha empezado no se ve), salir y, para el dueño, renombrar, sacar a alguien o borrarla. Abajo, crear
+// o unirse a otra.
 import React, { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,12 +15,15 @@ import { localeFor } from '../../../lib/format';
 import { showToast } from '../../../lib/toast';
 import { useColors } from '../../../theme/theme';
 import { alpha, radius, shadow } from '../../../theme/tokens';
-import { ErrorState, PlayerPhoto, Sheet, Skeleton, Txt, useErrorText } from '../../ui';
+import { ErrorState, PlayerPhoto, Sheet, Skeleton, Txt, leaveSheets, useErrorText } from '../../ui';
+import { router } from 'expo-router';
 import { Field, FieldButton } from '../../account/Field';
 import { useFanLabel } from '../../fantasy/FanSearch';
 import { useLocalText } from '../../fantasy/texts';
+import { LeagueOwnerTools, LeagueWeeks } from '../../fantasy/LeagueWeeks';
+import { useLeagueWeeks } from '../../../lib/fantasyStats';
 import { shareLink } from '../../share/ShareSheet';
-import { ChipButton, ChipRow, ModuleHeader, ProButton, ProNote, shortName, useProColors } from '../kit';
+import { ChipButton, ChipRow, ModuleHeader, ProButton, ProNote, ProSegmented, shortName, useProColors } from '../kit';
 import { Num, fmtPts } from './bits';
 import { leaguesKey, leaveLeague, useDayRivals, useSeasonTable, type LeagueInfo } from './data';
 import { ranked } from './logic';
@@ -89,7 +94,18 @@ export const LeaguesSheet: React.FC<LeaguesSheetProps> = ({ open, league, userId
                             ))}
                         </ChipRow>
                     )}
-                    <LeagueDetail key={current.id} league={league} userId={userId} day={day} info={current} onLeft={refresh} />
+                    <LeagueDetail
+                        key={current.id}
+                        league={league}
+                        userId={userId}
+                        day={day}
+                        info={current}
+                        onLeft={refresh}
+                        onChanged={(change) => {
+                            if (change === 'deleted') setSelected(null);
+                            refresh();
+                        }}
+                    />
                 </>
             ) : (
                 <ProNote tone="info" title={t('pro.fantasy.leagues.noneTitle')}>
@@ -128,7 +144,16 @@ export const LeaguesSheet: React.FC<LeaguesSheetProps> = ({ open, league, userId
     );
 };
 
-const LeagueDetail: React.FC<{ league: LeagueId; userId: string; day: FantasyDay | undefined; info: LeagueInfo; onLeft: () => void }> = ({ league, userId, day, info, onLeft }) => {
+type Period = 'day' | 'week' | 'season';
+
+const LeagueDetail: React.FC<{ league: LeagueId; userId: string; day: FantasyDay | undefined; info: LeagueInfo; onLeft: () => void; onChanged: (change: 'renamed' | 'removed' | 'deleted') => void }> = ({
+    league,
+    userId,
+    day,
+    info,
+    onLeft,
+    onChanged
+}) => {
     const { t, i18n } = useTranslation();
     const lang = i18n.language;
     const colors = useColors();
@@ -140,6 +165,14 @@ const LeagueDetail: React.FC<{ league: LeagueId; userId: string; day: FantasyDay
     const [all, setAll] = useState(false);
     const [compare, setCompare] = useState(false);
     const [confirm, setConfirm] = useState(false);
+    // Día / Semana / Temporada, como la Tabla del Lite y la web (la semana solo si el servidor la tiene)
+    const [chosenPeriod, setPeriod] = useState<Period>(day ? 'day' : 'season');
+    const weeks = useLeagueWeeks(league, ids);
+    const hasWeeks = weeks.isSuccess && weeks.data.length > 0;
+    const period: Period = chosenPeriod === 'week' && !hasWeeks ? (day ? 'day' : 'season') : chosenPeriod === 'day' && !day ? 'season' : chosenPeriod;
+    const memberName = (id: string) => info.members.find((member) => member.userId === id)?.name ?? null;
+    // El perfil de un fanático: se cierra la hoja y se abre su pantalla
+    const openFan = (id: string) => leaveSheets(() => router.push({ pathname: '/fantasy/fan/[id]', params: { id } }));
     const rows = useMemo(() => ranked([...(season.data?.ranking ?? [])].sort((a, b) => b.points - a.points)), [season.data]);
     const owner = info.members.find((member) => member.userId === info.owner);
     const others = info.members.length - rows.length;
@@ -210,7 +243,18 @@ const LeagueDetail: React.FC<{ league: LeagueId; userId: string; day: FantasyDay
                     </Pressable>
                 </View>
             </View>
-            {season.isPending ? (
+            <ProSegmented<Period>
+                value={period}
+                onChange={setPeriod}
+                label={t('fantasyLeagues.period')}
+                size="sm"
+                options={[...(day ? [{ value: 'day' as const, label: t('games.today') }] : []), ...(hasWeeks ? [{ value: 'week' as const, label: t('fantasyLeagues.week') }] : []), { value: 'season' as const, label: t('pro.fantasy.leagues.season') }]}
+            />
+            {period === 'day' && day ? (
+                <DayTable league={league} userId={userId} day={day} members={ids} names={memberName} />
+            ) : period === 'week' ? (
+                <LeagueWeeks fantasyLeague={league} members={ids} ownId={userId} onOpen={openFan} names={memberName} />
+            ) : season.isPending ? (
                 <Skeleton height={160} round={radius.tile} />
             ) : season.isError && !season.data ? (
                 <ErrorState message={errorText(season.error)} onRetry={() => season.refetch()} />
@@ -253,14 +297,14 @@ const LeagueDetail: React.FC<{ league: LeagueId; userId: string; day: FantasyDay
                     )}
                 </View>
             )}
-            {(rows.length > SHOWN || others > 0) && (
+            {period === 'season' && (rows.length > SHOWN || others > 0) && (
                 <Pressable onPress={() => setAll((value) => !value)} accessibilityRole="button" accessibilityState={{ expanded: all }} style={{ marginTop: -4, minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center', paddingHorizontal: 8 }}>
                     <Txt size={12} weight="bold" tone="accentInk">
                         {all ? t('pro.fantasy.leagues.less') : t('pro.fantasy.leagues.more', { count: Math.max(0, rows.length - shown.length) + Math.max(0, others) })}
                     </Txt>
                 </Pressable>
             )}
-            {all && others > 0 && (
+            {period === 'season' && all && others > 0 && (
                 <Txt size={11} tone="muted" style={{ marginTop: -8 }}>
                     {t('pro.fantasy.leagues.noPoints', { count: others })}
                 </Txt>
@@ -286,6 +330,55 @@ const LeagueDetail: React.FC<{ league: LeagueId; userId: string; day: FantasyDay
                 </Pressable>
             </View>
             {compare && day && <CompareTeams league={league} userId={userId} day={day} members={ids} />}
+            <LeagueOwnerTools league={{ code: info.code, name: info.name, owner: info.owner, members: ids }} fantasyLeague={league} ownId={userId} onChanged={onChanged} names={memberName} />
+        </View>
+    );
+};
+
+/** La tabla del día de la liga: cada equipo como estaba al empezar cada juego; los empates comparten el puesto */
+const DayTable: React.FC<{ league: LeagueId; userId: string; day: FantasyDay; members: string[]; names: (id: string) => string | null }> = ({ league, userId, day, members, names }) => {
+    const { t } = useTranslation();
+    const colors = useColors();
+    const errorText = useErrorText();
+    const fanLabel = useFanLabel();
+    const live = day.games.some((game) => game.state === 'live');
+    const rivals = useDayRivals(league, day.date, members, live);
+    if (rivals.isPending) return <Skeleton height={160} round={radius.tile} />;
+    if (rivals.isError) return <ErrorState message={errorText(rivals.error)} onRetry={() => rivals.refetch()} />;
+    const rows = ranked(
+        (rivals.data ?? []).map((rival) => {
+            const entry = effectiveEntry(day, rival.entry);
+            return { userId: rival.userId, name: names(rival.userId) ?? rival.name, points: teamPoints(day, entry) + pickPoints(day, entry) };
+        })
+    );
+    if (!rows.length) {
+        return (
+            <Txt size={14} tone="muted" center style={{ paddingVertical: 16 }}>
+                {t('fantasy.emptyTable')}
+            </Txt>
+        );
+    }
+    return (
+        <View>
+            {rows.map((row) => {
+                const own = row.userId === userId;
+                return (
+                    <View
+                        key={row.userId}
+                        accessible
+                        accessibilityLabel={`${row.rank}, ${fanLabel(row.name, own)}, ${fmtPts(row.points)} ${t('pro.fantasy.pts')}`}
+                        style={{ height: 40, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.tile, paddingHorizontal: 8, backgroundColor: own ? alpha(colors.accent, 0.12) : 'transparent' }}
+                    >
+                        <Num size={16} style={{ width: 28 }}>
+                            {row.rank}
+                        </Num>
+                        <Txt size={13} weight={own ? 'extrabold' : 'semibold'} numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
+                            {fanLabel(row.name, own)}
+                        </Txt>
+                        <Num size={18}>{fmtPts(row.points)}</Num>
+                    </View>
+                );
+            })}
         </View>
     );
 };

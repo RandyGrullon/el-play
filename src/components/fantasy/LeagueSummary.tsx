@@ -15,6 +15,7 @@ import { shareLink } from '../share/ShareSheet';
 import { leaveLeague } from '../pro/fantasy/data';
 import { useFanLabel } from './FanSearch';
 import { useSeasonRanking } from './fans';
+import { LeagueOwnerTools } from './LeagueWeeks';
 
 const round = (value: number) => Math.round(value * 10) / 10;
 
@@ -46,7 +47,9 @@ export const LeagueSummary: React.FC<{
     /** La tabla del día dentro de la liga (ya ordenada, con los puestos compartidos en los empates) */
     day: { userId: string; name: string | null; points: number; rank?: number }[];
     onLeft: () => void;
-}> = ({ league, fantasyLeague, dayName, ownId, day, onLeft }) => {
+    /** El dueño la renombró, sacó a alguien o la borró */
+    onChanged?: (change: 'renamed' | 'removed' | 'deleted') => void;
+}> = ({ league, fantasyLeague, dayName, ownId, day, onLeft, onChanged }) => {
     const { t, i18n } = useTranslation();
     const colors = useColors();
     const fanLabel = useFanLabel();
@@ -168,6 +171,9 @@ export const LeagueSummary: React.FC<{
                     </Pressable>
                 )}
             </Row>
+
+            {/* Fantasy v3: renombrar, sacar a alguien y borrar (solo el dueño, si la base ya tiene esas funciones) */}
+            <LeagueOwnerTools league={league} fantasyLeague={fantasyLeague} ownId={ownId} onChanged={(change) => onChanged?.(change)} />
         </Card>
     );
 };
