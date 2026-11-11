@@ -1,5 +1,7 @@
 const { LEAGUES, isLeague } = require('../config/constants');
 const fans = require('../services/fantasyFans');
+const accounts = require('../services/pro/accounts');
+const stats = require('../services/fantasyStats');
 
 const leagueFrom = (req) => (isLeague(req.query.league) ? req.query.league : 'lidom');
 /** AAAA-MM-DD que existe (2026-13-45 no) */
@@ -83,4 +85,46 @@ const getFantasyOwners = async (req, res, next) => {
     }
 };
 
-module.exports = { getFantasyDay, getFantasyFan, getFantasySeason, getFantasyOwners };
+// Fantasy v3: con el simulador (MLB_MOCK=1) hay fanáticos simulados aunque no haya Supabase
+const accountsOff = (res) => {
+    if (accounts.enabled()) return false;
+    res.set('Cache-Control', 'no-store').status(503).json({ error: 'accounts_disabled' });
+    return true;
+};
+
+/** ?users=<uuid,…> (1 a 100, sin repetir) o null si no sirve */
+const usersFrom = (req) => {
+    if (req.query.users === undefined) return null;
+    const users = [...new Set(String(req.query.users).split(',').map((id) => id.trim().toLowerCase()).filter(Boolean))];
+    return users.length && users.length <= fans.MAX_USERS && users.every(fans.isUuid) ? users : null;
+};
+
+// «Mi temporada»: la temporada completa de un fanático, con su puesto de cada día y los logros
+const getFantasyFanStats = async (req, res, next) => {
+    try {
+        if (!fans.isUuid(req.params.userId)) return res.set('Cache-Control', 'no-store').status(400).json({ error: 'invalid_user' });
+        if (accountsOff(res)) return;
+        const value = await stats.fanStats(leagueFrom(req), req.params.userId.toLowerCase());
+        cacheFor(res, stats.statsTtl(value));
+        res.json(value.data);
+    } catch (error) {
+        if (!accountsFailure(res, error)) next(error);
+    }
+};
+
+// Semanas (lunes a domingo, en la hora de la liga) de una liga privada: la actual y las 3 anteriores
+const getFantasyWeeks = async (req, res, next) => {
+    try {
+        const users = usersFrom(req);
+        if (!users) return res.set('Cache-Control', 'no-store').status(400).json({ error: 'invalid_user' });
+        if (accountsOff(res)) return;
+        const data = await stats.fantasyWeeks(leagueFrom(req), users);
+        cacheFor(res, stats.weeksTtl(data));
+        const { live, ...body } = data;
+        res.json(body);
+    } catch (error) {
+        if (!accountsFailure(res, error)) next(error);
+    }
+};
+
+module.exports = { getFantasyDay, getFantasyFan, getFantasySeason, getFantasyOwners, getFantasyFanStats, getFantasyWeeks };
