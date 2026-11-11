@@ -56,6 +56,13 @@ export const useOpenHelp = () => useContext(FantasyHelpContext);
 export const FantasyDemoContext = createContext(false);
 export const useFantasyDemo = () => useContext(FantasyDemoContext);
 
+/** Lo que la página del Fantasy da a sus pantallas: abrir la ayuda y si está en el modo de prueba */
+export const FantasyProviders: React.FC<{ help: (topic?: HelpTopic) => void; demo: boolean; children: React.ReactNode }> = ({ help, demo, children }) => (
+    <FantasyHelpContext.Provider value={help}>
+        <FantasyDemoContext.Provider value={demo}>{children}</FantasyDemoContext.Provider>
+    </FantasyHelpContext.Provider>
+);
+
 /** «vie, 16 oct» (los días vienen sin hora) */
 export const shortDay = (day: string, lang: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString(localeFor(lang), { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 /** «16 oct» */

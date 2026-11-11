@@ -13,7 +13,12 @@ import { PicksTab } from '../components/fantasy/PicksTab';
 import { PlayerPicker } from '../components/fantasy/PlayerPicker';
 import { TableTab } from '../components/fantasy/TableTab';
 import { TeamTab } from '../components/fantasy/TeamTab';
-import { FantasyHelpContext, credits } from '../components/fantasy/fantasyUi';
+import { FantasyProviders, credits } from '../components/fantasy/fantasyUi';
+import { FirstTimeGuide } from '../components/fantasy/FirstTimeGuide';
+import { SeasonView } from '../components/fantasy/SeasonView';
+import { useShare } from '../share/ShareSheet';
+import { fantasyTeamPost } from '../share/subjects';
+import { useGuideDismissed } from '../lib/fantasyGuide';
 import { ProBadge } from '../components/pro/ProBadge';
 import { formatLongDate } from '../lib/format';
 import {
@@ -43,7 +48,7 @@ import { saveEntry } from '../lib/fantasySave';
 import { DEMO_OWNER, demoPush, fantasyDemo } from '../lib/fantasyDemo';
 import { isHelpTopic, type HelpTopic } from '../lib/fantasyHelp';
 
-type Tab = 'team' | 'picks' | 'table' | 'fans';
+type Tab = 'team' | 'picks' | 'table' | 'fans' | 'season';
 const DAY_MS = 86400000;
 const shift = (day: string, days: number) => new Date(Date.parse(`${day}T12:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 
@@ -69,6 +74,11 @@ export const FantasyPage: React.FC = () => {
     useLayoutEffect(() => {
         if (demo) setStoreOwner(DEMO_OWNER);
     }, [demo]);
+    // Modo de prueba: un equipo de ayer para probar «Copiar mi equipo de ayer» (los datos se cargan aparte)
+    useEffect(() => {
+        if (demo && day && !date) import('../lib/fantasyDemoData').then((data) => data.seedDemoYesterday(day)).catch(() => undefined);
+    }, [demo, day?.league, day?.date, date]); // eslint-disable-line react-hooks/exhaustive-deps
+    const guideDismissed = useGuideDismissed();
 
     // Perfil de un fanático (`?fan=<id>`) y «Cómo se juega» (`?ayuda=<pregunta>`): se pueden compartir y atrás los cierra
     const [params, setParams] = useSearchParams();
@@ -172,8 +182,11 @@ export const FantasyPage: React.FC = () => {
     const days = today ? [shift(today, -1), today, shift(today, 1)] : [];
     const dayLabel = (key: string) => (key === today ? t('games.today') : key < (today ?? '') ? t('games.yesterday') : t('games.tomorrow'));
 
+    // Guía para empezar: hoy sin equipo y nunca cerrada
+    const showGuide = playing && !!day && !date && !entry.lineup.length && !guideDismissed;
+
     return (
-        <FantasyHelpContext.Provider value={openHelp}>
+        <FantasyProviders help={openHelp} demo={demo}>
             <div className="space-y-4 px-4 pt-5">
                 <header className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -227,6 +240,8 @@ export const FantasyPage: React.FC = () => {
                             {past.length > 0 && <HistoryBars days={past.slice(0, 7).reverse()} />}
                         </section>
 
+                        {showGuide && <FirstTimeGuide day={day} onHow={() => openHelp()} />}
+
                         <FantasyTabs
                             value={tab}
                             onChange={setTab}
@@ -234,11 +249,17 @@ export const FantasyPage: React.FC = () => {
                                 { value: 'team', label: t('fantasy.myTeam') },
                                 { value: 'picks', label: t('fantasy.picks') },
                                 { value: 'table', label: t('fantasy.table') },
-                                { value: 'fans', label: t('fantasy.fans.tab') }
+                                { value: 'fans', label: t('fantasy.fans.tab') },
+                                { value: 'season', label: t('fantasyStats.tab') }
                             ]}
                         />
 
-                        {tab === 'fans' ? (
+                        {tab === 'season' ? (
+                            // La temporada no depende del día: sale aunque hoy no haya juegos
+                            <section aria-label={t('fantasyStats.title')}>
+                                <SeasonView userId={session?.user.id ?? null} league={activeLeague} own profile={mine.data} demo={demo} demoPlayers={day?.players} onBuild={() => setTab('team')} />
+                            </section>
+                        ) : tab === 'fans' ? (
                             demo ? (
                                 <p className="card p-4 text-sm text-muted">{t('fantasyHelp.demo')}</p>
                             ) : (
@@ -276,15 +297,27 @@ export const FantasyPage: React.FC = () => {
                 {isFanId(fanId) && <FanProfile userId={fanId} league={activeLeague} onClose={closeFan} knownName={sheetState?.fanName ?? null} />}
                 {helpParam !== null && <HowToPlay day={day} topic={isHelpTopic(helpParam) ? helpParam : null} onClose={closeHelp} />}
             </div>
-        </FantasyHelpContext.Provider>
+        </FantasyProviders>
     );
 };
 
-/** Las cuatro pestañas como el Segmented, pero a todo lo ancho y cada una a la medida de su texto para que quepan en 320 px */
+/**
+ * Las pestañas como el Segmented, a todo lo ancho y cada una a la medida de su texto. Con la quinta («Mi temporada»)
+ * en un teléfono angosto no caben todas: la fila se desliza y la pestaña escogida se pone a la vista.
+ */
 const FantasyTabs: React.FC<{ value: Tab; onChange: (tab: Tab) => void; options: { value: Tab; label: string }[] }> = ({ value, onChange, options }) => {
     const { t } = useTranslation();
+    const row = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const list = row.current;
+        const active = list?.querySelector<HTMLElement>('[aria-selected="true"]');
+        if (!list || !active) return;
+        // Solo la fila se mueve (scrollIntoView movería también la página)
+        const left = active.offsetLeft - list.offsetLeft;
+        if (left < list.scrollLeft || left + active.offsetWidth > list.scrollLeft + list.clientWidth) list.scrollTo({ left: Math.max(0, left - 16), behavior: 'smooth' });
+    }, [value]);
     return (
-        <div role="tablist" aria-label={t('fantasy.sections')} className="flex w-full rounded-full bg-raised p-1 sm:inline-flex sm:w-auto">
+        <div ref={row} role="tablist" aria-label={t('fantasy.sections')} className="flex w-full overflow-x-auto rounded-full bg-raised p-1 scrollbar-none sm:inline-flex sm:w-auto">
             {options.map((option) => {
                 const active = option.value === value;
                 return (
@@ -294,7 +327,7 @@ const FantasyTabs: React.FC<{ value: Tab; onChange: (tab: Tab) => void; options:
                         role="tab"
                         aria-selected={active}
                         onClick={() => onChange(option.value)}
-                        className={`min-w-0 flex-auto truncate whitespace-nowrap rounded-full px-1.5 py-1.5 text-[13px] font-semibold transition-colors min-[400px]:px-2.5 min-[400px]:text-sm sm:flex-none sm:px-4 ${
+                        className={`flex-auto shrink-0 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[13px] font-semibold transition-colors min-[400px]:text-sm sm:flex-none sm:px-4 ${
                             active ? 'bg-surface text-ink shadow-card' : 'text-muted hover:text-ink'
                         }`}
                     >
@@ -319,24 +352,26 @@ const HistoryBars: React.FC<{ days: { date: string; points: number }[] }> = ({ d
     );
 };
 
-/** Compartir el equipo que cuenta (con los puntos del encabezado) */
+/**
+ * Compartir el equipo que cuenta como imagen (historia o post, con la hoja de compartir de siempre): fotos, corona del
+ * capitán, precios, créditos y, con juegos empezados, los puntos. El texto que acompaña dice los puntos del encabezado.
+ */
 const ShareTeam: React.FC<{ day: FantasyDay; entry: DayEntry; points: number }> = ({ day, entry, points }) => {
-    const { t } = useTranslation();
-    const share = async () => {
+    const { t, i18n } = useTranslation();
+    const openShare = useShare();
+    const share = () => {
         const captain = rulesOf(day).captain;
         const names = entry.lineup
             .map((id) => day.players.find((p) => p.id === id))
             .filter((p): p is FantasyPlayer => !!p)
             .map((p) => `${entry.captain === p.id ? '👑 ' : ''}${p.name} (${playerScore(entry, p, captain)})`)
             .join(', ');
-        const text = t('fantasy.shareText', { points: Math.round(points * 10) / 10, names });
-        const url = `${window.location.origin}/fantasy`;
-        try {
-            if (navigator.share) await navigator.share({ title: 'El Play Fantasy', text, url });
-            else window.open(`https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`, '_blank', 'noopener');
-        } catch {
-            /* el usuario cerró la lista de apps */
-        }
+        openShare({
+            data: fantasyTeamPost(day, entry, t(`leagues.${day.league}.name`), points, t, i18n.language),
+            fileName: `el-play-fantasy-${day.date}`,
+            text: t('fantasy.shareText', { points: Math.round(points * 10) / 10, names }),
+            url: '/fantasy'
+        });
     };
     return (
         <button type="button" onClick={share} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface shadow-card" aria-label={t('fantasy.share')}>
