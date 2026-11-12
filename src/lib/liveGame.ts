@@ -72,7 +72,8 @@ export const actionKind = (event: string | null): ActionKind | null => {
     return null;
 };
 
-export const timelineActions = (atBat: AtBat) => atBat.actions.map((action) => ({ ...action, kind: actionKind(action.event) })).filter((action) => action.kind);
+/** `index`: el lugar de la acción dentro del turno (para repetirla) */
+export const timelineActions = (atBat: AtBat) => atBat.actions.map((action, index) => ({ ...action, index, kind: actionKind(action.event) })).filter((action) => action.kind);
 
 // ------------------------------------------------------------------ Cansancio del lanzador
 

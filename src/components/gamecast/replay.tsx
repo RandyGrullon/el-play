@@ -4,8 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { Play } from 'lucide-react-native';
 import { useColors } from '../../theme/theme';
 
-// Repetir la animación de una jugada desde el historial (Lite «Jugada a jugada» y la pestaña «Jugadas» del PRO). La
-// pantalla del juego tiene el candado (useReplayHost, en ReplayHost.tsx) y lo pasa por este contexto a las filas.
+// Repetir la animación de una jugada desde el historial (Lite «Jugada a jugada», la cronología del Lite en vivo y la
+// pestaña «Jugadas» del PRO). La pantalla del juego tiene el candado (useReplayHost, en ReplayHost.tsx) y lo pasa por
+// este contexto a las filas. En la cronología también se repiten las acciones de un turno (robo, atrapado robando,
+// cambio de lanzador, emergente): por el mismo candado.
 
 export interface ReplayApi {
     /** ¿La jugada (su `i`) tiene animación para repetir? Nunca con «Apagadas» en «Más» ni con «Reducir movimiento» */
@@ -14,6 +16,10 @@ export interface ReplayApi {
     locked: boolean;
     /** La repite si se puede; si no, no hace nada (ni la reinicia ni la pone en cola) */
     replay: (atBatIndex: number) => void;
+    /** ¿La acción `actionIndex` (su lugar en atBat.actions) del turno `atBatIndex` tiene animación para repetir? */
+    canAction: (atBatIndex: number, actionIndex: number) => boolean;
+    /** Repite esa acción (robo, cambio de lanzador, emergente) con el mismo candado que las jugadas */
+    replayAction: (atBatIndex: number, actionIndex: number) => void;
 }
 
 export const ReplayContext = createContext<ReplayApi | null>(null);

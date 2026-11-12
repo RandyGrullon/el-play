@@ -29,7 +29,7 @@ fs.writeFileSync(path.join(OUT, 'pro.js'), 'exports.proActive = () => false;\n')
 
 const { camera, flightMs, flightOf, gamedayToFeet, groundAt, heightAt, parkFor, wallAt, wallCrossing } = require(path.join(OUT, 'flight.js'));
 const { basesOf, legsOf, runnerPaths, walkPaths } = require(path.join(OUT, 'runners.js'));
-const { REPLAY_COOLDOWN_MS, forMode, leadChange, newPlayEvents, replayEventOf, replayGate } = require(path.join(OUT, 'playEvents.js'));
+const { REPLAY_COOLDOWN_MS, forMode, leadChange, newPlayEvents, replayActionOf, replayEventOf, replayGate } = require(path.join(OUT, 'playEvents.js'));
 const { delayOf, isOnHold, isRainDelay } = require(path.join(OUT, 'baseball.js'));
 const { batterBox, fieldModel } = require(path.join(OUT, 'field.js'));
 const { gameInterval } = require(path.join(OUT, 'polling.js'));
@@ -386,13 +386,14 @@ console.log('repetir una jugada del historial y la pausa entre repeticiones (los
         assert.deepStrictEqual(replayEventOf(partido(atBats), 1).bases, { first: true, second: false, third: false });
     });
 
-    it('sin animación: error (en el Lite), turno en curso o que no existe → null', () => {
-        const atBats = [turno(0, 'field_error'), turno(1, 'single'), turno(2, null, { pitches: [{ r: 'ball' }] })];
-        assert.strictEqual(replayEventOf(partido(atBats), 0), null);
+    it('sin animación: turno en curso, que no existe o sin nada que se anime → null', () => {
+        const atBats = [turno(0, 'field_error'), turno(1, 'single'), turno(2, null, { pitches: [{ r: 'ball' }] }), turno(3, 'fielders_choice')];
         assert.strictEqual(replayEventOf(partido(atBats), 2), null);
+        assert.strictEqual(replayEventOf(partido(atBats), 3), null);
         assert.strictEqual(replayEventOf(partido(atBats), 99), null);
         assert.strictEqual(replayEventOf(partido(atBats), 1).kind, 'single');
-        // El PRO anima el error en vivo: también lo repite (con el juego, para sus extras)
+        // El error se repite en el Lite (como en la web) y en el PRO (con el juego, para sus extras)
+        partial(replayEventOf(partido(atBats), 0), { kind: 'error', reach: 'error', replay: true });
         partial(replayEventOf(partido(atBats), 0, { pro: true }), { kind: 'error', gamePk: 12345678, replay: true });
     });
 
@@ -447,6 +448,144 @@ console.log('repetir una jugada del historial y la pausa entre repeticiones (los
         assert.strictEqual(replays, 1);
         tap(3500);
         assert.strictEqual(replays, 2);
+    });
+}
+
+console.log('repetir desde la cronología: robos, relevos, emergentes, el atrapado robando y el error del Lite');
+{
+    // Juego, equipos y peloteros de prueba (como los de arriba)
+    const ENTRA = { id: 22222222, name: 'Juan Relevista' };
+    const SALE = { id: 33333333, name: 'Pedro Abridor' };
+    const equipo = (id, abbrev, runs = 0) => ({ id, abbrev, name: `Equipo ${abbrev}`, logo: '', color: '#123456', record: null, teamName: abbrev, runs, hits: 0, errors: 0, lob: 0, isWinner: false });
+    const turno = (i, event, extra = {}) => ({
+        i,
+        inning: 1,
+        top: true,
+        complete: event !== null,
+        scoring: false,
+        batter: { id: 11111111 + i, name: `Bateador ${i}`, side: 'R' },
+        pitcher: { id: 44444444, name: 'Lanzador Prueba', hand: 'R' },
+        event,
+        eventLabel: null,
+        desc: '',
+        rbi: 0,
+        away: 0,
+        home: 0,
+        outs: 0,
+        pitches: [],
+        actions: [],
+        ...extra
+    });
+    const partido = (atBats, extra = {}) => ({
+        gamePk: 12345678,
+        state: 'live',
+        scheduledInnings: 9,
+        league: 'lidom',
+        venue: 'Estadio de Prueba',
+        atBats,
+        inning: { n: 1, ordinal: '1st', isTop: true, state: 'Top' },
+        runners: { first: null, second: null, third: null },
+        away: equipo(99991, 'UNO', 2),
+        home: equipo(99992, 'DOS', 1),
+        box: { away: { batters: [], pitchers: [] }, home: { batters: [], pitchers: [{ id: SALE.id, name: 'Abridor', ip: '4.2', k: 5, np: 77 }, { id: ENTRA.id, name: 'Relevista, J', ip: '0.0', k: 0, np: 0 }] } },
+        ...extra
+    });
+    const robo = { event: 'stolen_base_2b', desc: 'Corredor Prueba steals (1) 2nd base.' };
+    const visita = { event: 'mound_visit', desc: 'Mound visit.' };
+    const relevo = { event: 'pitching_substitution', desc: 'Pitching Change: Juan Relevista replaces Pedro Abridor.' };
+    const emergente = { event: 'offensive_substitution', desc: 'Pinch-hitter Emergente Prueba replaces Bateador 1.', sub: { pos: 'PH', in: { id: 55555555, name: 'Emergente Prueba' }, out: { id: 11111112, name: 'Bateador 1' } } };
+
+    it('robo: la misma animación que en vivo, con su clave de repetición (lo celebra el corredor)', () => {
+        const atBats = [turno(0, 'single', { actions: [visita, robo] })];
+        const event = replayActionOf(partido(atBats), 0, 1);
+        partial(event, { key: 'replay-0-1', kind: 'steal', replay: true, team: { abbrev: 'UNO' }, rival: { abbrev: 'DOS' }, steal: { base: 2, caught: false, runner: 'Corredor Prueba' } });
+        assert.strictEqual(event.atBat, atBats[0]);
+        // La visita al montículo no se anima; una acción o un turno que no existen, tampoco
+        assert.strictEqual(replayActionOf(partido(atBats), 0, 0), null);
+        assert.strictEqual(replayActionOf(partido(atBats), 0, 7), null);
+        assert.strictEqual(replayActionOf(partido(atBats), 99, 0), null);
+    });
+
+    it('robo en el turno que está en curso: también se repite', () => {
+        const atBats = [turno(0, 'field_out'), turno(1, null, { actions: [{ event: 'caught_stealing_3b', desc: 'Corredor Prueba caught stealing 3rd base, catcher to third.' }] })];
+        partial(replayActionOf(partido(atBats), 1, 0), { key: 'replay-1-0', kind: 'steal', team: { abbrev: 'DOS' }, steal: { base: 3, caught: true, runner: 'Corredor Prueba' } });
+    });
+
+    it('cambio de lanzador: del que defiende, quién entra y quién sale (con su línea del box)', () => {
+        const atBats = [turno(0, 'field_out', { pitcher: { ...SALE, hand: 'R' } }), turno(1, 'strikeout', { pitcher: { ...ENTRA, hand: 'R' }, actions: [relevo] })];
+        const event = replayActionOf(partido(atBats), 1, 0);
+        partial(event, { key: 'replay-1-0', kind: 'pitchingChange', replay: true, team: { abbrev: 'DOS' }, change: { in: { id: ENTRA.id, name: 'Juan Relevista' }, out: { id: SALE.id, name: 'Pedro Abridor' }, line: { ip: '4.2', k: 5, np: 77 } } });
+        // En el PRO, la del PRO (con el juego y la acción, sin la línea)
+        const pro = replayActionOf(partido(atBats), 1, 0, { pro: true });
+        partial(pro, { key: 'replay-1-0', kind: 'pitchingChange', gamePk: 12345678, action: 0, replay: true });
+        assert.strictEqual(pro.change.line, undefined);
+    });
+
+    it('emergente: del equipo al bate, quién entra y por quién', () => {
+        const atBats = [turno(0, 'field_out'), turno(1, 'walk', { actions: [emergente] })];
+        partial(replayActionOf(partido(atBats), 1, 0), { key: 'replay-1-0', kind: 'pinchHitter', replay: true, team: { abbrev: 'UNO' }, sub: { in: { id: 55555555, name: 'Emergente Prueba' }, out: { name: 'Bateador 1' } } });
+        const runner = { ...emergente, sub: { ...emergente.sub, pos: 'PR' } };
+        assert.strictEqual(replayActionOf(partido([turno(0, 'single', { actions: [runner] })]), 0, 0).kind, 'pinchRunner');
+    });
+
+    it('en vivo se arman igual y las claves de siempre no cambian (act-…, sub-…)', () => {
+        const prev = partido([turno(0, null)]);
+        const next = partido([turno(0, 'field_out', { actions: [visita, robo, relevo, emergente] })]);
+        const live = newPlayEvents(prev, next).filter((event) => event.kind !== 'out');
+        assert.deepStrictEqual(
+            live.map((event) => [event.key, event.kind]),
+            [
+                ['act-0-1', 'steal'],
+                ['act-0-2', 'pitchingChange'],
+                ['sub-0-3', 'pinchHitter']
+            ]
+        );
+        // La repetición es la misma animación, con su propia clave y marcada como repetición
+        live.forEach((event, index) => {
+            const again = replayActionOf(next, 0, index + 1);
+            assert.deepStrictEqual({ ...again, key: event.key, replay: undefined }, { ...event, replay: undefined });
+        });
+        // En el PRO, las mismas claves de siempre
+        assert.deepStrictEqual(
+            newPlayEvents(prev, next, { pro: true })
+                .filter((event) => event.kind !== 'out')
+                .map((event) => event.key),
+            ['act-0-1', 'act-0-2', 'sub-0-3']
+        );
+    });
+
+    it('turno que cerró un atrapado robando (sin animación propia): se repite ese robo', () => {
+        const cs = { event: 'caught_stealing_2b', desc: 'Corredor Prueba caught stealing 2nd base, catcher to second.' };
+        const atBats = [turno(0, 'single'), turno(1, 'caught_stealing_2b', { outs: 3, actions: [robo, cs] })];
+        partial(replayEventOf(partido(atBats), 1), { key: 'replay-1-1', kind: 'steal', replay: true, team: { abbrev: 'DOS' }, steal: { base: 2, caught: true } });
+        // En el PRO, el robo del PRO (con el juego y la acción)
+        partial(replayEventOf(partido(atBats), 1, { pro: true }), { key: 'replay-1-1', kind: 'steal', gamePk: 12345678, action: 1, replay: true, steal: { caught: true } });
+        // Sin robo en el turno, nada
+        assert.strictEqual(replayEventOf(partido([turno(0, 'caught_stealing_2b')]), 0), null);
+    });
+
+    it('Lite: el error y la interferencia se animan como un sencillo (corredores, carreras y cómo se embasó)', () => {
+        const prev = partido([turno(0, 'single', { post: 1 }), turno(1, null)], { runners: { first: { id: 1, name: 'Uno' }, second: null, third: null } });
+        const next = partido([turno(0, 'single', { post: 1 }), turno(1, 'field_error', { post: 3 }), turno(2, 'catcher_interf', { away: 1, rbi: 0, scoring: true })]);
+        const errors = newPlayEvents(prev, next).filter((event) => event.kind === 'error');
+        assert.deepStrictEqual(
+            errors.map((event) => [event.key, event.reach, event.team.abbrev]),
+            [
+                ['ab-1', 'error', 'UNO'],
+                ['ab-2', 'interference', 'UNO']
+            ]
+        );
+        assert.deepStrictEqual(errors[0].bases, { first: true, second: false, third: false });
+        partial(errors[1], { runs: { count: 1, away: 1, home: 0 } });
+        // fielder_interference también; al repetirlo, las bases del turno anterior de la misma media
+        assert.strictEqual(replayEventOf(partido([turno(0, 'fielder_interference')]), 0).reach, 'interference');
+        partial(replayEventOf(next, 1), { kind: 'error', reach: 'error', bases: { first: true, second: false, third: false } });
+        partial(replayEventOf(next, 2), { kind: 'error', reach: 'interference', bases: { first: true, second: true, third: false }, runs: { count: 1 } });
+        // Como un sencillo: con «Solo las grandes» no sale si el juego no es de tu equipo
+        assert.deepStrictEqual(forMode(errors, 'smart', null, [99991, 99992]), []);
+        assert.strictEqual(forMode(errors, 'smart', 99991, [99991, 99992]).length, 2);
+        // El PRO sigue con su error (con el juego)
+        partial(newPlayEvents(prev, next, { pro: true }).find((event) => event.kind === 'error'), { key: 'ab-1', gamePk: 12345678 });
     });
 }
 

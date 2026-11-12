@@ -19,12 +19,12 @@ import { Confetti, type Burst } from './Confetti';
 import { HomeRunFlight, homeRunFlightMs } from './HomeRunFlight';
 
 // Animaciones de jugada en el juego en vivo (calcadas de la web): fin de entrada, ponche, hit, doble, triple, jonrón,
-// outs, reto del ABS, base por bolas, robo, emergentes, cambio de lanzador, cambio en el marcador, la victoria (o el dejado en el
+// outs, reto del ABS, base por bolas, error, robo, emergentes, cambio de lanzador, cambio en el marcador, la victoria (o el dejado en el
 // terreno) al terminar y el campeonato cuando ese juego da el título; con el logo y los colores del equipo protagonista.
 // Se cierran solas o al tocarlas y solo ocupan la parte de arriba. Con «reducir movimiento» en el teléfono solo aparecen
 // y desaparecen.
 
-// Las del modo PRO (error, WP/PB, carrera…) no llegan al Lite; si alguna llegara, dura como un hit
+// Las del modo PRO (WP/PB, carrera…) no llegan al Lite; si alguna llegara, dura como un hit. El error dura como el hit
 const HOLD: Record<PlayEvent['kind'], number> = {
     inning: 2800,
     k: 2300,
@@ -162,7 +162,7 @@ const Badge: React.FC<{ team: PlayEvent['team']; size: number; pad: number; ring
  * La animación de jugada del juego en vivo. En el modo PRO las jugadas con datos reales (batazo, corredores, base por
  * bolas, robo, error, relevo, sin hit…) y «Te lo perdiste» las pinta el PRO (components/pro/animaciones); el resto
  * (fin de entrada, emergentes, victoria y campeonato) sigue con la del Lite. Sin PRO, todo va con la del Lite (que tiene
- * su propia base por bolas, robo, relevo, cambio en el marcador y dejado en el terreno).
+ * su propia base por bolas, error, robo, relevo, cambio en el marcador y dejado en el terreno).
  */
 export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> = ({ event, onDone }) => {
     const pro = useIsPro();
@@ -225,7 +225,8 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
     // Hits y bases por bolas: quién corre y cuántas entran (del marcador; si no se sabe, las impulsadas)
     const rbi = atBat?.rbi ?? 0;
     const scored = event.runs ? event.runs.count : rbi;
-    const runnerCard = kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'walk';
+    // El error (o la interferencia) va con la tarjeta del hit y corren como en un sencillo
+    const runnerCard = kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'walk' || kind === 'error';
     // En la base por bolas solo entra carrera con las bases llenas
     const walkBases = kind === 'walk' ? event.bases ?? (scored > 0 ? { first: true, second: true, third: true } : null) : null;
     const forced = kind === 'walk' ? walkPaths(walkBases) : [];
@@ -233,7 +234,8 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
     const stay = ([1, 2, 3] as const)
         .filter((base) => (base === 1 ? walkBases?.first : base === 2 ? walkBases?.second : walkBases?.third) && !forced.some((path) => path.from === base))
         .map((base): RunnerPath => ({ from: base, to: base, batter: false }));
-    const hitPaths = kind === 'walk' ? [...stay, ...forced] : kind === 'single' || kind === 'double' || kind === 'triple' ? runnerPaths(kind, event.bases ?? null, scored) : [];
+    const hitPaths =
+        kind === 'walk' ? [...stay, ...forced] : kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'error' ? runnerPaths(kind === 'error' ? 'single' : kind, event.bases ?? null, scored) : [];
     const runLegs = Math.max(0, ...hitPaths.map(legsOf));
     // La palabra grande de la tarjeta del hit, la base por bolas y el robo («BASE|POR BOLAS» va en dos renglones)
     const cardWord =
@@ -584,6 +586,8 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
     let body: React.ReactNode;
     if (runnerCard) {
         const drivesIn = rbi > 0 ? t('anim.drivesIn', { count: rbi }) : undefined;
+        // Sin impulsadas, el error dice cómo se embasó (por error o por interferencia); lo demás, contra quién
+        const subText = drivesIn ?? (kind === 'error' ? t(event.reach === 'interference' ? 'anim.reachInterference' : 'anim.reachError') : t('anim.vs', { pitcher: atBat?.pitcher.name ?? '' }));
         body = (
             <Animated.View style={hitCard}>
                 <Stripes color={on} id={id} />
@@ -598,7 +602,7 @@ export const LitePlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void 
                     {kind === 'walk' ? bigWord(cardWord) : letters(cardWord, 74)}
                     <Animated.View style={[{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 2 }, fade(v.sub, 0.9)]}>
                         <Txt style={[subStyle, { flexShrink: 1 }]} numberOfLines={1}>
-                            {drivesIn ?? t('anim.vs', { pitcher: atBat?.pitcher.name ?? '' })}
+                            {subText}
                         </Txt>
                         {/* El marcador del equipo, que sube con cada carrera que entra */}
                         {score && score.after > score.before && (

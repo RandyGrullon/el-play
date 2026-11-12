@@ -3,7 +3,7 @@ import { Modal, Platform, View } from 'react-native';
 import { FullWindowOverlay } from 'react-native-screens';
 import * as Haptics from 'expo-haptics';
 import type { GameDetail } from '../../types';
-import { replayEventOf, replayGate, type PlayEvent } from '../../lib/playEvents';
+import { replayActionOf, replayEventOf, replayGate, type PlayEvent } from '../../lib/playEvents';
 import { useIsPro } from '../../lib/pro';
 import { useMotion } from '../../lib/motion';
 import { PlayAnimation } from './PlayAnimation';
@@ -31,6 +31,7 @@ const ReplayLayer: React.FC<{ onClose: () => void; children: React.ReactNode }> 
  * tocar varias veces no la reinicie ni la ponga en cola. El candado es de esta pantalla, en memoria. Con una animación
  * en vivo saliendo (`liveBusy`) el toque también se ignora; lo que llegue en vivo mientras sale una repetición espera
  * en su cola (`playing`). Con «Apagadas» o «Reducir movimiento» no se ofrece; con «Solo las grandes» sí (se pidió).
+ * Las acciones de un turno (robo, cambio de lanzador, emergente: desde la cronología) van por el mismo candado.
  * `api` va al contexto de las filas y `element` se pinta en la pantalla.
  */
 export const useReplayHost = (game: GameDetail | undefined, liveBusy: boolean) => {
@@ -48,16 +49,25 @@ export const useReplayHost = (game: GameDetail | undefined, liveBusy: boolean) =
     });
     useEffect(() => () => clearTimeout(cooldown.current), []);
 
-    // Los turnos cuyo resultado tiene animación (los mismos que salen en vivo)
+    // Los turnos cuyo resultado tiene animación (los mismos que salen en vivo) y las acciones que se animan («turno-acción»)
     const replayable = useMemo(() => {
-        if (!game || !enabled) return new Set<number>();
-        return new Set(game.atBats.filter((atBat) => atBat.complete && replayEventOf(game, atBat.i, { pro })).map((atBat) => atBat.i));
+        const atBats = new Set<number>();
+        const actions = new Set<string>();
+        if (!game || !enabled) return { atBats, actions };
+        for (const atBat of game.atBats) {
+            if (atBat.complete && replayEventOf(game, atBat.i, { pro })) atBats.add(atBat.i);
+            atBat.actions.forEach((_action, index) => {
+                if (replayActionOf(game, atBat.i, index, { pro })) actions.add(`${atBat.i}-${index}`);
+            });
+        }
+        return { atBats, actions };
     }, [game, pro, enabled]);
 
-    const replay = useCallback((atBatIndex: number) => {
+    // Arma la repetición con la última lectura y la saca si el candado lo deja
+    const start = useCallback((build: (game: GameDetail, pro: boolean) => PlayEvent | null) => {
         const now = latest.current;
         if (!now.game || !now.enabled || now.liveBusy) return;
-        const play = replayEventOf(now.game, atBatIndex, { pro: now.pro });
+        const play = build(now.game, now.pro);
         const started = play ? replayGate.start(gate.current, Date.now()) : null;
         if (!play || !started) return;
         gate.current = started;
@@ -65,6 +75,8 @@ export const useReplayHost = (game: GameDetail | undefined, liveBusy: boolean) =
         // Vibra solo si sale (un toque ignorado no hace nada)
         if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     }, []);
+    const replay = useCallback((atBatIndex: number) => start((now, isPro) => replayEventOf(now, atBatIndex, { pro: isPro })), [start]);
+    const replayAction = useCallback((atBatIndex: number, actionIndex: number) => start((now, isPro) => replayActionOf(now, atBatIndex, actionIndex, { pro: isPro })), [start]);
 
     // Terminó sola, al tocarla o con «atrás»: empieza la pausa
     const end = useCallback(() => {
@@ -77,7 +89,16 @@ export const useReplayHost = (game: GameDetail | undefined, liveBusy: boolean) =
     }, []);
 
     const locked = !!event || cooling || liveBusy;
-    const api = useMemo<ReplayApi>(() => ({ can: (atBatIndex) => replayable.has(atBatIndex), locked, replay }), [replayable, locked, replay]);
+    const api = useMemo<ReplayApi>(
+        () => ({
+            can: (atBatIndex) => replayable.atBats.has(atBatIndex),
+            locked,
+            replay,
+            canAction: (atBatIndex, actionIndex) => replayable.actions.has(`${atBatIndex}-${actionIndex}`),
+            replayAction
+        }),
+        [replayable, locked, replay, replayAction]
+    );
     const element = event ? (
         <ReplayLayer key={event.key} onClose={end}>
             <PlayAnimation event={event} onDone={end} />
