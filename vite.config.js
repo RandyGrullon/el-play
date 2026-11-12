@@ -89,6 +89,14 @@ export default defineConfig({
           { src: '/icons/icon-192-v2.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: '/icons/icon-512-v2.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
           { src: '/icons/icon-maskable-512-v2.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+        ],
+        // Accesos directos: dejando el dedo sobre el ícono (Android, y en la barra de tareas de Windows). iPhone no los
+        // tiene para apps web. ?envivo y ?miequipo los atiende AppShell (abre la hoja En vivo o la página de tu equipo).
+        shortcuts: [
+          { name: 'Juegos en vivo', short_name: 'En vivo', url: '/?envivo=1', icons: [{ src: '/icons/icon-192-v2.png', sizes: '192x192', type: 'image/png' }] },
+          { name: 'Mi equipo', short_name: 'Mi equipo', url: '/?miequipo=1', icons: [{ src: '/icons/icon-192-v2.png', sizes: '192x192', type: 'image/png' }] },
+          { name: 'Fantasy', short_name: 'Fantasy', url: '/fantasy', icons: [{ src: '/icons/icon-192-v2.png', sizes: '192x192', type: 'image/png' }] },
+          { name: 'Posiciones', short_name: 'Posiciones', url: '/posiciones', icons: [{ src: '/icons/icon-192-v2.png', sizes: '192x192', type: 'image/png' }] }
         ]
       }
     })

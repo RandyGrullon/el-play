@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Home, Menu, Radio, Sparkles, BarChart3 } from 'lucide-react';
 import { useLeague } from '../../store/LeagueContext';
@@ -211,6 +211,26 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [location.pathname]);
+
+    // Accesos directos del ícono (manifest): ?envivo abre la hoja En vivo y ?miequipo va a la página de tu equipo
+    // favorito (sin favorito, se queda en la portada). El parámetro se quita para que «atrás» no lo repita.
+    const navigate = useNavigate();
+    const { favoriteTeamId } = usePreferences();
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const live = params.has('envivo');
+        const team = params.has('miequipo');
+        if (!live && !team) return;
+        params.delete('envivo');
+        params.delete('miequipo');
+        const rest = params.toString();
+        if (team && favoriteTeamId !== null) {
+            navigate(`/equipo/${favoriteTeamId}`, { replace: true });
+            return;
+        }
+        navigate(`${location.pathname}${rest ? `?${rest}` : ''}`, { replace: true });
+        if (live) setLiveOpen(true);
+    }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // En la página de un juego la barra no estorba el contenido de abajo. El terreno (tocar el diamante de un juego en
     // vivo) se abre desde cualquier página, también desde la hoja de En vivo
