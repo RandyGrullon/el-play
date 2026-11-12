@@ -23,7 +23,7 @@ const compile = (name) => {
     const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } });
     fs.writeFileSync(path.join(OUT, `${name}.js`), outputText);
 };
-['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts', 'field', 'spray', 'swipeBack', 'appUpdate'].forEach(compile);
+['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts', 'field', 'spray', 'swipeBack', 'appUpdate', 'fieldReturn'].forEach(compile);
 // playEvents usa el modo PRO de la cuenta (React Native): aquí siempre Lite
 fs.writeFileSync(path.join(OUT, 'pro.js'), 'exports.proActive = () => false;\n');
 
@@ -1270,6 +1270,68 @@ it('terminar de irse: rápido si se soltó con impulso, entre 120 y 280 ms', () 
     assert.strictEqual(swipe.swipeOutMs(0, 0), 120);
     assert.strictEqual(swipe.swipeOutMs(-50, 0), 120);
 });
+
+// ---------------------------------------------------------------- volver al terreno después de la ficha (src/lib/fieldReturn.ts)
+
+const vuelta = require(path.join(OUT, 'fieldReturn.js'));
+console.log('volver al terreno después de la ficha de un pelotero');
+{
+    // Navegación de prueba: la pila de la raíz con las pestañas abajo (portada, posiciones) y lo que se abra encima
+    const pestanas = (index = 0) => ({ key: 'tabs-1', state: { type: 'tab', index, routes: [{ key: 'portada-1' }, { key: 'posiciones-1' }] } });
+    const pila = (...arriba) => ({ type: 'stack', index: arriba.length, routes: [pestanas(), ...arriba.map((key) => ({ key }))] });
+    const JUEGO = ['juego-1'];
+    const PORTADA = ['tabs-1', 'portada-1'];
+
+    it('la pantalla que tenía el terreno: sus claves desde la raíz (también con una raíz que envuelve la pila)', () => {
+        assert.deepStrictEqual(vuelta.navChainTo(pila('juego-1'), 'juego-1'), JUEGO);
+        assert.deepStrictEqual(vuelta.navChainTo(pila('juego-1'), 'portada-1'), PORTADA);
+        assert.strictEqual(vuelta.navChainTo(pila(), 'no-existe'), null);
+        const envuelta = { index: 0, routes: [{ key: 'raiz-1', state: pila('juego-1') }] };
+        assert.deepStrictEqual(vuelta.navChainTo(envuelta, 'juego-1'), ['raiz-1', 'juego-1']);
+        assert.strictEqual(vuelta.hostPlace(envuelta, ['raiz-1', 'juego-1']), 'here');
+    });
+
+    it('el juego: debajo de la ficha (y de lo que se abra desde ahí) sigue «away»; al volver, «here»; si otra toma su lugar, «gone»', () => {
+        assert.strictEqual(vuelta.hostPlace(pila('juego-1'), JUEGO), 'here');
+        assert.strictEqual(vuelta.hostPlace(pila('juego-1', 'jugador-1'), JUEGO), 'away');
+        assert.strictEqual(vuelta.hostPlace(pila('juego-1', 'jugador-1', 'equipo-1'), JUEGO), 'away');
+        assert.strictEqual(vuelta.hostPlace(pila('jugador-1'), JUEGO), 'gone');
+        assert.strictEqual(vuelta.hostPlace(pila(), JUEGO), 'gone');
+    });
+
+    it('la portada: con la ficha encima, «away»; atrás a la misma pestaña, «here»; a otra pestaña, «gone»', () => {
+        assert.strictEqual(vuelta.hostPlace(pila('jugador-1'), PORTADA), 'away');
+        assert.strictEqual(vuelta.hostPlace(pila(), PORTADA), 'here');
+        const otraPestana = { type: 'stack', index: 0, routes: [pestanas(1)] };
+        assert.strictEqual(vuelta.hostPlace(otraPestana, PORTADA), 'gone');
+    });
+
+    it('ir a la ficha y volver atrás: el terreno sale una sola vez', () => {
+        let ticket = vuelta.fieldReturnOf(12345678, JUEGO, 1000);
+        partial(ticket, { gamePk: 12345678, away: false, returned: false, until: 1000 + vuelta.FIELD_LEAVE_MS });
+        // Todavía en el juego (la ficha está por abrirse): se espera
+        ticket = vuelta.fieldReturnStep(ticket, 'here', 1200);
+        partial(ticket, { away: false });
+        // Se abrió la ficha y desde ahí otra pantalla: sigue esperando la vuelta
+        ticket = vuelta.fieldReturnStep(ticket, 'away', 1500);
+        ticket = vuelta.fieldReturnStep(ticket, 'away', 9000);
+        partial(ticket, { away: true, returned: false });
+        // Atrás hasta el juego: vuelve (lo abre la pantalla al enfocarse)
+        ticket = vuelta.fieldReturnStep(ticket, 'here', 9500);
+        partial(ticket, { away: true, returned: true });
+        // Si no se abrió y se va otra vez, se olvida (no sale en una vuelta cualquiera después)
+        assert.strictEqual(vuelta.fieldReturnStep(ticket, 'away', 9800), null);
+    });
+
+    it('se olvida si se fue a otra parte o si la ficha nunca se abrió', () => {
+        const ticket = vuelta.fieldReturnOf(12345678, PORTADA, 1000);
+        const fuera = vuelta.fieldReturnStep(ticket, 'away', 1500);
+        assert.strictEqual(vuelta.fieldReturnStep(fuera, 'gone', 2000), null);
+        assert.strictEqual(vuelta.fieldReturnStep(ticket, 'gone', 1100), null);
+        // Sin irse a la ficha: pasado el rato, cualquier cambio en la misma pantalla la olvida
+        assert.strictEqual(vuelta.fieldReturnStep(ticket, 'here', 1000 + vuelta.FIELD_LEAVE_MS + 1), null);
+    });
+}
 
 // ---------------------------------------------------------------- actualizar sin reinstalar (src/lib/appUpdate.ts)
 console.log('actualizar sin reinstalar');

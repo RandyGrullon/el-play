@@ -23,9 +23,9 @@ import { FieldDrawing } from './FieldDrawing';
 
 // El terreno a pantalla completa (al tocar las bases de un juego en vivo): el diamante que se tocó crece hasta ser el
 // terreno con un resorte (~450 ms), el fondo se oscurece y van saliendo las caras una tras otra (lanzador, receptor,
-// cuadro, jardines, corredores, el bateador y el que espera). Cada cara abre la ficha del pelotero. Se cierra con la X,
-// tocando el fondo o con atrás de Android: el terreno vuelve al diamante. Sin animaciones (o con reducir movimiento),
-// un fundido sin escalonar.
+// cuadro, jardines, corredores, el bateador y el que espera). Cada cara abre la ficha del pelotero (y al volver atrás el
+// terreno sale otra vez con un fundido: launcher.tsx). Se cierra con la X, tocando el fondo o con atrás de Android: el
+// terreno vuelve al diamante. Sin animaciones (o con reducir movimiento), un fundido sin escalonar.
 
 /** Centro de la primera–tercera del diamante tocado y su ancho en la pantalla (measureInWindow) */
 export interface FieldOrigin {
@@ -222,14 +222,20 @@ interface FieldViewProps {
     origin: FieldOrigin | null;
     /** Ya se cerró (terminó la animación de salida): quien lo abrió lo desmonta */
     onClosed: () => void;
+    /** Se va a la ficha de un pelotero (justo antes de abrirla): quien lo abrió lo recuerda para volver */
+    onLeave?: () => void;
+    /** Sale otra vez al volver de la ficha: entra con un fundido, sin crecer desde el diamante ni escalonar las caras */
+    again?: boolean;
 }
 
-export const FieldView: React.FC<FieldViewProps> = ({ gamePk, origin, onClosed }) => {
+export const FieldView: React.FC<FieldViewProps> = ({ gamePk, origin, onClosed, onLeave, again = false }) => {
     const { t, i18n } = useTranslation();
     const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
     const motion = useMotion();
     const animate = motion.animate;
+    // La entrada: crece desde el diamante tocado; al volver de la ficha, un fundido
+    const grows = animate && !again;
     const { width: winW, height: winH } = useWindowDimensions();
     const query = useGame(String(gamePk));
     const game = query.data;
@@ -237,6 +243,11 @@ export const FieldView: React.FC<FieldViewProps> = ({ gamePk, origin, onClosed }
     const pro = useIsPro();
     const proData = useGamePro(gamePk, pro && !!game && game.field === undefined).data;
     const model = useMemo(() => (game ? fieldModel(game, proData) : null), [game, proData]);
+    // Al volver de la ficha el juego ya terminó (o se suspendió): no sale otra vez
+    const over = again && !!game && game.state !== 'live';
+    useEffect(() => {
+        if (over) onClosed();
+    }, [over, onClosed]);
 
     // Alto que queda para el terreno: la X, la tarjeta de arriba (~132) y la nota de abajo (~40)
     const available = winH - insets.top - insets.bottom - 56 - 132 - 40 - 24;
@@ -256,7 +267,9 @@ export const FieldView: React.FC<FieldViewProps> = ({ gamePk, origin, onClosed }
     const frame = useRef<ComponentRef<typeof View>>(null);
     const [measured, setMeasured] = useState(false);
     const closing = useRef(false);
-    const openedAt = useRef(Date.now());
+    // Pasado el rato de la entrada, las caras que llegan (otro bateador) salen de una vez, sin escalonar
+    const [settled, setSettled] = useState(false);
+    const settle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
     // Al acomodarse: dónde queda el terreno en la pantalla (la caja sin transformar) y arranca la entrada
     const onLayout = useCallback(() => {
@@ -265,8 +278,8 @@ export const FieldView: React.FC<FieldViewProps> = ({ gamePk, origin, onClosed }
         const begin = (rect: Rect | null) => {
             target.set(rect);
             setMeasured(true);
-            openedAt.current = Date.now();
-            if (animate) {
+            settle.current = setTimeout(() => setSettled(true), 1200);
+            if (grows) {
                 fade.set(1);
                 progress.set(withSpring(1, OPEN_SPRING));
             } else {
@@ -276,13 +289,14 @@ export const FieldView: React.FC<FieldViewProps> = ({ gamePk, origin, onClosed }
         };
         if (!node?.measureInWindow) begin(null);
         else node.measureInWindow((x, y, width, height) => begin(width > 0 ? { x, y, width, height } : null));
-    }, [measured, animate, fade, progress, target]);
+    }, [measured, grows, fade, progress, target]);
 
     useEffect(
         () => () => {
             cancelAnimation(progress);
             cancelAnimation(fade);
             cancelAnimation(facesFade);
+            clearTimeout(settle.current);
         },
         [progress, fade, facesFade]
     );
@@ -312,9 +326,12 @@ export const FieldView: React.FC<FieldViewProps> = ({ gamePk, origin, onClosed }
     const openFace = useCallback(
         (face: FieldFace) => {
             const team = game ? teamById(game, face.teamId) : null;
-            close(() => openPlayer({ id: face.person.id, name: face.person.name, teamId: team?.id ?? null }), true);
+            close(() => {
+                onLeave?.();
+                openPlayer({ id: face.person.id, name: face.person.name, teamId: team?.id ?? null });
+            }, true);
         },
-        [close, game]
+        [close, game, onLeave]
     );
 
     const backdrop = useAnimatedStyle(() => ({ opacity: fade.get() * Math.min(1, Math.max(0, progress.get())) }));
@@ -349,6 +366,7 @@ export const FieldView: React.FC<FieldViewProps> = ({ gamePk, origin, onClosed }
         else if (model.between && defense) note = t('field.between', { team: shortTeam(defense, i18n.language) });
     } else if (!game) note = t('field.loading');
 
+    if (over) return null;
     return (
         <Modal transparent visible animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={() => close()} supportedOrientations={['portrait']}>
             <View style={{ flex: 1 }}>
@@ -372,23 +390,20 @@ export const FieldView: React.FC<FieldViewProps> = ({ gamePk, origin, onClosed }
                                         </View>
                                     ) : (
                                         measured &&
-                                        model?.faces.map((face) => {
+                                        model?.faces.map((face) => (
                                             // Al abrir salen escalonadas; las que llegan después (otro bateador) salen de una vez
-                                            const late = Date.now() - openedAt.current > 1200;
-                                            return (
-                                                <FaceView
-                                                    key={`${face.key}-${face.person.id}`}
-                                                    face={face}
-                                                    team={teamById(game, face.teamId)}
-                                                    size={sizeOf(face)}
-                                                    unitX={unitX}
-                                                    unitY={unitY}
-                                                    delay={late ? 0 : FACES_START + face.order * FACE_STEP}
-                                                    animate={animate}
-                                                    onPress={openFace}
-                                                />
-                                            );
-                                        })
+                                            <FaceView
+                                                key={`${face.key}-${face.person.id}`}
+                                                face={face}
+                                                team={teamById(game, face.teamId)}
+                                                size={sizeOf(face)}
+                                                unitX={unitX}
+                                                unitY={unitY}
+                                                delay={settled ? 0 : FACES_START + face.order * FACE_STEP}
+                                                animate={grows}
+                                                onPress={openFace}
+                                            />
+                                        ))
                                     )}
                                 </Animated.View>
                             </Animated.View>
