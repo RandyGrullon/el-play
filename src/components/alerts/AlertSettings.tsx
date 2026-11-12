@@ -1,6 +1,7 @@
 // Más → «Avisos» (igual que AlertSettings de MorePage en la web): qué avisos quiere y si llegan con la app cerrada.
-// En el teléfono, los de 10 minutos antes y el playball se programan y llegan con la app cerrada; el resultado final y
-// el juego sin hit salen cuando la app ve el juego (falta el push del servidor para que lleguen con la app cerrada).
+// En el teléfono, los de 10 minutos antes y el playball se programan y llegan con la app cerrada; los de cada jugada
+// (carreras, cambio de ventaja, jonrones y hits), el resultado final y el juego sin hit salen cuando la app ve el juego
+// (falta el push del servidor para que lleguen con la app cerrada). Un interruptor por tipo, en el orden de ALERT_KINDS.
 import React, { useEffect, useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';

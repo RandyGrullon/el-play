@@ -550,13 +550,28 @@
     "finalBody": "{{team}} won",
     "noHitter": "{{team}} is throwing a no-hitter!",
     "noHitterBody_one": "{{team}} has no hits through {{count}} inning",
-    "noHitterBody_other": "{{team}} has no hits through {{count}} innings"
+    "noHitterBody_other": "{{team}} has no hits through {{count}} innings",
+    "play": {
+      "runs": "{{team}} scores! {{score}}",
+      "ahead": "{{team}} takes the lead! {{score}}",
+      "comeback": "{{team}} comes back! {{score}}",
+      "tie": "Tie game! {{score}}",
+      "hr": "{{batter}} homers! {{score}}",
+      "hit": "{{team}} gets a hit",
+      "hitBy": "{{play}} by {{batter}}",
+      "detail": "{{batter}}: {{play}}",
+      "half": "{{half}} {{nth}}"
+    }
   },
   "alertsMore": {
     "title": "Alerts",
     "kinds": {
       "soon": "10 minutes before",
       "start": "Play ball",
+      "runs": "Runs",
+      "lead": "Lead changes",
+      "hr": "Home runs",
+      "hits": "Hits",
       "final": "Final score",
       "noHitter": "No-hitter in progress",
       "fantasy": "Your Fantasy team"
@@ -564,6 +579,10 @@
     "hints": {
       "soon": "For games with the bell on",
       "start": "Bell games and your favorite team",
+      "runs": "Every time a team scores",
+      "lead": "When a team takes the lead, comes back or ties",
+      "hr": "Every home run",
+      "hits": "Every hit (that's a lot of alerts)",
       "final": "Bell games and your favorite team",
       "noHitter": "From the 6th inning",
       "fantasy": "When your players score points (app open)"
@@ -571,7 +590,7 @@
     "closed": "With the app closed",
     "status": {
       "checking": "…",
-      "on": "The 10-minute and play ball alerts arrive even with the app closed. Final scores and no-hitters, for now, only while the app is open.",
+      "on": "The 10-minute and play ball alerts arrive even with the app closed. Final scores, no-hitters and play-by-play alerts, for now, only while the app is open.",
       "off": "Tap to turn them on: your phone will ask for permission.",
       "blocked": "They are blocked in your phone settings for El Play.",
       "unsupported": "Alerts arrive in the phone app."

@@ -783,7 +783,7 @@ console.log('el terreno: quién va en cada lugar');
 console.log('avisos de los juegos y del Fantasy');
 
 {
-    const { DEFAULT_ALERT_KINDS, readAlertKinds, scheduledKinds, sameKinds, bellExpired, planTeamAlerts, watchedFromSchedule, watchedFromDetail, liveAlerts, liveAlertText, watchInterval, pruneNotified, fantasyStep, fantasyText } = alertsLib;
+    const { ALERT_KINDS, DEFAULT_ALERT_KINDS, readAlertKinds, scheduledKinds, sameKinds, bellExpired, planTeamAlerts, watchedFromSchedule, watchedFromDetail, liveAlerts, liveAlertText, playAlerts, playKey, leadTurn, PLAY_STALE_MS, watchInterval, pruneNotified, fantasyStep, fantasyText } = alertsLib;
     const NOW = Date.parse('2026-11-05T23:00:00Z');
     const MIN = 60000;
     const HOUR = 60 * MIN;
@@ -801,6 +801,10 @@ console.log('avisos de los juegos y del Fantasy');
         assert.deepStrictEqual(readAlertKinds(undefined), ON);
         assert.deepStrictEqual(readAlertKinds('roto'), ON);
         assert.deepStrictEqual(readAlertKinds({ soon: false, final: 'no', extra: true }), off('soon'));
+        // Los de cada jugada, encendidos de fábrica y en su lugar (lo guardado antes de que existieran los deja encendidos)
+        assert.deepStrictEqual(ALERT_KINDS, ['soon', 'start', 'runs', 'lead', 'hr', 'hits', 'final', 'noHitter', 'fantasy']);
+        partial(readAlertKinds({ soon: true, start: true, final: true, noHitter: true, fantasy: true }), { runs: true, lead: true, hr: true, hits: true });
+        partial(readAlertKinds({ hits: false }), { runs: true, hits: false });
     });
 
     it('programados: 10 min antes solo con campana; playball con campana o tu equipo; nada si ya pasó o está apagado', () => {
@@ -896,6 +900,157 @@ console.log('avisos de los juegos y del Fantasy');
             ['noHitter-900020-11111']
         );
         assert.strictEqual(watchedFromDetail({ gamePk: null }), null);
+    });
+
+    // ---- jugada a jugada: lecturas seguidas del calendario o del detalle de un juego con campana (900030)
+    const PK = 900030;
+    const ALTA5 = { inning: 5, isTop: true, inningState: 'Top' };
+    // Del calendario: carreras y hits de cada equipo, sin turnos
+    const cal = (away, home, awayHits, homeHits, live = ALTA5, extra = {}) =>
+        visto(PK, { state: 'live', live, away: equipo(11111, 'AAA', { score: away, hits: awayHits }), home: equipo(22222, 'BBB', { score: home, hits: homeHits }), ...extra });
+    // Del detalle: con los turnos (nombres de mentira)
+    const turno = (i, extra = {}) => ({ i, inning: 7, top: true, complete: true, scoring: false, event: 'field_out', eventLabel: 'Flyout', away: null, home: null, batter: { id: 1, name: 'Pelotero Uno' }, ...extra });
+    const det = (away, home, awayHits, homeHits, atBats, inning = { n: 7, isTop: true, state: 'Top' }) =>
+        watchedFromDetail({
+            gamePk: PK,
+            state: 'live',
+            date: at(-2 * HOUR),
+            inning,
+            away: { id: 11111, name: 'Equipo AAA', abbrev: 'AAA', runs: away, hits: awayHits, isWinner: false },
+            home: { id: 22222, name: 'Equipo BBB', abbrev: 'BBB', runs: home, hits: homeHits, isWinner: false },
+            atBats
+        });
+    // Varias lecturas, una por minuto; devuelve los avisos de cada una
+    const leer = (lecturas, extra = {}) => {
+        let seen = new Map();
+        return lecturas.map((games, index) => {
+            const result = playAlerts([].concat(games), opts({ bell: [PK], seen, now: NOW + index * MIN, ...extra }));
+            seen = result.seen;
+            return result.alerts;
+        });
+    };
+    const ultimo = (lecturas, extra) => leer(lecturas, extra).pop();
+    const texto = (alert, lang) => liveAlertText(alert, t, (team) => team.name, lang);
+    const ALTA5_TXT = 'notifications.play.half{"half":"game.half.Top{}","nth":"5.ª"}';
+
+    it('jugadas: la primera lectura no avisa (lo que ya pasó no cuenta), ni la de después de 5 min sin leer, ni lo que ya estaba en la caché', () => {
+        assert.deepStrictEqual(leer([cal(4, 1, 9, 3)]), [[]]);
+        // Leída hace más de 5 min (la app estuvo en segundo plano): solo marca desde dónde se cuenta
+        let seen = playAlerts([cal(2, 1, 5, 3)], opts({ bell: [PK], seen: new Map(), now: NOW })).seen;
+        assert.strictEqual(playAlerts([cal(4, 1, 7, 3)], opts({ bell: [PK], seen, now: NOW + PLAY_STALE_MS + MIN })).alerts.length, 0);
+        assert.strictEqual(playAlerts([cal(4, 1, 7, 3)], opts({ bell: [PK], seen, now: NOW + MIN, quiet: true })).alerts.length, 0);
+        // Sin campana ni equipo favorito: nada, y se olvida lo visto (al ponerle la campana, la primera lectura solo marca)
+        seen = playAlerts([cal(2, 1, 5, 3)], opts({ bell: [PK], seen: new Map(), now: NOW })).seen;
+        const sinCampana = playAlerts([cal(3, 1, 6, 3)], opts({ seen, now: NOW + MIN }));
+        assert.strictEqual(sinCampana.alerts.length, 0);
+        assert.strictEqual(sinCampana.seen.has(PK), false);
+        assert.strictEqual(playAlerts([cal(4, 1, 7, 3)], opts({ bell: [PK], seen: sinCampana.seen, now: NOW + 2 * MIN })).alerts.length, 0);
+        // El equipo favorito cuenta como la campana
+        assert.strictEqual(ultimo([cal(2, 1, 5, 3), cal(3, 1, 6, 3)], { bell: [], favoriteTeamId: 22222 }).length, 1);
+        // Juego terminado: lo dice el aviso del final
+        assert.strictEqual(ultimo([cal(2, 2, 5, 5), cal(3, 2, 6, 5, ALTA5, { state: 'final' })]).length, 0);
+    });
+
+    it('jugadas: carrera que no cambia quién va ganando → «¡Anota…!» con el marcador; del calendario, sin bateador', () => {
+        const [alert] = ultimo([cal(3, 1, 7, 3), cal(4, 1, 8, 3)]);
+        partial(alert, { key: 'play-900030-4-1-8-3', kind: 'runs', play: { side: 'away', lead: null, atBat: null, half: { n: 5, top: true }, score: { away: 4, home: 1 } } });
+        assert.deepStrictEqual(texto(alert), { title: 'notifications.play.runs{"team":"Equipo AAA","score":"AAA 4 - 1 BBB"}', body: ALTA5_TXT });
+        assert.strictEqual(playKey(PK, { away: 4, home: 1, awayHits: null, homeHits: null }), 'play-900030-4-1-x-x');
+    });
+
+    it('jugadas: cambio de ventaja (se va arriba desde el empate), le da la vuelta y empate', () => {
+        assert.strictEqual(leadTurn({ away: 0, home: 0 }, { away: 1, home: 0 }, 'away'), 'ahead');
+        assert.strictEqual(leadTurn({ away: 3, home: 1 }, { away: 3, home: 2 }, 'home'), null);
+        let [alert] = ultimo([cal(1, 1, 4, 4), cal(1, 2, 4, 5)]);
+        partial(alert, { kind: 'lead', play: { side: 'home', lead: 'ahead' } });
+        assert.strictEqual(texto(alert).title, 'notifications.play.ahead{"team":"Equipo BBB","score":"AAA 1 - 2 BBB"}');
+        [alert] = ultimo([cal(2, 3, 5, 6), cal(4, 3, 7, 6)]);
+        partial(alert, { kind: 'lead', play: { side: 'away', lead: 'comeback' } });
+        assert.strictEqual(texto(alert).title, 'notifications.play.comeback{"team":"Equipo AAA","score":"AAA 4 - 3 BBB"}');
+        [alert] = ultimo([cal(1, 3, 4, 6), cal(3, 3, 6, 6)]);
+        partial(alert, { kind: 'lead', play: { side: 'away', lead: 'tie' } });
+        assert.strictEqual(texto(alert).title, 'notifications.play.tie{"team":"Equipo AAA","score":"AAA 3 - 3 BBB"}');
+        // Cambio de ventaja apagado: sale el de la carrera
+        partial(ultimo([cal(1, 3, 4, 6), cal(3, 3, 6, 6)], { kinds: off('lead') })[0], { kind: 'runs', play: { lead: null } });
+        // Anotaron los dos entre una lectura y otra: no se sabe el orden, sin cambio de ventaja; cuenta el que más anotó
+        partial(ultimo([cal(1, 1, 4, 4), cal(2, 4, 5, 7)])[0], { kind: 'runs', play: { side: 'home', lead: null } });
+    });
+
+    it('jugadas: hit sin carreras → «Hit de…» con la entrada y el marcador; con el detalle, quién y qué fue', () => {
+        const [alert] = ultimo([cal(2, 2, 5, 5), cal(2, 2, 6, 5)]);
+        partial(alert, { key: 'play-900030-2-2-6-5', kind: 'hits', play: { side: 'away', atBat: null } });
+        assert.deepStrictEqual(texto(alert), { title: 'notifications.play.hit{"team":"Equipo AAA"}', body: `${ALTA5_TXT} · AAA 2 - 2 BBB` });
+        // Hits apagados: nada
+        assert.strictEqual(ultimo([cal(2, 2, 5, 5), cal(2, 2, 6, 5)], { kinds: off('hits') }).length, 0);
+        // Con el detalle: el doble del turno nuevo (en la baja de la 7.ª)
+        const baja7 = { n: 7, isTop: false, state: 'Bottom' };
+        const antes = [turno(40)];
+        const ahora = [turno(40), turno(41, { top: false, event: 'double', eventLabel: 'Double', batter: { id: 2, name: 'Pelotero Dos' } })];
+        const [doble] = ultimo([det(2, 2, 5, 5, antes, baja7), det(2, 2, 5, 6, ahora, baja7)]);
+        partial(doble, { kind: 'hits', play: { side: 'home', atBat: { batter: 'Pelotero Dos', event: 'double' }, half: { n: 7, top: false } } });
+        assert.deepStrictEqual(texto(doble), { title: 'notifications.play.hitBy{"play":"Doble","batter":"Pelotero Dos"}', body: 'notifications.play.half{"half":"game.half.Bottom{}","nth":"7.ª"} · AAA 2 - 2 BBB' });
+        // Una base por bolas (sin hit ni carrera) no avisa
+        assert.strictEqual(ultimo([det(2, 2, 5, 5, antes, baja7), det(2, 2, 5, 5, [...antes, turno(41, { event: 'walk', eventLabel: 'Walk' })], baja7)]).length, 0);
+    });
+
+    it('jugadas: un solo aviso por cambio, jonrón > cambio de ventaja > carreras > hit (los encendidos)', () => {
+        // Iba perdiendo 2-3; jonrón de dos carreras en la alta de la 7.ª: le da la vuelta
+        const antes = det(2, 3, 6, 6, [turno(40)]);
+        const jonron = turno(41, { event: 'home_run', eventLabel: 'Home Run', scoring: true, away: 4, home: 3 });
+        const ahora = det(4, 3, 7, 6, [turno(40), jonron]);
+        let found = ultimo([antes, ahora]);
+        assert.strictEqual(found.length, 1);
+        partial(found[0], { key: 'play-900030-4-3-7-6', kind: 'hr', play: { side: 'away', lead: 'comeback', atBat: { batter: 'Pelotero Uno', event: 'home_run' }, half: { n: 7, top: true } } });
+        assert.deepStrictEqual(texto(found[0]), {
+            title: 'notifications.play.hr{"batter":"Pelotero Uno","score":"AAA 4 - 3 BBB"}',
+            body: 'notifications.play.half{"half":"game.half.Top{}","nth":"7.ª"} · notifications.play.comeback{"team":"Equipo AAA","score":""}'
+        });
+        // Sin el cambio de ventaja encendido, el jonrón no lo menciona
+        partial(ultimo([antes, ahora], { kinds: off('lead') })[0], { kind: 'hr', play: { lead: null } });
+        // Jonrones apagados: el cambio de ventaja, con quién bateó
+        found = ultimo([antes, ahora], { kinds: off('hr') });
+        partial(found[0], { kind: 'lead', play: { lead: 'comeback' } });
+        assert.strictEqual(texto(found[0]).body, 'notifications.play.half{"half":"game.half.Top{}","nth":"7.ª"} · notifications.play.detail{"batter":"Pelotero Uno","play":"Jonrón"}');
+        partial(ultimo([antes, ahora], { kinds: off('hr', 'lead') })[0], { kind: 'runs', play: { side: 'away' } });
+        found = ultimo([antes, ahora], { kinds: off('hr', 'lead', 'runs') });
+        partial(found[0], { kind: 'hits', play: { side: 'away' } });
+        assert.strictEqual(texto(found[0]).title, 'notifications.play.hitBy{"play":"Jonrón","batter":"Pelotero Uno"}');
+        assert.strictEqual(ultimo([antes, ahora], { kinds: off('hr', 'lead', 'runs', 'hits') }).length, 0);
+        // En inglés: la entrada y la jugada
+        assert.strictEqual(texto(found[0], 'en').title, 'notifications.play.hitBy{"play":"Home Run","batter":"Pelotero Uno"}');
+        assert.strictEqual(texto(found[0], 'en').body, 'notifications.play.half{"half":"game.half.Top{}","nth":"7th"} · AAA 4 - 3 BBB');
+        // Un jonrón de antes (ya visto) no se vuelve a contar como jonrón: la carrera nueva es de un sencillo
+        const sencillo = turno(42, { event: 'single', eventLabel: 'Single', scoring: true, away: 5, home: 3, batter: { id: 3, name: 'Pelotero Tres' } });
+        found = ultimo([ahora, det(5, 3, 8, 6, [turno(40), jonron, sencillo])]);
+        partial(found[0], { kind: 'runs', play: { atBat: { batter: 'Pelotero Tres', event: 'single' } } });
+        assert.strictEqual(texto(found[0]).body, 'notifications.play.half{"half":"game.half.Top{}","nth":"7.ª"} · notifications.play.detail{"batter":"Pelotero Tres","play":"Sencillo"}');
+    });
+
+    it('jugadas: no se repiten (calendario y detalle del mismo cambio, una lectura atrasada, lo ya avisado)', () => {
+        const jonron = turno(41, { event: 'home_run', eventLabel: 'Home Run', scoring: true, away: 3, home: 2 });
+        // El calendario lo ve primero (carrera, sin bateador); el detalle del mismo cambio ya no avisa
+        const lecturas = leer([cal(2, 2, 5, 5), cal(3, 2, 6, 5), det(3, 2, 6, 5, [turno(40), jonron]), cal(2, 2, 5, 5), cal(3, 2, 6, 5)]);
+        assert.deepStrictEqual(
+            lecturas.map((alerts) => alerts.map((alert) => alert.kind)),
+            [[], ['lead'], [], [], []]
+        );
+        // El mismo juego dos veces en una lectura: un aviso
+        let seen = playAlerts([cal(2, 2, 5, 5)], opts({ bell: [PK], seen: new Map(), now: NOW })).seen;
+        assert.strictEqual(playAlerts([cal(3, 2, 6, 5), cal(3, 2, 6, 5)], opts({ bell: [PK], seen, now: NOW + MIN })).alerts.length, 1);
+        // Ya avisado (misma clave): no sale
+        assert.strictEqual(playAlerts([cal(3, 2, 6, 5)], opts({ bell: [PK], seen, now: NOW + MIN, notified: (key) => key === 'play-900030-3-2-6-5' })).alerts.length, 0);
+        // Sin el dato de hits (calendario sin hits) solo cuentan las carreras
+        seen = playAlerts([cal(2, 2, null, null)], opts({ bell: [PK], seen: new Map(), now: NOW })).seen;
+        assert.strictEqual(playAlerts([cal(2, 2, 6, 5)], opts({ bell: [PK], seen, now: NOW + MIN })).alerts.length, 0);
+    });
+
+    it('jugadas: la media entrada (entre entradas, la que acaba de terminar) y los ordinales en inglés', () => {
+        const half = (live) => ultimo([cal(2, 2, 5, 5, live), cal(3, 2, 6, 5, live)])[0].play.half;
+        assert.deepStrictEqual(half({ inning: 5, isTop: false, inningState: 'Middle' }), { n: 5, top: true });
+        assert.deepStrictEqual(half({ inning: 5, isTop: false, inningState: 'End' }), { n: 5, top: false });
+        assert.deepStrictEqual(half({ inning: 5, isTop: false, inningState: 'Bottom' }), { n: 5, top: false });
+        const nth = (n) => JSON.parse(texto(ultimo([cal(2, 2, 5, 5, { inning: n, isTop: true, inningState: 'Top' }), cal(3, 2, 6, 5, { inning: n, isTop: true, inningState: 'Top' })])[0], 'en').body.replace('notifications.play.half', '')).nth;
+        assert.deepStrictEqual([1, 2, 3, 4, 11, 12, 13, 21, 22].map(nth), ['1st', '2nd', '3rd', '4th', '11th', '12th', '13th', '21st', '22nd']);
     });
 
     it('vigilancia: cada minuto con un juego tuyo en vivo; antes, se despierta un minuto antes (máx. 10 min); sin juegos tuyos, nada', () => {

@@ -550,13 +550,28 @@
     "finalBody": "Ganó {{team}}",
     "noHitter": "¡{{team}} lanza sin hit!",
     "noHitterBody_one": "{{team}} no ha conectado hit en {{count}} entrada",
-    "noHitterBody_other": "{{team}} no ha conectado hit en {{count}} entradas"
+    "noHitterBody_other": "{{team}} no ha conectado hit en {{count}} entradas",
+    "play": {
+      "runs": "¡Anota {{team}}! {{score}}",
+      "ahead": "¡{{team}} se va arriba! {{score}}",
+      "comeback": "¡{{team}} le da la vuelta! {{score}}",
+      "tie": "¡Empate! {{score}}",
+      "hr": "¡Jonrón de {{batter}}! {{score}}",
+      "hit": "Hit de {{team}}",
+      "hitBy": "{{play}} de {{batter}}",
+      "detail": "{{batter}}: {{play}}",
+      "half": "{{half}} de la {{nth}}"
+    }
   },
   "alertsMore": {
     "title": "Avisos",
     "kinds": {
       "soon": "10 minutos antes",
       "start": "Playball",
+      "runs": "Carreras",
+      "lead": "Cambio de ventaja",
+      "hr": "Jonrones",
+      "hits": "Hits",
       "final": "Resultado final",
       "noHitter": "Juego sin hit en marcha",
       "fantasy": "Tu equipo del Fantasy"
@@ -564,6 +579,10 @@
     "hints": {
       "soon": "De los juegos con campana",
       "start": "De los juegos con campana y de tu equipo favorito",
+      "runs": "Cada vez que un equipo anota",
+      "lead": "Cuando un equipo se va arriba, le da la vuelta o empata",
+      "hr": "Cada jonrón",
+      "hits": "Cada hit (son muchos avisos)",
       "final": "De los juegos con campana y de tu equipo favorito",
       "noHitter": "Desde la 6.ª entrada",
       "fantasy": "Cuando tus peloteros suman puntos (con la app abierta)"
@@ -571,7 +590,7 @@
     "closed": "Con la app cerrada",
     "status": {
       "checking": "…",
-      "on": "Los de 10 minutos antes y el playball te llegan aunque la app esté cerrada. El resultado final y el juego sin hit, por ahora, solo con la app abierta.",
+      "on": "Los de 10 minutos antes y el playball te llegan aunque la app esté cerrada. El resultado final, el juego sin hit y los de cada jugada, por ahora, solo con la app abierta.",
       "off": "Toca para activarlos: el teléfono te va a pedir permiso.",
       "blocked": "Están bloqueados en los ajustes del teléfono para El Play.",
       "unsupported": "Los avisos llegan en la app del teléfono."
