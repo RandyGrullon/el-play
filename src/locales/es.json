@@ -607,6 +607,8 @@
     "none": "no juega este día"
   },
   "timeline": {
+    "replayHint": "Toca una jugada para verla otra vez",
+    "replayPlay": "Ver la jugada otra vez: {{play}}",
     "atBat": "Al bate:",
     "more_one": "Ver {{count}} jugada más",
     "more_other": "Ver {{count}} jugadas más",
@@ -777,6 +779,9 @@
     "ballsCount_other": "{{count}} batazos"
   },
   "anim": {
+    "error": "ERROR",
+    "reachError": "Se embasa por error",
+    "reachInterference": "Se embasa por interferencia",
     "single": "HIT",
     "double": "DOBLE",
     "triple": "TRIPLE",

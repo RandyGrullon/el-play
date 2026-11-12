@@ -32,7 +32,8 @@ const HOLD: Record<PlayEvent['kind'], number> = {
     steal: 2700,
     pitchingChange: 3000,
     lead: 2800,
-    walkoff: 4300
+    walkoff: 4300,
+    error: 2120
 };
 
 // Reto del ABS: la zona en pies (vista del receptor) dentro de un cuadro de 200×250, centrada (0,9 pies en y = 226)
@@ -105,13 +106,13 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
     // Hits y bases por bolas: quién corre y cuántas entran (del marcador; si no se sabe, las impulsadas)
     const rbi = atBat?.rbi ?? 0;
     const scored = event.runs ? event.runs.after - event.runs.before : rbi;
-    const runner = kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'walk';
-    // En la base por bolas solo entra carrera con las bases llenas
+    const runner = kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'walk' || kind === 'error';
+    // En la base por bolas solo entra carrera con las bases llenas; en el error corren como en un sencillo
     const hitPaths =
         kind === 'walk'
             ? walkPaths(event.bases ?? (scored > 0 ? { first: true, second: true, third: true } : null))
-            : kind === 'single' || kind === 'double' || kind === 'triple'
-              ? runnerPaths(kind, event.bases ?? null, scored)
+            : kind === 'single' || kind === 'double' || kind === 'triple' || kind === 'error'
+              ? runnerPaths(kind === 'error' ? 'single' : kind, event.bases ?? null, scored)
               : [];
     const runLegs = Math.max(0, ...hitPaths.map(legsOf));
     // Cambio en el marcador: de qué lado anotaron
@@ -420,7 +421,13 @@ export const PlayAnimation: React.FC<{ event: PlayEvent; onDone: () => void }> =
                     </div>
                     {kind === 'walk' ? big(word) : <div className="pa-big flex text-[74px]">{letters(word)}</div>}
                     <div className="pa-sub flex flex-wrap items-center gap-x-2">
-                        <span>{rbi > 0 ? t('anim.drivesIn', { count: rbi }) : t('anim.vs', { pitcher: atBat?.pitcher.name ?? '' })}</span>
+                        <span>
+                            {rbi > 0
+                                ? t('anim.drivesIn', { count: rbi })
+                                : kind === 'error'
+                                  ? t(event.reach === 'interference' ? 'anim.reachInterference' : 'anim.reachError')
+                                  : t('anim.vs', { pitcher: atBat?.pitcher.name ?? '' })}
+                        </span>
                         {event.runs && event.runs.after > event.runs.before && (
                             <span className="pa-score">
                                 {team.abbrev} <b className="pa-score-n">{event.runs.before}</b>
