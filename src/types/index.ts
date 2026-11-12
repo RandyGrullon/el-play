@@ -113,6 +113,8 @@ export interface AtBat {
     top: boolean;
     complete: boolean;
     scoring: boolean;
+    /** Cuándo terminó el turno (ISO), si se sabe */
+    end?: string | null;
     batter: PersonRef & { side: string | null };
     pitcher: PersonRef & { hand: string | null };
     event: string | null;

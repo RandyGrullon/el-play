@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const express = require('express');
 const env = require('../utils/env');
 const push = require('../services/pushAlerts');
-const { fetchSchedule } = require('../services/mlbService');
+const { fetchSchedule, fetchGame } = require('../services/mlbService');
 
 // Avisos con la app cerrada y reporte de errores de la app. Los cuerpos son JSON chicos (máx. 4 KB)
 const json = express.json({ limit: '4kb' });
@@ -52,7 +52,7 @@ const sameSecret = (given, expected) => {
 const run = async (req, res, next) => {
     try {
         if (!sameSecret(req.get('x-push-secret'), env.env('PUSH_SECRET'))) return res.status(401).json({ error: 'unauthorized' });
-        const result = await push.runPush({ fetchSchedule });
+        const result = await push.runPush({ fetchSchedule, fetchGame });
         res.set('Cache-Control', 'no-store').json(result);
     } catch (error) {
         next(error);

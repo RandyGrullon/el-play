@@ -153,7 +153,7 @@ export const MorePage: React.FC = () => {
     );
 };
 
-const KINDS: (keyof AlertKinds)[] = ['soon', 'start', 'final', 'noHitter', 'fantasy'];
+const KINDS: (keyof AlertKinds)[] = ['soon', 'start', 'runs', 'lead', 'hr', 'hits', 'final', 'noHitter', 'fantasy'];
 
 /** Qué avisos quiere y si llegan también con la app cerrada */
 const AlertSettings: React.FC = () => {

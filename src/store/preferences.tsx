@@ -26,17 +26,24 @@ interface Preferences {
     setLargeText: (on: boolean) => void;
 }
 
-/** soon: 10 min antes; start: playball; final: resultado; noHitter: juego sin hit en marcha; fantasy: tu equipo del Fantasy */
+/**
+ * soon: 10 min antes; start: playball; final: resultado; noHitter: juego sin hit en marcha; fantasy: tu equipo del Fantasy;
+ * jugada a jugada: runs (cada carrera), lead (se van arriba, le dan la vuelta o empatan), hr (jonrones) y hits
+ */
 export interface AlertKinds {
     soon: boolean;
     start: boolean;
     final: boolean;
     noHitter: boolean;
     fantasy: boolean;
+    runs: boolean;
+    lead: boolean;
+    hr: boolean;
+    hits: boolean;
 }
 const ALERT_KINDS_KEY = 'el-play-alert-kinds';
 const LARGE_TEXT_KEY = 'el-play-large-text';
-const DEFAULT_KINDS: AlertKinds = { soon: true, start: true, final: true, noHitter: true, fantasy: true };
+const DEFAULT_KINDS: AlertKinds = { soon: true, start: true, final: true, noHitter: true, fantasy: true, runs: true, lead: true, hr: true, hits: true };
 
 const PreferencesContext = createContext<Preferences | undefined>(undefined);
 
