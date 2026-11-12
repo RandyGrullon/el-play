@@ -562,6 +562,17 @@ console.log('repetir desde la cronología: robos, relevos, emergentes, el atrapa
         partial(replayEventOf(partido(atBats), 1, { pro: true }), { key: 'replay-1-1', kind: 'steal', gamePk: 12345678, action: 1, replay: true, steal: { caught: true } });
         // Sin robo en el turno, nada
         assert.strictEqual(replayEventOf(partido([turno(0, 'caught_stealing_2b')]), 0), null);
+        // Pickoff con atrapado robando: también
+        const pk = { event: 'pickoff_caught_stealing_3b', desc: 'Corredor Prueba picked off and caught stealing 3rd base.' };
+        partial(replayEventOf(partido([turno(0, 'pickoff_caught_stealing_3b', { actions: [pk] })]), 0), { kind: 'steal', steal: { base: 3, caught: true } });
+    });
+
+    it('otro resultado sin animación (selección) con un robo antes en el turno: no se repite el robo', () => {
+        const atBats = [turno(0, 'fielders_choice', { actions: [robo] })];
+        assert.strictEqual(replayEventOf(partido(atBats), 0), null);
+        assert.strictEqual(replayEventOf(partido(atBats), 0, { pro: true }), null);
+        // El robo sí se repite desde su propia línea de la cronología
+        partial(replayActionOf(partido(atBats), 0, 0), { kind: 'steal', steal: { base: 2, caught: false } });
     });
 
     it('Lite: el error y la interferencia se animan como un sencillo (corredores, carreras y cómo se embasó)', () => {

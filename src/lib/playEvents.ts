@@ -736,7 +736,9 @@ export const replayEventOf = (game: GameDetail, atBatIndex: number, options: Pla
     const scored = Math.max(0, after[side] - before[side]);
     const kind = atBatKind(atBat, pro, scored > 0);
     if (!kind) {
-        // El turno lo cerró un corredor (atrapado robando con el tercer out): se repite ese robo
+        // El turno lo cerró un corredor (atrapado robando con el tercer out): se repite ese robo. Cualquier otro resultado
+        // sin animación (selección, por ejemplo) no se repite aunque haya habido un robo antes en el turno
+        if (!STEAL.test(atBat.event ?? '')) return null;
         const steals = atBat.actions.map((action, index) => (STEAL.test(action.event ?? '') ? index : -1)).filter((index) => index >= 0);
         return steals.length ? replayActionOf(game, atBat.i, steals[steals.length - 1], options) : null;
     }
