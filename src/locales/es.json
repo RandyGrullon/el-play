@@ -542,6 +542,11 @@
     }
   },
   "notifications": {
+    "runs": "¡Anota {{team}}! {{score}}",
+    "lead_ahead": "¡{{team}} se va arriba! {{score}}",
+    "lead_comeback": "¡{{team}} le da la vuelta! {{score}}",
+    "lead_tie": "¡Empate! {{score}}",
+    "hit": "Hit de {{team}}",
     "gameStarting": "¡El juego va a empezar!",
     "gameStartingBody": "{{away}} vs {{home}} empieza en 10 minutos.",
     "playball": "¡Playball!",
@@ -1960,6 +1965,10 @@
   "alertsMore": {
     "title": "Avisos",
     "kinds": {
+      "runs": "Carreras",
+      "lead": "Cambio de ventaja",
+      "hr": "Jonrones",
+      "hits": "Hits",
       "soon": "10 minutos antes",
       "start": "Playball",
       "final": "Resultado final",
@@ -1967,6 +1976,10 @@
       "fantasy": "Tu equipo del Fantasy"
     },
     "hints": {
+      "runs": "Cada vez que un equipo anota",
+      "lead": "Cuando un equipo se va arriba, le da la vuelta o empata",
+      "hr": "Cada jonrón, con quién lo dio (con la app cerrada)",
+      "hits": "Cada hit (son muchos avisos)",
       "soon": "De los juegos con campana",
       "start": "De los juegos con campana y de tu equipo favorito",
       "final": "De los juegos con campana y de tu equipo favorito",

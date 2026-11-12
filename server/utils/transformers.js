@@ -139,6 +139,8 @@ const toAtBat = (play, index, nameOf = () => '') => {
         top: !!about.isTopInning,
         complete: !!about.isComplete,
         scoring: !!about.isScoringPlay,
+        // Cuándo terminó (para los avisos de cada jugada: solo las recientes)
+        end: about.endTime || events[events.length - 1]?.endTime || null,
         batter: { id: matchup.batter?.id ?? null, name: matchup.batter?.fullName || '', side: matchup.batSide?.code || null },
         pitcher: { id: matchup.pitcher?.id ?? null, name: matchup.pitcher?.fullName || '', hand: matchup.pitchHand?.code || null },
         event: result.eventType || null,

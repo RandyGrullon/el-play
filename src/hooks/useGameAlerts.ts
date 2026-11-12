@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ScheduleGame } from '../types';
 import { usePreferences } from '../store/preferences';
+import { inningName } from '../lib/baseball';
+import { playAlertOf, type ScoreSnap } from '../lib/playAlerts';
 
 /** Hora de inicio del juego en ms */
 const startsInBase = (game: ScheduleGame) => new Date(game.date).getTime();
@@ -24,6 +26,9 @@ const markNotified = (key: string) => {
 
 // Avisos que se están mandando (para no repetirlos mientras el service worker responde)
 const sending = new Set<string>();
+
+// Última lectura de carreras y hits de cada juego en vivo (para avisar lo que cambió entre una y otra)
+const snaps = new Map<number, ScoreSnap>();
 
 /** El service worker de la app (vite-plugin-pwa), si hay uno; no se queda esperando si nunca se activa */
 const workerRegistration = async (): Promise<ServiceWorkerRegistration | null> => {
@@ -59,7 +64,7 @@ export const showAlert = async (title: string, options: NotificationOptions): Pr
 
 // Avisos locales para los juegos con campana: 10 min antes y al cantar playball
 export const useGameAlerts = (games: ScheduleGame[] | undefined) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const { subscribedGames, favoriteTeamId, alertKinds } = usePreferences();
 
     useEffect(() => {
@@ -96,6 +101,20 @@ export const useGameAlerts = (games: ScheduleGame[] | undefined) => {
                     const winner = game.away.isWinner ? game.away : game.home;
                     notify('final', t('notifications.final', { away: game.away.abbrev, awayRuns: game.away.score ?? 0, home: game.home.abbrev, homeRuns: game.home.score ?? 0 }), t('notifications.finalBody', { team: winner.name }));
                 }
+                // Jugada a jugada: cambio de ventaja, carreras y hits (uno por lectura, el más importante)
+                if (game.state === 'live') {
+                    const snap: ScoreSnap = { away: game.away.score ?? 0, home: game.home.score ?? 0, awayHits: game.away.hits ?? 0, homeHits: game.home.hits ?? 0 };
+                    const alert = playAlertOf(snaps.get(game.gamePk), snap, alertKinds);
+                    snaps.set(game.gamePk, snap);
+                    if (alert) {
+                        const team = game[alert.side].name;
+                        const score = `${game.away.abbrev} ${snap.away} - ${snap.home} ${game.home.abbrev}`;
+                        const half = game.live ? inningName({ n: game.live.inning, isTop: game.live.isTop }, i18n.language) : '';
+                        const title = alert.kind === 'lead' ? t(`notifications.lead_${alert.lead}`, { team, score }) : alert.kind === 'runs' ? t('notifications.runs', { team, score }) : t('notifications.hit', { team });
+                        const body = alert.kind === 'hits' ? [score, half].filter(Boolean).join(' · ') : half;
+                        notifyKey(`play-${game.gamePk}-${snap.away}-${snap.home}-${snap.awayHits}-${snap.homeHits}`, title, body);
+                    }
+                }
                 if (alertKinds.noHitter && game.state === 'live' && (game.live?.inning ?? 0) >= 6) {
                     for (const [batting, pitching] of [
                         [game.away, game.home],
@@ -112,5 +131,5 @@ export const useGameAlerts = (games: ScheduleGame[] | undefined) => {
         check();
         const interval = setInterval(check, 60 * 1000);
         return () => clearInterval(interval);
-    }, [games, subscribedGames, favoriteTeamId, alertKinds, t]);
+    }, [games, subscribedGames, favoriteTeamId, alertKinds, t, i18n.language]);
 };

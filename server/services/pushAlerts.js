@@ -5,9 +5,12 @@ const { sendPush } = require('./webPush');
 // Avisos con la app cerrada (Web Push). Las suscripciones viven en Supabase (supabase/2026-10-23-avisos-push.sql):
 // se guardan con push_save y se leen solo con el secreto (push_targets), así nadie más ve a quién se le avisa.
 // Supabase llama cada minuto a /api/v2/push/run (pg_cron + pg_net); aquí se mira el calendario y se avisa:
-// 10 minutos antes, al cantar playball, el resultado final y un juego sin hit desde la 6.ª.
+// 10 minutos antes, al cantar playball, el resultado final y un juego sin hit desde la 6.ª; y, de los juegos en vivo que
+// alguien sigue, jugada a jugada: jonrones, cambio de ventaja, carreras y hits (uno por jugada, el más importante).
 
-const KINDS = ['soon', 'start', 'final', 'noHitter'];
+// Jugada a jugada (con el detalle del juego): carreras, cambio de ventaja, jonrones y hits
+const PLAY_KINDS = ['runs', 'lead', 'hr', 'hits'];
+const KINDS = ['soon', 'start', 'final', 'noHitter', ...PLAY_KINDS];
 const MAX_GAMES = 40;
 const MAX_TEAMS = 6;
 
@@ -107,35 +110,162 @@ const wants = (sub, event) => {
     return teams.includes(event.game.away.id) || teams.includes(event.game.home.id);
 };
 
+// ---------------------------------------------------------------- jugada a jugada
+
+/** Hasta cuánto después de terminar una jugada se avisa (el cron pasa cada minuto y la liga tarda en publicarla) */
+const PLAY_WINDOW_MS = 5 * 60000;
+
+const HITS = { single: true, double: true, triple: true, home_run: true };
+const PLAY_NAMES = {
+    single: 'Sencillo',
+    double: 'Doble',
+    triple: 'Triple',
+    home_run: 'Jonrón',
+    walk: 'Base por bolas',
+    intent_walk: 'Base intencional',
+    hit_by_pitch: 'Golpeado',
+    sac_fly: 'Elevado de sacrificio',
+    sac_bunt: 'Toque de sacrificio',
+    field_error: 'Error',
+    catcher_interf: 'Interferencia',
+    fielders_choice: 'Selección',
+    fielders_choice_out: 'Selección',
+    force_out: 'Out forzado',
+    grounded_into_double_play: 'Doble play',
+    double_play: 'Doble play',
+    field_out: 'Out',
+    strikeout: 'Ponche'
+};
+
+const ordinalEn = (n) => {
+    const v = n % 100;
+    return `${n}${v >= 11 && v <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th'}`;
+};
+const halfName = (lang, top, inning) => (lang === 'en' ? `${top ? 'Top' : 'Bottom'} ${ordinalEn(inning)}` : `${top ? 'Alta' : 'Baja'} de la ${inning}.ª`);
+
+/**
+ * Lo que pasó en cada jugada reciente de un juego en vivo: carreras que entraron, si cambió quién va ganando (se va
+ * arriba, le da la vuelta o empata) y si fue hit o jonrón. Solo jugadas terminadas hace menos de PLAY_WINDOW_MS: al
+ * encender el cron a mitad de juego no se avisa lo viejo. Cada una con su llave para avisarla una sola vez.
+ */
+const playEventsOf = (game, now = Date.now()) => {
+    const events = [];
+    let before = { away: 0, home: 0 };
+    for (const atBat of game.atBats || []) {
+        if (!atBat.complete) continue;
+        const after = { away: atBat.away ?? before.away, home: atBat.home ?? before.home };
+        const end = atBat.end ? Date.parse(atBat.end) : NaN;
+        if (Number.isFinite(end) && now - end <= PLAY_WINDOW_MS && end - now <= 60000) {
+            const side = atBat.top ? 'away' : 'home';
+            const other = atBat.top ? 'home' : 'away';
+            const runs = Math.max(0, after[side] - before[side]);
+            const was = before[side] - before[other];
+            const is = after[side] - after[other];
+            const lead = runs > 0 ? (is === 0 && was < 0 ? 'tie' : is > 0 && was < 0 ? 'comeback' : is > 0 && was === 0 ? 'ahead' : null) : null;
+            const hit = !!HITS[atBat.event];
+            if (runs > 0 || hit) events.push({ kind: 'play', game, atBat, runs, lead, hit, hr: atBat.event === 'home_run', score: after, key: `el-play-notified-play-${game.gamePk}-${atBat.i}` });
+        }
+        before = after;
+    }
+    return events;
+};
+
+const PLAY_TEXTS = {
+    es: {
+        hr: (batter, score) => `¡Jonrón de ${batter}! ${score}`,
+        ahead: (team, score) => `¡${team} se va arriba! ${score}`,
+        comeback: (team, score) => `¡${team} le da la vuelta! ${score}`,
+        tie: (_team, score) => `¡Empate! ${score}`,
+        runs: (team, score) => `¡Anota ${team}! ${score}`,
+        hit: (play, batter) => `${play} de ${batter}`
+    },
+    en: {
+        hr: (batter, score) => `${batter} homers! ${score}`,
+        ahead: (team, score) => `${team} takes the lead! ${score}`,
+        comeback: (team, score) => `${team} comes back! ${score}`,
+        tie: (_team, score) => `Tie game! ${score}`,
+        runs: (team, score) => `${team} scores! ${score}`,
+        hit: (play, batter) => `${play} by ${batter}`
+    }
+};
+
+/**
+ * El aviso de una jugada para una suscripción: el más importante de los que tiene encendidos (jonrón > cambio de
+ * ventaja > carreras > hit). null si no le toca ninguno.
+ */
+const playMessage = (sub, event) => {
+    const on = (kind) => sub.kinds?.[kind] !== false;
+    const lang = sub.lang === 'en' ? 'en' : 'es';
+    const texts = PLAY_TEXTS[lang];
+    const { game, atBat } = event;
+    const team = atBat.top ? game.away : game.home;
+    const teamName = team.name || team.teamName;
+    const score = `${game.away.abbrev} ${event.score.away} - ${event.score.home} ${game.home.abbrev}`;
+    const batter = atBat.batter?.name || teamName;
+    const play = (lang === 'es' ? PLAY_NAMES[atBat.event] : null) || atBat.eventLabel || '';
+    const half = halfName(lang, atBat.top, atBat.inning);
+    const detail = play ? `${batter}: ${play} · ${half}` : half;
+    if (event.hr && on('hr')) return { kind: 'hr', title: texts.hr(batter, score), body: event.lead && on('lead') ? `${texts[event.lead](teamName, '').trim()} · ${half}` : half };
+    if (event.lead && on('lead')) return { kind: 'lead', title: texts[event.lead](teamName, score), body: detail };
+    if (event.runs > 0 && on('runs')) return { kind: 'runs', title: texts.runs(teamName, score), body: detail };
+    if (event.hit && on('hits')) return { kind: 'hits', title: texts.hit(play || 'Hit', batter), body: `${score} · ${half}` };
+    return null;
+};
+
+/** Los juegos en vivo que alguien sigue con algún aviso de jugada encendido */
+const followedLive = (games, subs) =>
+    games.filter((game) => game.state === 'live' && subs.some((sub) => PLAY_KINDS.some((kind) => sub.kinds?.[kind] !== false) && wants({ ...sub, kinds: {} }, { kind: 'play', game })));
+
 /** Una pasada (la llama el cron cada minuto) */
-const runPush = async ({ fetchSchedule, now = Date.now(), secret = env.env('PUSH_SECRET') } = {}) => {
+const runPush = async ({ fetchSchedule, fetchGame, now = Date.now(), secret = env.env('PUSH_SECRET') } = {}) => {
     if (!pushEnabled()) return { skipped: 'not_configured' };
     const vapid = vapidConfig();
     const schedules = await Promise.all(Object.keys(LEAGUES).map((league) => fetchSchedule(league).catch(() => null)));
-    const events = eventsOf(schedules.filter(Boolean).flatMap((schedule) => schedule.games), now);
-    if (!events.length) return { events: 0, sent: 0 };
+    // Un juego que salga en dos calendarios (Serie del Caribe y LIDOM, por ejemplo) se mira una sola vez
+    const games = [...new Map(schedules.filter(Boolean).flatMap((schedule) => schedule.games).map((game) => [game.gamePk, game])).values()];
+    const events = eventsOf(games, now);
+    // Con juegos en vivo se mira además jugada a jugada (solo los que alguien sigue)
+    const live = !!fetchGame && games.some((game) => game.state === 'live');
+    if (!events.length && !live) return { events: 0, sent: 0 };
     const subs = (await rpc('push_targets', { run_secret: secret })) || [];
     let sent = 0;
     let removed = 0;
+    const deliver = async (sub, message, options) => {
+        const status = await sendPush(sub, message, vapid, options).catch(() => 0);
+        if (status === 201 || status === 200) sent += 1;
+        if (status === 404 || status === 410) {
+            removed += 1;
+            await rpc('push_forget', { run_secret: secret, sub_endpoint: sub.endpoint }).catch(() => null);
+        }
+    };
+    // Una sola vez por aviso aunque dos instancias corran a la vez
+    const claim = (key) => rpc('push_claim', { run_secret: secret, event_key: key });
+
     for (const event of events) {
         const targets = subs.filter((sub) => wants(sub, event));
-        if (!targets.length) continue;
-        // Una sola vez por aviso aunque dos instancias corran a la vez
-        if (!(await rpc('push_claim', { run_secret: secret, event_key: event.key }))) continue;
+        if (!targets.length || !(await claim(event.key))) continue;
         await Promise.all(
-            targets.map(async (sub) => {
+            targets.map((sub) => {
                 const [title, body] = TEXTS[sub.lang === 'en' ? 'en' : 'es'][event.kind](event.game, event.pitching, event.batting);
-                const message = { title, body, tag: event.key, url: `/juego/${event.game.gamePk}` };
-                const status = await sendPush(sub, message, vapid, { topic: `g${event.game.gamePk}${event.kind}`, ttl: event.kind === 'final' ? 3600 : 600 }).catch(() => 0);
-                if (status === 201 || status === 200) sent += 1;
-                if (status === 404 || status === 410) {
-                    removed += 1;
-                    await rpc('push_forget', { run_secret: secret, sub_endpoint: sub.endpoint }).catch(() => null);
-                }
+                return deliver(sub, { title, body, tag: event.key, url: `/juego/${event.game.gamePk}` }, { topic: `g${event.game.gamePk}${event.kind}`, ttl: event.kind === 'final' ? 3600 : 600 });
             })
         );
     }
-    return { events: events.length, sent, removed };
+
+    let plays = [];
+    if (live) {
+        const details = await Promise.all(followedLive(games, subs).map((game) => fetchGame(game.gamePk).catch(() => null)));
+        plays = details.filter(Boolean).flatMap((detail) => playEventsOf(detail, now));
+    }
+    for (const event of plays) {
+        // A cada quien el aviso más importante de los que tiene encendidos (o ninguno)
+        const messages = subs.filter((sub) => wants({ ...sub, kinds: {} }, event)).map((sub) => [sub, playMessage(sub, event)]).filter(([, message]) => message);
+        if (!messages.length || !(await claim(event.key))) continue;
+        const pk = event.game.gamePk;
+        // Si el teléfono estaba sin señal, al volver solo le llega la última jugada del juego (Topic) y nada de hace más de 5 min
+        await Promise.all(messages.map(([sub, message]) => deliver(sub, { title: message.title, body: message.body, tag: event.key, url: `/juego/${pk}` }, { topic: `g${pk}play`, ttl: 300 })));
+    }
+    return { events: events.length, plays: plays.length, sent, removed };
 };
 
-module.exports = { pushEnabled, vapidConfig, cleanSubscription, saveSubscription, deleteSubscription, eventsOf, wants, runPush, KINDS };
+module.exports = { pushEnabled, vapidConfig, cleanSubscription, saveSubscription, deleteSubscription, eventsOf, playEventsOf, playMessage, wants, runPush, KINDS, PLAY_KINDS };

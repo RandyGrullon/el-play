@@ -361,6 +361,52 @@ describe('avisos con la app cerrada (Web Push sin dependencias)', () => {
         expect(push.wants({ games: [3], teams: [], kinds: { start: false } }, start)).toBe(false);
     });
 
+    it('jugada a jugada: solo lo reciente, uno por jugada y el más importante de los encendidos', () => {
+        const now = Date.parse('2026-11-11T23:30:00Z');
+        const at = (minutesAgo) => new Date(now - minutesAgo * 60000).toISOString();
+        const ab = (i, top, event, away, home, end, batter = 'Juan Prueba') => ({ i, inning: Math.floor(i / 6) + 1, top, complete: true, event, eventLabel: event, away, home, end, batter: { id: 12345678, name: batter } });
+        const game = {
+            gamePk: 777,
+            away: { id: 1, abbrev: 'AAA', name: 'Equipo Uno' },
+            home: { id: 2, abbrev: 'BBB', name: 'Equipo Dos' },
+            atBats: [
+                ab(0, true, 'single', 0, 0, at(30)), // viejo: no se avisa
+                ab(1, true, 'home_run', 2, 0, at(20)), // viejo: no se avisa
+                ab(2, false, 'double', 2, 1, at(4)), // anota el local (sigue abajo): carrera
+                ab(3, false, 'single', 2, 2, at(3)), // empata
+                ab(4, false, 'home_run', 2, 4, at(2), 'Pedro Ficticio'), // jonrón que lo pone arriba
+                ab(5, false, 'strikeout', 2, 4, at(1.5)), // ponche: nada
+                ab(6, true, 'single', 2, 4, at(1)), // hit sin carreras
+                { ...ab(7, true, 'single', 2, 4, null), complete: false } // en curso
+            ]
+        };
+        const events = push.playEventsOf(game, now);
+        expect(events.map((event) => event.key)).toEqual(['el-play-notified-play-777-2', 'el-play-notified-play-777-3', 'el-play-notified-play-777-4', 'el-play-notified-play-777-6']);
+        expect(events.map((event) => [event.runs, event.lead, event.hit, event.hr])).toEqual([
+            [1, null, true, false],
+            [1, 'tie', true, false],
+            [2, 'ahead', true, true],
+            [0, null, true, false]
+        ]);
+        const all = { kinds: {}, lang: 'es' };
+        expect(push.playMessage(all, events[0])).toMatchObject({ kind: 'runs', title: '¡Anota Equipo Dos! AAA 2 - 1 BBB', body: 'Juan Prueba: Doble · Baja de la 1.ª' });
+        expect(push.playMessage(all, events[1])).toMatchObject({ kind: 'lead', title: '¡Empate! AAA 2 - 2 BBB' });
+        expect(push.playMessage(all, events[2])).toMatchObject({ kind: 'hr', title: '¡Jonrón de Pedro Ficticio! AAA 2 - 4 BBB', body: '¡Equipo Dos se va arriba! · Baja de la 1.ª' });
+        expect(push.playMessage(all, events[3])).toMatchObject({ kind: 'hits', title: 'Sencillo de Juan Prueba', body: 'AAA 2 - 4 BBB · Alta de la 2.ª' });
+        // Lo que cada quien apague: sin jonrones, el mismo batazo avisa el cambio de ventaja; sin nada de jugadas, nada
+        expect(push.playMessage({ kinds: { hr: false }, lang: 'es' }, events[2])).toMatchObject({ kind: 'lead', title: '¡Equipo Dos se va arriba! AAA 2 - 4 BBB' });
+        expect(push.playMessage({ kinds: { lead: false }, lang: 'es' }, events[1])).toMatchObject({ kind: 'runs' });
+        expect(push.playMessage({ kinds: { runs: false, lead: false, hits: false }, lang: 'es' }, events[0])).toBeNull();
+        expect(push.playMessage({ kinds: { hits: false }, lang: 'es' }, events[3])).toBeNull();
+        expect(push.playMessage({ kinds: {}, lang: 'en' }, events[2])).toMatchObject({ title: 'Pedro Ficticio homers! AAA 2 - 4 BBB' });
+        // Le da la vuelta: iba perdiendo y queda arriba
+        const comeback = push.playEventsOf({ ...game, atBats: [ab(0, true, 'single', 3, 0, at(10)), ab(1, false, 'triple', 3, 4, at(1))] }, now);
+        expect(comeback[0].lead).toBe('comeback');
+        expect(push.playMessage(all, comeback[0]).title).toBe('¡Equipo Dos le da la vuelta! AAA 3 - 4 BBB');
+        // La suscripción guarda los tipos nuevos (encendidos si no dice nada)
+        expect(push.cleanSubscription({ subscription, kinds: { hits: false } }).kinds).toMatchObject({ runs: true, lead: true, hr: true, hits: false });
+    });
+
     it('solo se guardan suscripciones de servicios de avisos y el cron necesita el secreto', async () => {
         expect(push.cleanSubscription({ subscription, games: [5, 5, 'x', 7], teams: [669], kinds: { final: false }, lang: 'en' })).toMatchObject({ games: [5, 7], teams: [669], kinds: { soon: true, final: false }, lang: 'en' });
         expect(push.cleanSubscription({ subscription: { ...subscription, endpoint: 'https://evil.example.com/x' } })).toBeNull();
