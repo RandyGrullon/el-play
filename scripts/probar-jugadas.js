@@ -23,7 +23,7 @@ const compile = (name) => {
     const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } });
     fs.writeFileSync(path.join(OUT, `${name}.js`), outputText);
 };
-['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts', 'field', 'spray', 'swipeBack', 'appUpdate', 'fieldReturn'].forEach(compile);
+['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts', 'field', 'spray', 'swipeBack', 'appUpdate', 'fieldReturn', 'absChallenges'].forEach(compile);
 // playEvents usa el modo PRO de la cuenta (React Native): aquí siempre Lite
 fs.writeFileSync(path.join(OUT, 'pro.js'), 'exports.proActive = () => false;\n');
 
@@ -1330,6 +1330,45 @@ console.log('volver al terreno después de la ficha de un pelotero');
         assert.strictEqual(vuelta.fieldReturnStep(ticket, 'gone', 1100), null);
         // Sin irse a la ficha: pasado el rato, cualquier cambio en la misma pantalla la olvida
         assert.strictEqual(vuelta.fieldReturnStep(ticket, 'here', 1000 + vuelta.FIELD_LEAVE_MS + 1), null);
+    });
+}
+
+// ---------------------------------------------------------------- retos del ABS en barra (src/lib/absChallenges.ts)
+
+const retos = require(path.join(OUT, 'absChallenges.js'));
+console.log('retos del ABS en barra (los mismos casos de la web)');
+{
+    it('al empezar: 2 de 2', () => {
+        const tally = retos.absTally({ won: 0, lost: 0, remaining: 2 });
+        assert.deepStrictEqual(tally, { total: 2, left: 2, won: 0, lost: 0 });
+        assert.deepStrictEqual(retos.absSlots(tally), ['left', 'left']);
+    });
+
+    it('el ganado no se gasta; el perdido sí', () => {
+        partial(retos.absTally({ won: 1, lost: 0, remaining: 2 }), { total: 2, left: 2 });
+        const tally = retos.absTally({ won: 1, lost: 1, remaining: 1 });
+        partial(tally, { total: 2, left: 1, won: 1, lost: 1 });
+        assert.deepStrictEqual(retos.absSlots(tally), ['left', 'lost']);
+        assert.deepStrictEqual(retos.absSlots(retos.absTally({ won: 0, lost: 2, remaining: 0 })), ['lost', 'lost']);
+    });
+
+    it('en extra innings le dan otro: la barra crece', () => {
+        const tally = retos.absTally({ won: 0, lost: 2, remaining: 1 });
+        assert.strictEqual(tally.total, 3);
+        assert.deepStrictEqual(retos.absSlots(tally), ['left', 'lost', 'lost']);
+    });
+
+    it('si no llegan los que quedan no hay barra (solo ganados y perdidos)', () => {
+        const tally = retos.absTally({ won: 1, lost: 2, remaining: null });
+        assert.deepStrictEqual(tally, { total: null, left: null, won: 1, lost: 2 });
+        assert.deepStrictEqual(retos.absSlots(tally), []);
+        assert.deepStrictEqual(retos.absTally({ won: 0, lost: 0, remaining: undefined }), { total: null, left: null, won: 0, lost: 0 });
+    });
+
+    it('datos raros (menos de los que dice el reglamento, o negativos) no rompen la barra', () => {
+        assert.deepStrictEqual(retos.absSlots(retos.absTally({ won: 0, lost: 0, remaining: 1 })), ['left', 'empty']);
+        assert.deepStrictEqual(retos.absTally({ won: -1, lost: -2, remaining: -1 }), { total: 2, left: 0, won: 0, lost: 0 });
+        assert.deepStrictEqual(retos.absSlots(retos.absTally({ won: -1, lost: -2, remaining: -1 })), ['empty', 'empty']);
     });
 }
 

@@ -13,6 +13,7 @@ import { biggestSwings, winNow, winSeries, type WinPoint } from '../../lib/liveW
 import { fatigueOf, hoursMinutes, noHitterOf, staleMinutes, umpireRole, velocityTrend, windText, type Fatigue } from '../../lib/liveGame';
 import { winProbability, type TeamForm } from '../../lib/winProbability';
 import { recordOf, useTeamStats, type TeamRow } from '../../lib/teamStats';
+import { absSlots, absTally } from '../../lib/absChallenges';
 import { useColors } from '../../theme/theme';
 import { alpha, fonts, inkOn, radius } from '../../theme/tokens';
 import { Card, PlayerPhoto, Row, Segmented, TeamLogo, Txt } from '../ui';
@@ -20,6 +21,68 @@ import { useNow } from '../feed/useNow';
 import { PlayerLink, TeamLink, playerTextLink, teamTextLink } from '../stats/common';
 
 // ---------------------------------------------------------------- pizarra
+
+/**
+ * Retos del ABS de los dos equipos: por equipo, una barra con una casilla por reto que ha tenido (en su color las que
+ * le quedan, en rojo tenue las que perdió), «le quedan N de M» y cuántos ganó y perdió. Mientras uno está retando,
+ * su fila dice «revisando». Igual que la web.
+ */
+const AbsPanel: React.FC<{ game: GameDetail; abs: NonNullable<GameDetail['abs']> }> = ({ game, abs }) => {
+    const { t } = useTranslation();
+    const colors = useColors();
+    const slotStyle = (slot: 'left' | 'lost' | 'empty', color: string) =>
+        slot === 'left'
+            ? { backgroundColor: color }
+            : slot === 'lost'
+              ? { backgroundColor: alpha(colors.strike, 0.25), borderWidth: 1, borderColor: alpha(colors.strike, 0.5) }
+              : { backgroundColor: colors.raised, borderWidth: 1, borderColor: alpha(colors.line, 0.2) };
+    return (
+        <View style={{ borderTopWidth: 1, borderTopColor: colors.line, paddingHorizontal: 16, paddingVertical: 12 }}>
+            <Txt size={11} weight="extrabold" tone="muted" style={{ marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                {t('lineScore.abs')}
+            </Txt>
+            <View style={{ gap: 8 }}>
+                {(['away', 'home'] as const).map((side) => {
+                    const team = game[side];
+                    const tally = absTally(abs[side]);
+                    const slots = absSlots(tally);
+                    const checking = abs.challenging !== null && abs.challenging === team.id;
+                    return (
+                        <View
+                            key={side}
+                            accessible
+                            accessibilityLabel={t('lineScore.absAria', { team: team.abbrev, left: tally.left ?? '—', won: tally.won, lost: tally.lost })}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                        >
+                            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: team.color }} />
+                            <Txt size={12} weight="bold" numberOfLines={1} style={{ width: 36 }} {...teamTextLink(team.id)}>
+                                {team.abbrev}
+                            </Txt>
+                            {slots.length > 0 && (
+                                <View style={{ flexDirection: 'row', gap: 4 }}>
+                                    {slots.map((slot, index) => (
+                                        <View key={index} style={[{ width: 24, height: 10, borderRadius: 5 }, slotStyle(slot, team.color)]} />
+                                    ))}
+                                </View>
+                            )}
+                            <Txt size={12} weight="semibold" tabular numberOfLines={1} color={checking ? colors.gold : undefined} style={{ flex: 1, minWidth: 0 }}>
+                                {checking ? t('lineScore.absChecking') : tally.left !== null && tally.total !== null ? t('lineScore.absOf', { count: tally.left, total: tally.total }) : ''}
+                            </Txt>
+                            <Txt size={12} tabular tone="muted">
+                                <Txt size={12} weight="bold" color={colors.inplay}>
+                                    ✓{tally.won}
+                                </Txt>{' '}
+                                <Txt size={12} weight="bold" color={colors.strike}>
+                                    ✗{tally.lost}
+                                </Txt>
+                            </Txt>
+                        </View>
+                    );
+                })}
+            </View>
+        </View>
+    );
+};
 
 export const LineScore: React.FC<{ game: GameDetail }> = ({ game }) => {
     const { t } = useTranslation();
@@ -117,29 +180,7 @@ export const LineScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                     })}
                 </View>
             </View>
-            {game.abs && (
-                <Row gap={12} wrap style={{ borderTopWidth: 1, borderTopColor: colors.line, paddingHorizontal: 16, paddingVertical: 8 }}>
-                    <Txt size={11} weight="extrabold" tone="muted" style={{ textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                        {t('lineScore.abs')}
-                    </Txt>
-                    {sides.map((side) => {
-                        const count = game.abs![side];
-                        return (
-                            <View key={side} accessible accessibilityLabel={t('lineScore.absAria', { team: game[side].abbrev, left: count.remaining ?? '—', won: count.won, lost: count.lost })} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: game[side].color }} />
-                                <Txt size={12} weight="semibold" {...teamTextLink(game[side].id)}>
-                                    {game[side].abbrev}
-                                </Txt>
-                                <View style={{ borderRadius: 6, backgroundColor: colors.raised, paddingHorizontal: 6 }}>
-                                    <Txt size={12} weight="extrabold" tabular>
-                                        {count.remaining !== null ? t('lineScore.absLeft', { count: count.remaining }) : `✓${count.won} ✗${count.lost}`}
-                                    </Txt>
-                                </View>
-                            </View>
-                        );
-                    })}
-                </Row>
-            )}
+            {game.abs && <AbsPanel game={game} abs={game.abs} />}
         </Card>
     );
 };
