@@ -1,7 +1,7 @@
 // «Más»: cuenta, modo Lite/PRO, liga, tema, idioma, texto grande, animaciones, avisos, pasarle El Play a alguien (los pasos
 // de la web para instalarla según el navegador) y privacidad (igual que MorePage de la web).
 import React, { useId, useState } from 'react';
-import { Pressable, Switch, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +9,7 @@ import { Check, ChevronRight, Share2 } from 'lucide-react-native';
 import Svg, { Circle, Defs, G, LinearGradient, Path, Stop } from 'react-native-svg';
 import { Screen } from '../../components/layout';
 import { Card, Row, Segmented, Title, Txt } from '../../components/ui';
+import { AppSwitch } from '../../components/AppSwitch';
 import { AccountCard } from '../../components/account/AccountCard';
 import { ModeCard } from '../../components/pro/ModeCard';
 import { InstallGuide } from '../../components/install/InstallGuide';
@@ -123,14 +124,7 @@ export default function MoreScreen() {
                                     {t('more.largeTextHint')}
                                 </Txt>
                             </View>
-                            <Switch
-                                value={largeText}
-                                onValueChange={setLargeText}
-                                accessibilityLabel={t('more.largeText')}
-                                trackColor={{ false: colors.raised, true: colors.accent }}
-                                ios_backgroundColor={colors.raised}
-                                thumbColor="#fff"
-                            />
+                            <AppSwitch value={largeText} onValueChange={setLargeText} accessibilityLabel={t('more.largeText')} />
                         </Row>
                     </Card>
                     <Card style={{ gap: 12 }}>

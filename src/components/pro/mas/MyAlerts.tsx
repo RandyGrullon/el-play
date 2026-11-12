@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Linking, Platform, Pressable, View } from 'react-native';
-import Animated, { FadeOut, cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { FadeOut } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { BellRing, Send, Settings, ShieldAlert, Smartphone, Star } from 'lucide-react-native';
 import type { ScheduleGame } from '../../../types';
@@ -11,8 +11,9 @@ import { usePreferences } from '../../../state/preferences';
 import { useColors } from '../../../theme/theme';
 import { alpha, fonts, radius, shadow } from '../../../theme/tokens';
 import { Skeleton, TeamLogo, Txt } from '../../ui';
+import { AppSwitch } from '../../AppSwitch';
 import { useAlertToggle } from '../../feed/alerts';
-import { Enter, MOTION_EASE, ModuleHeader, ProNote, useMotion, useProColors, useReorder } from '../kit';
+import { Enter, ModuleHeader, ProNote, useMotion, useProColors, useReorder } from '../kit';
 import { alertGamesOf } from './logic';
 import { LogoMark } from './LogoMark';
 import { askPermission, recheckPermission, sendTestAlert, useNotificationPermission } from './notifications';
@@ -23,27 +24,6 @@ import { TeamLink } from '../../stats/common';
 // juegos con y sin campana (10 minutos antes y al empezar, programados en el teléfono). Al quitar un aviso la fila se
 // va con un fundido y las demás suben (altura animada); las filas entran escalonadas. En la app del teléfono, además,
 // cómo seguir el juego en la pantalla de bloqueo.
-
-const SPRING = 380;
-
-/** Interruptor grande (60 × 44) con resorte */
-const Switch: React.FC<{ on: boolean; label: string; onToggle: () => void }> = ({ on, label, onToggle }) => {
-    const colors = useColors();
-    const motion = useMotion();
-    const knob = useSharedValue(on ? 1 : 0);
-    useEffect(() => {
-        knob.set(motion.animate ? withTiming(on ? 1 : 0, { duration: SPRING, easing: MOTION_EASE }) : on ? 1 : 0);
-        return () => cancelAnimation(knob);
-    }, [on, motion.animate, knob]);
-    const style = useAnimatedStyle(() => ({ transform: [{ translateX: knob.get() * 22 }] }));
-    return (
-        <Pressable onPress={onToggle} accessibilityRole="switch" accessibilityState={{ checked: on }} accessibilityLabel={label} style={{ width: 60, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-            <View style={{ width: 52, height: 30, borderRadius: 15, backgroundColor: on ? '#16a34a' : alpha(colors.line, 0.25), borderWidth: 1, borderColor: on ? '#16a34a' : alpha(colors.line, 0.15) }}>
-                <Animated.View style={[{ position: 'absolute', left: 2, top: 2, width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff' }, shadow('card'), style]} />
-            </View>
-        </Pressable>
-    );
-};
 
 export const MyAlerts: React.FC<{ games: ScheduleGame[] | undefined; loading: boolean }> = ({ games, loading }) => {
     const { t, i18n } = useTranslation();
@@ -134,7 +114,8 @@ export const MyAlerts: React.FC<{ games: ScheduleGame[] | undefined; loading: bo
                             {game.venue}
                         </Txt>
                     </View>
-                    <Switch on={subscribed} label={label} onToggle={() => void toggleAlert(game)} />
+                    {/* El interruptor de la app en una caja de 60 × 44 (la de antes) */}
+                    <AppSwitch value={subscribed} accessibilityLabel={label} onValueChange={() => void toggleAlert(game)} style={{ paddingHorizontal: 6, paddingVertical: 8 }} />
                 </Enter>
             </Animated.View>
         );

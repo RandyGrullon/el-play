@@ -2,12 +2,13 @@
 // En el teléfono, los de 10 minutos antes y el playball se programan y llegan con la app cerrada; el resultado final y
 // el juego sin hit salen cuando la app ve el juego (falta el push del servidor para que lleguen con la app cerrada).
 import React, { useEffect, useState } from 'react';
-import { Linking, Pressable, Switch, View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { ALERT_KINDS } from '../../lib/gameAlerts';
 import { ensurePermission, usePreferences } from '../../state/preferences';
 import { useColors } from '../../theme/theme';
 import { Card, Txt } from '../ui';
+import { AppSwitch } from '../AppSwitch';
 import { recheckPermission, useNotificationPermission } from '../pro/mas/notifications';
 
 const STATUS = { granted: 'on', default: 'off', denied: 'blocked', unsupported: 'unsupported' } as const;
@@ -74,14 +75,11 @@ export const AlertSettings: React.FC = () => {
                                     {t(`alertsMore.hints.${kind}`)}
                                 </Txt>
                             </View>
-                            <Switch
+                            <AppSwitch
                                 value={alertKinds[kind]}
                                 onValueChange={(on) => setAlertKind(kind, on)}
                                 accessibilityLabel={t(`alertsMore.kinds.${kind}`)}
                                 accessibilityHint={t(`alertsMore.hints.${kind}`)}
-                                trackColor={{ false: colors.raised, true: colors.accent }}
-                                ios_backgroundColor={colors.raised}
-                                thumbColor="#fff"
                             />
                         </View>
                     ))}
