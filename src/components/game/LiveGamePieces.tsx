@@ -69,7 +69,7 @@ const AbsPanel: React.FC<{ game: GameDetail; abs: NonNullable<GameDetail['abs']>
                                 {checking ? t('lineScore.absChecking') : tally.left !== null && tally.total !== null ? t('lineScore.absOf', { count: tally.left, total: tally.total }) : ''}
                             </Txt>
                             <Txt size={12} tabular tone="muted">
-                                <Txt size={12} weight="bold" color={colors.inplay}>
+                                <Txt size={12} weight="bold" color={colors.ball}>
                                     ✓{tally.won}
                                 </Txt>{' '}
                                 <Txt size={12} weight="bold" color={colors.strike}>
