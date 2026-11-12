@@ -607,6 +607,8 @@
     "none": "doesn't play this day"
   },
   "timeline": {
+    "replayHint": "Tap a play to watch it again",
+    "replayPlay": "Watch the play again: {{play}}",
     "atBat": "At bat:",
     "more_one": "See {{count}} more play",
     "more_other": "See {{count}} more plays",
@@ -777,6 +779,9 @@
     "ballsCount_other": "{{count}} batted balls"
   },
   "anim": {
+    "error": "ERROR",
+    "reachError": "Reaches on an error",
+    "reachInterference": "Reaches on interference",
     "single": "SINGLE",
     "double": "DOUBLE",
     "triple": "TRIPLE",

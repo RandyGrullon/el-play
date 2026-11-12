@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import type { GameDetail, GameTeam } from '../../types';
@@ -20,6 +20,7 @@ import { pushModalLayer } from '../ui/BottomSheet';
 import { OutsDots } from '../game/Bases';
 import { DelayPill } from '../game/Delay';
 import { FieldDrawing } from './FieldDrawing';
+import { FIELD_BACK, type FieldBack } from './FieldView';
 
 // El terreno con las caras de los que están en juego. Abre saliendo del diamante que se tocó (FLIP: se mide el
 // diamante y el panel crece desde ahí con un resorte) y las caras van saliendo una tras otra; al cerrar vuelve al
@@ -174,12 +175,15 @@ interface FieldOverlayProps {
     gamePk: number;
     origin: HTMLElement | null;
     onLeave?: () => void;
+    /** Vuelve a abrir sobre su entrada del historial (al volver «atrás» desde un pelotero) */
+    historyToken?: string;
     onClosed: () => void;
 }
 
-const FieldOverlay: React.FC<FieldOverlayProps> = ({ gamePk, origin, onLeave, onClosed }) => {
+const FieldOverlay: React.FC<FieldOverlayProps> = ({ gamePk, origin, onLeave, historyToken, onClosed }) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const location = useLocation();
     const { playAnimations } = usePreferences();
     // Se decide al abrir: con animaciones apagadas o «menos movimiento», solo un fundido
     const [motion] = useState(() => playAnimations && !prefersReducedMotion());
@@ -194,7 +198,7 @@ const FieldOverlay: React.FC<FieldOverlayProps> = ({ gamePk, origin, onLeave, on
     const closing = useRef(false);
     const finished = useRef(false);
     const pushed = useRef(false);
-    const token = useRef(`field-${gamePk}-${Date.now()}`);
+    const token = useRef(historyToken ?? `field-${gamePk}-${Date.now()}`);
     const openedAt = useRef(Date.now());
     const onClosedRef = useRef(onClosed);
     onClosedRef.current = onClosed;
@@ -312,15 +316,22 @@ const FieldOverlay: React.FC<FieldOverlayProps> = ({ gamePk, origin, onLeave, on
         };
     }, [motion, origin]);
 
-    // A la página del pelotero: el panel se cierra sin volver al diamante y la entrada del historial se reemplaza
-    // (así «atrás» desde el pelotero vuelve a donde estaba, no al terreno)
+    // A la página del pelotero: el panel se cierra sin volver al diamante y su entrada del historial se queda marcada,
+    // así «atrás» desde el pelotero vuelve con el terreno abierto (FieldViewProvider lo abre otra vez)
     const goTo = (event: React.MouseEvent<HTMLAnchorElement>, id: number) => {
         event.preventDefault();
         closing.current = true;
-        const replace = pushed.current && window.history.state?.elPlayField === token.current;
+        if (pushed.current && window.history.state?.elPlayField === token.current) {
+            try {
+                const back: FieldBack = { gamePk, path: location.pathname };
+                window.history.replaceState({ ...window.history.state, [FIELD_BACK]: back }, '');
+            } catch {
+                // Sin poder marcarla, «atrás» vuelve a la página sin el terreno
+            }
+        }
         pushed.current = false;
         onLeave?.();
-        navigate(playerPath(id), { replace });
+        navigate(playerPath(id));
         finish();
     };
 

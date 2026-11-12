@@ -57,8 +57,9 @@ describe('PlayByPlay', () => {
     });
 
     it('repetir: ▶ solo en las jugadas con animación, la fila también la pide (y sigue abriendo) y apagado con el candado', () => {
-        const error = { ...atBat, i: 1, event: 'field_error', eventLabel: 'Field Error', scoring: false, desc: 'Pelotero Dos reaches on a fielding error.' } as AtBat;
-        const both = { ...game, atBats: [atBat, error] } as GameDetail;
+        // La selección (fielders_choice) no tiene animación (el error sí: se embasa como en un sencillo)
+        const choice = { ...atBat, i: 1, event: 'fielders_choice', eventLabel: 'Fielders Choice', scoring: false, desc: 'Pelotero Dos reaches on a fielder\'s choice.' } as AtBat;
+        const both = { ...game, atBats: [atBat, choice] } as GameDetail;
         const calls: number[] = [];
         const view = (locked: boolean) => (
             <MemoryRouter>
@@ -72,7 +73,7 @@ describe('PlayByPlay', () => {
         fireEvent.click(replays[0]);
         expect(calls).toEqual([0]);
 
-        // La fila del jonrón repite y abre los pitcheos; la del error solo abre
+        // La fila del jonrón repite y abre los pitcheos; la de la selección solo abre
         const rows = Array.from(document.querySelectorAll('button[aria-expanded]'));
         fireEvent.click(rows[1]);
         expect(calls).toEqual([0, 0]);

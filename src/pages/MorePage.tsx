@@ -14,6 +14,7 @@ import { ModeCard } from '../components/pro/ModeCard';
 import { setLanguage } from '../i18n';
 import { enablePush, pushConfig, pushSupported, type PushStatus } from '../lib/push';
 import type { AlertKinds } from '../store/preferences';
+import { Switch } from '../components/ui/Switch';
 
 // "Más": liga, tema, idioma e instalación (antes estaban en la barra de arriba)
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -98,7 +99,7 @@ export const MorePage: React.FC = () => {
                         <span className="block font-semibold">{t('more.largeText')}</span>
                         <span className="block text-sm text-muted">{t('more.largeTextHint')}</span>
                     </span>
-                    <input type="checkbox" role="switch" checked={largeText} onChange={(event) => setLargeText(event.target.checked)} className="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-raised transition-colors before:block before:h-5 before:w-5 before:translate-x-0.5 before:rounded-full before:bg-surface before:shadow before:transition-transform checked:bg-accent checked:before:translate-x-[22px]" />
+                    <Switch checked={largeText} onChange={setLargeText} />
                 </label>
                 <div className="card space-y-3 p-4">
                     <span className="block min-w-0">
@@ -188,7 +189,7 @@ const AlertSettings: React.FC = () => {
                             <span className="block font-semibold">{t(`alertsMore.kinds.${kind}`)}</span>
                             <span className="block text-xs text-muted">{t(`alertsMore.hints.${kind}`)}</span>
                         </span>
-                        <input type="checkbox" role="switch" checked={alertKinds[kind]} onChange={(event) => setAlertKind(kind, event.target.checked)} className="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-raised transition-colors before:block before:h-5 before:w-5 before:translate-x-0.5 before:rounded-full before:bg-surface before:shadow before:transition-transform checked:bg-accent checked:before:translate-x-[22px]" />
+                        <Switch checked={alertKinds[kind]} onChange={(on) => setAlertKind(kind, on)} />
                     </label>
                 ))}
             </div>

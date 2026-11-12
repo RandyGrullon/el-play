@@ -19,12 +19,12 @@ import { usePreferences } from '../store/preferences';
 import { useShare } from '../share/ShareSheet';
 import { playerFromPerformer, resultFromGame } from '../share/subjects';
 import { GameHero, type HeroModel } from '../components/gamecast/GameHero';
-import { Timeline } from '../components/gamecast/Timeline';
+import { Timeline, type TimelineReplay } from '../components/gamecast/Timeline';
 import { StoryRecap } from '../components/gamecast/StoryRecap';
 import { StrikeZone } from '../components/game/StrikeZone';
 import { SprayChart } from '../components/game/SprayChart';
 import { PlayAnimation } from '../components/gamecast/PlayAnimation';
-import { forMode, newPlayEvents, REPLAY_COOLDOWN_MS, replayEventOf, replayGate, type PlayEvent } from '../lib/playEvents';
+import { forMode, newPlayEvents, REPLAY_COOLDOWN_MS, replayActionOf, replayEventOf, replayGate, type PlayEvent } from '../lib/playEvents';
 import { StrikeZonePanel } from '../components/game/StrikeZonePanel';
 import { InningBreakMini } from '../components/game/InningBreak';
 import { WinProbabilityCard } from '../components/game/WinProbability';
@@ -90,7 +90,7 @@ const ActionButton: React.FC<{ icon: React.ReactNode; label: string; onClick: ()
 );
 
 // En vivo (diseño D2): situación + mini zona flotando sobre la cabecera, cronología tipo chat
-const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onShare: () => void; notice?: React.ReactNode }> = ({ game, open, onShare, notice }) => {
+const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onShare: () => void; notice?: React.ReactNode; replay?: TimelineReplay }> = ({ game, open, onShare, notice, replay }) => {
     const { t } = useTranslation();
     const { atBat } = atBatForZone(game);
     const batting = game.inning?.isTop ? game.away : game.home;
@@ -158,7 +158,7 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
             </div>
 
             <div className="px-4 pt-5">
-                <Timeline game={game} onMore={() => open('plays')} />
+                <Timeline game={game} onMore={() => open('plays')} replay={replay} />
             </div>
 
             {!pause && (
@@ -400,10 +400,11 @@ export const GamePage: React.FC = () => {
     }, [gamePk]);
     // Con las animaciones apagadas en «Más» o si el sistema pide menos movimiento, el historial no ofrece repetir
     const canReplay = playAnimations && !reducedMotion;
-    const startReplay = (atBatIndex: number) => {
+    // Desde la hoja de jugadas o desde la cronología del juego en vivo (ahí también los robos, cambios de lanzador y emergentes)
+    const startReplay = (atBatIndex: number, actionIndex?: number) => {
         // Con una animación en vivo saliendo, el toque también se ignora
         if (!game || !canReplay || plays.length > 0) return;
-        const event = replayEventOf(game, atBatIndex);
+        const event = actionIndex === undefined ? replayEventOf(game, atBatIndex) : replayActionOf(game, atBatIndex, actionIndex);
         const started = event ? replayGate.start(gate.current, Date.now()) : null;
         if (!event || !started) return;
         gate.current = started;
@@ -486,7 +487,7 @@ export const GamePage: React.FC = () => {
                     <Skeleton className="h-[260px] rounded-card" />
                 </div>
             ) : game.state === 'live' ? (
-                <LiveView game={game} open={setSheet} onShare={shareGame} notice={delayNotice} />
+                <LiveView game={game} open={setSheet} onShare={shareGame} notice={delayNotice} replay={canReplay ? { locked: replayLocked, onReplay: startReplay } : undefined} />
             ) : game.state === 'final' && !notPlayed ? (
                 // MLB da los pospuestos y cancelados como «final»: van con la previa (sin resumen ni marcador 0 - 0)
                 <FinalView game={game} open={setSheet} onShare={shareGame} onSharePerformer={sharePerformer} />

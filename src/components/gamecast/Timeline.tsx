@@ -1,9 +1,12 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Play } from 'lucide-react';
 import type { AtBat, GameDetail, Pitch, PersonRef } from '../../types';
 import { describePlay, eventName, eventTone, inningName, pitchCallName, pitchTypeName, type EventTone } from '../../lib/baseball';
 import { timelineActions, type ActionKind } from '../../lib/liveGame';
 import { peopleOf } from '../../lib/links';
+import { replayActionOf, replayEventOf } from '../../lib/playEvents';
+import { OVER_CARD } from '../ui/CardLink';
 import { PlayerLink } from '../ui/PlayerLink';
 import { TeamLink } from '../ui/TeamLink';
 import { LinkedNames } from '../ui/TextLinks';
@@ -33,22 +36,47 @@ const PitchBubble: React.FC<{ pitch: Pitch; last: boolean }> = ({ pitch, last })
     return <span className={`max-w-[85%] rounded-[18px] px-3.5 py-2 text-[13px] font-semibold ${last ? `${solid} rounded-br-md text-white` : BUBBLE[pitch.r]}`}>{text}</span>;
 };
 
-const PlayBubble: React.FC<{ atBat: AtBat; game: GameDetail; people: PersonRef[] }> = ({ atBat, game, people }) => {
+/** Tocar la jugada (o la acción) la repite; `locked`: hay una animación saliendo o corre la pausa entre repeticiones */
+interface BubbleReplay {
+    locked: boolean;
+    onReplay: () => void;
+}
+
+/** El ▶ que dice que esa jugada se puede volver a ver (el toque lo recibe toda la burbuja) */
+const ReplayMark: React.FC<{ locked: boolean; small?: boolean }> = ({ locked, small }) => (
+    <span aria-hidden="true" className={`flex shrink-0 items-center justify-center rounded-full text-ink transition-opacity ${small ? 'h-5 w-5 bg-surface' : 'h-6 w-6 bg-raised'} ${locked ? 'opacity-40' : ''}`}>
+        <Play className={`${small ? 'h-2.5 w-2.5' : 'h-3 w-3'} ml-px fill-current`} />
+    </span>
+);
+
+/** Botón invisible que cubre toda la burbuja: los nombres y los equipos van por encima (OVER_CARD) y abren su página */
+const ReplayCover: React.FC<{ replay: BubbleReplay; label: string; className: string }> = ({ replay, label, className }) => {
+    const { t } = useTranslation();
+    return <button type="button" onClick={replay.onReplay} aria-label={t('timeline.replayPlay', { play: label })} aria-disabled={replay.locked} className={`absolute inset-0 z-[1] w-full ${className}`} />;
+};
+
+const PlayBubble: React.FC<{ atBat: AtBat; game: GameDetail; people: PersonRef[]; replay: BubbleReplay | null }> = ({ atBat, game, people, replay }) => {
     const { i18n } = useTranslation();
     const team = atBat.top ? game.away : game.home;
+    const name = eventName(atBat, i18n.language);
+    const over = replay ? OVER_CARD : undefined;
     return (
-        <div className="max-w-[88%] rounded-[22px] rounded-bl-md bg-surface px-4 py-3 shadow-card">
+        <div className={`relative isolate max-w-[88%] rounded-[22px] rounded-bl-md bg-surface px-4 py-3 shadow-card ${replay ? 'transition-colors hover:bg-raised/60' : ''}`}>
+            {replay && <ReplayCover replay={replay} label={name} className="rounded-[22px] rounded-bl-md" />}
             <div className="mb-1 flex flex-wrap items-center gap-2">
-                <span className={`pill px-2 py-0.5 text-[11px] uppercase ${TONES[eventTone(atBat.event)]}`}>{eventName(atBat, i18n.language)}</span>
+                <span className={`pill px-2 py-0.5 text-[11px] uppercase ${TONES[eventTone(atBat.event)]}`}>{name}</span>
                 {atBat.scoring && atBat.away !== null && (
                     <span className="text-xs font-bold tabular-nums">
-                        <TeamLink id={game.away.id}>{game.away.abbrev}</TeamLink> {atBat.away} · <TeamLink id={game.home.id}>{game.home.abbrev}</TeamLink> {atBat.home}
+                        <TeamLink id={game.away.id} className={over}>{game.away.abbrev}</TeamLink> {atBat.away} · <TeamLink id={game.home.id} className={over}>{game.home.abbrev}</TeamLink> {atBat.home}
                     </span>
                 )}
-                <span className="ml-auto h-2 w-2 rounded-full" style={{ backgroundColor: team.color }} aria-hidden="true" />
+                <span className="ml-auto flex items-center gap-2">
+                    {replay && <ReplayMark locked={replay.locked} />}
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: team.color }} aria-hidden="true" />
+                </span>
             </div>
             <p className="text-sm leading-snug">
-                <LinkedNames text={describePlay(atBat.desc, i18n.language)} people={people} />
+                <LinkedNames text={describePlay(atBat.desc, i18n.language)} people={people} linkClassName={over} />
             </p>
         </div>
     );
@@ -67,34 +95,63 @@ const ACTION_TONE: Partial<Record<ActionKind, string>> = {
 };
 
 /** Una acción del juego (robo, cambio de lanzador, visita al montículo…) como aviso pequeño en medio de la charla */
-const ActionLine: React.FC<{ kind: ActionKind; desc: string; people: PersonRef[] }> = ({ kind, desc, people }) => {
+const ActionLine: React.FC<{ kind: ActionKind; desc: string; people: PersonRef[]; replay?: BubbleReplay | null }> = ({ kind, desc, people, replay }) => {
     const { t, i18n } = useTranslation();
     const label = t(`timeline.actions.${kind}`);
     const text = describePlay(desc, i18n.language);
     // «Visita al montículo. · Visita al montículo»: si la descripción no dice más que la etiqueta, va sola
     const same = text.replace(/[.\s]+$/, '').toLowerCase() === label.toLowerCase();
     return (
-        <p className="max-w-[92%] self-center rounded-full bg-raised px-3 py-1.5 text-center text-xs text-muted">
-            <b className={`font-extrabold uppercase tracking-wide ${ACTION_TONE[kind] ?? 'text-ink'}`}>{label}</b>
-            {same ? null : (
-                <>
-                    {' · '}
-                    <LinkedNames text={text} people={people} />
-                </>
-            )}
+        <p className={`relative isolate max-w-[92%] self-center rounded-full bg-raised px-3 py-1.5 text-center text-xs text-muted ${replay ? 'flex items-center gap-1.5 hover:bg-raised/70' : ''}`}>
+            {replay && <ReplayCover replay={replay} label={label} className="rounded-full" />}
+            {replay && <ReplayMark locked={replay.locked} small />}
+            <span>
+                <b className={`font-extrabold uppercase tracking-wide ${ACTION_TONE[kind] ?? 'text-ink'}`}>{label}</b>
+                {same ? null : (
+                    <>
+                        {' · '}
+                        <LinkedNames text={text} people={people} linkClassName={replay ? OVER_CARD : undefined} />
+                    </>
+                )}
+            </span>
         </p>
     );
 };
 
+/** Repetir desde la cronología: el turno (su `i`) y, si es una acción (robo, cambio de lanzador…), cuál dentro del turno */
+export interface TimelineReplay {
+    locked: boolean;
+    onReplay: (atBatIndex: number, actionIndex?: number) => void;
+}
+
 // Cronología tipo chat: el turno de ahora con sus lanzamientos (el último resaltado) y debajo las jugadas
-// anteriores, de la más reciente a la más vieja, con separadores por entrada.
-export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () => void }> = ({ game, limit = 12, onMore }) => {
+// anteriores, de la más reciente a la más vieja, con separadores por entrada. Con `replay`, tocar una jugada (o un
+// robo, un cambio de lanzador, un emergente) repite su animación, la misma que salió en vivo.
+export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () => void; replay?: TimelineReplay }> = ({ game, limit = 12, onMore, replay }) => {
     const { t, i18n } = useTranslation();
     const current = game.state === 'live' ? game.atBats.find((atBat) => atBat.i === game.currentAtBat && !atBat.complete) : undefined;
     const past = game.atBats.filter((atBat) => atBat.complete).reverse();
     const shown = past.slice(0, limit);
     // Los nombres de las jugadas abren la página de cada pelotero
     const people = useMemo(() => peopleOf(game.atBats), [game.atBats]);
+    // Lo que se puede repetir (lo que tiene animación) de lo que se ve
+    const offersReplay = !!replay;
+    const replayable = useMemo(() => {
+        const atBats = new Set<number>();
+        const actions = new Set<string>();
+        if (!offersReplay) return { atBats, actions };
+        for (const atBat of current ? [current, ...shown] : shown) {
+            if (atBat.complete && replayEventOf(game, atBat.i)) atBats.add(atBat.i);
+            atBat.actions.forEach((_action, index) => {
+                if (replayActionOf(game, atBat.i, index)) actions.add(`${atBat.i}-${index}`);
+            });
+        }
+        return { atBats, actions };
+    }, [game, offersReplay, limit]); // eslint-disable-line react-hooks/exhaustive-deps
+    const playReplay = (atBat: AtBat): BubbleReplay | null => (replay && replayable.atBats.has(atBat.i) ? { locked: replay.locked, onReplay: () => replay.onReplay(atBat.i) } : null);
+    const actionReplay = (atBat: AtBat, index: number): BubbleReplay | null =>
+        replay && replayable.actions.has(`${atBat.i}-${index}`) ? { locked: replay.locked, onReplay: () => replay.onReplay(atBat.i, index) } : null;
+    const hint = replayable.atBats.size > 0 || replayable.actions.size > 0;
 
     let lastHalf = '';
     return (
@@ -124,12 +181,18 @@ export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () 
                                     item.pitch ? (
                                         <PitchBubble key={`p${index}`} pitch={item.pitch} last={item.at === current.pitches.length - 1} />
                                     ) : (
-                                        <ActionLine key={`a${index}`} kind={item.action!.kind!} desc={item.action!.desc} people={people} />
+                                        <ActionLine key={`a${index}`} kind={item.action!.kind!} desc={item.action!.desc} people={people} replay={actionReplay(current, item.action!.index)} />
                                     )
                                 )
                         )}
                     </div>
                 </>
+            )}
+            {hint && shown.length > 0 && (
+                <p className="mt-1 flex items-center gap-1.5 self-center text-[11px] font-semibold text-faint">
+                    <Play className="h-2.5 w-2.5 fill-current" aria-hidden="true" />
+                    {t('timeline.replayHint')}
+                </p>
             )}
             {shown.map((atBat) => {
                 const half = inningName({ n: atBat.inning, isTop: atBat.top }, i18n.language);
@@ -138,12 +201,12 @@ export const Timeline: React.FC<{ game: GameDetail; limit?: number; onMore?: () 
                 return (
                     <React.Fragment key={atBat.i}>
                         {separator && <p className="mt-2 self-center text-xs font-bold text-muted">{half}</p>}
-                        <PlayBubble atBat={atBat} game={game} people={people} />
+                        <PlayBubble atBat={atBat} game={game} people={people} replay={playReplay(atBat)} />
                         {/* De la más nueva a la más vieja: lo que pasó durante el turno va debajo de su resultado */}
                         {timelineActions(atBat)
                             .reverse()
-                            .map((action, index) => (
-                                <ActionLine key={index} kind={action.kind!} desc={action.desc} people={people} />
+                            .map((action) => (
+                                <ActionLine key={action.index} kind={action.kind!} desc={action.desc} people={people} replay={actionReplay(atBat, action.index)} />
                             ))}
                     </React.Fragment>
                 );
