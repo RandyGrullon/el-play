@@ -19,6 +19,7 @@ import { initLanguage } from '../i18n';
 import { LeagueProvider } from '../state/league';
 import { PreferencesProvider, useAlertTaps } from '../state/preferences';
 import { useAlerts } from '../hooks/useAlerts';
+import { useHomeWidget } from '../hooks/useHomeWidget';
 import { ThemeProvider, useColors, useTheme } from '../theme/theme';
 import { dark, light } from '../theme/tokens';
 import { AppShell, Toast } from '../components/layout';
@@ -80,6 +81,8 @@ const Navigator: React.FC = () => {
     const { colors, isDark } = useTheme();
     useAlertTaps();
     useAlerts();
+    // El widget del iPhone (pantalla de inicio y bloqueada) con lo que la app ya leyó
+    useHomeWidget();
     useErrorScreen();
     return (
         <>

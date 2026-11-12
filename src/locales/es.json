@@ -541,6 +541,31 @@
       "saves": "Salvado"
     }
   },
+  "widget": {
+    "favorite": "Tu equipo",
+    "live": "En vivo",
+    "next": "Próximo juego",
+    "last": "Último juego",
+    "today": "Hoy",
+    "tomorrow": "Mañana",
+    "postponed": "Pospuesto",
+    "suspended": "Suspendido",
+    "started": "En juego",
+    "liveCount_one": "{{count}} en vivo",
+    "liveCount_other": "{{count}} en vivo",
+    "outs_one": "{{count}} out",
+    "outs_other": "{{count}} outs",
+    "won": "Ganó {{team}}",
+    "noGames": "No hay juegos por ahora.",
+    "openApp": "Abre El Play para ver tus juegos aquí.",
+    "updated": "Actualizado {{time}}",
+    "stale": "Toca para actualizar",
+    "shortcutLive": "En vivo",
+    "shortcutTeam": "Mi equipo",
+    "shortcutToday": "Hoy",
+    "shortcutFantasy": "Fantasy",
+    "shortcutStandings": "Posiciones"
+  },
   "notifications": {
     "gameStarting": "¡El juego va a empezar!",
     "gameStartingBody": "{{away}} vs {{home}} empieza en 10 minutos.",

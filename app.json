@@ -119,7 +119,25 @@
           "bundleIdentifier": "com.grullonb.elplay.ExpoWidgetsTarget",
           "groupIdentifier": "group.com.grullonb.elplay",
           "enablePushNotifications": false,
-          "frequentUpdates": false
+          "frequentUpdates": false,
+          "widgets": [
+            {
+              "name": "ElPlayJuegos",
+              "displayName": "El Play",
+              "description": "Tu equipo y los juegos de hoy, con accesos directos a En vivo, Fantasy y Posiciones.",
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium",
+                  "systemLarge",
+                  "accessoryRectangular",
+                  "accessoryInline"
+                ],
+                "initialLayout": "src/live/HomeWidget.tsx"
+              },
+              "android": null
+            }
+          ]
         }
       ]
     ],

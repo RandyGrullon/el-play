@@ -71,7 +71,7 @@ Después, en el teléfono:
 | `src/app/juego/[gamePk].tsx` | El botón en la vista en vivo y la llamada que manda cada lectura de `useGame` |
 | `app.json` | Plugin `expo-widgets` con `bundleIdentifier`, `groupIdentifier`, `enablePushNotifications: false` y `frequentUpdates: false` |
 
-Reglas de `expo-widgets` que hay que respetar al tocar `LiveGame.tsx` o `GameNotification.tsx`: la función lleva la directiva `'widget'` y corre **aparte** (en la extensión del iPhone o en el proceso de la notificación). Ahí no hay hooks, no se puede importar nada y no se puede usar nada declarado fuera de la función, ni siquiera una constante del mismo archivo; todo llega por las props. Solo componentes y modificadores de `@expo/ui/swift-ui` (iPhone) o `@expo/ui/jetpack-compose` (Android). No se agrega nada en `widgets[]` del plugin: eso es para widgets de la pantalla de inicio.
+Reglas de `expo-widgets` que hay que respetar al tocar `LiveGame.tsx` o `GameNotification.tsx`: la función lleva la directiva `'widget'` y corre **aparte** (en la extensión del iPhone o en el proceso de la notificación). Ahí no hay hooks, no se puede importar nada y no se puede usar nada declarado fuera de la función, ni siquiera una constante del mismo archivo; todo llega por las props. Solo componentes y modificadores de `@expo/ui/swift-ui` (iPhone) o `@expo/ui/jetpack-compose` (Android). En `widgets[]` del plugin va solo el widget de la pantalla de inicio (`ElPlayJuegos`, `src/live/HomeWidget.tsx`, con `ios.initialLayout` para que salga en la galería antes de abrir la app); la Live Activity y la notificación no van ahí.
 
 Diferencias con el diseño (`pro-segundo-plano`):
 

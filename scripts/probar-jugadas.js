@@ -23,7 +23,7 @@ const compile = (name) => {
     const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } });
     fs.writeFileSync(path.join(OUT, `${name}.js`), outputText);
 };
-['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts', 'field', 'spray', 'swipeBack', 'appUpdate', 'fieldReturn', 'absChallenges'].forEach(compile);
+['flight', 'runners', 'playEvents', 'baseball', 'polling', 'gameAlerts', 'field', 'spray', 'swipeBack', 'appUpdate', 'fieldReturn', 'absChallenges', 'format', 'homeWidget'].forEach(compile);
 // playEvents usa el modo PRO de la cuenta (React Native): aquí siempre Lite
 fs.writeFileSync(path.join(OUT, 'pro.js'), 'exports.proActive = () => false;\n');
 
@@ -1524,6 +1524,197 @@ console.log('retos del ABS en barra (los mismos casos de la web)');
         assert.deepStrictEqual(retos.absSlots(retos.absTally({ won: 0, lost: 0, remaining: 1 })), ['left', 'empty']);
         assert.deepStrictEqual(retos.absTally({ won: -1, lost: -2, remaining: -1 }), { total: 2, left: 0, won: 0, lost: 0 });
         assert.deepStrictEqual(retos.absSlots(retos.absTally({ won: -1, lost: -2, remaining: -1 })), ['empty', 'empty']);
+    });
+}
+
+// ---------------------------------------------------------------- widget del iPhone (src/lib/homeWidget.ts)
+
+const widget = require(path.join(OUT, 'homeWidget.js'));
+const { formatTime: horaDe } = require(path.join(OUT, 'format.js'));
+console.log('widget de la pantalla de inicio del iPhone');
+{
+    // 7:30 p. m. en Santo Domingo (UTC-4)
+    const now = Date.UTC(2026, 10, 12, 23, 30);
+    const textos = {
+        favorite: 'Tu equipo',
+        live: 'En vivo',
+        next: 'Próximo juego',
+        last: 'Último juego',
+        today: 'Hoy',
+        tomorrow: 'Mañana',
+        postponed: 'Pospuesto',
+        suspended: 'Suspendido',
+        started: 'En juego',
+        liveCount: (count) => `${count} en vivo`,
+        outs: (count) => (count === 1 ? '1 out' : `${count} outs`),
+        won: (team) => `Ganó ${team}`,
+        noGames: 'No hay juegos por ahora.',
+        openApp: 'Abre El Play para ver tus juegos aquí.',
+        updated: (time) => `Actualizado ${time}`,
+        staleText: 'Toca para actualizar',
+        shortcutLive: 'En vivo',
+        shortcutTeam: 'Mi equipo',
+        shortcutToday: 'Hoy',
+        shortcutFantasy: 'Fantasy',
+        shortcutStandings: 'Posiciones'
+    };
+    const equipo = (id, abbrev, color, score = null, isWinner = false) => ({ id, name: `Equipo ${abbrev}`, abbrev, logo: '', color, record: null, score, hits: null, isWinner, probable: null });
+    const juego = (gamePk, away, home, date, extra = {}) => ({
+        gamePk,
+        league: 'lidom',
+        date,
+        state: 'preview',
+        detailedState: 'Scheduled',
+        gameType: 'R',
+        description: null,
+        venue: 'Estadio de Prueba',
+        scheduledInnings: 9,
+        inningsPlayed: null,
+        away,
+        home,
+        live: null,
+        decisions: null,
+        ...extra
+    });
+    const enVivo = juego(9001, equipo(1, 'AAA', '#c8102e', 3), equipo(2, 'BBB', '#003da5', 1), '2026-11-12T22:00:00Z', {
+        state: 'live',
+        detailedState: 'In Progress',
+        inningsPlayed: 5,
+        live: { inning: 5, ordinal: '5th', isTop: true, inningState: 'Top', balls: 1, strikes: 2, outs: 2, runners: { first: true, second: false, third: true }, batter: null, pitcher: null }
+    });
+    const proximo = juego(9002, equipo(3, 'CCC', '#f5f5f5'), equipo(4, 'DDD', 'rojo'), '2026-11-13T00:00:00Z');
+    const final = juego(9003, equipo(5, 'EEE', '#00843d', 2), equipo(6, 'FFF', '#ffb81c', 5, true), '2026-11-12T18:00:00Z', { state: 'final', detailedState: 'Final', inningsPlayed: 10 });
+    const manana = juego(9004, equipo(4, 'DDD', '#123456'), equipo(1, 'AAA', '#c8102e'), '2026-11-13T23:00:00Z');
+    const pospuesto = juego(9005, equipo(7, 'GGG', '#222222'), equipo(8, 'HHH', '#333333'), '2026-11-12T20:00:00Z', { detailedState: 'Postponed' });
+    const todos = [enVivo, proximo, final, manana, pospuesto];
+    const props = (favoriteTeamId, games = todos, extra = {}) => widget.homeWidgetProps({ games, favoriteTeamId, lang: 'es', now, texts: textos, ...extra });
+
+    it('tu equipo arriba: el de hoy (aunque empiece más tarde) y los otros del día en orden: en vivo, final, no jugado', () => {
+        const w = props(4);
+        assert.strictEqual(w.title, 'Tu equipo');
+        partial(w.featured, { gamePk: 9002, phase: 'pre', mine: true, detail: 'Hoy', url: 'elplay://juego/9002' });
+        assert.strictEqual(w.featured.status, horaDe('2026-11-13T00:00:00Z', 'es'));
+        assert.deepStrictEqual(w.others.map((game) => game.gamePk), [9001, 9003, 9005]);
+        assert.deepStrictEqual([w.featured.away.runs, w.featured.home.runs], ['', '']);
+        assert.strictEqual(w.liveCount, '1 en vivo');
+        assert.strictEqual(w.ready, true);
+    });
+
+    it('sin equipo favorito: el que está en vivo, con la entrada, los outs y los corredores', () => {
+        const w = props(null);
+        assert.strictEqual(w.title, 'En vivo');
+        partial(w.featured, { gamePk: 9001, phase: 'live', status: '▲ 5', detail: '2 outs', outs: 2, first: true, second: false, third: true, mine: false });
+        assert.deepStrictEqual([w.featured.away.runs, w.featured.home.runs], ['3', '1']);
+    });
+
+    it('tu equipo ya terminó hoy: el final con extra innings y quién ganó', () => {
+        const w = props(6);
+        partial(w.featured, { gamePk: 9003, phase: 'final', status: 'Final/10', detail: 'Ganó FFF', mine: true });
+        assert.deepStrictEqual([w.featured.away.runs, w.featured.home.runs], ['2', '5']);
+    });
+
+    it('tu equipo juega hoy y mañana: el de hoy; si hoy no juega, el próximo (Mañana)', () => {
+        assert.strictEqual(props(1).featured.gamePk, 9001);
+        const w = props(4, [enVivo, final, manana]);
+        partial(w.featured, { gamePk: 9004, detail: 'Mañana', mine: true });
+        assert.strictEqual(w.title, 'Tu equipo');
+        // Los otros son del día de su juego (mañana): ninguno
+        assert.deepStrictEqual(w.others, []);
+    });
+
+    it('si tu equipo no tiene juegos: el de en vivo; sin en vivo, el próximo; sin nada más, el último', () => {
+        assert.strictEqual(props(99).featured.gamePk, 9001);
+        partial(props(99, [proximo, final]), { title: 'Próximo juego', featured: { gamePk: 9002 } });
+        partial(props(99, [final]), { title: 'Último juego', featured: { gamePk: 9003 } });
+        partial(props(null, [pospuesto]).featured, { phase: 'off', status: 'Pospuesto', detail: 'Hoy' });
+    });
+
+    it('sin juegos: nada arriba y el texto de no hay juegos', () => {
+        const w = props(null, []);
+        assert.strictEqual(w.featured, null);
+        assert.strictEqual(w.title, '');
+        assert.strictEqual(w.emptyText, 'No hay juegos por ahora.');
+        assert.deepStrictEqual(w.others, []);
+        assert.strictEqual(w.liveCount, '');
+    });
+
+    it('el mismo juego en dos calendarios cuenta una vez', () => {
+        const w = props(null, [enVivo, enVivo, final]);
+        assert.deepStrictEqual(w.others.map((game) => game.gamePk), [9003]);
+        assert.strictEqual(w.liveCount, '1 en vivo');
+    });
+
+    it('colores: uno raro pasa al azul de la app; sobre un color claro el texto va oscuro', () => {
+        const w = props(4);
+        assert.deepStrictEqual(w.featured.home, { abbrev: 'DDD', color: '#2563eb', ink: '#ffffff', runs: '', record: '' });
+        assert.strictEqual(w.featured.away.ink, '#14151a');
+    });
+
+    it('antes de empezar va el récord; empezado, las carreras', () => {
+        const conRecord = { ...proximo, away: { ...proximo.away, record: { wins: 12, losses: 8 } } };
+        partial(props(4, [conRecord]).featured.away, { runs: '', record: '12-8' });
+        partial(props(null, [enVivo]).featured.away, { runs: '3', record: '' });
+    });
+
+    it('accesos directos: Mi equipo con favorito; sin favorito, Hoy', () => {
+        assert.deepStrictEqual(props(4).shortcuts.map((item) => [item.label, item.url]), [
+            ['En vivo', 'elplay://en-vivo'],
+            ['Mi equipo', 'elplay://equipo/4'],
+            ['Fantasy', 'elplay://fantasy'],
+            ['Posiciones', 'elplay://posiciones']
+        ]);
+        assert.deepStrictEqual(props(null).shortcuts[1], { label: 'Hoy', url: 'elplay://', icon: 'calendar' });
+    });
+
+    it('«Actualizado» con la hora de la lectura, no la de ahora; la llave no cambia solo por esa hora', () => {
+        const leido = now - 3 * 60 * 1000;
+        const w = props(null, todos, { updatedAt: leido });
+        assert.strictEqual(w.updated, `Actualizado ${horaDe(new Date(leido).toISOString(), 'es')}`);
+        assert.strictEqual(widget.homeWidgetKey(w), widget.homeWidgetKey(props(null)));
+        assert.notStrictEqual(widget.homeWidgetKey(w), widget.homeWidgetKey(props(4)));
+    });
+
+    it('línea de tiempo: a la hora del juego pasa a «En juego» 0-0 y pide tocar para actualizar', () => {
+        const w = props(4, [proximo]);
+        const start = Date.parse(proximo.date);
+        const entries = widget.homeWidgetTimeline(w, now, widget.featuredStartOf([proximo], w));
+        assert.deepStrictEqual(entries.map((entry) => entry.at), [now, start]);
+        assert.strictEqual(entries[0].props.stale, false);
+        partial(entries[1].props, { stale: true, featured: { phase: 'live', status: 'En juego', detail: '', away: { runs: '0' }, home: { runs: '0' } } });
+        // Lo de antes no se toca
+        assert.strictEqual(w.featured.phase, 'pre');
+    });
+
+    it('línea de tiempo: con algo en vivo, a los 15 minutos de la lectura se marca como viejo; si ya pasaron, desde ya', () => {
+        const w = props(null, [enVivo, final]);
+        const entries = widget.homeWidgetTimeline(w, now, null, now - 5 * 60 * 1000);
+        assert.deepStrictEqual(entries.map((entry) => [entry.at, entry.props.stale]), [[now, false], [now + 10 * 60 * 1000, true]]);
+        const viejo = widget.homeWidgetTimeline(w, now, null, now - 20 * 60 * 1000);
+        assert.deepStrictEqual(viejo.map((entry) => [entry.at, entry.props.stale]), [[now, true]]);
+        // Sin nada en vivo ni por empezar, una sola entrada
+        assert.strictEqual(widget.homeWidgetTimeline(props(null, [final]), now, null).length, 1);
+    });
+
+    it('línea de tiempo: un juego a más de 24 h o con hora por definir no se adelanta', () => {
+        const lejos = juego(9010, equipo(3, 'CCC', '#111111'), equipo(4, 'DDD', '#222222'), '2026-11-15T00:00:00Z');
+        const w = props(4, [lejos]);
+        assert.strictEqual(widget.homeWidgetTimeline(w, now, widget.featuredStartOf([lejos], w)).length, 1);
+        const tbd = { ...proximo, startTimeTBD: true };
+        const conTbd = props(4, [tbd]);
+        assert.strictEqual(conTbd.featured.status, '—');
+        assert.strictEqual(widget.featuredStartOf([tbd], conTbd), null);
+    });
+
+    it('recién instalado: la invitación a abrir la app y los cuatro accesos', () => {
+        const w = widget.emptyHomeWidgetProps(textos);
+        partial(w, { ready: false, featured: null, emptyText: 'Abre El Play para ver tus juegos aquí.' });
+        assert.deepStrictEqual(w.shortcuts.map((item) => item.url), ['elplay://en-vivo', 'elplay://', 'elplay://fantasy', 'elplay://posiciones']);
+    });
+
+    it('en inglés: la entrada y el final', () => {
+        const w = widget.homeWidgetProps({ games: todos, favoriteTeamId: null, lang: 'en', now, texts: textos });
+        assert.strictEqual(w.featured.status, '▲ 5');
+        assert.strictEqual(widget.homeWidgetProps({ games: [final], favoriteTeamId: null, lang: 'en', now, texts: textos }).featured.status, 'Final/10');
     });
 }
 

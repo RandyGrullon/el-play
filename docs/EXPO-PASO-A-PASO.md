@@ -212,6 +212,23 @@ npx eas-cli@latest build --profile preview --platform android
 
 En iPhone no hay APK. Hace falta la cuenta de **Apple Developer** (US$99 al año) y se instala por TestFlight o registrando tu iPhone. El paso a paso está en [TIENDAS.md, sección 6](TIENDAS.md#6-probar-la-app-en-tu-teléfono) y sección 9. Mientras tanto, en iPhone usa el camino A.
 
+### Widget del iPhone (pantalla de inicio y bloqueada)
+
+El Play trae un widget: tu equipo (o el juego en vivo, el próximo o el último) con el marcador, los otros juegos del día y accesos directos a **En vivo**, **Mi equipo** (u **Hoy** si no tienes favorito), **Fantasy** y **Posiciones**. Solo existe en una app de El Play instalada con un build (TestFlight o development build). **En Expo Go y en la web no sale**: el widget va dentro de la app instalada, y Expo Go es otra app.
+
+1. Instala un build nuevo (el widget es nativo: un `eas update` no lo agrega a un build viejo).
+2. Abre El Play una vez y deja que cargue los juegos (así el widget ya tiene datos).
+3. En la pantalla de inicio, mantén presionado un espacio vacío hasta que los íconos se muevan → **+** (arriba a la izquierda, o **Editar → Agregar widget** en iOS 18 o más nuevo) → busca **El Play**.
+4. Escoge el tamaño y toca **Agregar widget**:
+   - **Pequeño:** el juego; tocarlo lo abre.
+   - **Mediano:** el juego y los cuatro accesos directos.
+   - **Grande:** el juego, hasta tres juegos más del día (cada uno abre el suyo) y los accesos directos.
+5. En la pantalla bloqueada: mantén presionado → **Personalizar** → **Pantalla bloqueada** → toca la fila de widgets → **El Play** (marcador en una línea o en un rectángulo).
+
+Cómo se actualiza: el widget **no busca datos solo**; muestra lo último que leyó la app (al abrirla, mientras está abierta y al salir). Con un juego en vivo, a los 15 minutos de la última lectura dice **«Toca para actualizar»**; a la hora en que empieza tu juego pasa a **«En juego»**. Para que siga el marcador con la app cerrada está **«Seguir el juego»** (pantalla bloqueada e isla dinámica).
+
+En Android, los widgets de `expo-widgets` 58 todavía no pueden abrir la app (los botones solo le avisan a la app si está abierta), así que por ahora el widget es solo del iPhone.
+
 ---
 
 ## 5. Cada vez que haya cambios: actualizar sin reinstalar

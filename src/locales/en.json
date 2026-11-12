@@ -541,6 +541,31 @@
       "saves": "Save"
     }
   },
+  "widget": {
+    "favorite": "Your team",
+    "live": "Live",
+    "next": "Next game",
+    "last": "Last game",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "postponed": "Postponed",
+    "suspended": "Suspended",
+    "started": "In progress",
+    "liveCount_one": "{{count}} live",
+    "liveCount_other": "{{count}} live",
+    "outs_one": "{{count}} out",
+    "outs_other": "{{count}} outs",
+    "won": "{{team}} won",
+    "noGames": "No games right now.",
+    "openApp": "Open El Play to see your games here.",
+    "updated": "Updated {{time}}",
+    "stale": "Tap to refresh",
+    "shortcutLive": "Live",
+    "shortcutTeam": "My team",
+    "shortcutToday": "Today",
+    "shortcutFantasy": "Fantasy",
+    "shortcutStandings": "Standings"
+  },
   "notifications": {
     "gameStarting": "Game starting soon!",
     "gameStartingBody": "{{away}} vs {{home}} starts in 10 minutes.",
