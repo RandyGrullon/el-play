@@ -23,6 +23,9 @@ export const ProSwitch: React.FC<ProSwitchProps> = ({ value, onChange, label, hi
         accessibilityLabel={label}
         accessibilityHint={hint}
         accessibilityState={{ checked: value, disabled: !!disabled }}
+        // En la web (react-native-web) el estado solo llega como aria-*
+        aria-checked={value}
+        aria-disabled={disabled || undefined}
         style={({ pressed }) => [{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6, opacity: disabled ? 0.45 : pressed ? 0.85 : 1 }, style]}
     >
         <View style={{ flex: 1, minWidth: 0 }}>

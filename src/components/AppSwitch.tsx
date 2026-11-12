@@ -79,6 +79,9 @@ export const AppSwitch: React.FC<AppSwitchProps> = ({ value, onValueChange, acce
         accessibilityLabel={accessibilityLabel}
         accessibilityHint={accessibilityHint}
         accessibilityState={{ checked: value, disabled: !!disabled }}
+        // En la web (react-native-web) el estado solo llega como aria-*
+        aria-checked={value}
+        aria-disabled={disabled || undefined}
         hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
         style={({ pressed }) => [{ flexShrink: 0, opacity: disabled ? 0.45 : pressed ? 0.85 : 1 }, style]}
     >
