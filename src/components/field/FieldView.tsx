@@ -17,7 +17,34 @@ export interface OpenFieldOptions {
     origin?: HTMLElement | null;
     /** Al irse a la página de un pelotero (cerrar la hoja de abajo, por ejemplo) */
     onLeave?: () => void;
+    /** Al volver «atrás» desde un pelotero: la entrada del historial del terreno que ya existe (no se pone otra) */
+    historyToken?: string;
 }
+
+/**
+ * Marca que deja la entrada del historial del terreno al irse a la página de un pelotero desde ahí: «atrás» desde el
+ * pelotero vuelve a esa entrada y el terreno se abre otra vez (el juego que se estaba viendo).
+ */
+export const FIELD_BACK = 'elPlayFieldBack';
+
+/** Lo que guarda la marca: el juego del terreno y la página donde estaba abierto */
+export interface FieldBack {
+    gamePk: number;
+    path: string;
+}
+
+/** El terreno para abrir otra vez si se volvió a la entrada marcada y a la misma página donde estaba abierto */
+const fieldToReopen = (pathname: string): { gamePk: number; historyToken: string } | null => {
+    try {
+        const state = window.history.state as Record<string, unknown> | null;
+        const back = state?.[FIELD_BACK] as Partial<FieldBack> | undefined;
+        const historyToken = state?.elPlayField;
+        if (!back || typeof back.gamePk !== 'number' || back.path !== pathname || typeof historyToken !== 'string') return null;
+        return { gamePk: back.gamePk, historyToken };
+    } catch {
+        return null;
+    }
+};
 
 interface FieldViewApi {
     open: (options: OpenFieldOptions) => void;
@@ -42,15 +69,21 @@ export const FieldViewProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }, []);
     const api = useMemo(() => ({ open, preload }), [open, preload]);
 
-    // Si se cambia de página por cualquier lado, el terreno no se queda abierto encima
-    useEffect(() => setCurrent(null), [location.pathname]);
+    // Si se cambia de página por cualquier lado, el terreno no se queda abierto encima; pero si se volvió «atrás» a la
+    // entrada del terreno (se había ido a un pelotero desde ahí), se abre otra vez como estaba
+    useEffect(() => {
+        const reopen = fieldToReopen(location.pathname);
+        if (!reopen) return setCurrent(null);
+        counter.current += 1;
+        setCurrent({ ...reopen, token: counter.current });
+    }, [location.pathname]);
 
     return (
         <FieldViewContext.Provider value={api}>
             {children}
             {current && (
                 <Suspense fallback={null}>
-                    <FieldOverlay key={current.token} gamePk={current.gamePk} origin={current.origin ?? null} onLeave={current.onLeave} onClosed={() => setCurrent(null)} />
+                    <FieldOverlay key={current.token} gamePk={current.gamePk} origin={current.origin ?? null} onLeave={current.onLeave} historyToken={current.historyToken} onClosed={() => setCurrent(null)} />
                 </Suspense>
             )}
         </FieldViewContext.Provider>

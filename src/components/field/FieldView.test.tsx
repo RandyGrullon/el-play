@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import i18n from '../../i18n';
 import { PreferencesProvider } from '../../store/preferences';
@@ -79,12 +79,14 @@ const card: ScheduleGame = {
     decisions: null
 };
 
-const renderList = () => {
+const renderList = (browser = false) => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.setQueryData(keys.game(123456), detail);
+    // Con el historial de verdad (BrowserRouter) para probar «atrás»
+    const Router = browser ? BrowserRouter : MemoryRouter;
     return render(
         <QueryClientProvider client={client}>
-            <MemoryRouter>
+            <Router>
                 <PreferencesProvider>
                     <LeagueProvider>
                         <ShareProvider>
@@ -98,7 +100,7 @@ const renderList = () => {
                         </ShareProvider>
                     </LeagueProvider>
                 </PreferencesProvider>
-            </MemoryRouter>
+            </Router>
         </QueryClientProvider>
     );
 };
@@ -142,7 +144,25 @@ describe('vista del terreno', () => {
         fireEvent.click(screen.getByRole('link', { name: 'Receptor: Pelotero Dos' }));
         expect(await screen.findByText('Página del pelotero')).toBeTruthy();
         await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 5000 });
-    });
+    }, 20000);
+
+    it('al volver «atrás» desde el pelotero, el terreno sale abierto otra vez; la X lo cierra', async () => {
+        window.history.replaceState(null, '', '/');
+        renderList(true);
+        fireEvent.click(screen.getByRole('button', { name: 'Ver el terreno' }));
+        await screen.findByRole('dialog', { name: 'El terreno' }, { timeout: 5000 });
+        fireEvent.click(screen.getByRole('link', { name: 'Receptor: Pelotero Dos' }));
+        expect(await screen.findByText('Página del pelotero')).toBeTruthy();
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 5000 });
+
+        window.history.back();
+        await screen.findByRole('dialog', { name: 'El terreno' }, { timeout: 5000 });
+        expect(window.location.pathname).toBe('/');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 5000 });
+        expect(window.history.state?.elPlayField).toBeUndefined();
+    }, 20000);
 
     it('entre entradas lo dice y muestra la defensa que sale', async () => {
         const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
