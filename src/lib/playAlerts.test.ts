@@ -22,9 +22,11 @@ describe('avisos jugada a jugada con la app abierta', () => {
         expect(playAlertOf(snap(1, 1, 3, 3), snap(1, 1, 3, 3), all)).toBeNull();
     });
 
-    it('respeta lo que se apagó: sin ventaja avisa la carrera; sin carreras ni ventaja, nada', () => {
+    it('respeta lo que se apagó: sin ventaja avisa la carrera; sin carreras ni ventaja, el hit que la remolcó; sin nada, nada', () => {
         expect(playAlertOf(snap(0, 0), snap(1, 0, 1), { ...all, lead: false })).toEqual({ kind: 'runs', side: 'away' });
-        expect(playAlertOf(snap(0, 0), snap(1, 0, 1), { runs: false, lead: false, hits: true })).toBeNull();
+        expect(playAlertOf(snap(0, 0), snap(1, 0, 1), { runs: false, lead: false, hits: true })).toEqual({ kind: 'hits', side: 'away' });
+        expect(playAlertOf(snap(0, 0), snap(1, 0, 0), { runs: false, lead: false, hits: true })).toBeNull();
+        expect(playAlertOf(snap(0, 0), snap(1, 0, 1), { runs: false, lead: false, hits: false })).toBeNull();
         expect(playAlertOf(snap(1, 1, 3, 3), snap(1, 1, 3, 4), { ...all, hits: false })).toBeNull();
     });
 

@@ -48,6 +48,8 @@ export const playAlertOf = (before: ScoreSnap | undefined, after: ScoreSnap, kin
         const lead = runs.away > 0 && runs.home > 0 ? null : leadTurn(before, after, side);
         if (lead && kinds.lead) return { kind: 'lead', side, lead };
         if (kinds.runs) return { kind: 'runs', side };
+        // Con carreras y ventaja apagadas, el hit que las remolcó se avisa como hit (igual que el servidor y la app)
+        if (kinds.hits && after[`${side}Hits`] > before[`${side}Hits`]) return { kind: 'hits', side };
         return null;
     }
     if (!kinds.hits) return null;
