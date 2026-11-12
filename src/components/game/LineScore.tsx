@@ -6,6 +6,60 @@ import { useTranslation } from 'react-i18next';
 import type { GameDetail } from '../../types';
 import { TeamLogo } from '../ui/TeamLogo';
 import { TeamLink } from '../ui/TeamLink';
+import { absSlots, absTally } from '../../lib/absChallenges';
+
+const SLOT: Record<'left' | 'lost' | 'empty', string> = {
+    left: '',
+    lost: 'bg-strike/25 ring-1 ring-inset ring-strike/50',
+    empty: 'bg-raised ring-1 ring-inset ring-line/20'
+};
+
+/**
+ * Retos del ABS de los dos equipos: por equipo, una barra con una casilla por reto que ha tenido (en su color las que
+ * le quedan, en rojo tenue las que perdió), «le quedan N de M» y cuántos ganó y perdió. Mientras uno está retando,
+ * su fila dice «revisando».
+ */
+const AbsPanel: React.FC<{ game: GameDetail; abs: NonNullable<GameDetail['abs']> }> = ({ game, abs }) => {
+    const { t } = useTranslation();
+    return (
+        <div className="border-t border-line/10 px-4 py-3">
+            <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-muted">{t('lineScore.abs')}</p>
+            <ul className="space-y-2">
+                {(['away', 'home'] as const).map((side) => {
+                    const team = game[side];
+                    const tally = absTally(abs[side]);
+                    const slots = absSlots(tally);
+                    const checking = abs.challenging !== null && abs.challenging === team.id;
+                    return (
+                        <li key={side} className="flex items-center gap-2.5 text-xs" aria-label={t('lineScore.absAria', { team: team.abbrev, left: tally.left ?? '—', won: tally.won, lost: tally.lost })}>
+                            <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: team.color }} aria-hidden="true" />
+                            <TeamLink id={team.id} className="w-9 shrink-0 font-bold">
+                                {team.abbrev}
+                            </TeamLink>
+                            {slots.length > 0 && (
+                                <span className="flex shrink-0 gap-1" aria-hidden="true">
+                                    {slots.map((slot, index) => (
+                                        <span key={index} className={`h-2.5 w-6 rounded-full transition-colors ${SLOT[slot]}`} style={slot === 'left' ? { backgroundColor: team.color } : undefined} />
+                                    ))}
+                                </span>
+                            )}
+                            <span className="min-w-0 flex-1 truncate font-semibold tabular-nums" aria-hidden="true">
+                                {checking ? (
+                                    <span className="text-gold">{t('lineScore.absChecking')}</span>
+                                ) : tally.left !== null && tally.total !== null ? (
+                                    t('lineScore.absOf', { count: tally.left, total: tally.total })
+                                ) : null}
+                            </span>
+                            <span className="shrink-0 tabular-nums text-muted" aria-hidden="true" title={t('lineScore.absWonLost', { won: tally.won, lost: tally.lost })}>
+                                <b className="text-ball">✓{tally.won}</b> <b className="text-strike">✗{tally.lost}</b>
+                            </span>
+                        </li>
+                    );
+                })}
+            </ul>
+        </div>
+    );
+};
 
 export const LineScore: React.FC<{ game: GameDetail }> = ({ game }) => {
     const { t } = useTranslation();
@@ -135,28 +189,7 @@ export const LineScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                     </tbody>
                 </table>
             </div>
-            {game.abs && (
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line/10 px-4 py-2 text-xs">
-                    <span className="font-extrabold uppercase tracking-wide text-muted">{t('lineScore.abs')}</span>
-                    {sides.map((side) => {
-                        const count = game.abs![side];
-                        return (
-                            <span key={side} className="inline-flex items-center gap-1.5 font-semibold" aria-label={t('lineScore.absAria', { team: game[side].abbrev, left: count.remaining ?? '—', won: count.won, lost: count.lost })}>
-                                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: game[side].color }} aria-hidden="true" />
-                                <TeamLink id={game[side].id}>{game[side].abbrev}</TeamLink>
-                                {/* Lo que importa es cuántos le quedan; ganados y perdidos solo si no llega el total */}
-                                {count.remaining !== null ? (
-                                    <b className="rounded-md bg-raised px-1.5 tabular-nums">{t('lineScore.absLeft', { count: count.remaining })}</b>
-                                ) : (
-                                    <span className="tabular-nums text-muted">
-                                        ✓{count.won} ✗{count.lost}
-                                    </span>
-                                )}
-                            </span>
-                        );
-                    })}
-                </div>
-            )}
+            {game.abs && <AbsPanel game={game} abs={game.abs} />}
         </section>
     );
 };

@@ -445,6 +445,10 @@
     "abs": "Retos ABS",
     "absLeft_one": "queda {{count}}",
     "absLeft_other": "quedan {{count}}",
+    "absOf_one": "Le queda {{count}} de {{total}}",
+    "absOf_other": "Le quedan {{count}} de {{total}}",
+    "absChecking": "Revisando…",
+    "absWonLost": "Ganados {{won}} · perdidos {{lost}}",
     "absAria": "{{team}}: le quedan {{left}}, ganados {{won}}, perdidos {{lost}}"
   },
   "summary": {

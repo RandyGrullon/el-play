@@ -445,6 +445,10 @@
     "abs": "ABS challenges",
     "absLeft_one": "{{count}} left",
     "absLeft_other": "{{count}} left",
+    "absOf_one": "{{count}} of {{total}} left",
+    "absOf_other": "{{count}} of {{total}} left",
+    "absChecking": "Under review…",
+    "absWonLost": "Won {{won}} · lost {{lost}}",
     "absAria": "{{team}}: {{left}} left, {{won}} won, {{lost}} lost"
   },
   "summary": {
