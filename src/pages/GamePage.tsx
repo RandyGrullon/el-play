@@ -153,6 +153,13 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
                 <NoHitterBanner game={game} />
             </div>
 
+            {/* Acciones arriba: debajo de las bases y antes del marcador por entradas */}
+            <div className="flex gap-2 px-4 pt-4">
+                <ActionButton icon={<Table2 className="h-4 w-4" />} label={t('game.tabs.box')} onClick={() => open('box')} />
+                <ActionButton icon={<Target className="h-4 w-4" />} label={t('zone.full')} onClick={() => open('zone')} />
+                <ActionButton icon={<Share2 className="h-4 w-4" />} label={t('share.short')} onClick={onShare} primary />
+            </div>
+
             <div className="px-4 pt-4">
                 <LineScore game={game} />
             </div>
@@ -183,12 +190,6 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
 
             <div className="px-4 pt-4">
                 <GameDetails game={game} />
-            </div>
-
-            <div className="flex gap-2 px-4 pt-5">
-                <ActionButton icon={<Table2 className="h-4 w-4" />} label={t('game.tabs.box')} onClick={() => open('box')} />
-                <ActionButton icon={<Target className="h-4 w-4" />} label={t('zone.full')} onClick={() => open('zone')} />
-                <ActionButton icon={<Share2 className="h-4 w-4" />} label={t('share.short')} onClick={onShare} primary />
             </div>
         </>
     );
