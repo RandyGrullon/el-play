@@ -13,6 +13,7 @@ import { ErrorState, Skeleton } from '../ui/States';
 import { inkOn } from '../gamecast/GameHero';
 import { localeFor, seasonLabel } from '../../lib/format';
 import { gameLine, usePlayer, type CareerRow, type GameLogRow, type PlayerDetail } from '../../lib/stats';
+import { RecentTotal } from './RecentTotal';
 import { battingAdvanced, eraPlus, fmtDec, fmtPct, fmtRate, leagueLineOf, opsPlus, pitchingAdvanced } from '../../lib/advanced';
 import { useTeamStats } from '../../lib/teamStats';
 import { Percentiles, Postseason, RecentPitches, Situations } from './PlayerExtras';
@@ -356,6 +357,7 @@ const GameLog: React.FC<{ player: PlayerDetail; onOpen: () => void }> = ({ playe
     return (
         <section aria-label={t('statsPage.gameLog')}>
             <h4 className="eyebrow mb-2">{t('statsPage.gameLog')}</h4>
+            {player.role === 'B' && <RecentTotal games={games} className="mb-2" />}
             <ol className="card divide-y divide-line/10 overflow-hidden">
                 {games.map((game) => (
                     <GameRow key={game.gamePk} game={game} role={player.role} onOpen={onOpen} />
