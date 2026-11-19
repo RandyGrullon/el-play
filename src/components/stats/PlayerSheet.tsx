@@ -14,6 +14,7 @@ import { inkOn } from '../gamecast/GameHero';
 import { localeFor, seasonLabel } from '../../lib/format';
 import { gameLine, usePlayer, type CareerRow, type GameLogRow, type PlayerDetail } from '../../lib/stats';
 import { RecentTotal } from './RecentTotal';
+import { useRecentCount } from '../../lib/recentGames';
 import { battingAdvanced, eraPlus, fmtDec, fmtPct, fmtRate, leagueLineOf, opsPlus, pitchingAdvanced } from '../../lib/advanced';
 import { useTeamStats } from '../../lib/teamStats';
 import { Percentiles, Postseason, RecentPitches, Situations } from './PlayerExtras';
@@ -352,12 +353,15 @@ const GameRow: React.FC<{ game: GameLogRow; role: 'B' | 'P'; onOpen: () => void 
 const GameLog: React.FC<{ player: PlayerDetail; onOpen: () => void }> = ({ player, onOpen }) => {
     const { t } = useTranslation();
     const [all, setAll] = useState(false);
+    const count = useRecentCount();
     if (!player.log.length) return null;
-    const games = all ? player.log : player.log.slice(0, 8);
+    // Los bateadores ven los juegos que se están midiendo (los escogen arriba); los lanzadores, los 8 de siempre
+    const base = player.role === 'B' ? (count === 0 ? player.log.length : count) : 8;
+    const games = all ? player.log : player.log.slice(0, base);
     return (
         <section aria-label={t('statsPage.gameLog')}>
             <h4 className="eyebrow mb-2">{t('statsPage.gameLog')}</h4>
-            {player.role === 'B' && <RecentTotal games={games} className="mb-2" />}
+            {player.role === 'B' && <RecentTotal player={player} className="mb-2" />}
             <ol className="card divide-y divide-line/10 overflow-hidden">
                 {games.map((game) => (
                     <GameRow key={game.gamePk} game={game} role={player.role} onOpen={onOpen} />

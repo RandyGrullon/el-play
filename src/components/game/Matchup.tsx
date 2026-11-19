@@ -5,13 +5,17 @@ import { PlayerLink } from '../ui/PlayerLink';
 import { withNodes } from '../ui/TextLinks';
 import { slot } from '../../lib/links';
 import { usePlayer } from '../../lib/stats';
-import { gamesBefore, recentHitting } from '../../lib/recentGames';
+import { lastGames, recentHitting, useRecentCount } from '../../lib/recentGames';
 
-/** Hits-turnos del bateador en sus últimos 8 juegos antes de hoy («2-22»); de su perfil, que ya viene en caché si lo abriste */
+/**
+ * Hits-turnos del bateador en sus últimos juegos antes de hoy («2-22»; cuántos, lo que escogiste en su perfil, 8 si no);
+ * de su perfil, que ya viene en caché si lo abriste
+ */
 const useRecentLine = (batterId: number | null | undefined, game: GameDetail) => {
+    const count = useRecentCount();
     const { data: player } = usePlayer(batterId ?? null, game.league);
     if (!player || player.id !== batterId) return null;
-    const line = recentHitting(gamesBefore(player.log, game.gamePk));
+    const line = recentHitting(lastGames(player.log, count, game.gamePk));
     return line.games ? line : null;
 };
 

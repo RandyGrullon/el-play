@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import i18n from '../../i18n';
 import { Matchup } from './Matchup';
-import { RecentTotal } from '../stats/RecentTotal';
+import { DEFAULT_RECENT, setRecentCount } from '../../lib/recentGames';
 import type { GameDetail } from '../../types';
 import type { HittingLine } from '../../lib/stats';
 
@@ -36,6 +36,8 @@ const renderMatchup = (log: { gamePk: number; hitting: HittingLine | null }[] | 
 describe('Matchup: el bateador con sus últimos juegos', () => {
     beforeEach(() => {
         i18n.changeLanguage('es');
+        window.localStorage.clear();
+        setRecentCount(DEFAULT_RECENT);
     });
 
     it('al lado de «Hoy 0-3» van los hits y turnos de sus juegos anteriores (sin el de hoy)', () => {
@@ -51,24 +53,20 @@ describe('Matchup: el bateador con sus últimos juegos', () => {
         expect(recent.parentElement?.getAttribute('title')).toBe('Últimos 3 juegos: 11 turnos · 2 hits');
     });
 
+    it('mide los juegos que escogiste en el perfil', () => {
+        setRecentCount(2);
+        renderMatchup([
+            { gamePk: 500, hitting: line(0, 3) },
+            { gamePk: 499, hitting: line(1, 4) },
+            { gamePk: 498, hitting: line(0, 3) },
+            { gamePk: 497, hitting: line(1, 4) }
+        ]);
+        expect(screen.getByText('Últ. 2').nextElementSibling?.textContent).toBe('1-7');
+    });
+
     it('sin su perfil todavía, solo Hoy y AVG', () => {
         renderMatchup(null);
         expect(screen.queryByText(/^Últ\./)).toBeNull();
         expect(screen.getByText('Hoy')).toBeTruthy();
-    });
-});
-
-describe('RecentTotal', () => {
-    it('«Últimos 8 juegos: 22 turnos · 2 hits · .091»', () => {
-        i18n.changeLanguage('es');
-        const games = [4, 3, 2, 3, 3, 2, 3, 2].map((ab, index) => ({ hitting: line(index === 1 || index === 4 ? 1 : 0, ab) }));
-        const { container } = render(<RecentTotal games={games} />);
-        expect(container.textContent).toBe('Últimos 8 juegos:22 turnos · 2 hits · .091');
-    });
-
-    it('en singular con un solo juego y un hit', () => {
-        i18n.changeLanguage('es');
-        const { container } = render(<RecentTotal games={[{ hitting: line(1, 1) }]} />);
-        expect(container.textContent).toBe('Último juego:1 turno · 1 hit · 1.000');
     });
 });
