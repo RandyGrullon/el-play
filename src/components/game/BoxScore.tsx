@@ -5,12 +5,28 @@ import { Segmented } from '../ui/Segmented';
 import { TeamLogo } from '../ui/TeamLogo';
 import { PlayerLink } from '../ui/PlayerLink';
 import { TeamLink } from '../ui/TeamLink';
+import { BatIcon } from '../ui/BatIcon';
+import { inkOn } from '../gamecast/GameHero';
+import { inningBreak } from '../../lib/baseball';
+
+/** En vivo: el que está al bate, o en la pausa entre entradas el que abre la otra mitad */
+const currentBatter = (game: GameDetail): { id: number; side: 'away' | 'home'; leadsOff: boolean } | null => {
+    if (game.state !== 'live') return null;
+    const pause = inningBreak(game);
+    if (pause) {
+        const leadoff = pause.dueUp[0];
+        return leadoff ? { id: leadoff.id, side: pause.next.id === game.home.id ? 'home' : 'away', leadsOff: true } : null;
+    }
+    if (!game.matchup || !game.inning) return null;
+    return { id: game.matchup.batter.id, side: game.inning.isTop ? 'away' : 'home', leadsOff: false };
+};
 
 export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
     const { t } = useTranslation();
     const [side, setSide] = useState<'away' | 'home'>(game.inning && !game.inning.isTop ? 'home' : 'away');
     const team = game[side];
     const box = game.box[side];
+    const atBat = currentBatter(game);
 
     return (
         <div className="space-y-4">
@@ -25,6 +41,7 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                         <span className="inline-flex items-center gap-2">
                             <TeamLogo team={game[key]} size={18} />
                             {game[key].abbrev}
+                            {atBat?.side === key && <BatIcon className="h-3.5 w-3.5" label={t(atBat.leadsOff ? 'box.leadsOff' : 'box.atBat')} />}
                         </span>
                     )
                 }))}
@@ -48,22 +65,29 @@ export const BoxScore: React.FC<{ game: GameDetail }> = ({ game }) => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-line/10">
-                                {box.batters.map((batter) => (
-                                    <tr key={batter.id}>
-                                        <td className={`sticky left-0 z-[1] min-w-[7.5rem] bg-surface py-2 pr-2 ${batter.sub ? 'pl-8' : 'pl-4'}`}>
-                                            <PlayerLink id={batter.id} className="font-medium">{batter.name}</PlayerLink>
-                                            <span className="ml-1.5 text-xs text-faint">{batter.pos}</span>
-                                            {batter.hr > 0 && <span className="ml-1.5 rounded bg-gold/15 px-1 text-[10px] font-bold text-gold">HR{batter.hr > 1 ? ` ${batter.hr}` : ''}</span>}
-                                        </td>
-                                        <td className="num px-1.5 text-right">{batter.ab}</td>
-                                        <td className="num px-1.5 text-right">{batter.r}</td>
-                                        <td className={`num px-1.5 text-right ${batter.h ? 'font-semibold' : ''}`}>{batter.h}</td>
-                                        <td className="num px-1.5 text-right">{batter.rbi}</td>
-                                        <td className="num px-1.5 text-right">{batter.bb}</td>
-                                        <td className="num px-1.5 text-right">{batter.k}</td>
-                                        <td className="num px-1.5 pr-4 text-right text-muted">{batter.avg ?? '—'}</td>
-                                    </tr>
-                                ))}
+                                {box.batters.map((batter) => {
+                                    // El que está al bate va del color de su equipo, con el bate delante del nombre
+                                    const up = atBat !== null && atBat.side === side && atBat.id === batter.id;
+                                    const paint = up ? { backgroundColor: team.color, color: inkOn(team.color) } : undefined;
+                                    return (
+                                        // Bordes del mismo color: si no, el separador de la fila de abajo raya el color debajo de los números
+                                        <tr key={batter.id} style={up ? { ...paint, borderTopColor: team.color, borderBottom: `1px solid ${team.color}` } : undefined} aria-current={up || undefined}>
+                                            <td className={`sticky left-0 z-[1] min-w-[7.5rem] py-2 pr-2 ${up ? '' : 'bg-surface'} ${batter.sub ? 'pl-8' : 'pl-4'}`} style={paint}>
+                                                {up && <BatIcon className="mr-1 inline-block h-4 w-4 align-[-3px]" label={t(atBat.leadsOff ? 'box.leadsOff' : 'box.atBat')} />}
+                                                <PlayerLink id={batter.id} className={up ? 'font-bold' : 'font-medium'}>{batter.name}</PlayerLink>
+                                                <span className={`ml-1.5 text-xs ${up ? 'opacity-75' : 'text-faint'}`}>{batter.pos}</span>
+                                                {batter.hr > 0 && <span className={`ml-1.5 rounded px-1 text-[10px] font-bold ${up ? 'bg-black/15' : 'bg-gold/15 text-gold'}`}>HR{batter.hr > 1 ? ` ${batter.hr}` : ''}</span>}
+                                            </td>
+                                            <td className="num px-1.5 text-right">{batter.ab}</td>
+                                            <td className="num px-1.5 text-right">{batter.r}</td>
+                                            <td className={`num px-1.5 text-right ${batter.h ? 'font-semibold' : ''}`}>{batter.h}</td>
+                                            <td className="num px-1.5 text-right">{batter.rbi}</td>
+                                            <td className="num px-1.5 text-right">{batter.bb}</td>
+                                            <td className="num px-1.5 text-right">{batter.k}</td>
+                                            <td className={`num px-1.5 pr-4 text-right ${up ? 'opacity-75' : 'text-muted'}`}>{batter.avg ?? '—'}</td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                             <tfoot>
                                 <tr className="border-t border-line/15 font-semibold">

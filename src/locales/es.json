@@ -420,7 +420,9 @@
     "bullpen": "Bullpen",
     "handR": "D",
     "handL": "Z",
-    "era": "EFE {{era}}"
+    "era": "EFE {{era}}",
+    "atBat": "Al bate",
+    "leadsOff": "Le toca abrir"
   },
   "stats": {
     "ab": "VB",

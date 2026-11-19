@@ -420,7 +420,9 @@
     "bullpen": "Bullpen",
     "handR": "R",
     "handL": "L",
-    "era": "ERA {{era}}"
+    "era": "ERA {{era}}",
+    "atBat": "At bat",
+    "leadsOff": "Leads off"
   },
   "stats": {
     "ab": "AB",
