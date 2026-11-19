@@ -29,16 +29,29 @@ export const useSchedule = (league: LeagueId) =>
         retry
     });
 
+const gameQuery = (gamePk: string) => ({
+    queryKey: keys.game(gamePk),
+    queryFn: ({ signal }: { signal: AbortSignal }) => api.game(gamePk, signal),
+    staleTime: 2000,
+    retry
+});
+
 export const useGame = (gamePk: string | undefined) =>
     useQuery({
-        queryKey: keys.game(gamePk ?? ''),
-        queryFn: ({ signal }) => api.game(gamePk!, signal),
+        ...gameQuery(gamePk ?? ''),
         enabled: !!gamePk,
-        staleTime: 2000,
         refetchInterval: (query) => gameInterval(query.state.data),
-        refetchOnWindowFocus: true,
-        retry
+        refetchOnWindowFocus: true
     });
+
+/**
+ * El mismo juego para el marcador flotante, sin reloj propio: ese lleva el suyo (`refreshGame`) para seguir
+ * actualizando con la pestaña escondida, donde el de la página se detiene
+ */
+export const useGameWithoutPolling = (gamePk: string) => useQuery({ ...gameQuery(gamePk), refetchInterval: false, refetchOnWindowFocus: false });
+
+/** Una lectura del juego (si la última tiene menos de 2 s, sirve esa y no se pide otra) */
+export const refreshGame = (client: QueryClient, gamePk: string) => client.fetchQuery(gameQuery(gamePk));
 
 export const useStandings = (league: LeagueId) =>
     useQuery({

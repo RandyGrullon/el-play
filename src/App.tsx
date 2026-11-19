@@ -9,6 +9,7 @@ import { Splash } from './components/brand/Splash';
 import { Skeleton } from './components/ui/States';
 import { GamesPage } from './pages/GamesPage';
 import { ShareProvider } from './share/ShareSheet';
+import { FloatingProvider } from './components/floating/Floating';
 import { getInstallMode, openInstallSheet } from './lib/install';
 
 // La portada va en el bundle principal; el resto se baja al entrar (o mientras corre la animación de entrada)
@@ -64,6 +65,7 @@ const App: React.FC = () => (
             <Splash />
             <LeagueProvider>
                 <ShareProvider>
+                <FloatingProvider>
                 <AppShell>
                     <Suspense fallback={<PageFallback />}>
                         <Routes>
@@ -86,6 +88,7 @@ const App: React.FC = () => (
                         </Routes>
                     </Suspense>
                 </AppShell>
+                </FloatingProvider>
                 </ShareProvider>
             </LeagueProvider>
         </PreferencesProvider>

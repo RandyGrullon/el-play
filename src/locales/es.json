@@ -652,6 +652,15 @@
     "loss": "Perdedor",
     "save": "Salvado"
   },
+  "floating": {
+    "open": "Ver en ventana flotante",
+    "close": "Quitar la ventana flotante",
+    "switch": "Poner este juego en la ventana flotante",
+    "matchup": "Batea {{batter}} · Lanza {{pitcher}}",
+    "leadsOff": "Abre {{name}} por {{team}}",
+    "loading": "Cargando el juego…",
+    "failed": "No se pudo abrir la ventana flotante. Prueba otra vez."
+  },
   "share": {
     "title": "Compartir",
     "short": "Compartir",

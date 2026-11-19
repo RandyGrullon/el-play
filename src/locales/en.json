@@ -652,6 +652,15 @@
     "loss": "Loser",
     "save": "Save"
   },
+  "floating": {
+    "open": "Open in a floating window",
+    "close": "Close the floating window",
+    "switch": "Move this game to the floating window",
+    "matchup": "{{batter}} batting · {{pitcher}} pitching",
+    "leadsOff": "{{name}} leads off for {{team}}",
+    "loading": "Loading the game…",
+    "failed": "Couldn't open the floating window. Try again."
+  },
   "share": {
     "title": "Share",
     "short": "Share",

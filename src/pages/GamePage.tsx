@@ -36,6 +36,7 @@ import { uniformColors } from '../components/game/BatterFigure';
 import { Matchup } from '../components/game/Matchup';
 import { PlayByPlay } from '../components/game/PlayByPlay';
 import { BoxScore } from '../components/game/BoxScore';
+import { FloatingButton } from '../components/floating/Floating';
 import { OutsDots } from '../components/game/Bases';
 import { FieldButton } from '../components/field/FieldView';
 import { DelayBanner } from '../components/game/Delay';
@@ -159,6 +160,8 @@ const LiveView: React.FC<{ game: GameDetail; open: (sheet: Sheet) => void; onSha
                 <ActionButton icon={<Target className="h-4 w-4" />} label={t('zone.full')} onClick={() => open('zone')} />
                 <ActionButton icon={<Share2 className="h-4 w-4" />} label={t('share.short')} onClick={onShare} primary />
             </div>
+            {/* Ventana flotante con el marcador (solo donde el navegador la deja abrir) */}
+            <FloatingButton gamePk={game.gamePk} className="px-4 pt-2" />
 
             <div className="px-4 pt-4">
                 <LineScore game={game} />
