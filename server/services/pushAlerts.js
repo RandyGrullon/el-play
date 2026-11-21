@@ -54,10 +54,12 @@ const cleanSubscription = (body = {}) => {
     return { endpoint, p256dh, auth, games: ints(body.games, MAX_GAMES), teams: ints(body.teams, MAX_TEAMS), kinds, lang: body.lang === 'en' ? 'en' : 'es' };
 };
 
+// Guardar y borrar también piden el secreto: así solo el servidor (después de cleanSubscription) toca la tabla, y nadie
+// la llena directo en Supabase con la llave pública de la app
 const saveSubscription = (sub) =>
-    rpc('push_save', { sub_endpoint: sub.endpoint, sub_p256dh: sub.p256dh, sub_auth: sub.auth, sub_games: sub.games, sub_teams: sub.teams, sub_kinds: sub.kinds, sub_lang: sub.lang });
+    rpc('push_save', { run_secret: env.env('PUSH_SECRET'), sub_endpoint: sub.endpoint, sub_p256dh: sub.p256dh, sub_auth: sub.auth, sub_games: sub.games, sub_teams: sub.teams, sub_kinds: sub.kinds, sub_lang: sub.lang });
 
-const deleteSubscription = (endpoint) => rpc('push_delete', { sub_endpoint: endpoint });
+const deleteSubscription = (endpoint) => rpc('push_delete', { run_secret: env.env('PUSH_SECRET'), sub_endpoint: endpoint });
 
 // ---------------------------------------------------------------- qué avisar
 

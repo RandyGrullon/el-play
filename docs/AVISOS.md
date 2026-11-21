@@ -24,9 +24,15 @@ Vercel → el proyecto → Settings → Environment Variables (Production): agre
 
 1. Database → Extensions: activa **pg_cron** y **pg_net**.
 2. Abre `supabase/2026-10-23-avisos-push.sql`, cambia `CAMBIA-ESTE-SECRETO-POR-UNO-LARGO-TUYO` por el mismo
-   `PUSH_SECRET` de Vercel y córrelo en el SQL Editor.
+   `PUSH_SECRET` de Vercel y córrelo en el SQL Editor. Si se te olvida cambiarlo, se detiene con un error y no deja
+   nada hecho (ese secreto de ejemplo está en el repositorio).
 
 Desde ese momento Supabase llama cada minuto a `/api/v2/push/run` y el servidor manda los avisos que toquen.
+
+Todas las funciones de los avisos piden el secreto, también guardar y borrar suscripciones: solo el servidor las
+usa (después de revisar lo que manda el teléfono), así que con la llave pública de la app nadie puede leer a quién se
+avisa ni llenar la tabla. Si alguna vez cambias el secreto, cámbialo en los dos lados (Vercel y este SQL) y vuelve a
+correr el archivo: no borra las suscripciones.
 
 ## Cómo probarlo
 
