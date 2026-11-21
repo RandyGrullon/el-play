@@ -2152,7 +2152,9 @@
     "minutes_one": "{{count}} min de demora",
     "minutes_other": "{{count}} min de demora",
     "hideRain": "Quitar lluvia",
-    "showRain": "Ver lluvia"
+    "showRain": "Ver lluvia",
+    "hidePower": "Prender la luz",
+    "showPower": "Ver el apagón"
   },
   "field": {
     "open": "Ver el terreno",

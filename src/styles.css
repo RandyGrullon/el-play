@@ -470,6 +470,24 @@ html.text-large body {
 }
 :root[data-theme='dark'] .rain-overlay { --rain-drop: 196 220 250; background: linear-gradient(180deg, rgb(8 24 48 / 0.26), rgb(8 24 48 / 0.4)); }
 
+/* ---------- Juego detenido por falla eléctrica: farol que baja, parpadea y alumbra el juego (BlackoutOverlay.tsx) ---------- */
+.blackout { position: fixed; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; transition: opacity 0.6s ease; }
+.blackout-dark {
+    position: absolute; inset: 0; opacity: 0;
+    background: radial-gradient(ellipse min(80vw, 520px) 300px at 50% 190px, rgb(225 235 255 / 0.08) 0%, rgb(0 0 0 / 0) 42%, rgb(3 4 8 / 0.66) 78%, rgb(3 4 8 / 0.82) 100%);
+    animation: bo-dark 0.9s ease 0.2s forwards;
+}
+.blackout-cone {
+    position: absolute; left: 50%; top: calc(env(safe-area-inset-top) + 100px); width: min(100vw, 680px); height: 380px; transform: translateX(-50%);
+    background: linear-gradient(180deg, rgb(232 240 255 / 0.42), rgb(232 240 255 / 0.13) 55%, rgb(232 240 255 / 0));
+    clip-path: polygon(36% 0, 64% 0, 100% 100%, 0 100%); filter: blur(4px); mix-blend-mode: screen; opacity: 0;
+}
+.blackout-drop { position: absolute; left: 50%; top: calc(env(safe-area-inset-top) - 6px); margin-left: -75px; transform: translateY(-160px); animation: bo-drop 1s cubic-bezier(0.3, 1.45, 0.5, 1) forwards; }
+.blackout-sway { transform-origin: 75px 0; animation: bo-sway 4.2s ease-in-out 1s infinite; filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.5)); }
+@keyframes bo-drop { to { transform: translateY(0); } }
+@keyframes bo-sway { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+@keyframes bo-dark { to { opacity: 1; } }
+
 /* ---------- Vista del terreno (components/field): grama, tierra y líneas en claro y en oscuro; caras que saltan ---------- */
 .fld { --fld-g1: #5eab62; --fld-g2: #52a058; --fld-foul: #468f4d; --fld-track: #b8814b; --fld-dirt: #c8925e; --fld-line: rgb(255 255 255 / 0.92); --fld-wall: #2b5c34; }
 @media (prefers-color-scheme: dark) {

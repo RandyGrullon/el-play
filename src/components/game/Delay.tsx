@@ -49,7 +49,7 @@ export const DelayPill: React.FC<{ delay: Delay; suffix?: string; solid?: boolea
 };
 
 /** Aviso bajo la cabecera: por qué se detuvo, en qué entrada, los minutos (si MLB los da) y el botón de la lluvia */
-export const DelayBanner: React.FC<{ game: GameDetail; delay: Delay; rain?: { on: boolean; toggle: () => void } | null }> = ({ game, delay, rain }) => {
+export const DelayBanner: React.FC<{ game: GameDetail; delay: Delay; rain?: { on: boolean; toggle: () => void; kind?: 'rain' | 'power' } | null }> = ({ game, delay, rain }) => {
     const { t, i18n } = useTranslation();
     const minutes = game.info?.delayMin;
     const details = [
@@ -67,7 +67,7 @@ export const DelayBanner: React.FC<{ game: GameDetail; delay: Delay; rain?: { on
             </p>
             {rain && (
                 <button type="button" onClick={rain.toggle} className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold text-ink shadow-card">
-                    {rain.on ? t('delay.hideRain') : t('delay.showRain')}
+                    {rain.kind === 'power' ? (rain.on ? t('delay.hidePower') : t('delay.showPower')) : rain.on ? t('delay.hideRain') : t('delay.showRain')}
                 </button>
             )}
         </div>

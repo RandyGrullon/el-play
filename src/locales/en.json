@@ -2152,7 +2152,9 @@
     "minutes_one": "{{count}} min delay",
     "minutes_other": "{{count}} min delay",
     "hideRain": "Hide rain",
-    "showRain": "Show rain"
+    "showRain": "Show rain",
+    "hidePower": "Turn the lights on",
+    "showPower": "See the blackout"
   },
   "field": {
     "open": "See the field",

@@ -41,6 +41,7 @@ import { OutsDots } from '../components/game/Bases';
 import { FieldButton } from '../components/field/FieldView';
 import { DelayBanner } from '../components/game/Delay';
 import { RainOverlay } from '../components/game/RainOverlay';
+import { BlackoutOverlay } from '../components/game/BlackoutOverlay';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { PlayerPhoto } from '../components/ui/PlayerPhoto';
 import { PlayerLink } from '../components/ui/PlayerLink';
@@ -463,11 +464,13 @@ export const GamePage: React.FC = () => {
     // (no con las animaciones apagadas ni si el sistema pide menos movimiento)
     const delay = game && game.state !== 'final' && !notPlayed ? delayOf(game.detailedState) : null;
     const canRain = !!delay && isRainy(delay) && playAnimations && !reducedMotion;
+    // Falla eléctrica: el farol del techo (se quita con el mismo botón que la lluvia)
+    const canBlackout = !!delay && delay.reason === 'power' && playAnimations && !reducedMotion;
     const toggleRain = () => {
         writeRainOff(gamePk, !rainOff);
         setRainOff(!rainOff);
     };
-    const delayNotice = game && delay ? <DelayBanner game={game} delay={delay} rain={canRain ? { on: !rainOff, toggle: toggleRain } : null} /> : null;
+    const delayNotice = game && delay ? <DelayBanner game={game} delay={delay} rain={canRain || canBlackout ? { on: !rainOff, toggle: toggleRain, kind: canBlackout ? 'power' : 'rain' } : null} /> : null;
 
     return (
         <PullToRefresh onRefresh={async () => { await query.refetch(); }}>
@@ -500,6 +503,7 @@ export const GamePage: React.FC = () => {
             )}
 
             <RainOverlay active={canRain && !rainOff} />
+            <BlackoutOverlay active={canBlackout && !rainOff} />
 
             {/* La repetición va primero: lo que llegue en vivo mientras sale espera en su cola */}
             {replay ? (
